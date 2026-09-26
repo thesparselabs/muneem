@@ -17,7 +17,7 @@ Every significant decision below traces to one of these:
 | D5 | Hardware is unreliable and vendor-diverse | P2, NFR-012, §11 | Hardware sits behind interfaces + adapters, *outside* the transaction boundary |
 | D6 | Sync must be idempotent and auditable | NFR-009, §21 | Every operation carries a stable client-generated id; server dedupes; no last-write-wins on money |
 | D7 | Two terminals, one shop, no internet | §2.1, FR-010, FR-087 | Documents are partitioned per terminal; stock is eventually consistent with reconciliation |
-| D8 | Same arithmetic on device and cloud | D3 + D6 | Domain engines live in a **shared TypeScript package** → drives the cloud language choice |
+| D8 | Same arithmetic on device and cloud | D3 + D6 | Domain engines are specified by a **shared golden-vector suite**; implemented in TypeScript on the device and ported to Go on the cloud; CI proves byte-identical results |
 
 ---
 
@@ -83,7 +83,7 @@ Every significant decision below traces to one of these:
 │  ┌── Domain Engines (pure, deterministic, no I/O) ────────────┐  │
 │  │ PricingEngine · GstEngine · MoneyKernel · InventoryEngine  │  │
 │  │ CostingEngine · AccountingEngine · NumberingEngine         │  │
-│  │        ↑ shared @muneem/domain package, reused by cloud     │  │
+│  │        ↑ @muneem/domain (TS); Go port on cloud, same fixtures│  │
 │  └───────────────────────────┬────────────────────────────────┘  │
 │                              ▼                                   │
 │  ┌── Infrastructure ─────────────────────────────────────────┐   │
@@ -112,7 +112,9 @@ The `sync` process never writes business tables directly; it hands results back 
 
 ### 3.2 Why the domain engines are on the device
 
-A cloud-side GST engine would make offline billing impossible (D2). Putting them in `@muneem/domain` — pure functions over integers, no I/O — means the same code recomputes totals server-side during sync ingest as a **verification step**. A mismatch is a hard sync error, not a silent overwrite. That single property is what makes D3 credible.
+A cloud-side GST engine would make offline billing impossible (D2). The engines live in `@muneem/domain` — pure functions over integers, no I/O — on the device. The cloud (Go) carries a **port** of the same engines in `cloud/internal/domain`, and sync ingest recomputes totals with it as a **verification step**. A mismatch is a hard sync error, not a silent overwrite.
+
+Because the two implementations are in different languages, equality is not assumed — it is enforced: both test suites load the *same* golden-vector fixture files (`packages/domain/fixtures/**`), CI fails on any paise-level difference, and a nightly differential fuzz run feeds random invoices through both engines and asserts identical output. That fixture suite, not shared source code, is what makes D3 credible.
 
 ---
 
@@ -120,16 +122,17 @@ A cloud-side GST engine would make offline billing impossible (D2). Putting them
 
 ```text
 @muneem/domain     money, gst, pricing, costing, inventory, accounting, numbering, ids
-@muneem/contracts  IPC + HTTP schemas (zod), error codes, sync protocol types
+@muneem/contracts  IPC schemas (zod) + OpenAPI 3 HTTP contract → TS + Go codegen, error codes, sync protocol types
 @muneem/db-sqlite  schema, migrations, repositories
 @muneem/hardware   interfaces + adapters (escpos, serial, hid, windows-print)
 @muneem/desktop    electron main, preload, services, sync engine
 @muneem/ui         react renderer
-@muneem/cloud      nestjs modular monolith
-@muneem/db-pg      prisma schema, migrations, RLS policies
+cloud/             go (echo) modular monolith — cmd/api, internal/<module>
+cloud/internal/domain  Go port of @muneem/domain, tested against packages/domain/fixtures
+cloud/migrations   golang-migrate SQL files, RLS policies
 ```
 
-Cloud modules mirror §15 of the PRD (`auth, business, users, roles, products, inventory, customers, suppliers, pos, sales, purchases, payments, expenses, gst, accounting, reports, sync, notifications, audit, documents, settings, billing`), each with its own controller/service/repository and **no cross-module DB access** — module A talks to module B through its service interface. That discipline is what makes a later extraction possible without forcing microservices now (Constraint 5).
+Cloud modules mirror §15 of the PRD (`auth, business, users, roles, products, inventory, customers, suppliers, pos, sales, purchases, payments, expenses, gst, accounting, reports, sync, notifications, audit, documents, settings, billing`), each its own Go package with handler/service/store and **no cross-package DB access** — package A talks to package B through its service interface. That discipline is what makes a later extraction possible without forcing microservices now (Constraint 5).
 
 ---
 
@@ -146,11 +149,11 @@ Cloud modules mirror §15 of the PRD (`auth, business, users, roles, products, i
                     └──┬──────────────┬───┘
          ┌─────────────▼───┐   ┌──────▼─────────────┐
          │ API (stateless) │   │ Sync ingest (same  │
-         │ NestJS ×N       │   │ binary, own pool)  │
+         │ Go/Echo ×N      │   │ binary, own pool)  │
          └──┬───────┬──────┘   └──────┬─────────────┘
             │       │                 │
    ┌────────▼──┐ ┌──▼────────┐ ┌──────▼────────────────┐
-   │PostgreSQL │ │  Redis    │ │ Worker pool (BullMQ)  │
+   │PostgreSQL │ │  Redis    │ │ Worker pool (asynq)   │
    │ primary   │ │ cache,    │ │ e-invoice, e-way,     │
    │ + replica │ │ locks,    │ │ notifications, GSTR   │
    │ (reports) │ │ queues    │ │ aggregates, backups   │
@@ -163,13 +166,24 @@ Cloud modules mirror §15 of the PRD (`auth, business, users, roles, products, i
       └────────────┘            └─────────────┘
 ```
 
-### 5.1 Language decision: **NestJS (TypeScript)**, not Go
+### 5.1 Language decision: **Go (Echo)**
 
-The PRD leaves it open. Choose TypeScript because D8 requires the GST/costing/accounting engines to be **literally the same code** on device and server. Reimplementing them in Go doubles the surface for arithmetic divergence in exactly the area where divergence is unacceptable, and creates an ongoing two-language obligation for a small team. Go's advantages (throughput, memory) are irrelevant at this scale: sync ingest is a batched, DB-bound workload, and the hot path is Postgres, not the runtime.
+The PRD leaves it open. The team chose Go with the Echo framework: a single static binary, low memory footprint, simple deployment, and existing team expertise.
+
+**The cost, stated honestly:** D8 wants the GST/costing/accounting engines to produce identical results on device and server. With TypeScript on the device and Go on the server, those engines exist **twice**, and arithmetic divergence in exactly the area where divergence is unacceptable becomes a real risk that shared source code would have removed.
+
+**Mitigation (non-negotiable, CI-enforced):**
+
+- `packages/domain/fixtures/**` golden vectors are the **single contract**. The TypeScript suite and the Go suite load the same files; a paise-level difference fails the build.
+- A nightly **differential fuzz** job generates random invoices, runs the TS engine, and asserts the Go port returns identical output.
+- The HTTP contract is one OpenAPI 3 document in `packages/contracts/openapi/`; Go types (`oapi-codegen`) and TS types (`openapi-typescript`) are generated from it, so request/response shapes cannot drift either.
+- Any change to a domain engine must land in both implementations in the same PR, with the fixture suite extended.
+
+Sync ingest is a batched, DB-bound workload, so Go's throughput is not the reason for the choice — the reason is operational simplicity and team preference, accepted with the two-engine obligation above.
 
 ### 5.2 Multi-tenancy (NFR-008)
 
-Single database, shared schema, **`business_id` on every tenant table** + Postgres **Row-Level Security** as defence-in-depth. Each request opens a transaction that sets `app.business_id` / `app.user_id`; RLS policies compare against them, so an ORM mistake cannot leak across tenants. Authorization resolves `user → org → business → branch → permission` once per request and caches it in Redis with a short TTL, invalidated on role change.
+Single database, shared schema, **`business_id` on every tenant table** + Postgres **Row-Level Security** as defence-in-depth. Each request opens a transaction in which Echo middleware runs `SET LOCAL app.business_id` / `app.user_id`; RLS policies compare against them, so a query mistake cannot leak across tenants. Authorization resolves `user → org → business → branch → permission` once per request and caches it in Redis with a short TTL, invalidated on role change.
 
 Sharding by business is deferred; the partitioning strategy (§LLD 11) buys the runway.
 
@@ -309,7 +323,7 @@ POS service  ──►  HardwareManager  ──►  DeviceInterface  ──►  
 
 `local → dev → staging (prod-like, real GSP sandbox) → production`. Desktop channels: `dev`, `beta`, `stable`.
 
-CI on every PR: typecheck, lint, unit tests (domain engines with golden vectors), migration up/down test, contract tests (IPC + HTTP schemas), integration tests on a real SQLite file, simulated-hardware E2E, financial **property tests** (`Σdebit = Σcredit`, `stock = replay(movements)`, `Σallocations ≤ payment`), and the §37 offline/sync scenario as a nightly soak. Release: Windows build + sign + notarized manifest, cloud image + migration gate + canary.
+CI on every PR: typecheck, lint, unit tests (domain engines with golden vectors), migration up/down test, contract tests (IPC zod + OpenAPI-generated Go/TS types), the cross-language golden-vector run (TS and Go engines on the same fixtures), integration tests on a real SQLite file, simulated-hardware E2E, financial **property tests** (`Σdebit = Σcredit`, `stock = replay(movements)`, `Σallocations ≤ payment`), and the §37 offline/sync scenario as a nightly soak. Release: Windows build + sign + notarized manifest, cloud image + migration gate + canary.
 
 ---
 
@@ -318,7 +332,7 @@ CI on every PR: typecheck, lint, unit tests (domain engines with golden vectors)
 | ID | Decision | Rationale | Cost of being wrong |
 |---|---|---|---|
 | AD-1 | SQLite as on-site system of record, cloud as consolidator | D1, D2 | Low — this is the product |
-| AD-2 | Cloud in NestJS/TypeScript, shared `@muneem/domain` | D8: identical arithmetic both sides | Medium — a rewrite, but bounded |
+| AD-2 | Cloud in Go/Echo; domain engines ported to Go; golden vectors are the cross-language contract | Team choice; D8 satisfied by fixture equality rather than shared code | Medium — two engines to keep in lockstep |
 | AD-3 | Documents append-only; corrections are new documents | D3, §21 | High if reversed — retrofitting immutability is a data migration |
 | AD-4 | Stock derived from an immutable movement ledger | D7 | High — the alternative loses stock accuracy offline |
 | AD-5 | Per-terminal document series | C-2, GST legality | High — renumbering live invoices is not possible |
@@ -338,7 +352,7 @@ CI on every PR: typecheck, lint, unit tests (domain engines with golden vectors)
 |---|---|---|
 | Offline oversell across terminals erodes trust in stock | High | Movement ledger, reconciliation report, honest UI ("last synced 2h ago"), LAN hub in Phase 2 |
 | E-invoice/e-way GSP integration slips (external API, changing spec) | High | Isolate behind an adapter + queue from day one; keep out of MVP-1; never in the commit path |
-| Tax logic divergence device vs cloud | High | One shared engine + server-side re-verification + golden vector suite |
+| Tax logic divergence device (TS) vs cloud (Go) | High | One fixture suite run by both engines in CI + nightly differential fuzz + server-side re-verification |
 | SQLite corruption on cheap hardware / power cuts | High | `synchronous=FULL`, startup integrity check, rolling backups, cloud restore path, documented user journey |
 | Electron footprint on 4 GB HDD machines | Medium | Startup budget in CI, lazy module loading, indexed queries, utility process for reports |
 | Windows-only support burden (printers, drivers, AV false positives) | Medium | Signed installer, Tier-1 hardware certification list, simulator-based CI, remote diagnostics bundle |
