@@ -1,0 +1,43 @@
+name: ci
+on:
+  push: { branches: [main] }
+  pull_request:
+  schedule:
+    - cron: '30 21 * * *'   # nightly 03:00 IST: differential fuzz + soak-style runs
+jobs:
+  node:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with: { version: 11 }
+      - uses: actions/setup-node@v4
+        with: { node-version: 24, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm turbo run gen build typecheck lint test
+      - run: pnpm schema-lint
+  go:
+    runs-on: ubuntu-latest
+    defaults: { run: { working-directory: cloud } }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with: { go-version: '1.25', cache-dependency-path: cloud/go.sum }
+      - run: go build ./...
+      - run: go vet ./...
+      - run: go test ./...     # loads packages/domain/fixtures — the cross-language contract
+  diff-fuzz:
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    needs: [node, go]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with: { version: 11 }
+      - uses: actions/setup-node@v4
+        with: { node-version: 24, cache: pnpm }
+      - uses: actions/setup-go@v5
+        with: { go-version: '1.25', cache-dependency-path: cloud/go.sum }
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @muneem/domain build
+      - run: pnpm diff-fuzz --n 20000

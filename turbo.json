@@ -1,0 +1,10 @@
+{
+  "$schema": "https://turbo.build/schema.json",
+  "tasks": {
+    "gen": { "dependsOn": ["^build"], "outputs": ["src/http/generated.ts", "src/preload/generated.ts", "src/migrations.generated.ts"] },
+    "build": { "dependsOn": ["^build", "gen"], "outputs": ["dist/**", "out/**"] },
+    "typecheck": { "dependsOn": ["^build", "gen"] },
+    "lint": { "dependsOn": ["gen"] },
+    "test": { "dependsOn": ["^build", "gen"] }
+  }
+}
