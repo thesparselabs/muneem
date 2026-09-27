@@ -9,8 +9,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-        with: { version: 11 }
+      - uses: pnpm/action-setup@v4   # version comes from package.json packageManager
       - uses: actions/setup-node@v4
         with: { node-version: 24, cache: pnpm }
       - run: pnpm install --frozen-lockfile
@@ -23,6 +22,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with: { go-version: '1.25', cache-dependency-path: cloud/go.sum }
+      - run: make gen          # api/openapi.gen.go is generated from packages/contracts/openapi (gitignored)
       - run: go build ./...
       - run: go vet ./...
       - run: go test ./...     # loads packages/domain/fixtures — the cross-language contract
@@ -32,12 +32,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-        with: { version: 11 }
+      - uses: pnpm/action-setup@v4   # version comes from package.json packageManager
       - uses: actions/setup-node@v4
         with: { node-version: 24, cache: pnpm }
       - uses: actions/setup-go@v5
         with: { go-version: '1.25', cache-dependency-path: cloud/go.sum }
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter @muneem/domain build
+      - run: make -C cloud gen
       - run: pnpm diff-fuzz --n 20000
