@@ -21,7 +21,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-go@v7
-        with: { go-version: '1.25', cache-dependency-path: cloud/go.sum }
+        with: { go-version-file: cloud/go.mod, cache-dependency-path: cloud/go.sum }
       - run: make gen          # api/openapi.gen.go is generated from packages/contracts/openapi (gitignored)
       - run: go build ./...
       - run: go vet ./...
@@ -36,7 +36,7 @@ jobs:
       - uses: actions/setup-node@v7
         with: { node-version: 24, cache: pnpm }
       - uses: actions/setup-go@v7
-        with: { go-version: '1.25', cache-dependency-path: cloud/go.sum }
+        with: { go-version-file: cloud/go.mod, cache-dependency-path: cloud/go.sum }
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter @muneem/domain build
       - run: make -C cloud gen
