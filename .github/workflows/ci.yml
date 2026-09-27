@@ -8,9 +8,9 @@ jobs:
   node:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4   # version comes from package.json packageManager
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6   # version comes from package.json packageManager
+      - uses: actions/setup-node@v7
         with: { node-version: 24, cache: pnpm }
       - run: pnpm install --frozen-lockfile
       - run: pnpm turbo run gen build typecheck lint test
@@ -19,8 +19,8 @@ jobs:
     runs-on: ubuntu-latest
     defaults: { run: { working-directory: cloud } }
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
         with: { go-version: '1.25', cache-dependency-path: cloud/go.sum }
       - run: make gen          # api/openapi.gen.go is generated from packages/contracts/openapi (gitignored)
       - run: go build ./...
@@ -31,11 +31,11 @@ jobs:
     needs: [node, go]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4   # version comes from package.json packageManager
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6   # version comes from package.json packageManager
+      - uses: actions/setup-node@v7
         with: { node-version: 24, cache: pnpm }
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v7
         with: { go-version: '1.25', cache-dependency-path: cloud/go.sum }
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter @muneem/domain build
