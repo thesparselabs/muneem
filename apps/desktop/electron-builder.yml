@@ -1,0 +1,26 @@
+appId: app.muneem.desktop
+productName: Muneem
+directories:
+  output: release
+  buildResources: resources
+files:
+  - out/**
+  - native/**
+  - package.json
+asarUnpack:
+  - native/**
+  - "**/*.node"
+npmRebuild: false
+win:
+  target:
+    - target: nsis
+      arch: [x64]
+  # Signing (EV / Azure Trusted Signing) is configured in CI via env, never committed.
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  deleteAppDataOnUninstall: false
+publish:
+  provider: generic
+  url: https://updates.muneem.app/stable

@@ -1,0 +1,26 @@
+{
+  "name": "@muneem/db-sqlite",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Local SQLite: pragmas, migrator, schema, audit hash chain, outbox writer, repositories.",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": { ".": { "types": "./dist/index.d.ts", "default": "./dist/index.js" } },
+  "files": ["dist", "migrations"],
+  "scripts": {
+    "gen": "tsx scripts/embed-migrations.ts",
+    "build": "pnpm gen && tsc -p tsconfig.json",
+    "typecheck": "pnpm gen && tsc -p tsconfig.json --noEmit",
+    "test": "pnpm gen && vitest run",
+    "lint": "eslint src test scripts"
+  },
+  "dependencies": {
+    "@muneem/contracts": "workspace:*",
+    "@muneem/domain": "workspace:*",
+    "better-sqlite3": "^12.2.0"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.13"
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "name": "muneem",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Offline-first billing, inventory and accounting for Indian retail — monorepo",
+  "type": "module",
+  "packageManager": "pnpm@11.22.0",
+  "engines": { "node": ">=22" },
+  "scripts": {
+    "build": "turbo run build",
+    "test": "turbo run test",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "gen": "turbo run gen",
+    "schema-lint": "tsx scripts/schema-lint.ts",
+    "diff-fuzz": "tsx scripts/diff-fuzz.ts",
+    "gen:preload": "tsx scripts/gen-preload.ts"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "eslint": "^9.30.0",
+    "tsx": "^4.20.0",
+    "turbo": "^2.5.0",
+    "typescript": "^5.8.0",
+    "typescript-eslint": "^8.35.0",
+    "vitest": "^3.2.0"
+  }
+}

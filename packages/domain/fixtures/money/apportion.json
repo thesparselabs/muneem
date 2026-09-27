@@ -1,0 +1,12 @@
+{ "version": 1, "cases": [
+  { "total": 100, "weights": [1000, 1000, 1000], "expected": [34, 33, 33] },
+  { "total": 0, "weights": [1, 2, 3], "expected": [0, 0, 0] },
+  { "total": 7, "weights": [0, 0, 5], "expected": [0, 0, 7] },
+  { "total": 5, "weights": [1, 1, 1, 1, 1, 1], "expected": [1, 1, 1, 1, 1, 0] },
+  { "total": 1, "weights": [1, 2], "expected": [0, 1] },
+  { "total": 10, "weights": [3, 3, 4], "expected": [3, 3, 4] },
+  { "total": 100, "weights": [1, 1, 1], "expected": [34, 33, 33] },
+  { "total": 999, "weights": [500, 300, 200], "expected": [499, 300, 200] },
+  { "total": 1000000000, "weights": [1000000000, 1000000001, 1000000002], "expected": [333333333, 333333333, 333333334] },
+  { "total": 77, "weights": [10, 20, 30, 40], "expected": [8, 15, 23, 31] }
+] }

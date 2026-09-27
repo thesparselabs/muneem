@@ -472,7 +472,7 @@ Equivalent append-only triggers guard `stock_movement`, `journal_entry`, `journa
 
 ## 3. GST engine
 
-Pure function, no I/O, identical on device and cloud (AD-2).
+Pure function, no I/O. Identical *results* on device (TypeScript) and cloud (Go port in `cloud/internal/domain`), proven by the shared fixture suite (AD-2).
 
 ```ts
 computeInvoice(input: {
@@ -539,7 +539,7 @@ Notes that matter in practice:
 
 ### 3.2 Golden vectors (CI gate)
 
-A checked-in fixture file of ~120 cases, each with expected paise-exact output, covering: 5/12/18/28% intra and inter; inclusive MRP with and without cess; 0.25% and 1.5% slabs; percent and amount discounts at line and bill level; three-line bill where naive apportionment loses 1 paise; round-off up, down and exactly .50; nil/exempt/non-GST mixes; single-paise invoices; quantity 0.001 kg; a 500-line wholesale invoice. The same fixture runs against the cloud ingest verifier — that is the test that keeps AD-2 honest.
+A checked-in fixture file of ~120 cases, each with expected paise-exact output, covering: 5/12/18/28% intra and inter; inclusive MRP with and without cess; 0.25% and 1.5% slabs; percent and amount discounts at line and bill level; three-line bill where naive apportionment loses 1 paise; round-off up, down and exactly .50; nil/exempt/non-GST mixes; single-paise invoices; quantity 0.001 kg; a 500-line wholesale invoice. The same fixture files run against the Go cloud ingest verifier — that is the test that keeps AD-2 honest.
 
 ---
 
@@ -735,7 +735,7 @@ Design choices worth stating explicitly:
 - **Aggregate-per-operation.** One operation carries the *entire* sale aggregate (header, lines, tenders, movements, journal, audit row) so the server applies it in one Postgres transaction. Splitting a sale across operations would create windows where the cloud holds a sale with no journal — which is exactly the state that makes cloud reports untrustworthy.
 - **Partial success is normal.** Per-operation results, never all-or-nothing batches; one poisoned operation must not block 500 good ones.
 - **`duplicate` is a success.** Detected by the unique index on `(business_id, device_id, operation_id)`; the original `server_seq` is returned so the device advances.
-- **Server re-verifies.** Ingest recomputes GST totals and journal balance via `@muneem/domain`. Mismatch → `rejected/permanent` → dead-letter with the full payload, plus an alert. The document is retained for support; it is never dropped and never silently "fixed".
+- **Server re-verifies.** Ingest recomputes GST totals and journal balance via the Go domain port (`cloud/internal/domain`). Mismatch → `rejected/permanent` → dead-letter with the full payload, plus an alert. The document is retained for support; it is never dropped and never silently "fixed".
 - **Batching:** up to 200 operations or 2 MB per request, whichever comes first; gzip; `Idempotency-Key` on the batch itself so a retried HTTP request with an identical body is cheap.
 
 ### 7.2 Pull (cloud → device) — FR-085
@@ -977,7 +977,7 @@ startup → PRAGMA quick_check → backup DB → apply pending migrations in one
 
 Rules: additive changes only whenever possible (new nullable column, new table, new index); a destructive change ships as two releases (write both, then stop reading the old); every migration has an up-test on a **fixture database seeded with realistic data**, not an empty one; migration runtime is measured against a 500k-transaction fixture in CI, because a 40-second migration on a shop's HDD at 9 a.m. is an outage.
 
-**Postgres:** Prisma Migrate, expand/contract only — deploy adds nullable columns and backfills in batches, code moves, a later release drops. Migrations run as a gate before the new image receives traffic; long index builds use `CREATE INDEX CONCURRENTLY` outside the gate.
+**Postgres:** `golang-migrate` numbered SQL files, expand/contract only — deploy adds nullable columns and backfills in batches, code moves, a later release drops. Migrations run as a gate before the new image receives traffic; long index builds use `CREATE INDEX CONCURRENTLY` outside the gate.
 
 **Compatibility (FR-105):** the handshake compares `protocol`, `schema_version`, `app_version`. Server supports protocol N and N−1; a device below that receives `426 UPGRADE_REQUIRED` with a download link and continues billing offline. A device *ahead* of the server (staged rollout) must only send fields the server ignores gracefully — enforced by a contract test that runs the previous server release against the new client payloads.
 
@@ -1148,7 +1148,7 @@ All statements are prepared once and cached. `EXPLAIN QUERY PLAN` assertions in 
 
 | Layer | Approach |
 |---|---|
-| **Domain engines** | Golden vectors (§3.2) + **property tests**: `Σdebit = Σcredit` for every generated transaction; `Σapportion = total`; `replay(movements) = projection`; `Σallocations ≤ payment`; inclusive→exclusive→inclusive round-trips within 1 paise |
+| **Domain engines** | Golden vectors (§3.2) + **property tests**: `Σdebit = Σcredit` for every generated transaction; `Σapportion = total`; `replay(movements) = projection`; `Σallocations ≤ payment`; inclusive→exclusive→inclusive round-trips within 1 paise. The Go port executes the same fixture files; a nightly differential fuzz run compares TS and Go outputs |
 | **Repositories** | Against a real SQLite file (never a mock), with FK and trigger enforcement on; assert append-only triggers actually abort |
 | **Application services** | In-process, real DB, simulated hardware; assert the exact §8 commit ordering and that nothing after COMMIT can roll back |
 | **IPC contract** | Every method: schema rejection of malformed input, permission denial, rate limit; a test asserting the preload exposes *exactly* the contract's method set (catches accidental surface growth) |
@@ -1167,14 +1167,14 @@ CI gates on: typecheck, lint, the money-column schema lint, all unit/property/co
 
 | Stage | Deliverable | Exit criterion |
 |---|---|---|
-| 0 | Monorepo, `@muneem/domain` + `@muneem/contracts`, money kernel, GST engine with golden vectors, CI | GST golden suite green; `divRound` property tests pass |
+| 0 | Monorepo, `@muneem/domain` + `@muneem/contracts`, money kernel, GST engine with golden vectors, Go port of money/GST, CI | GST golden suite green in **both** TS and Go; `divRound` property tests pass |
 | 1 | Electron shell, generated preload, IPC gateway, SQLite + migrator, auth (online + offline), business/branch/terminal setup, device registration | A user can install, register a device, log in, and log in again with the network unplugged |
 | 2 | Products/barcodes/UOM/price lists, import wizard, search | 5,000 SKUs imported; barcode lookup < 30 ms measured |
 | 3 | POS: cart, discounts, GST, tenders, sessions, numbering, the §8 commit, receipt print, drawer | Golden flow end-to-end offline; kill -9 suite green |
 | 4 | Inventory: movements, projections, costing, adjustments, low stock | `replay = projection` property test green; valuation report ties to inventory account |
 | 5 | Purchases, suppliers, expenses, payments + allocation, customer credit | Party ledgers reconcile to the control accounts |
 | 6 | Accounting: COA seed, posting rules, periods, Trial Balance, P&L, Balance Sheet | Trial balance balances on the full soak dataset |
-| 7 | Sync: outbox, push, pull, hydration, dead-letter, status UI, cloud ingest with verification | Deterministic simulation suite green; §37 scenario green |
+| 7 | Sync: outbox, push, pull, hydration, dead-letter, status UI, Go cloud ingest with verification | Deterministic simulation suite green; §37 scenario green |
 | 8 | Reports + exports, dashboard, notifications, audit chain verification, backup/restore, auto-update | Restore-to-new-device produces a byte-identical trial balance |
 | 9 | Hardening: soak, chaos, CA compliance review, pilot with 5 real shops | 30 days, zero lost transactions, zero unexplained imbalances |
 

@@ -1,0 +1,11 @@
+packages:
+  - "packages/*"
+  - "apps/*"
+# pnpm 11: dependencies allowed to run install scripts (native builds / binary downloads)
+allowBuilds:
+  esbuild: true
+  better-sqlite3: true
+  electron: true
+  electron-winstaller: true
+  "@node-rs/argon2": true
+  "@swc/core": true

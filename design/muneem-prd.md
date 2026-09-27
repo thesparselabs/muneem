@@ -171,7 +171,7 @@ A completed sale must remain recoverable even if:
 
 ## Cloud
 
-- Backend API: Go or NestJS
+- Backend API: Go (Echo)
 - PostgreSQL
 - Redis
 - Object storage
@@ -3145,7 +3145,7 @@ The recommended Muneem architecture is:
 | Desktop Runtime | Node.js |
 | Native/privileged layer | Electron Main + Node.js |
 | Local DB | SQLite |
-| Cloud API | Go or NestJS |
+| Cloud API | Go (Echo) |
 | Cloud DB | PostgreSQL |
 | Cache | Redis |
 | Queue | Redis Streams / RabbitMQ / equivalent |
