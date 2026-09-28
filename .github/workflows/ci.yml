@@ -15,6 +15,22 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm turbo run gen build typecheck lint test
       - run: pnpm schema-lint
+  docs:
+    # A code change must be recorded in docs/CHANGELOG.md with what changed and why (see CLAUDE.md).
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with: { fetch-depth: 0 }
+      - name: changelog updated when code changed
+        run: |
+          base="origin/${{ github.base_ref }}"
+          changed=$(git diff --name-only "$base"...HEAD)
+          if echo "$changed" | grep -qE '^(apps|packages|cloud|scripts)/' && ! echo "$changed" | grep -q '^docs/CHANGELOG.md$'; then
+            echo "::error::code changed under apps/, packages/, cloud/ or scripts/ but docs/CHANGELOG.md was not updated (what + why)."
+            exit 1
+          fi
+          echo "docs check ok"
   go:
     runs-on: ubuntu-latest
     defaults: { run: { working-directory: cloud } }

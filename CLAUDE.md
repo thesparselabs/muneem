@@ -17,3 +17,12 @@ npx skills add <repo> # add another collection
 ```
 
 Prefer an installed skill over an improvised workflow: `test-driven-development`, `code-review-and-quality`, `code-simplification`, `planning-and-task-breakdown`, `debugging-and-error-recovery`, `security-and-hardening`, `api-and-interface-design`, `frontend-ui-engineering`, and others in `.agents/skills/`.
+
+## Project documentation (keep it current)
+
+`docs/` is the living record of what exists and why; `design/` is the intent. Every PR that changes code must:
+
+- add a line to `docs/CHANGELOG.md` under `[Unreleased]` saying **what** changed and **why** (CI job `docs` fails otherwise);
+- add an ADR in `docs/decisions/` for any choice a future engineer could reasonably question (next number, never edit an accepted one — supersede it);
+- update `docs/build-stages.md` when a stage starts or finishes, and `docs/architecture.md` when a package, boundary or invariant changes;
+- change the design doc in the same PR if reality now differs from `design/`, and say so in the changelog.
