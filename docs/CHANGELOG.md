@@ -5,6 +5,27 @@ All notable changes, newest first. Each entry records **what** changed and **why
 
 ## [Unreleased]
 
+### Added — Stage 2 catalog
+- **Stage 2 plan (`docs/plans/stage-2-catalog.md`)** — the LLD had tables and targets for the catalog but no task
+  breakdown, and left category/brand, the import wizard, scope and cloud involvement open. The plan settles them.
+- **Catalog domain helpers** (`@muneem/domain` `catalog/`): `normalizeName`, barcode check-digit validation and
+  symbology detection, integer unit conversion, `resolvePrice` and `exceedsMrp` — pure functions so search, import and
+  POS all agree on the same rules.
+- **Migration `0002_catalog`** — units, categories, brands, products, variants (table only), barcodes, unit
+  conversions, price lists and the `product_fts` search index, with the standard sync columns so Stage 7 can ship them.
+- **`stmt()` statement cache** in `@muneem/db-sqlite` — the barcode path must stay under 30 ms, and recompiling SQL on
+  every scan wastes most of that budget. See [ADR-0012](decisions/0012-hot-path-statement-cache-and-barcode-lru.md).
+- **Outbox entity types for the catalog**, and `appendOutbox` now only accepts known entity types, so a typo cannot
+  queue rows the Stage 7 server will reject.
+- **Desktop tests read the schema version from `MIGRATIONS`** instead of hard-coding `1`, so adding a migration does
+  not break unrelated auth tests.
+
+### Changed — design
+- **LLD §2.1**: adds `category`, `brand` and `product_fts`, and states that the selling price lives in the default price
+  list, not on `product` ([ADR-0011](decisions/0011-selling-price-in-default-price-list.md)); search normalisation keeps
+  Indic vowel signs ([ADR-0009](decisions/0009-product-search-prefix-plus-fts5.md)). Scope decisions for Stage 2 are in
+  [ADR-0008](decisions/0008-catalog-device-local-until-sync.md).
+
 ### Added
 - **`docs/` folder: changelog, architecture overview, build-stage status, ADRs** — the user asked for the project
   to be documented continuously with reasons, not just code. A CI job (`docs`) fails a PR that changes code without

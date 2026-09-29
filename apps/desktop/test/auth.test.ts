@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { getCredential, verifyAuditChain } from '@muneem/db-sqlite';
+import { MIGRATIONS, getCredential, verifyAuditChain } from '@muneem/db-sqlite';
+
+const SCHEMA_VERSION = MIGRATIONS.at(-1)!.version;
 import { testApp, USER_ID } from './helpers.js';
 
 const DAY = 86_400_000;
@@ -13,7 +15,7 @@ describe('auth: online login caches what offline needs (LLD §15.2)', () => {
     expect(server.calls.map((c) => c.path)).toEqual(expect.arrayContaining(['/v1/auth/login', '/v1/devices/register']));
     const reg = server.calls.find((c) => c.path === '/v1/devices/register')!;
     expect(reg.headers.Authorization).toBe('Bearer access.jwt');
-    expect(reg.body).toMatchObject({ platform: 'linux', app_version: '0.0.0-test', schema_version: 1 });
+    expect(reg.body).toMatchObject({ platform: 'linux', app_version: '0.0.0-test', schema_version: SCHEMA_VERSION });
     expect(Buffer.from((reg.body as { public_key: string }).public_key, 'base64')).toHaveLength(32);
     expect(app.device.cloudDeviceId()).toBe('01J00000000000000000000C01');
     const cred = getCredential(db, USER_ID)!;
@@ -109,7 +111,7 @@ describe('business setup end-to-end through the gateway', () => {
     expect(verifyAuditChain(db, s.businessId!, app.device.localDeviceId()).ok).toBe(true);
     expect((await g.handle('sync.getStatus', {}, 1))).toMatchObject({ ok: true, data: { state: 'queued', pending: 4 } });
     const h = await g.handle('diagnostics.getHealth', {}, 1);
-    expect(h).toMatchObject({ ok: true, data: { outboxDepth: 4, auditChainOk: true, schemaVersion: 1 } });
+    expect(h).toMatchObject({ ok: true, data: { outboxDepth: 4, auditChainOk: true, schemaVersion: SCHEMA_VERSION } });
     expect(await g.handle('diagnostics.integrityCheck', {}, 1)).toMatchObject({ ok: true, data: { quickCheck: 'ok', foreignKeys: 'ok', auditChain: 'ok' } });
   });
   it('backupNow writes a verified copy (file DB)', async () => {

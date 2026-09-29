@@ -8,6 +8,7 @@ Living documentation of **what the project is, what has been added, and why**. T
 | [CHANGELOG.md](CHANGELOG.md) | Every change that lands, with the reason behind it | every PR (CI fails a code PR that does not touch it) |
 | [architecture.md](architecture.md) | The whole system in plain terms: parts, boundaries, invariants | a boundary, package or invariant changes |
 | [build-stages.md](build-stages.md) | Status of each LLD §20 stage and what "done" meant | a stage starts, finishes, or changes scope |
+| [plans/](plans/) | Task-by-task plan for the stage being built | a stage is planned or its plan changes |
 | [decisions/](decisions/) | Architecture Decision Records: the non-obvious choices and their trade-offs | any decision a future engineer could reasonably question |
 
 ## Rules

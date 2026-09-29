@@ -1,5 +1,19 @@
 // LLD §2.6 sync_outbox + §7 protocol types. Stage 1 writes outbox rows; the worker lands in Stage 7.
-export type OutboxEntityType = 'business' | 'branch' | 'terminal' | 'doc_series' | 'setting' | 'user_pin';
+export type OutboxEntityType =
+  | 'business'
+  | 'branch'
+  | 'terminal'
+  | 'doc_series'
+  | 'setting'
+  | 'user_pin'
+  | 'uom'
+  | 'category'
+  | 'brand'
+  | 'product'
+  | 'barcode'
+  | 'uom_conversion'
+  | 'price_list'
+  | 'price_list_item';
 export type OutboxOperationType = 'create' | 'update' | 'cancel' | 'void';
 export type OutboxStatus = 'pending' | 'in_flight' | 'sent' | 'failed' | 'dead' | 'superseded';
 export type OutboxErrorClass = 'transient' | 'permanent' | 'dependency';

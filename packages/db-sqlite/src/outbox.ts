@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import { newUlid } from '@muneem/domain';
-import type { OutboxOperationType } from '@muneem/contracts';
+import type { OutboxEntityType, OutboxOperationType } from '@muneem/contracts';
 import { canonicalJson } from './canonical.js';
 import type { Db } from './open.js';
 import { nowIso } from './uow.js';
@@ -8,7 +8,7 @@ import { nowIso } from './uow.js';
 export interface OutboxInput {
   businessId: string;
   deviceId: string;
-  entityType: string;
+  entityType: OutboxEntityType;
   entityId: string;
   operationType: OutboxOperationType;
   payload: unknown;

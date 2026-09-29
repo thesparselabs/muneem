@@ -1,6 +1,7 @@
 export * from './open.js';
 export * from './migrator.js';
 export * from './uow.js';
+export * from './statements.js';
 export * from './canonical.js';
 export * from './sequence.js';
 export * from './audit.js';
