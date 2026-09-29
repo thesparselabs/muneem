@@ -21,7 +21,7 @@ First deliverable of the implementation: copy this plan to `docs/plans/stage-2-c
 | 0011 | Selling price lives in the **default price list** (`Retail`, seeded per business), not a `product` column. `product.mrp_paise` / `purchase_price_paise` stay on product. Validation: inclusive price ≤ MRP when MRP set. Price resolution is a pure domain function (TS only for now; Go port when the cloud needs it — noted against ADR-0001). |
 | 0012 | Hot-path statement cache: `stmt(db, sql)` (WeakMap<Db, Map<sql, Statement>>) in db-sqlite for lookup/search; plus a 500-entry LRU of barcode → ProductHit in the service, invalidated on any product/barcode/price mutation. |
 
-Design doc changes in the same commit as the code they affect: LLD §2.1 (add `category`, `brand`, `product_fts`; drop "selling price on product"), LLD §10.2 (final `products.*`/`catalog.*`/`priceLists.*` surface), `docs/architecture.md` (catalog module + invariants).
+Design doc changes in the same commit as the code they affect: LLD §2.1 (add `category`, `brand`, `product_fts`; drop "selling price on product"), LLD §10.2 (final `products.*`/`catalog.*`/`pricing.*` surface), `docs/architecture.md` (catalog module + invariants).
 
 ## Existing code to reuse
 
@@ -41,7 +41,7 @@ Design doc changes in the same commit as the code they affect: LLD §2.1 (add `c
 - `products.create`, `products.update {id, expectedVersion, ...}`, `products.deactivate`, `products.reactivate` (perm create/edit)
 - `products.importPreview {fileName, contentBase64, mapping?}` → `{importId, columns, suggestedMapping, rows[{line, status: ok|error|duplicate, errors[]}], counts}`; `products.importCommit {importId, duplicatePolicy, commandId}` (idempotent on `commandId`) → summary
 - `catalog.listUoms / createUom / listCategories / createCategory / updateCategory / listBrands / createBrand / updateBrand`
-- `priceLists.list / create / getItems / setItems`
+- `pricing.listLists / createList / getItems / setItems` (IPC namespaces must be lowercase)
 
 `ProductInput` carries barcodes[], conversions[], and `sellingPricePaise` (written to the default list) so one form = one transaction.
 

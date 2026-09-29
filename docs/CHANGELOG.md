@@ -20,6 +20,22 @@ All notable changes, newest first. Each entry records **what** changed and **why
 - **Desktop tests read the schema version from `MIGRATIONS`** instead of hard-coding `1`, so adding a migration does
   not break unrelated auth tests.
 
+- **Catalog repositories** (`@muneem/db-sqlite`): units, categories, brands, products, price lists, search queries and
+  `ensureCatalogDefaults`. A product save writes the product, its barcodes, unit conversions, selling price and search
+  row in one transaction, with **one** audit row for the whole product and child outbox rows that depend on it, so
+  Stage 7 can replay them in order.
+- **Effective-dated selling price** — changing the price closes the old price at today and opens the new one, so
+  yesterday's bills still resolve to yesterday's price.
+- **Catalog IPC surface**: `products.*` (search, lookupBarcode, list, get, create, update, deactivate, reactivate),
+  `catalog.*` (units, categories, brands) and `pricing.*` (price lists and items). Price lists use the `pricing`
+  namespace because IPC namespaces must be lowercase.
+- **Search order** in `ProductSearch`: exact barcode → exact SKU → name prefix → word match, plus a 500-entry
+  barcode cache cleared on any catalog write ([ADR-0012](decisions/0012-hot-path-statement-cache-and-barcode-lru.md)).
+- **New businesses are seeded with 9 standard units and a `Retail` price list**; businesses created in Stage 1 get
+  them on first catalog use, so nobody has to set up units before adding the first product.
+- **Registry test now requires `audit: true` on deactivate/reactivate/import channels** too — they change data just
+  like `create`/`update`.
+
 ### Changed — design
 - **LLD §2.1**: adds `category`, `brand` and `product_fts`, and states that the selling price lives in the default price
   list, not on `product` ([ADR-0011](decisions/0011-selling-price-in-default-price-list.md)); search normalisation keeps
