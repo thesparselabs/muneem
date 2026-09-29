@@ -40,6 +40,22 @@ All notable changes, newest first. Each entry records **what** changed and **why
   normal CI: barcode lookup p95 0.14 ms cold and 0.006 ms warm (budget 30 ms), search p95 0.98 ms (budget 60 ms) on
   the dev machine. It turns the Stage 2 exit criterion into a test that fails if a change slows the scan path.
 
+- **CSV/XLSX product import** (`products.importPreview` / `products.importCommit`) — FR-017 and the Stage 2 exit
+  criterion. Headers such as "Item Name", "Sale Price" or "GST %" are mapped automatically; every row is checked with
+  the same rules as the product form, and bad rows are listed with the reason. Existing products (same SKU or barcode)
+  are skipped or updated, as the user chooses. The commit is one transaction that can be safely retried. A 5,000-row
+  file imports in about 3 s. See [ADR-0010](decisions/0010-product-import-two-phase.md).
+- **`parseScaled`** (`@muneem/domain`) turns "₹1,234.50" or "18%" into integer paise or basis points using string digits
+  only, so imported money never passes through a float.
+
+### Fixed
+- **Saving a product got slower as the catalog grew.** Re-indexing a product for search deleted from FTS5 by an
+  unindexed column, which scans the whole index. Each product now has an integer search key (`product_search_key`),
+  and saving 5,000 products dropped from 5.7 s to 2.2 s. Audit, outbox and sequence writes also reuse compiled
+  statements now.
+- **Large IPC inputs no longer land in `audit_log`** — strings over 1,000 characters are stored as `[N chars]`, so an
+  uploaded file does not bloat the audit chain.
+
 ### Changed — design
 - **LLD §2.1**: adds `category`, `brand` and `product_fts`, and states that the selling price lives in the default price
   list, not on `product` ([ADR-0011](decisions/0011-selling-price-in-default-price-list.md)); search normalisation keeps

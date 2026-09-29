@@ -5,7 +5,7 @@ import {
   SessionUser, SyncStatus, Terminal, TerminalInput, Ulid,
 } from './schemas.js';
 import {
-  Brand, BrandInput, Category, CategoryInput, PriceList, PriceListInput, PriceListItem, PriceItemsQuery, Product, ProductHit,
+  Brand, BrandInput, Category, CategoryInput, ImportCommitInput, ImportPreview, ImportPreviewInput, ImportSummary, PriceList, PriceListInput, PriceListItem, PriceItemsQuery, Product, ProductHit,
   ProductInput, ProductListInput, ProductPage, ProductSearchInput, ProductUpdate, SetPriceItems, Uom, UomInput,
 } from './catalog.js';
 
@@ -92,6 +92,8 @@ export const contract = {
   'products.update': spec({ input: ProductUpdate, output: Product, permission: 'products.edit', rateLimit: { perSec: 5 }, audit: true }),
   'products.deactivate': spec({ input: z.object({ id: Ulid, version: z.number().int() }), output: Product, permission: 'products.edit', rateLimit: { perSec: 5 }, audit: true }),
   'products.reactivate': spec({ input: z.object({ id: Ulid, version: z.number().int() }), output: Product, permission: 'products.edit', rateLimit: { perSec: 5 }, audit: true }),
+  'products.importPreview': spec({ input: ImportPreviewInput, output: ImportPreview, permission: 'products.create', rateLimit: { perSec: 2 }, audit: true }),
+  'products.importCommit': spec({ input: ImportCommitInput, output: ImportSummary, permission: 'products.create', rateLimit: { perSec: 1 }, audit: true, idempotent: 'commandId' }),
   'catalog.listUoms': spec({ input: Empty, output: z.array(Uom), permission: 'products.view', rateLimit: { perSec: 10 } }),
   'catalog.createUom': spec({ input: UomInput, output: Uom, permission: 'products.create', rateLimit: { perSec: 2 }, audit: true }),
   'catalog.listCategories': spec({ input: Empty, output: z.array(Category), permission: 'products.view', rateLimit: { perSec: 10 } }),

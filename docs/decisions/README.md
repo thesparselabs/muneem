@@ -14,5 +14,6 @@ Template: Context → Decision → Consequences → Status.
 | [0007](0007-openapi-single-source-for-http-types.md) | One OpenAPI 3.0 document generates Go and TS HTTP types |
 | [0008](0008-catalog-device-local-until-sync.md) | Catalog is device-local until Stage 7; variants, weighed barcodes and labels deferred |
 | [0009](0009-product-search-prefix-plus-fts5.md) | Product search: `name_norm` prefix index plus a repository-maintained FTS5 table |
+| [0010](0010-product-import-two-phase.md) | Product import: file bytes over IPC, preview in memory, one-transaction commit |
 | [0011](0011-selling-price-in-default-price-list.md) | Selling price lives in the default price list, not on `product` |
 | [0012](0012-hot-path-statement-cache-and-barcode-lru.md) | Cached prepared statements and a barcode LRU for the scan path |

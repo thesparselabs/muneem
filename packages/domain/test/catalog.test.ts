@@ -7,6 +7,7 @@ import {
   fromBaseQty,
   isValidBarcode,
   normalizeName,
+  parseScaled,
   resolvePrice,
   toBaseQty,
   type PriceItem,
@@ -135,5 +136,29 @@ describe('exceedsMrp', () => {
     expect(exceedsMrp(1000, true, 1000)).toBe(false);
     expect(exceedsMrp(1100, false, 1000)).toBe(false);
     expect(exceedsMrp(1100, true, null)).toBe(false);
+  });
+});
+
+describe('parseScaled', () => {
+  it.each([
+    ['₹1,234.50', 2, 123_450],
+    ['12', 2, 1200],
+    ['0.5', 2, 50],
+    ['18%', 2, 1800],
+    ['2.5', 3, 2500],
+    ['Rs. 99', 2, 9900],
+    ['1.230', 2, 123],
+  ] as const)('%s at scale %i → %i', (text, scale, expected) => {
+    expect(parseScaled(text, scale)).toBe(expected);
+  });
+  it.each(['', 'abc', '1.234', '1.2.3', '.', '1e5'])('rejects %j', (text) => {
+    expect(parseScaled(text, 2)).toBeNull();
+  });
+  it('property: agrees with integer arithmetic for any paise amount', () => {
+    fc.assert(
+      fc.property(fc.integer({ min: 0, max: 1e12 }), (p) => {
+        expect(parseScaled(`${Math.floor(p / 100)}.${String(p % 100).padStart(2, '0')}`, 2)).toBe(p);
+      }),
+    );
   });
 });

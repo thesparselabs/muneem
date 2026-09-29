@@ -68,7 +68,7 @@ export function getPriceItems(db: Db, priceListId: string, productId: string): P
 function insertItem(db: Db, businessId: string, priceListId: string, productId: string, item: PriceItemInput, actor: Actor): PriceListItem {
   const id = newUlid();
   const s = syncColumns(actor);
-  db.prepare(`INSERT INTO price_list_item (id, business_id, price_list_id, product_id, uom_id, min_qty_milli, price_paise, is_inclusive,
+  stmt(db, `INSERT INTO price_list_item (id, business_id, price_list_id, product_id, uom_id, min_qty_milli, price_paise, is_inclusive,
       effective_from, effective_to, created_at, updated_at, created_by, device_id)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(
     id, businessId, priceListId, productId, item.uomId, item.minQtyMilli, item.pricePaise, item.isInclusive ? 1 : 0,
@@ -78,7 +78,7 @@ function insertItem(db: Db, businessId: string, priceListId: string, productId: 
 }
 
 function retireItems(db: Db, ids: readonly string[], t: string): void {
-  const retire = db.prepare("UPDATE price_list_item SET deleted_at = ?, updated_at = ?, version = version + 1, sync_state = 'pending' WHERE id = ?");
+  const retire = stmt(db, "UPDATE price_list_item SET deleted_at = ?, updated_at = ?, version = version + 1, sync_state = 'pending' WHERE id = ?");
   for (const id of ids) retire.run(t, t, id);
 }
 

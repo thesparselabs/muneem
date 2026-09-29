@@ -14,6 +14,8 @@ import { AuthService } from './services/auth.js';
 import { BusinessService } from './services/business.js';
 import { CatalogService } from './services/catalog.js';
 import { CatalogContext } from './services/catalogContext.js';
+import { ImportService } from './services/import/importService.js';
+import { PreviewStore } from './services/import/previewStore.js';
 import { PricingService } from './services/pricing.js';
 import { ProductSearch } from './services/productSearch.js';
 import { ProductService } from './services/products.js';
@@ -63,6 +65,7 @@ export function createApp(cfg: AppConfig) {
   const products = new ProductService(catalogCtx, productSearch);
   const catalog = new CatalogService(catalogCtx, invalidateSearch);
   const pricing = new PricingService(catalogCtx, invalidateSearch);
+  const productImport = new ImportService(catalogCtx, new PreviewStore(cfg.now ?? (() => Date.now())), invalidateSearch);
   const diagnostics = new DiagnosticsService({
     db: cfg.db, dbFile: cfg.dbFile, backupsDir: cfg.backupsDir, bundlesDir: cfg.bundlesDir, loggers: cfg.loggers, session, device,
     appVersion: cfg.appVersion, secretStoreAvailable: cfg.secrets.encrypted, connectivity: () => connectivity.snapshot(),
@@ -101,6 +104,8 @@ export function createApp(cfg: AppConfig) {
     'products.update': (i) => products.update(i),
     'products.deactivate': (i) => products.setActive(i.id, i.version, false),
     'products.reactivate': (i) => products.setActive(i.id, i.version, true),
+    'products.importPreview': (i) => productImport.preview(i),
+    'products.importCommit': (i) => productImport.commit(i),
     'catalog.listUoms': () => catalog.listUoms(),
     'catalog.createUom': (i) => catalog.createUom(i),
     'catalog.listCategories': () => catalog.listCategories(),
@@ -126,6 +131,6 @@ export function createApp(cfg: AppConfig) {
     connectivity: () => connectivity.snapshot(), isTrustedSender: cfg.isTrustedSender ?? (() => true), ...(cfg.now && { now: cfg.now }),
   });
 
-  return { events, session, rbac, cloud, connectivity, device, auth, business, settings, products, catalog, pricing, diagnostics, gateway, handlers, syncStatus };
+  return { events, session, rbac, cloud, connectivity, device, auth, business, settings, products, catalog, pricing, productImport, diagnostics, gateway, handlers, syncStatus };
 }
 export type App = ReturnType<typeof createApp>;

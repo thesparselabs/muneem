@@ -16,6 +16,10 @@ other Indic scripts, and the LLD only says `name_norm` is "lowercased, unaccente
 - `normalizeName` (`@muneem/domain`): NFKC, lowercase, remove combining marks **only after a Latin letter**, collapse
   whitespace. In Indic scripts the combining marks are vowel signs and viramas; removing them would change the word.
 
+- FTS5 deletes cheaply only by rowid, so `product_search_key` gives each product a stable integer key used as its
+  `product_fts` rowid. Deleting by the unindexed `product_id` column made each save scan the whole index (5,000 products
+  took 5.7 s instead of 2.2 s, growing quadratically).
+
 ## Consequences
 - The FTS row can drift from `product` only if a write bypasses the repository; tests cover create, update,
   deactivate and brand rename.

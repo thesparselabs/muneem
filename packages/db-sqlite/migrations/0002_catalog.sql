@@ -158,6 +158,12 @@ CREATE UNIQUE INDEX ux_price_list_item ON price_list_item(
 ) WHERE deleted_at IS NULL;
 CREATE INDEX ix_price_list_item_product ON price_list_item(product_id, price_list_id);
 
+-- FTS5 can only delete cheaply by rowid, and product ids are ULID text, so each product gets a stable integer key.
+CREATE TABLE product_search_key (
+  rowid      INTEGER PRIMARY KEY,
+  product_id TEXT NOT NULL UNIQUE REFERENCES product(id)
+);
+
 CREATE VIRTUAL TABLE product_fts USING fts5(
   product_id UNINDEXED, business_id UNINDEXED, name, sku, hsn_code, brand_name,
   tokenize = 'unicode61 remove_diacritics 2'

@@ -139,3 +139,65 @@ export type PriceListItem = z.infer<typeof PriceListItem>;
 export const PriceItemsQuery = z.object({ priceListId: Ulid, productId: Ulid });
 export const SetPriceItems = PriceItemsQuery.extend({ items: z.array(PriceListItemInput).max(50) });
 export type SetPriceItems = z.infer<typeof SetPriceItems>;
+
+export const IMPORT_FIELDS = [
+  'name', 'sku', 'barcodes', 'hsnCode', 'category', 'brand', 'uom', 'mrp', 'sellingPrice', 'purchasePrice', 'gstRate', 'reorderLevel',
+] as const;
+export const ImportField = z.enum(IMPORT_FIELDS);
+export type ImportField = z.infer<typeof ImportField>;
+export const ImportMapping = z.record(ImportField, z.number().int().min(0).max(500));
+export type ImportMapping = z.infer<typeof ImportMapping>;
+
+export const IMPORT_MAX_BYTES = 10 * 1024 * 1024;
+export const IMPORT_MAX_ROWS = 20_000;
+
+export const ImportPreviewInput = z
+  .object({
+    fileName: z.string().trim().min(1).max(200).optional(),
+    contentBase64: z.string().max(Math.ceil((IMPORT_MAX_BYTES * 4) / 3) + 4).optional(),
+    importId: Ulid.optional(),
+    mapping: ImportMapping.optional(),
+  })
+  .refine((i) => i.importId !== undefined || (i.fileName !== undefined && i.contentBase64 !== undefined), {
+    message: 'send a file, or the importId of an earlier preview',
+  });
+export type ImportPreviewInput = z.infer<typeof ImportPreviewInput>;
+
+export const ImportRow = z.object({
+  line: z.number().int(),
+  status: z.enum(['ok', 'error', 'duplicate']),
+  name: z.string().optional(),
+  sku: z.string().optional(),
+  existingProductId: Ulid.optional(),
+  errors: z.record(z.string(), z.string()),
+});
+export type ImportRow = z.infer<typeof ImportRow>;
+
+export const ImportPreview = z.object({
+  importId: Ulid,
+  fileName: z.string(),
+  columns: z.array(z.string()),
+  mapping: ImportMapping,
+  counts: z.object({ total: z.number().int(), ok: z.number().int(), errors: z.number().int(), duplicates: z.number().int() }),
+  rows: z.array(ImportRow),
+  willCreate: z.object({ categories: z.array(z.string()), brands: z.array(z.string()), uoms: z.array(z.string()) }),
+});
+export type ImportPreview = z.infer<typeof ImportPreview>;
+
+export const ImportCommitInput = z.object({
+  importId: Ulid,
+  duplicatePolicy: z.enum(['skip', 'update']),
+  commandId: Ulid,
+});
+export type ImportCommitInput = z.infer<typeof ImportCommitInput>;
+
+export const ImportSummary = z.object({
+  created: z.number().int(),
+  updated: z.number().int(),
+  skippedDuplicates: z.number().int(),
+  skippedErrors: z.number().int(),
+  categoriesCreated: z.number().int(),
+  brandsCreated: z.number().int(),
+  uomsCreated: z.number().int(),
+});
+export type ImportSummary = z.infer<typeof ImportSummary>;

@@ -44,6 +44,7 @@ class RateLimiter {
 }
 
 const REDACT = /pass|pin|token|secret|otp/i;
+const MAX_AUDITED_STRING = 1_000;
 function redact(v: unknown): unknown {
   if (Array.isArray(v)) return v.map(redact);
   if (v && typeof v === 'object') {
@@ -51,6 +52,7 @@ function redact(v: unknown): unknown {
     for (const [k, x] of Object.entries(v as Record<string, unknown>)) o[k] = REDACT.test(k) ? '[redacted]' : redact(x);
     return o;
   }
+  if (typeof v === 'string' && v.length > MAX_AUDITED_STRING) return `[${v.length} chars]`;
   return v;
 }
 

@@ -4,6 +4,7 @@ import type { OutboxEntityType, OutboxOperationType } from '@muneem/contracts';
 import { canonicalJson } from './canonical.js';
 import type { Db } from './open.js';
 import { nowIso } from './uow.js';
+import { stmt } from './statements.js';
 
 export interface OutboxInput {
   businessId: string;
@@ -20,7 +21,7 @@ export function appendOutbox(db: Db, o: OutboxInput): { operationId: string; seq
   const operationId = newUlid();
   const payloadJson = canonicalJson(o.payload);
   const payloadHash = 'sha256:' + createHash('sha256').update(payloadJson).digest('hex');
-  const r = db.prepare(`INSERT INTO sync_outbox (operation_id, business_id, device_id, entity_type, entity_id, operation_type,
+  const r = stmt(db, `INSERT INTO sync_outbox (operation_id, business_id, device_id, entity_type, entity_id, operation_type,
       payload_json, payload_hash, depends_on_operation_id, status, attempt_count, created_at)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', 0, ?)`).run(
     operationId, o.businessId, o.deviceId, o.entityType, o.entityId, o.operationType, payloadJson, payloadHash,
