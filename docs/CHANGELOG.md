@@ -36,6 +36,10 @@ All notable changes, newest first. Each entry records **what** changed and **why
 - **Registry test now requires `audit: true` on deactivate/reactivate/import channels** too — they change data just
   like `create`/`update`.
 
+- **Catalog performance test** (`apps/desktop/test/perf/catalog.perf.test.ts`) at 5,000 SKUs / 7,500 barcodes, run in
+  normal CI: barcode lookup p95 0.14 ms cold and 0.006 ms warm (budget 30 ms), search p95 0.98 ms (budget 60 ms) on
+  the dev machine. It turns the Stage 2 exit criterion into a test that fails if a change slows the scan path.
+
 ### Changed — design
 - **LLD §2.1**: adds `category`, `brand` and `product_fts`, and states that the selling price lives in the default price
   list, not on `product` ([ADR-0011](decisions/0011-selling-price-in-default-price-list.md)); search normalisation keeps
