@@ -15,7 +15,8 @@ re-checks every document's arithmetic, consolidates across devices and branches,
 
 ```
 apps/desktop      Electron (main = privileged, renderer = untrusted React UI, preload = generated bridge)
-packages/domain   Pure engines: money, GST, ids, financial year. Same results as cloud/internal/domain (Go).
+packages/domain   Pure engines: money, GST, ids, financial year, catalog rules (names, barcodes, units, prices).
+                  Money and GST give the same results as cloud/internal/domain (Go).
 packages/contracts IPC registry (zod), errors, permissions, OpenAPI HTTP contract → TS + Go types
 packages/db-sqlite Local DB: pragmas, migrator, schema, audit hash chain, outbox, repositories
 cloud/            Go + Echo API, Postgres with row-level security, Go port of the engines
@@ -43,6 +44,25 @@ docs/             this folder (reality, with reasons)
 - `total = taxable + taxes + round_off`
 - `replay(audit rows) → hash chain verifies`, gap-free `seq` per device
 - After a SIGKILL mid-write: no orphan audit or outbox row, `local_sequence` consistent
+- A failed product save or import leaves no product, barcode, price, category, audit or outbox row behind
+- An inclusive selling price never exceeds MRP; one live barcode code per business
+- Barcode lookup p95 < 30 ms and search p95 < 60 ms at 5,000 SKUs
+
+## Catalog (Stage 2)
+
+- **Where it lives:** the device only, until Stage 7 ships the outbox (ADR-0008). Tables: `uom`, `category`, `brand`,
+  `product`, `product_variant` (no API yet), `barcode`, `uom_conversion`, `price_list`, `price_list_item`, and the
+  search index `product_fts` keyed by `product_search_key`.
+- **One product save = one transaction:** the product, its barcodes, unit conversions, selling price and search row,
+  one audit row, and outbox rows for each part that depend on the product's row.
+- **Prices:** there is no price column on `product`. The selling price is an item in the business's default `Retail`
+  list, and every price is chosen by `resolvePrice` (quantity break, effective date, unit conversion) (ADR-0011).
+- **Scan path:** `barcode` unique index → cached prepared statement → 500-entry LRU in `ProductSearch`, cleared on any
+  catalog write (ADR-0012). Search order: barcode, SKU, name prefix, then word match (ADR-0009).
+- **Import:** file bytes over IPC → preview kept in main memory → one-transaction commit, idempotent on `commandId`
+  (ADR-0010).
+- **Main-process services:** `CatalogContext` (actor, business, business date, default seeding) is shared by
+  `ProductService`, `ProductSearch`, `CatalogService`, `PricingService` and `ImportService`.
 
 ## Identity and trust
 
@@ -55,5 +75,5 @@ docs/             this folder (reality, with reasons)
 
 ## What is not built yet
 
-Products, POS billing, printing, inventory, purchases, payments, accounting, reports, and the sync worker. See
-`build-stages.md`.
+POS billing, printing, inventory, purchases, payments, accounting, reports, and the sync worker. Product variants,
+weighed barcodes and label printing are deferred (ADR-0008). See `build-stages.md`.

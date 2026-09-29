@@ -8,6 +8,10 @@ import Setup from './routes/Setup.js';
 import Shell from './routes/Shell.js';
 import Home from './routes/Home.js';
 import Diagnostics from './routes/Diagnostics.js';
+import Products from './routes/Products.js';
+import ProductEdit from './routes/ProductEdit.js';
+import ImportProducts from './routes/ImportProducts.js';
+import CatalogSettings from './routes/CatalogSettings.js';
 
 export default function App() {
   const { session, setSession, setSync, setOnline } = useUi();
@@ -36,6 +40,11 @@ export default function App() {
       <Route path="/setup" element={<Setup />} />
       <Route element={<Shell />}>
         <Route path="/" element={<Home />} />
+        <Route path="/products" element={<Products />} />
+        <Route path="/products/new" element={<ProductEdit key="new" />} />
+        <Route path="/products/import" element={<ImportProducts />} />
+        <Route path="/products/:id" element={<ProductEdit />} />
+        <Route path="/settings/catalog" element={<CatalogSettings />} />
         <Route path="/diagnostics" element={<Diagnostics />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />

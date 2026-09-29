@@ -48,6 +48,18 @@ All notable changes, newest first. Each entry records **what** changed and **why
 - **`parseScaled`** (`@muneem/domain`) turns "₹1,234.50" or "18%" into integer paise or basis points using string digits
   only, so imported money never passes through a float.
 
+- **Products screens** — `/products` (search as you type or scan, filter by category, show deactivated),
+  `/products/new` and `/products/:id` (details, GST, prices, barcodes, other units, price lists, deactivate),
+  `/products/import` (choose file → match columns → review rows → import) and `/settings/catalog` (units, categories,
+  brands, price lists). The Products menu item is now enabled. The form logic (rupee parsing and display, form to
+  `ProductInput`, price rows) lives in `src/renderer/src/lib/` with node tests, because the renderer has no DOM test
+  setup yet.
+
+### Changed
+- **Stage 2 marked done in `build-stages.md`** with the measured numbers. Also updated: the architecture overview
+  (catalog section and invariants), LLD §10.2 (the `products`/`catalog`/`pricing` surface as built), and the plan's
+  "as built" notes.
+
 ### Fixed
 - **Saving a product got slower as the catalog grew.** Re-indexing a product for search deleted from FTS5 by an
   unindexed column, which scans the whole index. Each product now has an integer search key (`product_search_key`),

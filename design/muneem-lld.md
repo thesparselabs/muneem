@@ -868,7 +868,9 @@ The preload file is **generated** from this registry, so the renderer cannot rea
 ```text
 auth.*        login, loginOffline, logout, switchUser, verifyPin, getSession
 business.*    get, update, getBranches, getTerminals, getTaxConfig
-products.*    search, lookupBarcode, get, create, update, deactivate, importPreview, importCommit
+products.*    search, lookupBarcode, list, get, create, update, deactivate, reactivate, importPreview, importCommit
+catalog.*     listUoms, createUom, listCategories, createCategory, updateCategory, listBrands, createBrand, updateBrand
+pricing.*     listLists, createList, getItems, setItems
 inventory.*   getStock, getMovements, adjust, transfer, listLowStock, rebuildProjections
 customers.*   search, get, create, update, getLedger, getOutstanding
 suppliers.*   search, get, create, update, getLedger

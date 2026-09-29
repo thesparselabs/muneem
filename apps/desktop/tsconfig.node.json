@@ -4,5 +4,6 @@
     "composite": true, "noEmit": false, "emitDeclarationOnly": true, "outDir": "out/types-node",
     "module": "ESNext", "moduleResolution": "Bundler", "types": ["node"], "lib": ["ES2022"]
   },
-  "include": ["src/main", "src/preload", "src/shared", "scripts", "test", "electron.vite.config.ts", "vitest.config.ts"]
+  "include": ["src/main", "src/preload", "src/shared", "scripts", "test", "electron.vite.config.ts", "vitest.config.ts"],
+  "exclude": ["test/renderer"]
 }

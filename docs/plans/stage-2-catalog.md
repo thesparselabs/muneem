@@ -80,3 +80,12 @@ One branch `feat/stage-2-catalog`, **one PR** for all of Stage 2. Parts 2a–2e 
 - Exit criterion evidence: `catalog.perf.test.ts` (p95 barcode < 30 ms at 5,000 SKUs) and the 5,000-row import test; record the measured numbers in `docs/build-stages.md`.
 - Manual: launch the desktop app, import `fixtures/import/5000.csv`, scan/type a barcode and a partial Hindi and English name in `/products`, log in as cashier and confirm create is denied.
 - Audit chain: `verifyAuditChain` passes after the bulk import.
+
+## As built (2026-09-30)
+
+- Search orchestration and the barcode LRU landed in Part 2b with the services; Part 2c is the performance test.
+- Price-list channels are `pricing.*`, because IPC namespaces must be lowercase.
+- `product_search_key` was added so FTS rows are deleted by rowid; without it saves slowed down as the catalog grew.
+- Import rows with errors are skipped and counted rather than blocking the commit; any exception still rolls back all.
+- The renderer has no DOM test setup, so the screens' logic (money parsing and display, form ↔ `ProductInput`, price
+  rows) lives in `src/renderer/src/lib/` with node tests; the screens themselves were not clicked through.
