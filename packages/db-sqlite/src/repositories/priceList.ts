@@ -60,6 +60,20 @@ export function createPriceList(
   });
 }
 
+export function getPriceItemsByProduct(db: Db, priceListId: string, productIds: readonly string[]): Map<string, PriceListItem[]> {
+  const byProduct = new Map<string, PriceListItem[]>();
+  if (productIds.length === 0) return byProduct;
+  const rows = stmt(db, `SELECT * FROM price_list_item
+    WHERE price_list_id = ? AND product_id IN (SELECT value FROM json_each(?)) AND deleted_at IS NULL`)
+    .all(priceListId, JSON.stringify(productIds)) as ItemRow[];
+  for (const r of rows) {
+    const items = byProduct.get(r.product_id) ?? [];
+    items.push(toItem(r));
+    byProduct.set(r.product_id, items);
+  }
+  return byProduct;
+}
+
 export function getPriceItems(db: Db, priceListId: string, productId: string): PriceListItem[] {
   return (stmt(db, `SELECT * FROM price_list_item WHERE price_list_id = ? AND product_id = ? AND deleted_at IS NULL
     ORDER BY uom_id, min_qty_milli, effective_from`).all(priceListId, productId) as ItemRow[]).map(toItem);

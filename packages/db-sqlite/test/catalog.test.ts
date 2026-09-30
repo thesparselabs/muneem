@@ -161,3 +161,27 @@ describe('categories', () => {
     expect(() => updateCategory(db, food.id, 1, { name: 'Food', parentId: snacks.id }, ACTOR)).toThrow(AppError);
   });
 });
+
+function countQueries<T>(db: Db, fn: () => T): { result: T; queries: number } {
+  const proto = Object.getPrototypeOf(db.prepare('SELECT 1')) as Record<'get' | 'all' | 'run', (...a: unknown[]) => unknown>;
+  const originals = { get: proto.get, all: proto.all, run: proto.run };
+  let queries = 0;
+  for (const m of ['get', 'all', 'run'] as const) {
+    proto[m] = function (this: unknown, ...a: unknown[]) { queries++; return originals[m].apply(this, a); };
+  }
+  try { return { result: fn(), queries }; } finally { Object.assign(proto, originals); }
+}
+
+describe('query count', () => {
+  it('a 50-row list page and a 20-hit search run a fixed number of queries, not one per row', async () => {
+    const { db, businessId, pcs } = await setup();
+    for (let i = 0; i < 60; i++) createProduct(db, businessId, product(pcs, { name: `Item ${i}`, sku: `I${i}`, barcodes: [] }), ACTOR, TODAY);
+    const page = countQueries(db, () => listProductHits(db, businessId, { limit: 50, includeInactive: false }, TODAY));
+    expect(page.result.items).toHaveLength(50);
+    expect(page.result.items.every((h) => h.pricePaise === 950)).toBe(true);
+    expect(page.queries).toBeLessThanOrEqual(3);
+    const search = countQueries(db, () => hitsByNamePrefix(db, businessId, 'item', 20, TODAY));
+    expect(search.result).toHaveLength(20);
+    expect(search.queries).toBeLessThanOrEqual(3);
+  });
+});

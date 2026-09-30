@@ -35,7 +35,7 @@ describe('product import', () => {
     expect(p.mapping).toEqual({
       name: 0, sku: 1, barcodes: 2, hsnCode: 3, category: 4, brand: 5, uom: 6, mrp: 7, sellingPrice: 8, purchasePrice: 9, gstRate: 10, reorderLevel: 11,
     });
-    expect(p.counts).toEqual({ total: 4, ok: 4, errors: 0, duplicates: 0 });
+    expect(p.counts).toEqual({ total: 4, ok: 4, errors: 0, duplicates: 0, updatable: 0 });
     expect(p.willCreate).toEqual({ categories: ['Biscuits', 'Staples', 'Beverages'], brands: ['Parle', 'Tata', 'Wagh Bakri'], uoms: [] });
 
     const s = await commit(p.importId);
@@ -47,9 +47,16 @@ describe('product import', () => {
     expect(toor.reorderLevelMilli).toBe(5500);
   });
 
+  it('numbers CSV rows by their line in the file, across blank lines and multi-line cells', async () => {
+    const csv = 'Name,SKU,Price\n\nGood,G1,10\n"Two\nLines",T1,abc\n\n\n,N1,5\n';
+    const p = await preview('lines.csv', csv);
+    expect(p.rows.filter((r) => r.status === 'error').map((r) => r.line)).toEqual([4, 8]);
+    expect(p.rows.find((r) => r.status === 'ok')?.line).toBe(3);
+  });
+
   it('reports every bad row with the reason and skips only those rows', async () => {
     const p = await preview('errors.csv', fixture('errors.csv'));
-    expect(p.counts).toEqual({ total: 7, ok: 2, errors: 5, duplicates: 0 });
+    expect(p.counts).toEqual({ total: 7, ok: 2, errors: 5, duplicates: 0, updatable: 0 });
     const byLine = Object.fromEntries(p.rows.map((r) => [r.line, r.errors]));
     expect(byLine[2]).toMatchObject({ name: 'name is required' });
     expect(byLine[3]).toMatchObject({ sellingPrice: '"ten" is not a valid amount' });
@@ -77,6 +84,18 @@ describe('product import', () => {
     expect(await data<ProductHit>('products.lookupBarcode', { code: '8901030865275' })).toMatchObject({ productId: hit.productId });
   });
 
+  it('shows in the preview when updating an existing product would break a rule, and skips only that row', async () => {
+    await commit((await preview('good.csv', fixture('good.csv'))).importId);
+    const csv = ['Name,SKU,MRP', 'Parle-G Biscuit 100g,PG100,8', 'Tata Salt 1kg,TS1,30'].join('\n');
+    const p = await preview('mrp.csv', csv);
+    expect(p.counts).toEqual({ total: 2, ok: 0, errors: 0, duplicates: 2, updatable: 1 });
+    expect(p.rows.find((r) => r.line === 2)).toMatchObject({ status: 'duplicate', errors: { sellingPrice: "can't update: selling price is above MRP" } });
+    const s = await commit(p.importId, 'update');
+    expect(s).toMatchObject({ updated: 1, skippedErrors: 1 });
+    expect(await data<ProductHit>('products.lookupBarcode', { code: 'TS1-LOOSE' })).toMatchObject({ mrpPaise: 3000 });
+    expect(await data<ProductHit>('products.lookupBarcode', { code: '8901030865275' })).toMatchObject({ mrpPaise: 1000 });
+  });
+
   it('reads the same data from an XLSX workbook', async () => {
     const wb = new ExcelJS.Workbook();
     const sheet = wb.addWorksheet('Products');
@@ -88,6 +107,18 @@ describe('product import', () => {
     await commit(p.importId);
     expect(await data<ProductHit>('products.lookupBarcode', { code: '8901030865275' })).toMatchObject({ name: 'Excel Soap', pricePaise: 3550 });
     expect(await data<ProductHit>('products.lookupBarcode', { code: 'XS2-CODE' })).toMatchObject({ name: 'Rich Text Shampoo', pricePaise: 12_000 });
+  });
+
+  it('accepts an xlsx with a blank header cell and a float-noisy formula price', async () => {
+    const wb = new ExcelJS.Workbook();
+    const sheet = wb.addWorksheet('Products');
+    sheet.addRow(['Name', null, 'SKU', 'Price']);
+    sheet.addRow(['Noisy Soap', 'ignored', 'NS1', { formula: '0.1+0.2', result: 0.1 + 0.2 }]);
+    const p = await preview('noisy.xlsx', Buffer.from(await wb.xlsx.writeBuffer()));
+    expect(p.columns).toEqual(['Name', '', 'SKU', 'Price']);
+    expect(p.counts).toMatchObject({ ok: 1, errors: 0 });
+    await commit(p.importId);
+    expect(await data<ProductHit[]>('products.search', { query: 'NS1' })).toEqual([expect.objectContaining({ pricePaise: 30 })]);
   });
 
   it('lets the user change the column mapping without sending the file again', async () => {
@@ -131,7 +162,7 @@ describe('Stage 2 exit criterion: 5,000 SKUs imported', () => {
     const lines = ['Name,SKU,Barcode,Category,Brand,MRP,Price,GST'];
     for (let i = 0; i < 5000; i++) lines.push(`Product ${i},SKU${i},BC${i};ALT${i},Cat ${i % 40},Brand ${i % 120},${100 + i}.00,${90 + i}.50,18`);
     const p = await preview('5000.csv', lines.join('\n'));
-    expect(p.counts).toEqual({ total: 5000, ok: 5000, errors: 0, duplicates: 0 });
+    expect(p.counts).toEqual({ total: 5000, ok: 5000, errors: 0, duplicates: 0, updatable: 0 });
     const t0 = performance.now();
     const s = await commit(p.importId);
     const ms = performance.now() - t0;

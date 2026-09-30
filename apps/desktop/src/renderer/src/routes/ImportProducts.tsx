@@ -65,7 +65,8 @@ interface ReviewProps {
 
 function Review({ preview, busy, policy, onPolicy, onRemap, onCommit, onRestart }: ReviewProps) {
   const { counts, willCreate } = preview;
-  const toWrite = counts.ok + (policy === 'update' ? counts.duplicates : 0);
+  const toWrite = counts.ok + (policy === 'update' ? counts.updatable : 0);
+  const notUpdatable = counts.duplicates - counts.updatable;
   const setColumn = (field: ImportField, value: string) => {
     const next: ImportMapping = { ...preview.mapping };
     if (value === '') delete next[field]; else next[field] = Number(value);
@@ -108,6 +109,7 @@ function Review({ preview, busy, policy, onPolicy, onRemap, onCommit, onRestart 
             <legend className="label">Products that already exist (same SKU or barcode)</legend>
             <label className="flex items-center gap-2 text-sm"><input type="radio" name="dup" checked={policy === 'skip'} onChange={() => onPolicy('skip')} /> Leave them as they are</label>
             <label className="flex items-center gap-2 text-sm"><input type="radio" name="dup" checked={policy === 'update'} onChange={() => onPolicy('update')} /> Update them with the columns in this file</label>
+            {notUpdatable > 0 && <p className="text-sm text-amber-800 mt-1">{notUpdatable} of them can't be updated with this file (see the rows below) and will be left as they are.</p>}
           </fieldset>
         )}
         <RowTable preview={preview} />

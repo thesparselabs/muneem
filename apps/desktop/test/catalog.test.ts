@@ -69,6 +69,27 @@ describe('catalog over IPC', () => {
     expect(r).toMatchObject({ ok: false, error: { code: 'VALIDATION_FAILED' } });
   });
 
+  it('checks pack prices against MRP scaled by the unit conversion', async () => {
+    const { pcs } = await ownerWithBusiness();
+    const uoms = await data<{ id: string; code: string }[]>('catalog.listUoms');
+    const box = uoms.find((u) => u.code === 'BOX')!.id;
+    const kg = uoms.find((u) => u.code === 'KG')!.id;
+    const p = await data<{ id: string }>('products.create', { ...biscuit(pcs), mrpPaise: 2000, sellingPricePaise: 1900, conversions: [{ fromUomId: box, factorMilli: 24_000 }] });
+    const [retail] = await data<{ id: string }[]>('pricing.listLists');
+    const set = (items: unknown[]) => call('pricing.setItems', { priceListId: retail!.id, productId: p.id, items });
+    expect(await set([{ uomId: box, pricePaise: 45_000, effectiveFrom: '2026-01-01' }])).toMatchObject({ ok: true });
+    expect(await set([{ uomId: box, pricePaise: 48_001, effectiveFrom: '2026-01-01' }])).toMatchObject({ ok: false, error: { fields: { 'items.0.pricePaise': 'price is above MRP (₹480.00 per BOX)' } } });
+    expect(await set([{ uomId: kg, pricePaise: 100, effectiveFrom: '2026-01-01' }])).toMatchObject({ ok: false, error: { fields: { 'items.0.uomId': 'add a conversion for this unit on the product first' } } });
+  });
+
+  it('reports an end date before the start date on the field instead of a generic error', async () => {
+    const { pcs } = await ownerWithBusiness();
+    const p = await data<{ id: string }>('products.create', biscuit(pcs));
+    const [retail] = await data<{ id: string }[]>('pricing.listLists');
+    const r = await call('pricing.setItems', { priceListId: retail!.id, productId: p.id, items: [{ uomId: pcs, pricePaise: 900, effectiveFrom: '2026-10-05', effectiveTo: '2026-10-01' }] });
+    expect(r).toMatchObject({ ok: false, error: { code: 'VALIDATION_FAILED', fields: { 'items.0.effectiveTo': 'must be after the "from" date' } } });
+  });
+
   it('a cashier can search but cannot create products', async () => {
     const { pcs } = await ownerWithBusiness();
     await data('products.create', biscuit(pcs));

@@ -23,6 +23,10 @@ file path chosen by the renderer.
 - The gateway's audit copy of any input string over 1,000 characters is replaced by `[N chars]`, so a file never
   lands in `audit_log`.
 
+- For a row that matches an existing product, the preview validates the **merged** product (existing values plus the
+  file's columns), not just the file row. Rows that would break a rule are shown as "can't update" and skipped by an
+  update commit, so a preview that looks clean cannot fail at commit time.
+
 ## Consequences
 - A 5,000-row file commits in about 3 s on the dev machine. The test fails above 10 s.
 - The file is never written to disk by Muneem; restarting the app during a preview means choosing the file again.

@@ -1,4 +1,4 @@
-import { PriceListItemInput, type PriceListItem } from '@muneem/contracts';
+import { PriceItemList, PriceListItemInput, type PriceListItem } from '@muneem/contracts';
 import type { z } from 'zod';
 import { paiseToText, parseOptional, scaledToText } from './money.js';
 
@@ -22,9 +22,7 @@ export function rowsToItems(rows: readonly PriceRow[]): { ok: true; items: ItemI
       ...(r.effectiveTo && { effectiveTo: r.effectiveTo }),
     };
   });
-  for (const [i, item] of items.entries()) {
-    const parsed = PriceListItemInput.safeParse(item);
-    if (!parsed.success) for (const issue of parsed.error.issues) errors[`items.${i}.${issue.path.join('.')}`] ??= issue.message;
-  }
+  const parsed = PriceItemList.safeParse(items);
+  if (!parsed.success) for (const issue of parsed.error.issues) errors[`items.${issue.path.join('.')}`] ??= issue.message;
   return Object.keys(errors).length > 0 ? { ok: false, errors } : { ok: true, items };
 }

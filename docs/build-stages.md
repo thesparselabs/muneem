@@ -20,6 +20,9 @@
 - Catalog rows are outbox-only until Stage 7; the Stage 7 server needs catalog endpoints and the conflict rules in
   LLD §9 (price/tax fields: cloud wins; duplicate barcodes across devices: review item).
 - `resolvePrice` has no Go port yet; add one with shared fixtures before the cloud prices anything (ADR-0011).
+- Businesses created before Stage 2 get their default units and Retail list on their first catalog call, even a
+  read by a view-only user, so those audit rows name whoever opened the catalog first. Harmless before the pilot;
+  revisit if a Stage-1 database ever reaches a shop.
 - The Stage 2 screens were checked by typecheck, build and unit tests of their form logic, not by clicking through
   the running app.
 - Token auto-refresh exists (`AuthService.refreshAccessToken`) but is not wired into a retry on 401 — Stage 7.

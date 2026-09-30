@@ -6,6 +6,7 @@ import {
   exceedsMrp,
   fromBaseQty,
   isValidBarcode,
+  mrpForUnit,
   normalizeName,
   parseScaled,
   resolvePrice,
@@ -127,6 +128,14 @@ describe('resolvePrice', () => {
         expect(a).toEqual(b);
       }),
     );
+  });
+});
+
+describe('mrpForUnit', () => {
+  it('scales the base-unit MRP to a pack', () => {
+    expect(mrpForUnit(2000, 24_000)).toBe(48_000);
+    expect(mrpForUnit(2000, 1000)).toBe(2000);
+    expect(mrpForUnit(999, 500)).toBe(500);
   });
 });
 

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { Product } from '@muneem/contracts';
 import { formatPaise, formatRateBp, parseOptional, scaledToText } from '../../src/renderer/src/lib/money.js';
-import { emptyForm, formToInput, productToForm } from '../../src/renderer/src/lib/productForm.js';
+import { emptyForm, formToInput, productToForm, rebaseForm } from '../../src/renderer/src/lib/productForm.js';
 import { itemToRow, rowsToItems } from '../../src/renderer/src/lib/priceItems.js';
 
 const PCS = '01J0000000000000000000PCS0';
@@ -59,13 +59,48 @@ describe('product form', () => {
   });
 });
 
+describe('saving an existing product', () => {
+  const saved: Product = {
+    id: '01J00000000000000000000P01', businessId: '01J00000000000000000000B01', name: 'Parle-G', baseUomId: PCS,
+    taxTreatment: 'taxable', gstRateBp: 1800, cessRateBp: 0, cessPerUnitPaise: 0, priceIsInclusive: true, mrpPaise: 1000,
+    sellingPricePaise: 950, isActive: true, createdAt: '2026-09-30T00:00:00.000Z', updatedAt: '2026-09-30T00:00:00.000Z', version: 1,
+    barcodes: [{ id: '01J00000000000000000000C01', code: 'CASE24', symbology: 'CODE128', uomId: BOX, packQtyMilli: 2000, isPrimary: true }],
+    conversions: [{ id: '01J00000000000000000000V01', fromUomId: BOX, toUomId: PCS, factorMilli: 24_000 }],
+  };
+
+  it('does not send the selling price unless the user changed it', () => {
+    const baseline = productToForm(saved);
+    const untouched = formToInput({ ...baseline, name: 'Parle-G Gold' }, baseline);
+    expect(untouched.ok && 'sellingPricePaise' in untouched.input).toBe(false);
+    const edited = formToInput({ ...baseline, sellingPrice: '9.00' }, baseline);
+    expect(edited.ok && edited.input.sellingPricePaise).toBe(900);
+  });
+
+  it('takes fresh values for fields the user has not touched and keeps their edits', () => {
+    const baseline = productToForm(saved);
+    const fresh = productToForm({ ...saved, sellingPricePaise: 900, mrpPaise: 1200 });
+    const rebased = rebaseForm({ ...baseline, mrp: '11.00' }, baseline, fresh);
+    expect(rebased).toMatchObject({ sellingPrice: '9.00', mrp: '11.00' });
+  });
+
+  it('keeps a barcode pack quantity and symbology through the form', () => {
+    const r = formToInput(productToForm(saved));
+    expect(r.ok && r.input.barcodes).toEqual([{ code: 'CASE24', symbology: 'CODE128', uomId: BOX, packQtyMilli: 2000, isPrimary: true }]);
+  });
+});
+
 describe('price list rows', () => {
   it('converts rows to items and back', () => {
     const rows = [{ uomId: PCS, minQty: '12', price: '9', isInclusive: true, effectiveFrom: '2026-10-01', effectiveTo: '' }];
+    expect(!rowsToItems([...rows, ...rows]).ok).toBe(true);
     const r = rowsToItems(rows);
     expect(r).toEqual({ ok: true, items: [{ uomId: PCS, minQtyMilli: 12_000, pricePaise: 900, isInclusive: true, effectiveFrom: '2026-10-01' }] });
     const saved = { id: 'i', priceListId: 'l', productId: 'p', uomId: PCS, minQtyMilli: 12_000, pricePaise: 900, isInclusive: true, effectiveFrom: '2026-10-01' };
     expect(itemToRow(saved)).toEqual({ ...rows[0], price: '9.00' });
+  });
+  it('rejects an end date before the start date', () => {
+    const r = rowsToItems([{ uomId: PCS, minQty: '0', price: '9', isInclusive: true, effectiveFrom: '2026-10-05', effectiveTo: '2026-10-01' }]);
+    expect(!r.ok && r.errors).toEqual({ 'items.0.effectiveTo': 'must be after the "from" date' });
   });
   it('rejects a missing price or bad date', () => {
     const r = rowsToItems([{ uomId: PCS, minQty: '0', price: '', isInclusive: true, effectiveFrom: 'soon', effectiveTo: '' }]);

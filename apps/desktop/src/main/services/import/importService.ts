@@ -33,11 +33,12 @@ export class ImportService {
       ? this.previews.get(input.importId, businessId)
       : await this.load(businessId, input.fileName!, input.contentBase64!);
     if (input.mapping) this.previews.update(Object.assign(session, { mapping: input.mapping }));
-    const plan = planImport(session.table, session.mapping, new DbCatalogLookup(this.ctx.db(), businessId));
+    const plan = planImport(session.table, session.mapping, new DbCatalogLookup(this.ctx.db(), businessId, this.ctx.today()));
     const count = (s: PlannedRow['status']) => plan.rows.filter((r) => r.status === s).length;
+    const updatable = plan.rows.filter((r) => r.status === 'duplicate' && Object.keys(r.errors).length === 0).length;
     return {
       importId: session.id, fileName: session.fileName, columns: session.table.columns, mapping: session.mapping,
-      counts: { total: plan.rows.length, ok: count('ok'), errors: count('error'), duplicates: count('duplicate') },
+      counts: { total: plan.rows.length, ok: count('ok'), errors: count('error'), duplicates: count('duplicate'), updatable },
       rows: previewRows(plan), willCreate: plan.willCreate,
     };
   }
@@ -52,12 +53,13 @@ export class ImportService {
     const actor = this.ctx.actor();
     const on = this.ctx.today();
     const summary = withTransaction(db, () => {
-      const lookup = new DbCatalogLookup(db, businessId);
+      const lookup = new DbCatalogLookup(db, businessId, on);
       const plan = planImport(session.table, session.mapping, lookup);
       const result = { created: 0, updated: 0, skippedDuplicates: 0, skippedErrors: 0 };
       for (const row of plan.rows) {
         if (row.status === 'error') { result.skippedErrors++; continue; }
         if (row.status === 'duplicate' && input.duplicatePolicy === 'skip') { result.skippedDuplicates++; continue; }
+        if (row.status === 'duplicate' && Object.keys(row.errors).length > 0) { result.skippedErrors++; continue; }
         const refs = {
           baseUomId: lookup.ensureUom(row.draft.uomCode, actor),
           categoryId: lookup.ensureCategory(row.draft.category, actor),

@@ -1,6 +1,7 @@
+import type { Product } from '@muneem/contracts';
 import { normalizeName } from '@muneem/domain';
 import {
-  createBrand, createCategory, createUom, findProductIdByBarcode, findProductIdBySku, listBrands, listCategories, listUoms,
+  createBrand, createCategory, createUom, findProductIdByBarcode, findProductIdBySku, getProduct, listBrands, listCategories, listUoms,
   type Actor, type Db,
 } from '@muneem/db-sqlite';
 import type { CatalogLookup } from './importPlanner.js';
@@ -11,7 +12,7 @@ export class DbCatalogLookup implements CatalogLookup {
   private readonly brands: Map<string, string>;
   readonly created = { categories: 0, brands: 0, uoms: 0 };
 
-  constructor(private readonly db: Db, private readonly businessId: string) {
+  constructor(private readonly db: Db, private readonly businessId: string, private readonly on: string) {
     this.uoms = new Map(listUoms(db, businessId).map((u) => [u.code, u.id]));
     this.categories = new Map(listCategories(db, businessId).filter((c) => c.parentId === null).map((c) => [normalizeName(c.name), c.id]));
     this.brands = new Map(listBrands(db, businessId).map((b) => [normalizeName(b.name), b.id]));
@@ -22,6 +23,7 @@ export class DbCatalogLookup implements CatalogLookup {
   brandId(name: string) { return this.brands.get(normalizeName(name)); }
   productBySku(sku: string) { return findProductIdBySku(this.db, this.businessId, sku) ?? undefined; }
   productByBarcode(code: string) { return findProductIdByBarcode(this.db, this.businessId, code) ?? undefined; }
+  product(id: string): Product | undefined { return getProduct(this.db, id, this.on) ?? undefined; }
 
   ensureUom(code: string, actor: Actor): string {
     return this.uomId(code) ?? this.remember(this.uoms, code, createUom(this.db, this.businessId, { code, name: code, decimals: 0 }, actor).id, 'uoms');

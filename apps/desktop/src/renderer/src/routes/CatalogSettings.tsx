@@ -2,6 +2,7 @@ import { useState, type FormEvent, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { BrandInput, CategoryInput, PriceListInput, UomInput, type PriceList } from '@muneem/contracts';
+import type { z } from 'zod';
 import { api, errorMessage } from '../api.js';
 
 type Tab = 'units' | 'categories' | 'brands' | 'priceLists';
@@ -41,7 +42,13 @@ function useSave() {
       return true;
     } catch (e) { setError(errorMessage(e)); return false; }
   };
-  return { save, error };
+  const create = <S extends z.ZodTypeAny>(schema: S, value: unknown, fn: (input: z.output<S>) => Promise<unknown>, keys: string[]) => {
+    const parsed = schema.safeParse(value);
+    if (parsed.success) return save(() => fn(parsed.data), keys);
+    setError(parsed.error.issues.map((i) => `${i.path.join('.') || 'value'}: ${i.message}`).join('; '));
+    return Promise.resolve(false);
+  };
+  return { save, create, error };
 }
 
 function AddForm({ onSubmit, children, error }: { onSubmit: () => Promise<boolean>; children: ReactNode; error: string | null }) {
@@ -56,11 +63,10 @@ function AddForm({ onSubmit, children, error }: { onSubmit: () => Promise<boolea
 
 function Units() {
   const uoms = useQuery({ queryKey: ['uoms'], queryFn: () => api.catalog.listUoms({}) });
-  const { save, error } = useSave();
+  const { create, error } = useSave();
   const [f, setF] = useState({ code: '', name: '', decimals: 0 });
   const add = async () => {
-    const input = UomInput.parse({ ...f, code: f.code.toUpperCase() });
-    const ok = await save(() => api.catalog.createUom(input), ['uoms']);
+    const ok = await create(UomInput, { ...f, code: f.code.trim().toUpperCase() }, (input) => api.catalog.createUom(input), ['uoms']);
     if (ok) setF({ code: '', name: '', decimals: 0 });
     return ok;
   };
@@ -95,12 +101,12 @@ function RenameRow({ name, prefix, onRename }: { name: string; prefix?: string |
 
 function Categories() {
   const categories = useQuery({ queryKey: ['categories'], queryFn: () => api.catalog.listCategories({}) });
-  const { save, error } = useSave();
+  const { save, create, error } = useSave();
   const [name, setName] = useState('');
   const [parentId, setParentId] = useState('');
   const nameOf = (id: string | null) => categories.data?.find((c) => c.id === id)?.name;
   const add = async () => {
-    const ok = await save(() => api.catalog.createCategory(CategoryInput.parse({ name, parentId: parentId || null })), ['categories']);
+    const ok = await create(CategoryInput, { name, parentId: parentId || null }, (input) => api.catalog.createCategory(input), ['categories']);
     if (ok) setName('');
     return ok;
   };
@@ -126,10 +132,10 @@ function Categories() {
 
 function Brands() {
   const brands = useQuery({ queryKey: ['brands'], queryFn: () => api.catalog.listBrands({}) });
-  const { save, error } = useSave();
+  const { save, create, error } = useSave();
   const [name, setName] = useState('');
   const add = async () => {
-    const ok = await save(() => api.catalog.createBrand(BrandInput.parse({ name })), ['brands']);
+    const ok = await create(BrandInput, { name }, (input) => api.catalog.createBrand(input), ['brands']);
     if (ok) setName('');
     return ok;
   };
@@ -147,10 +153,10 @@ function Brands() {
 
 function PriceLists() {
   const lists = useQuery({ queryKey: ['priceLists'], queryFn: () => api.pricing.listLists({}) });
-  const { save, error } = useSave();
+  const { create, error } = useSave();
   const [f, setF] = useState<{ name: string; kind: PriceList['kind'] }>({ name: '', kind: 'wholesale' });
   const add = async () => {
-    const ok = await save(() => api.pricing.createList(PriceListInput.parse(f)), ['priceLists']);
+    const ok = await create(PriceListInput, f, (input) => api.pricing.createList(input), ['priceLists']);
     if (ok) setF({ ...f, name: '' });
     return ok;
   };

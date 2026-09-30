@@ -50,3 +50,5 @@ export function resolvePrice(items: readonly PriceItem[], q: PriceQuery): Resolv
 export function exceedsMrp(pricePaise: number, isInclusive: boolean, mrpPaise: number | null | undefined): boolean {
   return isInclusive && mrpPaise != null && pricePaise > mrpPaise;
 }
+
+export const mrpForUnit = (mrpPaise: number, factorMilli: number): number => divRound(mrpPaise * factorMilli, MILLI);

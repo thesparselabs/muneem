@@ -17,12 +17,6 @@ export function getCategory(db: Db, id: string): Category | null {
   return r ? toCategory(r) : null;
 }
 
-export function findCategoryByName(db: Db, businessId: string, name: string): Category | null {
-  const r = db.prepare('SELECT * FROM category WHERE business_id = ? AND name_norm = ? AND deleted_at IS NULL ORDER BY parent_id IS NOT NULL LIMIT 1')
-    .get(businessId, normalizeName(name)) as CategoryRow | undefined;
-  return r ? toCategory(r) : null;
-}
-
 function assertNoCycle(db: Db, id: string, parentId: string | null): void {
   for (let cursor = parentId; cursor; cursor = getCategory(db, cursor)?.parentId ?? null) {
     if (cursor === id) throw new AppError('VALIDATION_FAILED', 'A category cannot be inside itself', { parentId: 'would create a loop' });

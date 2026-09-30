@@ -60,6 +60,32 @@ All notable changes, newest first. Each entry records **what** changed and **why
   (catalog section and invariants), LLD §10.2 (the `products`/`catalog`/`pricing` surface as built), and the plan's
   "as built" notes.
 
+### Fixed — Stage 2 review
+- **Pack prices were checked against the single-piece MRP.** A BOX of 24 with MRP ₹20 per piece could not be priced
+  at ₹450. The ceiling is now MRP × the unit's conversion, and a price for a unit with no conversion on the product is
+  refused with a field error, because it could never be applied.
+- **"Update existing products" could pass the preview and then fail the whole import.** The preview checked only the
+  file row, while the commit checked the file row merged with the existing product. The preview now checks the merged
+  product and marks such rows "can't update: …"; the commit skips them and imports the rest.
+- **An .xlsx with an empty header cell could not be imported**, and **formula prices like `=0.1+0.2` were rejected** as
+  `0.30000000000000004`. Empty cells now fill their column, and numbers are read at 15 significant digits, as Excel
+  shows them.
+- **Saving the product form could undo a price just saved in "Price lists"**, and Enter in a price field submitted the
+  product. The price editor is now outside the product form, the selling price is sent only when edited, and fields
+  you have not touched pick up the latest saved values.
+- **An "Until" date before "From" (or two identical price rows) showed "Something went wrong".** Both are now checked
+  in the shared schema and reported on the field, in the form and over IPC.
+- **Adding an invalid unit code (e.g. `PKT.`) did nothing visible**; catalog settings now show validation messages.
+- **Import previews expired while in use** — the 15-minute timer now restarts on every use.
+- **CSV preview row numbers drifted** after blank lines or cells spanning lines; they now match the file's line numbers.
+- **Product lists ran two queries per row** (101 for a 50-row page); prices for a page are now fetched in one query,
+  and the list query uses the cached-statement helper (ADR-0012).
+- **The product form dropped a barcode's pack quantity and symbology** on save; both now survive.
+
+### Changed — Stage 2 review
+- Removed the unused `findCategoryByName` / `findBrandByName`, and the section-banner comments in the IPC registry
+  (CLAUDE.md: no section banners).
+
 ### Fixed
 - **Saving a product got slower as the catalog grew.** Re-indexing a product for search deleted from FTS5 by an
   unindexed column, which scans the whole index. Each product now has an integer search key (`product_search_key`),

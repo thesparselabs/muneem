@@ -1,6 +1,7 @@
-import { ProductInput, type ImportField, type ImportMapping } from '@muneem/contracts';
+import { ProductInput, type ImportField, type ImportMapping, type Product } from '@muneem/contracts';
 import { normalizeName } from '@muneem/domain';
 import { productFieldErrors } from '@muneem/db-sqlite';
+import { mergeForUpdate } from './productMerge.js';
 import { parseRow, type RowDraft, type RowErrors } from './rowParser.js';
 import type { Table } from './tableReader.js';
 
@@ -10,8 +11,10 @@ export interface CatalogLookup {
   brandId(name: string): string | undefined;
   productBySku(sku: string): string | undefined;
   productByBarcode(code: string): string | undefined;
+  product(id: string): Product | undefined;
 }
 
+// For a duplicate, `errors` lists why updating the existing product with this row would be refused.
 export interface PlannedRow { line: number; status: 'ok' | 'error' | 'duplicate'; draft: RowDraft; errors: RowErrors; existingProductId?: string }
 export interface ImportPlan { rows: PlannedRow[]; willCreate: { categories: string[]; brands: string[]; uoms: string[] } }
 
@@ -32,17 +35,28 @@ const FIELD_OF: Record<string, ImportField> = {
 };
 const importField = (path: string): ImportField | 'row' => FIELD_OF[path.split('.')[0]!] ?? 'row';
 
-function ruleErrors(draft: RowDraft): RowErrors {
+function inputErrors(build: () => ProductInput, prefix = ''): RowErrors {
   const errors: RowErrors = {};
   try {
-    const input = toProductInput(draft, { baseUomId: PLACEHOLDER_ID });
-    for (const [path, message] of Object.entries(productFieldErrors(input))) errors[importField(path)] ??= message;
+    for (const [path, message] of Object.entries(productFieldErrors(build()))) errors[importField(path)] ??= prefix + message;
   } catch (e) {
     for (const issue of (e as { issues?: { path: (string | number)[]; message: string }[] }).issues ?? []) {
-      errors[importField(issue.path.join('.'))] ??= issue.message;
+      errors[importField(issue.path.join('.'))] ??= prefix + issue.message;
     }
   }
   return errors;
+}
+
+const ruleErrors = (draft: RowDraft): RowErrors => inputErrors(() => toProductInput(draft, { baseUomId: PLACEHOLDER_ID }));
+
+// Categories or brands that do not exist yet cannot break a rule, so a placeholder id stands in for them.
+function updateErrors(existing: Product, draft: RowDraft): RowErrors {
+  const refs = {
+    baseUomId: existing.baseUomId,
+    categoryId: draft.category ? PLACEHOLDER_ID : undefined,
+    brandId: draft.brand ? PLACEHOLDER_ID : undefined,
+  };
+  return inputErrors(() => mergeForUpdate(existing, draft, refs), "can't update: ");
 }
 
 class SeenInFile {
@@ -87,9 +101,9 @@ export function planImport(table: Table, mapping: ImportMapping, lookup: Catalog
     if (!lookup.uomId(draft.uomCode)) create.uoms.add(draft.uomCode);
     if (draft.category && !lookup.categoryId(draft.category)) create.categories.set(normalizeName(draft.category), draft.category);
     if (draft.brand && !lookup.brandId(draft.brand)) create.brands.set(normalizeName(draft.brand), draft.brand);
-    return existingProductId
-      ? { line, status: 'duplicate', draft, errors, existingProductId }
-      : { line, status: 'ok', draft, errors };
+    if (!existingProductId) return { line, status: 'ok', draft, errors };
+    const existing = lookup.product(existingProductId);
+    return { line, status: 'duplicate', draft, errors: existing ? updateErrors(existing, draft) : {}, existingProductId };
   });
   return { rows, willCreate: { categories: [...create.categories.values()], brands: [...create.brands.values()], uoms: [...create.uoms] } };
 }

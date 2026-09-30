@@ -6,7 +6,7 @@ import { api, errorMessage, isClientError } from '../api.js';
 import Field from '../components/Field.js';
 import UomSelect from '../components/UomSelect.js';
 import { formatRateBp } from '../lib/money.js';
-import { GST_RATES_BP, emptyForm, formToInput, productToForm, type FormErrors, type ProductForm } from '../lib/productForm.js';
+import { GST_RATES_BP, emptyForm, formToInput, productToForm, rebaseForm, type FormErrors, type ProductForm } from '../lib/productForm.js';
 import PriceListItems from './PriceListItems.js';
 
 const TAX_TREATMENTS = [['taxable', 'Taxable'], ['exempt', 'Exempt'], ['nil_rated', 'Nil rated'], ['zero_rated', 'Zero rated'], ['non_gst', 'Non-GST']] as const;
@@ -21,23 +21,29 @@ export default function ProductEdit() {
   const brands = useQuery({ queryKey: ['brands'], queryFn: () => api.catalog.listBrands({}) });
   const product = useQuery({ queryKey: ['product', id], queryFn: () => api.products.get({ id: id! }), enabled: !isNew });
   const [form, setForm] = useState<ProductForm | null>(null);
+  const [baseline, setBaseline] = useState<ProductForm | null>(null);
   const [errors, setErrors] = useState<FormErrors>({});
   const [message, setMessage] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    if (form) return;
-    if (!isNew && product.data) setForm(productToForm(product.data));
+    if (isNew || !product.data) return;
+    const fresh = productToForm(product.data);
+    setForm((current) => (current && baseline ? rebaseForm(current, baseline, fresh) : fresh));
+    setBaseline(fresh);
+  }, [isNew, product.data]); // rebase only when the server copy changes
+
+  useEffect(() => {
     const pcs = uoms.data?.find((u) => u.code === 'PCS') ?? uoms.data?.[0];
-    if (isNew && pcs) setForm(emptyForm(pcs.id));
-  }, [form, isNew, product.data, uoms.data]);
+    if (isNew && !form && pcs) setForm(emptyForm(pcs.id));
+  }, [form, isNew, uoms.data]);
 
   if (!form || !uoms.data) return <p className="text-sm text-slate-500" role="status">Loading…</p>;
   const set = <K extends keyof ProductForm>(key: K, value: ProductForm[K]) => setForm({ ...form, [key]: value });
 
   async function save(e: FormEvent) {
     e.preventDefault();
-    const result = formToInput(form!);
+    const result = formToInput(form!, isNew ? undefined : baseline ?? undefined);
     if (!result.ok) { setErrors(result.errors); return; }
     setBusy(true); setErrors({}); setMessage(null);
     try {
@@ -45,8 +51,9 @@ export default function ProductEdit() {
         ? await api.products.create(result.input)
         : await api.products.update({ ...result.input, id: id!, version: product.data!.version });
       await qc.invalidateQueries({ queryKey: ['products'] });
-      qc.setQueryData(['product', saved.id], saved);
       setForm(productToForm(saved));
+      setBaseline(productToForm(saved));
+      qc.setQueryData(['product', saved.id], saved);
       setMessage('Saved.');
       if (isNew) nav(`/products/${saved.id}`, { replace: true });
     } catch (err) {
@@ -66,70 +73,71 @@ export default function ProductEdit() {
 
   const err = (key: string) => errors[key] && <p className="err">{errors[key]}</p>;
   return (
-    <form onSubmit={save} className="max-w-4xl space-y-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">{isNew ? 'Add product' : form.name}</h1>
-        <Link to="/products" className="btn-secondary">Back to products</Link>
-      </div>
-      {!isNew && product.data && !product.data.isActive && <p className="card text-sm text-amber-800">This product is deactivated. It does not appear in billing or search.</p>}
+    <div className="max-w-4xl space-y-4">
+      <form onSubmit={save} className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h1 className="text-2xl font-semibold">{isNew ? 'Add product' : form.name}</h1>
+          <Link to="/products" className="btn-secondary">Back to products</Link>
+        </div>
+        {!isNew && product.data && !product.data.isActive && <p className="card text-sm text-amber-800">This product is deactivated. It does not appear in billing or search.</p>}
 
-      <Section title="Basics">
-        <Field label="Name" htmlFor="name"><input id="name" className="input" value={form.name} onChange={(e) => set('name', e.target.value)} required autoFocus />{err('name')}</Field>
-        <Field label="SKU / item code" htmlFor="sku"><input id="sku" className="input" value={form.sku} onChange={(e) => set('sku', e.target.value)} />{err('sku')}</Field>
-        <Field label="Category" htmlFor="category">
-          <select id="category" className="input" value={form.categoryId} onChange={(e) => set('categoryId', e.target.value)}>
-            <option value="">None</option>{categories.data?.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-          </select>
-        </Field>
-        <Field label="Brand" htmlFor="brand">
-          <select id="brand" className="input" value={form.brandId} onChange={(e) => set('brandId', e.target.value)}>
-            <option value="">None</option>{brands.data?.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
-          </select>
-        </Field>
-        <Field label="Base unit" htmlFor="baseUom" hint="Stock is counted in this unit">
-          <UomSelect id="baseUom" uoms={uoms.data} value={form.baseUomId} onChange={(v) => set('baseUomId', v)} />
-        </Field>
-        <Field label="Reorder level" htmlFor="reorder" hint="In the base unit"><input id="reorder" className="input" inputMode="decimal" value={form.reorderLevel} onChange={(e) => set('reorderLevel', e.target.value)} />{err('reorderLevelMilli')}</Field>
-      </Section>
-
-      <Section title="Tax">
-        <Field label="HSN / SAC" htmlFor="hsn"><input id="hsn" className="input" inputMode="numeric" value={form.hsnCode} onChange={(e) => set('hsnCode', e.target.value)} />{err('hsnCode')}</Field>
-        <Field label="Tax treatment" htmlFor="treatment">
-          <select id="treatment" className="input" value={form.taxTreatment} onChange={(e) => set('taxTreatment', e.target.value as ProductForm['taxTreatment'])}>
-            {TAX_TREATMENTS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-          </select>
-        </Field>
-        {form.taxTreatment === 'taxable' && (
-          <Field label="GST rate" htmlFor="gst">
-            <select id="gst" className="input" value={form.gstRateBp} onChange={(e) => set('gstRateBp', Number(e.target.value))}>
-              {GST_RATES_BP.map((r) => <option key={r} value={r}>{formatRateBp(r)}</option>)}
-            </select>{err('gstRateBp')}
+        <Section title="Basics">
+          <Field label="Name" htmlFor="name"><input id="name" className="input" value={form.name} onChange={(e) => set('name', e.target.value)} required autoFocus />{err('name')}</Field>
+          <Field label="SKU / item code" htmlFor="sku"><input id="sku" className="input" value={form.sku} onChange={(e) => set('sku', e.target.value)} />{err('sku')}</Field>
+          <Field label="Category" htmlFor="category">
+            <select id="category" className="input" value={form.categoryId} onChange={(e) => set('categoryId', e.target.value)}>
+              <option value="">None</option>{categories.data?.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
           </Field>
-        )}
-      </Section>
+          <Field label="Brand" htmlFor="brand">
+            <select id="brand" className="input" value={form.brandId} onChange={(e) => set('brandId', e.target.value)}>
+              <option value="">None</option>{brands.data?.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
+            </select>
+          </Field>
+          <Field label="Base unit" htmlFor="baseUom" hint="Stock is counted in this unit">
+            <UomSelect id="baseUom" uoms={uoms.data} value={form.baseUomId} onChange={(v) => set('baseUomId', v)} />
+          </Field>
+          <Field label="Reorder level" htmlFor="reorder" hint="In the base unit"><input id="reorder" className="input" inputMode="decimal" value={form.reorderLevel} onChange={(e) => set('reorderLevel', e.target.value)} />{err('reorderLevelMilli')}</Field>
+        </Section>
 
-      <Section title="Prices">
-        <Field label="MRP (₹)" htmlFor="mrp"><input id="mrp" className="input" inputMode="decimal" value={form.mrp} onChange={(e) => set('mrp', e.target.value)} />{err('mrpPaise')}</Field>
-        <Field label="Selling price (₹)" htmlFor="sp" hint="Retail price list, per base unit"><input id="sp" className="input" inputMode="decimal" value={form.sellingPrice} onChange={(e) => set('sellingPrice', e.target.value)} />{err('sellingPricePaise')}</Field>
-        <Field label="Purchase price (₹)" htmlFor="pp"><input id="pp" className="input" inputMode="decimal" value={form.purchasePrice} onChange={(e) => set('purchasePrice', e.target.value)} />{err('purchasePricePaise')}</Field>
-        <label className="flex items-center gap-2 text-sm self-end pb-2">
-          <input type="checkbox" checked={form.priceIsInclusive} onChange={(e) => set('priceIsInclusive', e.target.checked)} /> Prices include GST
-        </label>
-      </Section>
+        <Section title="Tax">
+          <Field label="HSN / SAC" htmlFor="hsn"><input id="hsn" className="input" inputMode="numeric" value={form.hsnCode} onChange={(e) => set('hsnCode', e.target.value)} />{err('hsnCode')}</Field>
+          <Field label="Tax treatment" htmlFor="treatment">
+            <select id="treatment" className="input" value={form.taxTreatment} onChange={(e) => set('taxTreatment', e.target.value as ProductForm['taxTreatment'])}>
+              {TAX_TREATMENTS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+            </select>
+          </Field>
+          {form.taxTreatment === 'taxable' && (
+            <Field label="GST rate" htmlFor="gst">
+              <select id="gst" className="input" value={form.gstRateBp} onChange={(e) => set('gstRateBp', Number(e.target.value))}>
+                {GST_RATES_BP.map((r) => <option key={r} value={r}>{formatRateBp(r)}</option>)}
+              </select>{err('gstRateBp')}
+            </Field>
+          )}
+        </Section>
 
-      <BarcodeEditor form={form} uoms={uoms.data} errors={errors} onChange={(barcodes) => set('barcodes', barcodes)} />
-      <ConversionEditor form={form} uoms={uoms.data} errors={errors} onChange={(conversions) => set('conversions', conversions)} />
+        <Section title="Prices">
+          <Field label="MRP (₹)" htmlFor="mrp"><input id="mrp" className="input" inputMode="decimal" value={form.mrp} onChange={(e) => set('mrp', e.target.value)} />{err('mrpPaise')}</Field>
+          <Field label="Selling price (₹)" htmlFor="sp" hint="Retail price list, per base unit"><input id="sp" className="input" inputMode="decimal" value={form.sellingPrice} onChange={(e) => set('sellingPrice', e.target.value)} />{err('sellingPricePaise')}</Field>
+          <Field label="Purchase price (₹)" htmlFor="pp"><input id="pp" className="input" inputMode="decimal" value={form.purchasePrice} onChange={(e) => set('purchasePrice', e.target.value)} />{err('purchasePricePaise')}</Field>
+          <label className="flex items-center gap-2 text-sm self-end pb-2">
+            <input type="checkbox" checked={form.priceIsInclusive} onChange={(e) => set('priceIsInclusive', e.target.checked)} /> Prices include GST
+          </label>
+        </Section>
 
-      {message && <p className="text-sm" role="status">{message}</p>}
-      <div className="flex gap-2">
-        <button type="submit" className="btn-primary" disabled={busy}>{isNew ? 'Create product' : 'Save changes'}</button>
-        {!isNew && product.data && (
-          <button type="button" className="btn-secondary" onClick={() => void toggleActive()}>{product.data.isActive ? 'Deactivate' : 'Reactivate'}</button>
-        )}
-      </div>
+        <BarcodeEditor form={form} uoms={uoms.data} errors={errors} onChange={(barcodes) => set('barcodes', barcodes)} />
+        <ConversionEditor form={form} uoms={uoms.data} errors={errors} onChange={(conversions) => set('conversions', conversions)} />
 
+        {message && <p className="text-sm" role="status">{message}</p>}
+        <div className="flex gap-2">
+          <button type="submit" className="btn-primary" disabled={busy}>{isNew ? 'Create product' : 'Save changes'}</button>
+          {!isNew && product.data && (
+            <button type="button" className="btn-secondary" onClick={() => void toggleActive()}>{product.data.isActive ? 'Deactivate' : 'Reactivate'}</button>
+          )}
+        </div>
+      </form>
       {!isNew && product.data && <PriceListItems product={product.data} uoms={uoms.data} />}
-    </form>
+    </div>
   );
 }
 

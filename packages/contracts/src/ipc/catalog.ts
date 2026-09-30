@@ -136,8 +136,27 @@ export const PriceListItemInput = z.object({
 export const PriceListItem = PriceListItemInput.extend({ id: Ulid, priceListId: Ulid, productId: Ulid });
 export type PriceListItem = z.infer<typeof PriceListItem>;
 
+type PriceItemDraft = z.infer<typeof PriceListItemInput>;
+const itemKey = (i: PriceItemDraft) => `${i.uomId}|${i.minQtyMilli}|${i.effectiveFrom}`;
+
+export const PriceItemList = z
+  .array(PriceListItemInput)
+  .max(50)
+  .superRefine((items, ctx) => {
+    const firstRow = new Map<string, number>();
+    items.forEach((item, i) => {
+      if (item.effectiveTo !== undefined && item.effectiveTo <= item.effectiveFrom) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, path: [i, 'effectiveTo'], message: 'must be after the "from" date' });
+      }
+      const first = firstRow.get(itemKey(item));
+      if (first !== undefined) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, path: [i, 'effectiveFrom'], message: `same unit, quantity and date as row ${first + 1}` });
+      } else firstRow.set(itemKey(item), i);
+    });
+  });
+
 export const PriceItemsQuery = z.object({ priceListId: Ulid, productId: Ulid });
-export const SetPriceItems = PriceItemsQuery.extend({ items: z.array(PriceListItemInput).max(50) });
+export const SetPriceItems = PriceItemsQuery.extend({ items: PriceItemList });
 export type SetPriceItems = z.infer<typeof SetPriceItems>;
 
 export const IMPORT_FIELDS = [
@@ -178,7 +197,10 @@ export const ImportPreview = z.object({
   fileName: z.string(),
   columns: z.array(z.string()),
   mapping: ImportMapping,
-  counts: z.object({ total: z.number().int(), ok: z.number().int(), errors: z.number().int(), duplicates: z.number().int() }),
+  counts: z.object({
+    total: z.number().int(), ok: z.number().int(), errors: z.number().int(), duplicates: z.number().int(),
+    updatable: z.number().int(),
+  }),
   rows: z.array(ImportRow),
   willCreate: z.object({ categories: z.array(z.string()), brands: z.array(z.string()), uoms: z.array(z.string()) }),
 });

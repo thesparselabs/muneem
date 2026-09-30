@@ -89,3 +89,6 @@ One branch `feat/stage-2-catalog`, **one PR** for all of Stage 2. Parts 2a–2e 
 - Import rows with errors are skipped and counted rather than blocking the commit; any exception still rolls back all.
 - The renderer has no DOM test setup, so the screens' logic (money parsing and display, form ↔ `ProductInput`, price
   rows) lives in `src/renderer/src/lib/` with node tests; the screens themselves were not clicked through.
+- A review pass (Part 2f) fixed pack-price MRP scaling, merged-row validation in the import preview, xlsx blank headers
+  and float formulas, the stale selling price on the product form, price date checks, catalog settings validation,
+  preview expiry, CSV line numbers, per-row list queries and barcode pack quantities on the form.

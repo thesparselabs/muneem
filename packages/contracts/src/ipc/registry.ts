@@ -31,7 +31,6 @@ const Empty = z.object({}).strict();
 const Ok = z.object({ ok: z.literal(true) });
 
 export const contract = {
-  // ---- auth (no session required) ----
   'auth.register': spec({
     input: z.object({ name: z.string().min(1).max(120), identifier: Identifier, password: z.string().min(8).max(200), otp: z.string().optional() }),
     output: z.object({ userId: Ulid }), permission: null, rateLimit: { perSec: 1 },
@@ -56,7 +55,6 @@ export const contract = {
   'auth.setPin': spec({ input: z.object({ pin: Pin }), output: Ok, permission: 'business.view', rateLimit: { perSec: 1 }, audit: true }),
   'auth.verifyPin': spec({ input: z.object({ pin: Pin }), output: Ok, permission: 'business.view', rateLimit: { perSec: 2 } }),
 
-  // ---- device / connectivity ----
   'device.getInfo': spec({ input: Empty, output: DeviceInfo, permission: null, rateLimit: { perSec: 10 } }),
   'app.getConnectivity': spec({
     input: Empty,
@@ -64,7 +62,6 @@ export const contract = {
     permission: null, rateLimit: { perSec: 10 },
   }),
 
-  // ---- business setup ----
   'business.get': spec({ input: Empty, output: Business.nullable(), permission: 'business.view', rateLimit: { perSec: 10 } }),
   'business.create': spec({ input: BusinessInput, output: Business, permission: null, rateLimit: { perSec: 1 }, audit: true }),
   'business.update': spec({ input: BusinessInput.partial().extend({ id: Ulid, version: z.number().int() }), output: Business, permission: 'business.manage', rateLimit: { perSec: 2 }, audit: true }),
@@ -74,7 +71,6 @@ export const contract = {
   'business.createTerminal': spec({ input: TerminalInput, output: Terminal, permission: 'business.manage', rateLimit: { perSec: 2 }, audit: true }),
   'business.selectTerminal': spec({ input: z.object({ terminalId: Ulid }), output: Session, permission: 'business.view', rateLimit: { perSec: 2 }, audit: true }),
 
-  // ---- settings ----
   'settings.get': spec({ input: z.object({ key: z.string().max(80) }), output: z.object({ value: z.unknown().nullable() }), permission: 'settings.view', rateLimit: { perSec: 20 } }),
   'settings.set': spec({ input: z.object({ key: z.string().max(80), value: z.unknown() }), output: Ok, permission: 'settings.manage', rateLimit: { perSec: 5 }, audit: true }),
   'settings.listSeries': spec({ input: Empty, output: z.array(DocSeries), permission: 'settings.view', rateLimit: { perSec: 10 } }),
@@ -83,7 +79,6 @@ export const contract = {
     output: DocSeries, permission: 'settings.manage', rateLimit: { perSec: 2 }, audit: true,
   }),
 
-  // ---- catalog (Stage 2) ----
   'products.search': spec({ input: ProductSearchInput, output: z.array(ProductHit), permission: 'products.view', rateLimit: { perSec: 30 } }),
   'products.lookupBarcode': spec({ input: z.object({ code: z.string().trim().min(1).max(48) }), output: ProductHit.nullable(), permission: 'products.view', rateLimit: { perSec: 30 } }),
   'products.list': spec({ input: ProductListInput, output: ProductPage, permission: 'products.view', rateLimit: { perSec: 10 } }),
@@ -107,10 +102,8 @@ export const contract = {
   'pricing.getItems': spec({ input: PriceItemsQuery, output: z.array(PriceListItem), permission: 'products.view', rateLimit: { perSec: 20 } }),
   'pricing.setItems': spec({ input: SetPriceItems, output: z.array(PriceListItem), permission: 'products.edit', rateLimit: { perSec: 5 }, audit: true }),
 
-  // ---- sync (status only in Stage 1; worker arrives in Stage 7) ----
   'sync.getStatus': spec({ input: Empty, output: SyncStatus, permission: null, rateLimit: { perSec: 10 } }),
 
-  // ---- diagnostics ----
   'diagnostics.getHealth': spec({ input: Empty, output: Health, permission: 'diagnostics.view', rateLimit: { perSec: 5 } }),
   'diagnostics.integrityCheck': spec({
     input: Empty,

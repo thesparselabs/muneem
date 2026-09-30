@@ -18,11 +18,6 @@ export function getBrand(db: Db, id: string): Brand | null {
   return r ? toBrand(r) : null;
 }
 
-export function findBrandByName(db: Db, businessId: string, name: string): Brand | null {
-  const r = db.prepare('SELECT * FROM brand WHERE business_id = ? AND name_norm = ? AND deleted_at IS NULL').get(businessId, normalizeName(name)) as BrandRow | undefined;
-  return r ? toBrand(r) : null;
-}
-
 export function createBrand(db: Db, businessId: string, input: { name: string }, actor: Actor): Brand {
   return withTransaction(db, () => {
     const id = newUlid();
