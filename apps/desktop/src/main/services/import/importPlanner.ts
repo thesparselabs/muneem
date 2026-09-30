@@ -1,6 +1,6 @@
 import { ProductInput, type ImportField, type ImportMapping, type Product } from '@muneem/contracts';
 import { normalizeName } from '@muneem/domain';
-import { productFieldErrors } from '@muneem/db-sqlite';
+import { productFieldErrors, rupees, unitPriceProblems, type LivePriceItem } from '@muneem/db-sqlite';
 import { mergeForUpdate } from './productMerge.js';
 import { parseRow, type RowDraft, type RowErrors } from './rowParser.js';
 import type { Table } from './tableReader.js';
@@ -12,6 +12,7 @@ export interface CatalogLookup {
   productBySku(sku: string): string | undefined;
   productByBarcode(code: string): string | undefined;
   product(id: string): Product | undefined;
+  livePrices(productId: string): LivePriceItem[];
 }
 
 // For a duplicate, `errors` lists why updating the existing product with this row would be refused.
@@ -49,19 +50,40 @@ function inputErrors(build: () => ProductInput, prefix = ''): RowErrors {
 
 const ruleErrors = (draft: RowDraft): RowErrors => inputErrors(() => toProductInput(draft, { baseUomId: PLACEHOLDER_ID }));
 
+function livePriceErrors(merged: ProductInput, prices: readonly LivePriceItem[]): RowErrors {
+  const [problem] = unitPriceProblems(merged, prices);
+  if (!problem) return {};
+  const item = prices[problem.index]!;
+  return problem.kind === 'no_conversion'
+    ? { uom: `can't update: ${item.priceListName} still has a price per ${item.uomCode}` }
+    : { mrp: `can't update: ${item.priceListName} has a ${item.uomCode} price of ${rupees(item.pricePaise)}, above the new MRP (${rupees(problem.ceilingPaise)} per ${item.uomCode})` };
+}
+
 // Categories or brands that do not exist yet cannot break a rule, so a placeholder id stands in for them.
-function updateErrors(existing: Product, draft: RowDraft): RowErrors {
+function updateErrors(existing: Product, draft: RowDraft, prices: readonly LivePriceItem[]): RowErrors {
   const refs = {
     baseUomId: existing.baseUomId,
     categoryId: draft.category ? PLACEHOLDER_ID : undefined,
     brandId: draft.brand ? PLACEHOLDER_ID : undefined,
   };
-  return inputErrors(() => mergeForUpdate(existing, draft, refs), "can't update: ");
+  const errors = inputErrors(() => mergeForUpdate(existing, draft, refs), "can't update: ");
+  if (Object.keys(errors).length > 0) return errors;
+  const replacedByFile = (p: LivePriceItem) =>
+    p.isDefaultList && p.uomId === existing.baseUomId && p.minQtyMilli === 0 && p.effectiveTo === undefined;
+  return livePriceErrors(mergeForUpdate(existing, draft, refs), prices.filter((p) => !replacedByFile(p)));
 }
 
 class SeenInFile {
   private readonly sku = new Map<string, number>();
   private readonly barcode = new Map<string, number>();
+  private readonly target = new Map<string, number>();
+
+  // Each row is checked against the product as it was before the import, so only one row may update a product.
+  claim(line: number, productId: string): number | undefined {
+    const first = this.target.get(productId);
+    if (first === undefined) this.target.set(productId, line);
+    return first;
+  }
 
   check(line: number, d: RowDraft, errors: RowErrors): void {
     if (d.sku) {
@@ -89,6 +111,9 @@ function existingProduct(d: RowDraft, lookup: CatalogLookup, errors: RowErrors):
   return existing;
 }
 
+const deletedOwnerCode = (d: RowDraft, lookup: CatalogLookup, productId: string): string =>
+  d.barcodes.find((code) => lookup.productByBarcode(code) === productId) ?? d.sku ?? '';
+
 export function planImport(table: Table, mapping: ImportMapping, lookup: CatalogLookup): ImportPlan {
   const seen = new SeenInFile();
   const create = { categories: new Map<string, string>(), brands: new Map<string, string>(), uoms: new Set<string>() };
@@ -103,7 +128,10 @@ export function planImport(table: Table, mapping: ImportMapping, lookup: Catalog
     if (draft.brand && !lookup.brandId(draft.brand)) create.brands.set(normalizeName(draft.brand), draft.brand);
     if (!existingProductId) return { line, status: 'ok', draft, errors };
     const existing = lookup.product(existingProductId);
-    return { line, status: 'duplicate', draft, errors: existing ? updateErrors(existing, draft) : {}, existingProductId };
+    if (!existing) return { line, status: 'error', draft, errors: { barcodes: `barcode ${deletedOwnerCode(draft, lookup, existingProductId)} belongs to a deleted product` } };
+    const first = seen.claim(line, existingProductId);
+    const rowErrors = first !== undefined ? { row: `updates the same product as row ${first}` } : updateErrors(existing, draft, lookup.livePrices(existingProductId));
+    return { line, status: 'duplicate', draft, errors: rowErrors, existingProductId };
   });
   return { rows, willCreate: { categories: [...create.categories.values()], brands: [...create.brands.values()], uoms: [...create.uoms] } };
 }

@@ -117,22 +117,48 @@ export function replacePriceItems(
   });
 }
 
+const isCurrentNoBreak = (i: PriceListItem, uomId: string, on: string) =>
+  i.uomId === uomId && i.minQtyMilli === 0 && i.effectiveFrom <= on && (i.effectiveTo === undefined || i.effectiveTo > on);
+
+// Closes today's no-break price for `uomId` at `on` (dropping one that starts today) and optionally opens a new one.
+function rollNoBreakPrice(
+  db: Db, businessId: string, priceListId: string, productId: string, uomId: string, on: string, actor: Actor, dependsOn: string,
+  opened: PriceItemInput | null,
+): void {
+  const items = getPriceItems(db, priceListId, productId);
+  const current = items.filter((i) => isCurrentNoBreak(i, uomId, on));
+  if (current.length === 0 && !opened) return;
+  const kept = items.filter((i) => !isCurrentNoBreak(i, uomId, on)).map(toItemInput);
+  const closed = current.filter((i) => i.effectiveFrom < on).map((i) => ({ ...toItemInput(i), effectiveTo: on }));
+  replacePriceItems(db, businessId, priceListId, productId, [...kept, ...closed, ...(opened ? [opened] : [])], actor, dependsOn);
+}
+
 // Effective-dated change of the base-unit, no-break price: close today's predecessor and open a new row from `on`.
 export function setBasePrice(
   db: Db, businessId: string, priceListId: string, productId: string,
   price: { uomId: string; pricePaise: number; isInclusive: boolean }, on: string, actor: Actor, dependsOn: string,
 ): void {
-  const items = getPriceItems(db, priceListId, productId);
-  const isBase = (i: PriceListItem) =>
-    i.uomId === price.uomId && i.minQtyMilli === 0 && i.effectiveFrom <= on && (i.effectiveTo === undefined || i.effectiveTo > on);
-  const current = items.filter(isBase);
+  const current = getPriceItems(db, priceListId, productId).filter((i) => isCurrentNoBreak(i, price.uomId, on));
   if (current.length === 1 && current[0]!.pricePaise === price.pricePaise && current[0]!.isInclusive === price.isInclusive) return;
-  const kept = items.filter((i) => !isBase(i));
-  const closed = current
-    .filter((i) => i.effectiveFrom < on)
-    .map((i) => ({ ...toItemInput(i), effectiveTo: on }));
-  const opened = { uomId: price.uomId, minQtyMilli: 0, pricePaise: price.pricePaise, isInclusive: price.isInclusive, effectiveFrom: on };
-  replacePriceItems(db, businessId, priceListId, productId, [...kept.map(toItemInput), ...closed, opened], actor, dependsOn);
+  rollNoBreakPrice(db, businessId, priceListId, productId, price.uomId, on, actor, dependsOn,
+    { uomId: price.uomId, minQtyMilli: 0, pricePaise: price.pricePaise, isInclusive: price.isInclusive, effectiveFrom: on });
+}
+
+export function closeNoBreakPrice(
+  db: Db, businessId: string, priceListId: string, productId: string, uomId: string, on: string, actor: Actor, dependsOn: string,
+): void {
+  rollNoBreakPrice(db, businessId, priceListId, productId, uomId, on, actor, dependsOn, null);
+}
+
+export interface LivePriceItem extends PriceListItem { priceListName: string; isDefaultList: boolean; uomCode: string }
+
+// Every price that is in effect on `on` or scheduled after it, in every list.
+export function livePriceItems(db: Db, productId: string, on: string): LivePriceItem[] {
+  return (stmt(db, `SELECT i.*, l.name AS price_list_name, l.is_default, u.code AS uom_code
+    FROM price_list_item i JOIN price_list l ON l.id = i.price_list_id JOIN uom u ON u.id = i.uom_id
+    WHERE i.product_id = ? AND i.deleted_at IS NULL AND l.deleted_at IS NULL AND (i.effective_to IS NULL OR i.effective_to > ?)
+    ORDER BY l.name, i.uom_id, i.min_qty_milli, i.effective_from`).all(productId, on) as (ItemRow & { price_list_name: string; is_default: number; uom_code: string })[])
+    .map((r) => ({ ...toItem(r), priceListName: r.price_list_name, isDefaultList: r.is_default === 1, uomCode: r.uom_code }));
 }
 
 export function currentBasePrice(db: Db, priceListId: string, productId: string, uomId: string, on: string): PriceListItem | null {

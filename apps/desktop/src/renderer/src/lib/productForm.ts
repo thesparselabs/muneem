@@ -5,8 +5,9 @@ import { paiseToText, parseOptional, scaledToText } from './money.js';
 
 export const GST_RATES_BP = [0, 25, 300, 500, 1200, 1800, 2800, 4000] as const;
 
-// packQtyMilli and symbology are not edited on screen but must survive a save.
-export interface BarcodeRow { code: string; uomId: string; isPrimary: boolean; packQtyMilli?: number; symbology?: Symbology }
+// The screen does not edit symbology or pack quantity; they are sent back only while the row matches what was saved.
+export interface SavedBarcode { code: string; uomId: string; packQtyMilli: number; symbology: Symbology }
+export interface BarcodeRow { code: string; uomId: string; isPrimary: boolean; saved?: SavedBarcode }
 export interface ConversionRow { fromUomId: string; factor: string }
 
 export interface ProductForm {
@@ -27,7 +28,10 @@ export function productToForm(p: Product): ProductForm {
     baseUomId: p.baseUomId, taxTreatment: p.taxTreatment, gstRateBp: p.gstRateBp, priceIsInclusive: p.priceIsInclusive,
     mrp: paiseToText(p.mrpPaise), sellingPrice: paiseToText(p.sellingPricePaise), purchasePrice: paiseToText(p.purchasePricePaise),
     reorderLevel: scaledToText(p.reorderLevelMilli, 3),
-    barcodes: p.barcodes.map((b) => ({ code: b.code, uomId: b.uomId ?? '', isPrimary: b.isPrimary, packQtyMilli: b.packQtyMilli, symbology: b.symbology })),
+    barcodes: p.barcodes.map((b) => {
+      const uomId = b.uomId ?? '';
+      return { code: b.code, uomId, isPrimary: b.isPrimary, saved: { code: b.code, uomId, packQtyMilli: b.packQtyMilli, symbology: b.symbology } };
+    }),
     conversions: p.conversions.map((c) => ({ fromUomId: c.fromUomId, factor: scaledToText(c.factorMilli, 3) })),
   };
 }
@@ -52,11 +56,13 @@ export function formToInput(f: ProductForm, baseline?: ProductForm): FormResult 
     mrpPaise: amount('mrpPaise', f.mrp, 2),
     ...(!(baseline && f.sellingPrice === baseline.sellingPrice) && { sellingPricePaise: amount('sellingPricePaise', f.sellingPrice, 2) }),
     purchasePricePaise: amount('purchasePricePaise', f.purchasePrice, 2), reorderLevelMilli: amount('reorderLevelMilli', f.reorderLevel, 3),
-    barcodes: f.barcodes.filter((b) => b.code.trim()).map((b) => ({
-      code: b.code.trim(), uomId: b.uomId || null, isPrimary: b.isPrimary,
-      ...(b.packQtyMilli !== undefined && { packQtyMilli: b.packQtyMilli }),
-      ...(b.symbology !== undefined && b.code.trim() === b.code && { symbology: b.symbology }),
-    })),
+    barcodes: f.barcodes.filter((b) => b.code.trim()).map((b) => {
+      const untouched = b.saved && b.saved.code === b.code.trim() && b.saved.uomId === b.uomId;
+      return {
+        code: b.code.trim(), uomId: b.uomId || null, isPrimary: b.isPrimary,
+        ...(untouched && { packQtyMilli: b.saved!.packQtyMilli, symbology: b.saved!.symbology }),
+      };
+    }),
     conversions: f.conversions.filter((c) => c.fromUomId).map((c, i) => ({ fromUomId: c.fromUomId, factorMilli: amount(`conversions.${i}.factorMilli`, c.factor, 3) })),
   };
   const parsed = ProductInput.safeParse(raw);

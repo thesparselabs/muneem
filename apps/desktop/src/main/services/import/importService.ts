@@ -1,5 +1,5 @@
-import type { ImportCommitInput, ImportPreview, ImportPreviewInput, ImportRow, ImportSummary } from '@muneem/contracts';
-import { createProduct, getMeta, getProduct, setMeta, updateProduct, withTransaction } from '@muneem/db-sqlite';
+import { AppError, type ImportCommitInput, type ImportPreview, type ImportPreviewInput, type ImportRow, type ImportSummary } from '@muneem/contracts';
+import { createProduct, getMeta, getProduct, setMeta, updateProduct, withTransaction, type Db } from '@muneem/db-sqlite';
 import type { CatalogContext } from '../catalogContext.js';
 import { DbCatalogLookup } from './catalogLookup.js';
 import { suggestMapping } from './columnMapping.js';
@@ -22,6 +22,17 @@ function previewRows(plan: ImportPlan): ImportRow[] {
   const problems = plan.rows.filter((r) => r.status !== 'ok').slice(0, MAX_PROBLEM_ROWS);
   const sample = plan.rows.filter((r) => r.status === 'ok').slice(0, SAMPLE_OK_ROWS);
   return [...problems, ...sample].map(toImportRow);
+}
+
+// Each row runs in a savepoint: if a rule still refuses it at commit time, only that row is undone and reported.
+function applyRow(db: Db, write: () => void): string | null {
+  try {
+    db.transaction(write)();
+    return null;
+  } catch (e) {
+    if (!(e instanceof AppError)) throw e;
+    return e.fields ? Object.values(e.fields).join('; ') : e.message;
+  }
 }
 
 export class ImportService {
@@ -56,6 +67,7 @@ export class ImportService {
       const lookup = new DbCatalogLookup(db, businessId, on);
       const plan = planImport(session.table, session.mapping, lookup);
       const result = { created: 0, updated: 0, skippedDuplicates: 0, skippedErrors: 0 };
+      const skippedAtCommit: ImportSummary['skippedAtCommit'] = [];
       for (const row of plan.rows) {
         if (row.status === 'error') { result.skippedErrors++; continue; }
         if (row.status === 'duplicate' && input.duplicatePolicy === 'skip') { result.skippedDuplicates++; continue; }
@@ -65,16 +77,22 @@ export class ImportService {
           categoryId: lookup.ensureCategory(row.draft.category, actor),
           brandId: lookup.ensureBrand(row.draft.brand, actor),
         };
-        if (row.existingProductId) {
-          updateProduct(db, mergeForUpdate(getProduct(db, row.existingProductId, on)!, row.draft, refs), actor, on);
-          result.updated++;
-        } else {
-          createProduct(db, businessId, toProductInput(row.draft, refs), actor, on);
-          result.created++;
-        }
+        const existingId = row.existingProductId;
+        const failure = applyRow(db, () => {
+          if (!existingId) { createProduct(db, businessId, toProductInput(row.draft, refs), actor, on); return; }
+          const existing = getProduct(db, existingId, on);
+          if (!existing) throw new AppError('NOT_FOUND', 'the product no longer exists');
+          updateProduct(db, mergeForUpdate(existing, row.draft, refs), actor, on);
+        });
+        if (failure) {
+          result.skippedErrors++;
+          skippedAtCommit.push({ line: row.line, reason: failure });
+        } else if (existingId) result.updated++;
+        else result.created++;
       }
       const s: ImportSummary = {
         ...result, categoriesCreated: lookup.created.categories, brandsCreated: lookup.created.brands, uomsCreated: lookup.created.uoms,
+        skippedAtCommit,
       };
       setMeta(db, doneKey, JSON.stringify(s));
       return s;

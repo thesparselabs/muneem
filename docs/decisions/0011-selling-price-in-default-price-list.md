@@ -12,6 +12,10 @@ price lists would give two sources for the same number.
   writes a `price_list_item` in that list, in the same transaction as the product.
 - `product.mrp_paise` and `product.purchase_price_paise` stay on the product.
 - An inclusive price above MRP is rejected. An exclusive price is not checked against MRP, since that needs the tax.
+  The rule covers **every** current or future price in every list, with a pack's ceiling = base-unit MRP × pack size,
+  and is enforced in `@muneem/db-sqlite` after each product update, so it holds for the form, the API and imports.
+- An update that does not send a selling price keeps the stored one. If the base unit or the "prices include GST" flag
+  changed, the stored price is re-dated under the new values and the old base-unit price is closed.
 - Price choice is a pure function, `resolvePrice` in `@muneem/domain`: highest quantity break at or below the
   quantity, effective on the date, newest first; a missing unit price falls back to the base-unit price times the
   conversion factor.

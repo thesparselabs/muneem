@@ -60,6 +60,21 @@ All notable changes, newest first. Each entry records **what** changed and **why
   (catalog section and invariants), LLD §10.2 (the `products`/`catalog`/`pricing` surface as built), and the plan's
   "as built" notes.
 
+### Fixed — Stage 2 second review
+- **MRP could be lowered below the selling price**, and **changing "Prices include GST" or the base unit left the
+  stored price behind** — both came from the form no longer sending an unchanged price. The rules now live in the
+  database layer: an update without a price keeps the stored one (re-dated under the new unit and tax flag), a base-unit
+  change closes the old base-unit price, and after every update each current or future price in every list must be
+  within MRP for its unit. This also covers API callers and imports.
+- **Editing a barcode could make the product unsaveable** (a recoded EAN kept its old symbology; a case barcode moved
+  to PCS kept its pack of 12). The form now sends symbology and pack quantity only for rows the user did not touch.
+- **An import could still fail at commit**: two rows updating the same product, a pack price in another list above the
+  file's new MRP, or a barcode belonging to a deleted product. The preview now flags all three, and as a last guard
+  each row is applied in a savepoint, so a row refused at commit is skipped and listed (`skippedAtCommit`) instead of
+  rolling back the whole import.
+- **CSV rows of only commas shifted the reported line numbers**, and **16-digit numeric codes in .xlsx were rounded**.
+  Every physical CSV row is now counted, and only non-integers are rounded.
+
 ### Fixed — Stage 2 review
 - **Pack prices were checked against the single-piece MRP.** A BOX of 24 with MRP ₹20 per piece could not be priced
   at ₹450. The ceiling is now MRP × the unit's conversion, and a price for a unit with no conversion on the product is

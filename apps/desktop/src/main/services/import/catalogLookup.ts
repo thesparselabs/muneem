@@ -2,7 +2,7 @@ import type { Product } from '@muneem/contracts';
 import { normalizeName } from '@muneem/domain';
 import {
   createBrand, createCategory, createUom, findProductIdByBarcode, findProductIdBySku, getProduct, listBrands, listCategories, listUoms,
-  type Actor, type Db,
+  livePriceItems, type Actor, type Db, type LivePriceItem,
 } from '@muneem/db-sqlite';
 import type { CatalogLookup } from './importPlanner.js';
 
@@ -24,6 +24,7 @@ export class DbCatalogLookup implements CatalogLookup {
   productBySku(sku: string) { return findProductIdBySku(this.db, this.businessId, sku) ?? undefined; }
   productByBarcode(code: string) { return findProductIdByBarcode(this.db, this.businessId, code) ?? undefined; }
   product(id: string): Product | undefined { return getProduct(this.db, id, this.on) ?? undefined; }
+  livePrices(productId: string): LivePriceItem[] { return livePriceItems(this.db, productId, this.on); }
 
   ensureUom(code: string, actor: Actor): string {
     return this.uomId(code) ?? this.remember(this.uoms, code, createUom(this.db, this.businessId, { code, name: code, decimals: 0 }, actor).id, 'uoms');

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { AppError, ProductInput } from '@muneem/contracts';
 import {
-  createBrand, createBusiness, createCategory, createProduct, ensureCatalogDefaults, findUomByCode, getDefaultPriceList,
+  createBrand, createBusiness, createCategory, createPriceList, createProduct, ensureCatalogDefaults, findUomByCode, getDefaultPriceList,
   getPriceItems, getProduct, hitByBarcode, hitBySku, hitsByNamePrefix, hitsByText, listProductHits, listUoms,
   replacePriceItems, setProductActive, updateBrand, updateCategory, updateProduct, verifyAuditChain, type Db,
 } from '../src/index.js';
@@ -93,6 +93,57 @@ describe('product writes', () => {
     ], ACTOR);
     expect(getPriceItems(db, list.id, p.id)).toHaveLength(2);
     expect(hitBySku(db, businessId, 'PG100', TODAY)!.pricePaise).toBe(950);
+  });
+});
+
+describe('price rules on update', () => {
+  const withoutPrice = (input: ProductInput): ProductInput => {
+    const copy = { ...input };
+    delete copy.sellingPricePaise;
+    return copy;
+  };
+
+  it('refuses lowering MRP below the stored selling price when no price is sent', async () => {
+    const { db, businessId, pcs } = await setup();
+    const p = createProduct(db, businessId, product(pcs, { mrpPaise: 12_000, sellingPricePaise: 10_000 }), ACTOR, TODAY);
+    const lower = withoutPrice(product(pcs, { mrpPaise: 9000 }));
+    expect(() => updateProduct(db, { ...lower, id: p.id, version: 1 }, ACTOR, TODAY)).toThrow(AppError);
+    expect(getProduct(db, p.id, TODAY)).toMatchObject({ mrpPaise: 12_000, version: 1 });
+  });
+
+  it('refuses an MRP below a pack price in another list', async () => {
+    const { db, businessId, pcs, box } = await setup();
+    const p = createProduct(db, businessId, product(pcs, { mrpPaise: 2000, sellingPricePaise: 1900, conversions: [{ fromUomId: box, factorMilli: 24_000 }] }), ACTOR, TODAY);
+    const wholesale = createPriceList(db, businessId, { name: 'Wholesale', kind: 'wholesale' }, ACTOR);
+    replacePriceItems(db, businessId, wholesale.id, p.id, [{ uomId: box, minQtyMilli: 0, pricePaise: 45_000, isInclusive: true, effectiveFrom: TODAY }], ACTOR);
+    const next = product(pcs, { mrpPaise: 1500, sellingPricePaise: 1400, conversions: [{ fromUomId: box, factorMilli: 24_000 }] });
+    try {
+      updateProduct(db, { ...next, id: p.id, version: 1 }, ACTOR, TODAY);
+      expect.unreachable();
+    } catch (e) {
+      expect((e as AppError).fields).toEqual({ mrpPaise: 'Wholesale has a BOX price of ₹450.00, above the new MRP (₹360.00 per BOX)' });
+    }
+  });
+
+  it('carries the stored price over when the tax flag or base unit changes', async () => {
+    const { db, businessId, pcs } = await setup();
+    const kg = findUomByCode(db, businessId, 'KG')!.id;
+    const p = createProduct(db, businessId, product(pcs), ACTOR, TODAY);
+    const exclusive = updateProduct(db, { ...withoutPrice(product(pcs, { priceIsInclusive: false })), id: p.id, version: 1 }, ACTOR, TODAY);
+    const list = getDefaultPriceList(db, businessId)!;
+    expect(getPriceItems(db, list.id, p.id).filter((i) => !i.effectiveTo)).toEqual([expect.objectContaining({ pricePaise: 950, isInclusive: false })]);
+    const byKg = updateProduct(db, { ...withoutPrice(product(kg, { priceIsInclusive: false })), id: p.id, version: exclusive.version }, ACTOR, TODAY);
+    expect(byKg.sellingPricePaise).toBe(950);
+    expect(hitBySku(db, businessId, 'PG100', TODAY)).toMatchObject({ uomCode: 'KG', pricePaise: 950, priceIsInclusive: false });
+  });
+
+  it('an update without a price does not overwrite a newer price', async () => {
+    const { db, businessId, pcs } = await setup();
+    const p = createProduct(db, businessId, product(pcs), ACTOR, TODAY);
+    const list = getDefaultPriceList(db, businessId)!;
+    replacePriceItems(db, businessId, list.id, p.id, [{ uomId: pcs, minQtyMilli: 0, pricePaise: 900, isInclusive: true, effectiveFrom: TODAY }], ACTOR);
+    const u = updateProduct(db, { ...withoutPrice(product(pcs, { name: 'Renamed' })), id: p.id, version: 1 }, ACTOR, TODAY);
+    expect(u.sellingPricePaise).toBe(900);
   });
 });
 

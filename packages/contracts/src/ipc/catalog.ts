@@ -221,5 +221,6 @@ export const ImportSummary = z.object({
   categoriesCreated: z.number().int(),
   brandsCreated: z.number().int(),
   uomsCreated: z.number().int(),
+  skippedAtCommit: z.array(z.object({ line: z.number().int(), reason: z.string() })),
 });
 export type ImportSummary = z.infer<typeof ImportSummary>;

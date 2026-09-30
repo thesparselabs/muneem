@@ -5,9 +5,9 @@ import { stmt } from '../statements.js';
 import { nowIso, withTransaction } from '../uow.js';
 import type { Actor } from './business.js';
 import { queueChild, recordChange, syncColumns } from './catalogWrite.js';
-import { currentBasePrice, getDefaultPriceList, setBasePrice } from './priceList.js';
+import { closeNoBreakPrice, currentBasePrice, getDefaultPriceList, livePriceItems, setBasePrice } from './priceList.js';
 import { indexProduct } from './productSearchIndex.js';
-import { productFieldErrors, resolvedSymbology } from './productRules.js';
+import { productFieldErrors, resolvedSymbology, rupees, unitPriceProblems } from './productRules.js';
 
 type ProductRow = {
   id: string; business_id: string; name: string; sku: string | null; hsn_code: string | null; category_id: string | null;
@@ -183,12 +183,25 @@ function syncConversions(db: Db, before: Product, input: ProductInput, actor: Ac
   }
 }
 
-export function updateProduct(db: Db, input: ProductUpdate, actor: Actor, on: string): Product {
-  assertValid(input);
+function assertLivePricesWithinMrp(db: Db, product: Product, on: string): void {
+  const items = livePriceItems(db, product.id, on);
+  const [problem] = unitPriceProblems(product, items);
+  if (!problem) return;
+  const item = items[problem.index]!;
+  const fields = problem.kind === 'no_conversion'
+    ? { conversions: `${item.priceListName} still has a price per ${item.uomCode}; keep a conversion for ${item.uomCode} or remove that price` }
+    : { mrpPaise: `${item.priceListName} has a ${item.uomCode} price of ${rupees(item.pricePaise)}, above the new MRP (${rupees(problem.ceilingPaise)} per ${item.uomCode})` };
+  throw new AppError('VALIDATION_FAILED', 'Product has invalid fields', fields);
+}
+
+// A save without a selling price keeps the stored one, re-dated under the new base unit and tax flag if those changed.
+export function updateProduct(db: Db, update: ProductUpdate, actor: Actor, on: string): Product {
   return withTransaction(db, () => {
-    const before = getProduct(db, input.id, on);
+    const before = getProduct(db, update.id, on);
     if (!before) throw new Error('NOT_FOUND');
-    if (before.version !== input.version) throw new Error('VERSION_CONFLICT');
+    if (before.version !== update.version) throw new Error('VERSION_CONFLICT');
+    const input: ProductUpdate = { ...update, ...(update.sellingPricePaise === undefined && before.sellingPricePaise !== undefined && { sellingPricePaise: before.sellingPricePaise }) };
+    assertValid(input);
     assertBarcodesFree(db, before.businessId, input, before.id);
     stmt(db, `UPDATE product SET name=@name, name_norm=@name_norm, sku=@sku, hsn_code=@hsn_code, category_id=@category_id, brand_id=@brand_id,
         base_uom_id=@base_uom_id, tax_treatment=@tax_treatment, gst_rate_bp=@gst_rate_bp, cess_rate_bp=@cess_rate_bp,
@@ -202,9 +215,13 @@ export function updateProduct(db: Db, input: ProductUpdate, actor: Actor, on: st
     });
     syncBarcodes(db, before, input, actor, root);
     syncConversions(db, before, input, actor, root);
+    const list = getDefaultPriceList(db, before.businessId);
+    if (list && before.baseUomId !== input.baseUomId) closeNoBreakPrice(db, before.businessId, list.id, before.id, before.baseUomId, on, actor, root);
     applySellingPrice(db, before.businessId, before.id, input, on, actor, root);
     indexProduct(db, before.id);
-    return getProduct(db, before.id, on)!;
+    const after = getProduct(db, before.id, on)!;
+    assertLivePricesWithinMrp(db, after, on);
+    return after;
   });
 }
 

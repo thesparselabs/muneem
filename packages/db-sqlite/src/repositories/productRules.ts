@@ -1,5 +1,5 @@
 import type { ProductInput } from '@muneem/contracts';
-import { detectSymbology, exceedsMrp, isValidBarcode } from '@muneem/domain';
+import { detectSymbology, exceedsMrp, isValidBarcode, mrpForUnit } from '@muneem/domain';
 
 export type FieldErrors = Record<string, string>;
 
@@ -26,3 +26,23 @@ export function productFieldErrors(input: ProductInput): FieldErrors {
 export function resolvedSymbology(b: { code: string; symbology?: ProductInput['barcodes'][number]['symbology'] }) {
   return b.symbology ?? detectSymbology(b.code);
 }
+
+export interface PricedUnits { mrpPaise?: number | undefined; baseUomId: string; conversions: readonly { fromUomId: string; factorMilli: number }[] }
+export interface UnitPrice { uomId: string; pricePaise: number; isInclusive: boolean }
+export type UnitPriceProblem =
+  | { index: number; kind: 'no_conversion' }
+  | { index: number; kind: 'above_mrp'; ceilingPaise: number };
+
+// Selling above MRP is illegal; a pack's ceiling is the base-unit MRP times the pack size.
+export function unitPriceProblems(p: PricedUnits, items: readonly UnitPrice[]): UnitPriceProblem[] {
+  const factors = new Map<string, number>([[p.baseUomId, 1000], ...p.conversions.map((c) => [c.fromUomId, c.factorMilli] as [string, number])]);
+  return items.flatMap((item, index): UnitPriceProblem[] => {
+    const factor = factors.get(item.uomId);
+    if (factor === undefined) return [{ index, kind: 'no_conversion' }];
+    if (p.mrpPaise === undefined) return [];
+    const ceilingPaise = mrpForUnit(p.mrpPaise, factor);
+    return exceedsMrp(item.pricePaise, item.isInclusive, ceilingPaise) ? [{ index, kind: 'above_mrp', ceilingPaise }] : [];
+  });
+}
+
+export const rupees = (paise: number): string => `₹${Math.trunc(paise / 100)}.${String(paise % 100).padStart(2, '0')}`;

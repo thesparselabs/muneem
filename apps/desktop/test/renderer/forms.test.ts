@@ -83,6 +83,14 @@ describe('saving an existing product', () => {
     expect(rebased).toMatchObject({ sellingPrice: '9.00', mrp: '11.00' });
   });
 
+  it('drops the stored symbology and pack quantity once a barcode row is edited', () => {
+    const form = productToForm(saved);
+    const recoded = formToInput({ ...form, barcodes: [{ ...form.barcodes[0]!, code: 'ABC123' }] });
+    expect(recoded.ok && recoded.input.barcodes).toEqual([{ code: 'ABC123', uomId: BOX, packQtyMilli: 1000, isPrimary: true }]);
+    const moved = formToInput({ ...form, barcodes: [{ ...form.barcodes[0]!, uomId: '' }] });
+    expect(moved.ok && moved.input.barcodes).toEqual([{ code: 'CASE24', uomId: null, packQtyMilli: 1000, isPrimary: true }]);
+  });
+
   it('keeps a barcode pack quantity and symbology through the form', () => {
     const r = formToInput(productToForm(saved));
     expect(r.ok && r.input.barcodes).toEqual([{ code: 'CASE24', symbology: 'CODE128', uomId: BOX, packQtyMilli: 2000, isPrimary: true }]);

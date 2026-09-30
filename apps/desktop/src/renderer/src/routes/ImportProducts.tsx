@@ -154,6 +154,11 @@ function Summary({ summary }: { summary: ImportSummary }) {
       <h2 className="font-semibold">Import finished</h2>
       <p className="text-sm">{summary.created} products added, {summary.updated} updated, {summary.skippedDuplicates} existing left unchanged, {summary.skippedErrors} rows skipped because of errors.</p>
       <p className="text-sm text-slate-600">Also created {summary.categoriesCreated} categories, {summary.brandsCreated} brands and {summary.uomsCreated} units.</p>
+      {summary.skippedAtCommit.length > 0 && (
+        <ul className="text-sm text-amber-800 list-disc pl-5">
+          {summary.skippedAtCommit.map((s) => <li key={s.line}>Row {s.line}: {s.reason}</li>)}
+        </ul>
+      )}
       <Link to="/products" className="btn-primary">See products</Link>
     </div>
   );

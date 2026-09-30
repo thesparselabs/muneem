@@ -39,7 +39,7 @@ describe('product import', () => {
     expect(p.willCreate).toEqual({ categories: ['Biscuits', 'Staples', 'Beverages'], brands: ['Parle', 'Tata', 'Wagh Bakri'], uoms: [] });
 
     const s = await commit(p.importId);
-    expect(s).toEqual({ created: 4, updated: 0, skippedDuplicates: 0, skippedErrors: 0, categoriesCreated: 3, brandsCreated: 3, uomsCreated: 0 });
+    expect(s).toEqual({ created: 4, updated: 0, skippedDuplicates: 0, skippedErrors: 0, categoriesCreated: 3, brandsCreated: 3, uomsCreated: 0, skippedAtCommit: [] });
     expect(await data<ProductHit>('products.lookupBarcode', { code: 'TS1-LOOSE' })).toMatchObject({ name: 'Tata Salt 1kg', pricePaise: 2700, mrpPaise: 2800, gstRateBp: 0 });
     expect(await data<ProductHit[]>('products.search', { query: 'toor' })).toEqual([expect.objectContaining({ uomCode: 'KG', pricePaise: 14_000 })]);
     expect(await data<ProductHit[]>('products.search', { query: 'चाय' })).toEqual([expect.objectContaining({ brandName: 'Wagh Bakri' })]);
@@ -48,8 +48,9 @@ describe('product import', () => {
   });
 
   it('numbers CSV rows by their line in the file, across blank lines and multi-line cells', async () => {
-    const csv = 'Name,SKU,Price\n\nGood,G1,10\n"Two\nLines",T1,abc\n\n\n,N1,5\n';
+    const csv = 'Name,SKU,Price\n\nGood,G1,10\n"Two\nLines",T1,abc\n,,\n  \n,N1,5\n';
     const p = await preview('lines.csv', csv);
+    expect(p.counts.total).toBe(3);
     expect(p.rows.filter((r) => r.status === 'error').map((r) => r.line)).toEqual([4, 8]);
     expect(p.rows.find((r) => r.status === 'ok')?.line).toBe(3);
   });
@@ -96,6 +97,36 @@ describe('product import', () => {
     expect(await data<ProductHit>('products.lookupBarcode', { code: '8901030865275' })).toMatchObject({ mrpPaise: 1000 });
   });
 
+  it('refuses a second row that updates the same product, so the commit cannot fail', async () => {
+    await commit((await preview('good.csv', fixture('good.csv'))).importId);
+    const csv = ['Name,SKU,Barcode,MRP,Price', 'Parle-G A,PG100,,20,19', 'Parle-G B,,8901030865275,15,'].join('\n');
+    const p = await preview('twice.csv', csv);
+    expect(p.rows.find((r) => r.line === 3)).toMatchObject({ status: 'duplicate', errors: { row: 'updates the same product as row 2' } });
+    expect(await commit(p.importId, 'update')).toMatchObject({ updated: 1, skippedErrors: 1 });
+    expect(await data<ProductHit>('products.lookupBarcode', { code: '8901030865275' })).toMatchObject({ name: 'Parle-G A', mrpPaise: 2000, pricePaise: 1900 });
+  });
+
+  it('checks an update against pack prices in other lists', async () => {
+    await commit((await preview('good.csv', fixture('good.csv'))).importId);
+    const uoms = await data<{ id: string; code: string }[]>('catalog.listUoms');
+    const box = uoms.find((u) => u.code === 'BOX')!.id;
+    const hit = await data<ProductHit>('products.lookupBarcode', { code: '8901030865275' });
+    const full = await data<Record<string, unknown>>('products.get', { id: hit.productId });
+    await data('products.update', { ...full, conversions: [{ fromUomId: box, factorMilli: 24_000 }] });
+    const wholesale = await data<{ id: string }>('pricing.createList', { name: 'Wholesale', kind: 'wholesale' });
+    await data('pricing.setItems', { priceListId: wholesale.id, productId: hit.productId, items: [{ uomId: box, pricePaise: 23_000, effectiveFrom: '2026-01-01' }] });
+    const p = await preview('mrp.csv', ['SKU,Name,MRP', 'PG100,Parle-G Biscuit 100g,9.50'].join('\n'));
+    expect(p.rows[0]).toMatchObject({ status: 'duplicate', errors: { mrp: "can't update: Wholesale has a BOX price of ₹230.00, above the new MRP (₹228.00 per BOX)" } });
+  });
+
+  it('reports a row whose barcode belongs to a deleted product instead of crashing', async () => {
+    await commit((await preview('good.csv', fixture('good.csv'))).importId);
+    db.prepare("UPDATE product SET deleted_at = '2026-09-30T00:00:00.000Z' WHERE sku = 'TS1'").run();
+    const p = await preview('deleted.csv', ['Name,SKU,Barcode', 'Salt Again,SALT2,TS1-LOOSE', 'Fresh,FR9,FR9-CODE'].join('\n'));
+    expect(p.rows.find((r) => r.line === 2)).toMatchObject({ status: 'error', errors: { barcodes: 'barcode TS1-LOOSE belongs to a deleted product' } });
+    expect(await commit(p.importId, 'update')).toMatchObject({ created: 1, skippedErrors: 1 });
+  });
+
   it('reads the same data from an XLSX workbook', async () => {
     const wb = new ExcelJS.Workbook();
     const sheet = wb.addWorksheet('Products');
@@ -119,6 +150,21 @@ describe('product import', () => {
     expect(p.counts).toMatchObject({ ok: 1, errors: 0 });
     await commit(p.importId);
     expect(await data<ProductHit[]>('products.search', { query: 'NS1' })).toEqual([expect.objectContaining({ pricePaise: 30 })]);
+  });
+
+  it('reads a CSV saved with a byte-order mark', async () => {
+    const p = await preview('bom.csv', '\uFEFFName,SKU\nBom Soap,BOM1\n');
+    expect(p.mapping).toMatchObject({ name: 0, sku: 1 });
+    expect(p.counts).toMatchObject({ ok: 1 });
+  });
+
+  it('keeps every digit of 16-digit numeric codes in an xlsx', async () => {
+    const wb = new ExcelJS.Workbook();
+    const sheet = wb.addWorksheet('Products');
+    sheet.addRow(['Name', 'SKU', 'Barcode']);
+    sheet.addRow(['Long Codes', 1234567890123456, 8901234567890123]);
+    await commit((await preview('long.xlsx', Buffer.from(await wb.xlsx.writeBuffer()))).importId);
+    expect(await data<ProductHit>('products.lookupBarcode', { code: '8901234567890123' })).toMatchObject({ sku: '1234567890123456' });
   });
 
   it('lets the user change the column mapping without sending the file again', async () => {

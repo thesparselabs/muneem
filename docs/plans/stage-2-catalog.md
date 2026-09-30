@@ -92,3 +92,7 @@ One branch `feat/stage-2-catalog`, **one PR** for all of Stage 2. Parts 2a–2e 
 - A review pass (Part 2f) fixed pack-price MRP scaling, merged-row validation in the import preview, xlsx blank headers
   and float formulas, the stale selling price on the product form, price date checks, catalog settings validation,
   preview expiry, CSV line numbers, per-row list queries and barcode pack quantities on the form.
+- A second review pass (Part 2g) moved the price-vs-MRP rule into the database layer for every live price, carried the
+  stored price through updates that omit it, sent barcode details only for untouched rows, closed the remaining
+  import-commit failures (same product twice, other-list pack prices, deleted owners; per-row savepoints), and fixed
+  comma-only CSV rows and 16-digit xlsx codes.

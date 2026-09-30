@@ -25,7 +25,12 @@ file path chosen by the renderer.
 
 - For a row that matches an existing product, the preview validates the **merged** product (existing values plus the
   file's columns), not just the file row. Rows that would break a rule are shown as "can't update" and skipped by an
-  update commit, so a preview that looks clean cannot fail at commit time.
+  update commit, so a preview that looks clean cannot fail at commit time. The merged product is also checked against
+  pack prices in other lists. Only one row may update a given product (each is checked against the product as it was
+  before the import), and a row whose barcode belongs to a deleted product is an error.
+- As a last guard, each row is applied in a savepoint: a row that a rule still refuses at commit is undone alone and
+  reported in `skippedAtCommit`, and the rest of the import stands. Database errors other than rule violations still
+  roll back everything.
 
 ## Consequences
 - A 5,000-row file commits in about 3 s on the dev machine. The test fails above 10 s.
