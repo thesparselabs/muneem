@@ -169,7 +169,18 @@ CREATE TABLE price_list_item (
 );
 ```
 
-Product search uses an FTS5 external-content table over `product(name, sku)` for token search, with the plain `name_norm` index serving prefix search — FTS5 alone is poor at short prefixes, and prefix is what cashiers type.
+```sql
+CREATE TABLE category (id TEXT PRIMARY KEY, business_id TEXT NOT NULL, parent_id TEXT REFERENCES category(id),
+  name TEXT NOT NULL, name_norm TEXT NOT NULL /* + standard sync columns */);
+CREATE TABLE brand (id TEXT PRIMARY KEY, business_id TEXT NOT NULL, name TEXT NOT NULL, name_norm TEXT NOT NULL
+  /* + standard sync columns */);
+CREATE VIRTUAL TABLE product_fts USING fts5(product_id UNINDEXED, business_id UNINDEXED,
+  name, sku, hsn_code, brand_name, tokenize = 'unicode61 remove_diacritics 2');
+```
+
+There is no selling-price column on `product`: the selling price is a `price_list_item` in the business's default `Retail` list, and every price is chosen by the pure `resolvePrice` function (ADR-0011). Unique keys that include a nullable column (`sku`, `variant_id`, `parent_id`) are partial or `COALESCE` expression indexes, because SQLite treats NULLs as distinct.
+
+Product search uses an FTS5 table over name, SKU, HSN and brand name for token search, with the plain `name_norm` index serving prefix search — FTS5 alone is poor at short prefixes, and prefix is what cashiers type. `product_fts` is written by the product repository in the same transaction (not triggers), because `brand_name` is copied from `brand` and a rename must re-index. `name_norm` strips accents only after Latin letters; Indic vowel signs are kept (ADR-0009).
 
 ### 2.2 Sales (append-only)
 
@@ -857,7 +868,9 @@ The preload file is **generated** from this registry, so the renderer cannot rea
 ```text
 auth.*        login, loginOffline, logout, switchUser, verifyPin, getSession
 business.*    get, update, getBranches, getTerminals, getTaxConfig
-products.*    search, lookupBarcode, get, create, update, deactivate, importPreview, importCommit
+products.*    search, lookupBarcode, list, get, create, update, deactivate, reactivate, importPreview, importCommit
+catalog.*     listUoms, createUom, listCategories, createCategory, updateCategory, listBrands, createBrand, updateBrand
+pricing.*     listLists, createList, getItems, setItems
 inventory.*   getStock, getMovements, adjust, transfer, listLowStock, rebuildProjections
 customers.*   search, get, create, update, getLedger, getOutstanding
 suppliers.*   search, get, create, update, getLedger

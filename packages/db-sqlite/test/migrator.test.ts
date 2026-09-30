@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { MIGRATIONS, currentSchemaVersion, migrate, openDatabase, quickCheck, foreignKeyCheck } from '../src/index.js';
+import { MIGRATIONS, currentSchemaVersion, migrate, openDatabase, quickCheck, foreignKeyCheck, stmt } from '../src/index.js';
 import { freshDb } from './helpers.js';
 
 describe('migrator', () => {
@@ -47,5 +47,36 @@ describe('append-only enforcement', () => {
       VALUES ('a', 'b', 1, 'u', 'd', 'x', 'y', 'now', '0', '1')`).run();
     expect(() => db.prepare("UPDATE audit_log SET action = 'z' WHERE id = 'a'").run()).toThrow(/append-only/);
     expect(() => db.prepare("DELETE FROM audit_log WHERE id = 'a'").run()).toThrow(/append-only/);
+  });
+});
+
+describe('0002_catalog', () => {
+  it('creates the catalog tables and a working FTS5 index', async () => {
+    const db = await freshDb();
+    const tables = db
+      .prepare("SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name")
+      .all()
+      .map((r) => (r as { name: string }).name);
+    for (const t of ['uom', 'category', 'brand', 'product', 'product_variant', 'barcode', 'uom_conversion', 'price_list', 'price_list_item', 'product_fts']) {
+      expect(tables).toContain(t);
+    }
+    db.prepare("INSERT INTO product_fts (product_id, business_id, name, sku, hsn_code, brand_name) VALUES ('p', 'b', 'Crème Brûlée Mix', 'SKU-1', '2106', 'Amul')").run();
+    expect(db.prepare("SELECT product_id FROM product_fts WHERE product_fts MATCH 'creme'").get()).toEqual({ product_id: 'p' });
+  });
+  it('upgrades a v1 database in place', async () => {
+    const db = openDatabase(':memory:', { quickCheck: false });
+    await migrate(db, { migrations: MIGRATIONS.slice(0, 1) });
+    const r = await migrate(db);
+    expect(r.applied).toEqual(MIGRATIONS.slice(1).map((m) => m.version));
+    expect(foreignKeyCheck(db).ok).toBe(true);
+  });
+});
+
+describe('stmt', () => {
+  it('returns the same compiled statement for the same SQL on the same connection', async () => {
+    const a = await freshDb();
+    const b = await freshDb();
+    expect(stmt(a, 'SELECT 1')).toBe(stmt(a, 'SELECT 1'));
+    expect(stmt(a, 'SELECT 1')).not.toBe(stmt(b, 'SELECT 1'));
   });
 });

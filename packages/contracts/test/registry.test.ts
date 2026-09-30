@@ -17,7 +17,7 @@ describe('IPC contract registry', () => {
     for (const ch of channels) expect(ch, ch).not.toMatch(banned);
   });
   it('mutating methods are audited', () => {
-    const mutating = channels.filter((c) => /\.(create|update|set|select|switch|logout|login|backup|export|integrity)/i.test(c));
+    const mutating = channels.filter((c) => /\.(create|update|set|select|switch|logout|login|backup|export|integrity|deactivate|reactivate|import)/i.test(c));
     for (const c of mutating) expect(contract[c].audit, c).toBe(true);
   });
   it('error codes map to a class', () => {

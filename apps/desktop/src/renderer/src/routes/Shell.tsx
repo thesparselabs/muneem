@@ -7,7 +7,7 @@ import SyncBadge from '../components/SyncBadge.js';
 const NAV = [
   { to: '/', label: 'Home', enabled: true },
   { to: '/pos', label: 'POS · Billing', enabled: false, stage: 'Stage 3' },
-  { to: '/products', label: 'Products', enabled: false, stage: 'Stage 2' },
+  { to: '/products', label: 'Products', enabled: true },
   { to: '/inventory', label: 'Inventory', enabled: false, stage: 'Stage 4' },
   { to: '/purchases', label: 'Purchases', enabled: false, stage: 'Stage 5' },
   { to: '/reports', label: 'Reports', enabled: false, stage: 'Stage 8' },
@@ -41,7 +41,7 @@ export default function Shell() {
           {NAV.map((n) => (
             <li key={n.to}>
               {n.enabled ? (
-                <NavLink to={n.to} end className={({ isActive }) => `block px-5 py-2 text-sm ${isActive ? 'bg-blue-50 text-blue-800 font-medium' : 'hover:bg-slate-50'}`}>{n.label}</NavLink>
+                <NavLink to={n.to} end={n.to === '/'} className={({ isActive }) => `block px-5 py-2 text-sm ${isActive ? 'bg-blue-50 text-blue-800 font-medium' : 'hover:bg-slate-50'}`}>{n.label}</NavLink>
               ) : (
                 <span className="block px-5 py-2 text-sm text-slate-400" aria-disabled="true" title={`Coming in ${n.stage}`}>{n.label} <span className="text-xs">({n.stage})</span></span>
               )}

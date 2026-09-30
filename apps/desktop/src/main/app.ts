@@ -12,6 +12,13 @@ import { createGateway, type Handlers } from './ipc/gateway.js';
 import { Rbac } from './rbac.js';
 import { AuthService } from './services/auth.js';
 import { BusinessService } from './services/business.js';
+import { CatalogService } from './services/catalog.js';
+import { CatalogContext } from './services/catalogContext.js';
+import { ImportService } from './services/import/importService.js';
+import { PreviewStore } from './services/import/previewStore.js';
+import { PricingService } from './services/pricing.js';
+import { ProductSearch } from './services/productSearch.js';
+import { ProductService } from './services/products.js';
 import { DeviceService } from './services/device.js';
 import { DiagnosticsService } from './services/diagnostics.js';
 import { SessionService } from './services/session.js';
@@ -52,6 +59,13 @@ export function createApp(cfg: AppConfig) {
   const auth = new AuthService({ db: cfg.db, cloud: () => cloud, secrets: cfg.secrets, session, device, loggers: cfg.loggers, isOnline: () => connectivity.online, ...(cfg.now && { now: cfg.now }) });
   const business = new BusinessService({ db: cfg.db, session, device });
   const settings = new SettingsService({ db: cfg.db, session, device });
+  const catalogCtx = new CatalogContext({ db: cfg.db, session, device, ...(cfg.now && { now: cfg.now }) });
+  const productSearch = new ProductSearch(catalogCtx);
+  const invalidateSearch = () => productSearch.invalidate();
+  const products = new ProductService(catalogCtx, productSearch);
+  const catalog = new CatalogService(catalogCtx, invalidateSearch);
+  const pricing = new PricingService(catalogCtx, invalidateSearch);
+  const productImport = new ImportService(catalogCtx, new PreviewStore(cfg.now ?? (() => Date.now())), invalidateSearch);
   const diagnostics = new DiagnosticsService({
     db: cfg.db, dbFile: cfg.dbFile, backupsDir: cfg.backupsDir, bundlesDir: cfg.bundlesDir, loggers: cfg.loggers, session, device,
     appVersion: cfg.appVersion, secretStoreAvailable: cfg.secrets.encrypted, connectivity: () => connectivity.snapshot(),
@@ -82,6 +96,28 @@ export function createApp(cfg: AppConfig) {
     'settings.set': (i) => settings.set(i.key, i.value),
     'settings.listSeries': () => settings.listSeries(),
     'settings.createSeries': (i) => settings.createSeries(i),
+    'products.search': (i) => products.search(i),
+    'products.lookupBarcode': (i) => products.lookupBarcode(i.code),
+    'products.list': (i) => products.list(i),
+    'products.get': (i) => products.get(i.id),
+    'products.create': (i) => products.create(i),
+    'products.update': (i) => products.update(i),
+    'products.deactivate': (i) => products.setActive(i.id, i.version, false),
+    'products.reactivate': (i) => products.setActive(i.id, i.version, true),
+    'products.importPreview': (i) => productImport.preview(i),
+    'products.importCommit': (i) => productImport.commit(i),
+    'catalog.listUoms': () => catalog.listUoms(),
+    'catalog.createUom': (i) => catalog.createUom(i),
+    'catalog.listCategories': () => catalog.listCategories(),
+    'catalog.createCategory': (i) => catalog.createCategory(i),
+    'catalog.updateCategory': (i) => catalog.updateCategory(i),
+    'catalog.listBrands': () => catalog.listBrands(),
+    'catalog.createBrand': (i) => catalog.createBrand(i),
+    'catalog.updateBrand': (i) => catalog.updateBrand(i),
+    'pricing.listLists': () => pricing.listLists(),
+    'pricing.createList': (i) => pricing.createList(i),
+    'pricing.getItems': (i) => pricing.getItems(i),
+    'pricing.setItems': (i) => pricing.setItems(i),
     'sync.getStatus': () => syncStatus(),
     'diagnostics.getHealth': () => diagnostics.getHealth(),
     'diagnostics.integrityCheck': () => diagnostics.integrityCheck(),
@@ -95,6 +131,6 @@ export function createApp(cfg: AppConfig) {
     connectivity: () => connectivity.snapshot(), isTrustedSender: cfg.isTrustedSender ?? (() => true), ...(cfg.now && { now: cfg.now }),
   });
 
-  return { events, session, rbac, cloud, connectivity, device, auth, business, settings, diagnostics, gateway, handlers, syncStatus };
+  return { events, session, rbac, cloud, connectivity, device, auth, business, settings, products, catalog, pricing, productImport, diagnostics, gateway, handlers, syncStatus };
 }
 export type App = ReturnType<typeof createApp>;

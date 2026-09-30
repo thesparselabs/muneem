@@ -1,0 +1,8 @@
+Name,SKU,Barcode,Price,MRP,GST
+,NONAME,111,10,12,18
+Bad Price,BP1,222,ten,12,18
+Above MRP,AM1,333,15,12,18
+First,DUP1,444,10,12,18
+Second,DUP1,555,10,12,18
+Bad GST,BG1,666,10,12,abc
+Fine Row,FR1,777,10,12,18

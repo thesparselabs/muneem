@@ -15,8 +15,8 @@ export default function Home() {
         <div className="card"><p className="text-xs text-slate-500">Device</p><p className="text-sm font-mono break-all">{device.data?.registered ? device.data.deviceId : 'not registered yet'}</p></div>
       </div>
       <div className="card">
-        <h2 className="font-semibold mb-2">Foundation stage</h2>
-        <p className="text-sm text-slate-700">This build covers login (online and offline), device registration, business setup and the local database with audit trail and sync outbox. Billing, products and inventory arrive in the next stages.</p>
+        <h2 className="font-semibold mb-2">Catalog stage</h2>
+        <p className="text-sm text-slate-700">Add products one by one or import them from a CSV or Excel file, with barcodes, units, GST and price lists. Billing and inventory arrive in the next stages.</p>
       </div>
     </div>
   );

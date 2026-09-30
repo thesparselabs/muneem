@@ -3,6 +3,7 @@ import { newUlid } from '@muneem/domain';
 import { canonicalJson } from './canonical.js';
 import type { Db } from './open.js';
 import { nowIso } from './uow.js';
+import { stmt } from './statements.js';
 
 export interface AuditInput {
   businessId: string;
@@ -36,7 +37,7 @@ export function computeAuditHash(r: Omit<AuditRow, 'id' | 'hash'>): string {
 
 /** LLD §16 — append inside the business transaction; gap-free seq and hash chain per (business, device). */
 export function appendAudit(db: Db, a: AuditInput): AuditRow {
-  const last = db.prepare(
+  const last = stmt(db,
     'SELECT seq, hash FROM audit_log WHERE business_id = ? AND device_id = ? ORDER BY seq DESC LIMIT 1',
   ).get(a.businessId, a.deviceId) as { seq: number; hash: string } | undefined;
   const base: Omit<AuditRow, 'id' | 'hash'> = {
@@ -47,7 +48,7 @@ export function appendAudit(db: Db, a: AuditInput): AuditRow {
     reason: a.reason ?? null, occurred_at: a.occurredAt ?? nowIso(), prev_hash: last?.hash ?? GENESIS_HASH,
   };
   const row: AuditRow = { id: newUlid(), ...base, hash: computeAuditHash(base) };
-  db.prepare(`INSERT INTO audit_log (id, business_id, seq, user_id, device_id, terminal_id, action, entity_type, entity_id,
+  stmt(db, `INSERT INTO audit_log (id, business_id, seq, user_id, device_id, terminal_id, action, entity_type, entity_id,
       before_json, after_json, reason, occurred_at, prev_hash, hash)
     VALUES (@id, @business_id, @seq, @user_id, @device_id, @terminal_id, @action, @entity_type, @entity_id,
       @before_json, @after_json, @reason, @occurred_at, @prev_hash, @hash)`).run(row);

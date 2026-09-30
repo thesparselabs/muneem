@@ -1,0 +1,5 @@
+Item Name,Item Code,Barcode,HSN,Category,Brand,Unit,MRP,Sale Price,Purchase Price,GST %,Reorder Level
+Parle-G Biscuit 100g,PG100,8901030865275,1905,Biscuits,Parle,PCS,10,9.50,8.20,18,24
+Tata Salt 1kg,TS1,8904063200013;TS1-LOOSE,2501,Staples,Tata,PCS,"₹28.00",27,24.5,0,10
+Toor Dal,TOOR,,0713,Staples,,KG,,140.00,120,5,5.5
+चाय पत्ती 250g,CHAI250,8901725181222,0902,Beverages,Wagh Bakri,PCS,145,140,130,5,

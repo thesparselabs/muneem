@@ -5,6 +5,116 @@ All notable changes, newest first. Each entry records **what** changed and **why
 
 ## [Unreleased]
 
+### Added — Stage 2 catalog
+- **Stage 2 plan (`docs/plans/stage-2-catalog.md`)** — the LLD had tables and targets for the catalog but no task
+  breakdown, and left category/brand, the import wizard, scope and cloud involvement open. The plan settles them.
+- **Catalog domain helpers** (`@muneem/domain` `catalog/`): `normalizeName`, barcode check-digit validation and
+  symbology detection, integer unit conversion, `resolvePrice` and `exceedsMrp` — pure functions so search, import and
+  POS all agree on the same rules.
+- **Migration `0002_catalog`** — units, categories, brands, products, variants (table only), barcodes, unit
+  conversions, price lists and the `product_fts` search index, with the standard sync columns so Stage 7 can ship them.
+- **`stmt()` statement cache** in `@muneem/db-sqlite` — the barcode path must stay under 30 ms, and recompiling SQL on
+  every scan wastes most of that budget. See [ADR-0012](decisions/0012-hot-path-statement-cache-and-barcode-lru.md).
+- **Outbox entity types for the catalog**, and `appendOutbox` now only accepts known entity types, so a typo cannot
+  queue rows the Stage 7 server will reject.
+- **Desktop tests read the schema version from `MIGRATIONS`** instead of hard-coding `1`, so adding a migration does
+  not break unrelated auth tests.
+
+- **Catalog repositories** (`@muneem/db-sqlite`): units, categories, brands, products, price lists, search queries and
+  `ensureCatalogDefaults`. A product save writes the product, its barcodes, unit conversions, selling price and search
+  row in one transaction, with **one** audit row for the whole product and child outbox rows that depend on it, so
+  Stage 7 can replay them in order.
+- **Effective-dated selling price** — changing the price closes the old price at today and opens the new one, so
+  yesterday's bills still resolve to yesterday's price.
+- **Catalog IPC surface**: `products.*` (search, lookupBarcode, list, get, create, update, deactivate, reactivate),
+  `catalog.*` (units, categories, brands) and `pricing.*` (price lists and items). Price lists use the `pricing`
+  namespace because IPC namespaces must be lowercase.
+- **Search order** in `ProductSearch`: exact barcode → exact SKU → name prefix → word match, plus a 500-entry
+  barcode cache cleared on any catalog write ([ADR-0012](decisions/0012-hot-path-statement-cache-and-barcode-lru.md)).
+- **New businesses are seeded with 9 standard units and a `Retail` price list**; businesses created in Stage 1 get
+  them on first catalog use, so nobody has to set up units before adding the first product.
+- **Registry test now requires `audit: true` on deactivate/reactivate/import channels** too — they change data just
+  like `create`/`update`.
+
+- **Catalog performance test** (`apps/desktop/test/perf/catalog.perf.test.ts`) at 5,000 SKUs / 7,500 barcodes, run in
+  normal CI: barcode lookup p95 0.14 ms cold and 0.006 ms warm (budget 30 ms), search p95 0.98 ms (budget 60 ms) on
+  the dev machine. It turns the Stage 2 exit criterion into a test that fails if a change slows the scan path.
+
+- **CSV/XLSX product import** (`products.importPreview` / `products.importCommit`) — FR-017 and the Stage 2 exit
+  criterion. Headers such as "Item Name", "Sale Price" or "GST %" are mapped automatically; every row is checked with
+  the same rules as the product form, and bad rows are listed with the reason. Existing products (same SKU or barcode)
+  are skipped or updated, as the user chooses. The commit is one transaction that can be safely retried. A 5,000-row
+  file imports in about 3 s. See [ADR-0010](decisions/0010-product-import-two-phase.md).
+- **`parseScaled`** (`@muneem/domain`) turns "₹1,234.50" or "18%" into integer paise or basis points using string digits
+  only, so imported money never passes through a float.
+
+- **Products screens** — `/products` (search as you type or scan, filter by category, show deactivated),
+  `/products/new` and `/products/:id` (details, GST, prices, barcodes, other units, price lists, deactivate),
+  `/products/import` (choose file → match columns → review rows → import) and `/settings/catalog` (units, categories,
+  brands, price lists). The Products menu item is now enabled. The form logic (rupee parsing and display, form to
+  `ProductInput`, price rows) lives in `src/renderer/src/lib/` with node tests, because the renderer has no DOM test
+  setup yet.
+
+### Changed
+- **Stage 2 marked done in `build-stages.md`** with the measured numbers. Also updated: the architecture overview
+  (catalog section and invariants), LLD §10.2 (the `products`/`catalog`/`pricing` surface as built), and the plan's
+  "as built" notes.
+
+### Fixed — Stage 2 second review
+- **MRP could be lowered below the selling price**, and **changing "Prices include GST" or the base unit left the
+  stored price behind** — both came from the form no longer sending an unchanged price. The rules now live in the
+  database layer: an update without a price keeps the stored one (re-dated under the new unit and tax flag), a base-unit
+  change closes the old base-unit price, and after every update each current or future price in every list must be
+  within MRP for its unit. This also covers API callers and imports.
+- **Editing a barcode could make the product unsaveable** (a recoded EAN kept its old symbology; a case barcode moved
+  to PCS kept its pack of 12). The form now sends symbology and pack quantity only for rows the user did not touch.
+- **An import could still fail at commit**: two rows updating the same product, a pack price in another list above the
+  file's new MRP, or a barcode belonging to a deleted product. The preview now flags all three, and as a last guard
+  each row is applied in a savepoint, so a row refused at commit is skipped and listed (`skippedAtCommit`) instead of
+  rolling back the whole import.
+- **CSV rows of only commas shifted the reported line numbers**, and **16-digit numeric codes in .xlsx were rounded**.
+  Every physical CSV row is now counted, and only non-integers are rounded.
+
+### Fixed — Stage 2 review
+- **Pack prices were checked against the single-piece MRP.** A BOX of 24 with MRP ₹20 per piece could not be priced
+  at ₹450. The ceiling is now MRP × the unit's conversion, and a price for a unit with no conversion on the product is
+  refused with a field error, because it could never be applied.
+- **"Update existing products" could pass the preview and then fail the whole import.** The preview checked only the
+  file row, while the commit checked the file row merged with the existing product. The preview now checks the merged
+  product and marks such rows "can't update: …"; the commit skips them and imports the rest.
+- **An .xlsx with an empty header cell could not be imported**, and **formula prices like `=0.1+0.2` were rejected** as
+  `0.30000000000000004`. Empty cells now fill their column, and numbers are read at 15 significant digits, as Excel
+  shows them.
+- **Saving the product form could undo a price just saved in "Price lists"**, and Enter in a price field submitted the
+  product. The price editor is now outside the product form, the selling price is sent only when edited, and fields
+  you have not touched pick up the latest saved values.
+- **An "Until" date before "From" (or two identical price rows) showed "Something went wrong".** Both are now checked
+  in the shared schema and reported on the field, in the form and over IPC.
+- **Adding an invalid unit code (e.g. `PKT.`) did nothing visible**; catalog settings now show validation messages.
+- **Import previews expired while in use** — the 15-minute timer now restarts on every use.
+- **CSV preview row numbers drifted** after blank lines or cells spanning lines; they now match the file's line numbers.
+- **Product lists ran two queries per row** (101 for a 50-row page); prices for a page are now fetched in one query,
+  and the list query uses the cached-statement helper (ADR-0012).
+- **The product form dropped a barcode's pack quantity and symbology** on save; both now survive.
+
+### Changed — Stage 2 review
+- Removed the unused `findCategoryByName` / `findBrandByName`, and the section-banner comments in the IPC registry
+  (CLAUDE.md: no section banners).
+
+### Fixed
+- **Saving a product got slower as the catalog grew.** Re-indexing a product for search deleted from FTS5 by an
+  unindexed column, which scans the whole index. Each product now has an integer search key (`product_search_key`),
+  and saving 5,000 products dropped from 5.7 s to 2.2 s. Audit, outbox and sequence writes also reuse compiled
+  statements now.
+- **Large IPC inputs no longer land in `audit_log`** — strings over 1,000 characters are stored as `[N chars]`, so an
+  uploaded file does not bloat the audit chain.
+
+### Changed — design
+- **LLD §2.1**: adds `category`, `brand` and `product_fts`, and states that the selling price lives in the default price
+  list, not on `product` ([ADR-0011](decisions/0011-selling-price-in-default-price-list.md)); search normalisation keeps
+  Indic vowel signs ([ADR-0009](decisions/0009-product-search-prefix-plus-fts5.md)). Scope decisions for Stage 2 are in
+  [ADR-0008](decisions/0008-catalog-device-local-until-sync.md).
+
 ### Added
 - **`docs/` folder: changelog, architecture overview, build-stage status, ADRs** — the user asked for the project
   to be documented continuously with reasons, not just code. A CI job (`docs`) fails a PR that changes code without

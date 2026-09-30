@@ -4,6 +4,10 @@ import {
   Branch, BranchInput, Business, BusinessInput, DeviceInfo, DocSeries, Health, Identifier, Pin, Session,
   SessionUser, SyncStatus, Terminal, TerminalInput, Ulid,
 } from './schemas.js';
+import {
+  Brand, BrandInput, Category, CategoryInput, ImportCommitInput, ImportPreview, ImportPreviewInput, ImportSummary, PriceList, PriceListInput, PriceListItem, PriceItemsQuery, Product, ProductHit,
+  ProductInput, ProductListInput, ProductPage, ProductSearchInput, ProductUpdate, SetPriceItems, Uom, UomInput,
+} from './catalog.js';
 
 /**
  * LLD §10.1 — the IPC contract registry. The preload is GENERATED from this object, so the
@@ -27,7 +31,6 @@ const Empty = z.object({}).strict();
 const Ok = z.object({ ok: z.literal(true) });
 
 export const contract = {
-  // ---- auth (no session required) ----
   'auth.register': spec({
     input: z.object({ name: z.string().min(1).max(120), identifier: Identifier, password: z.string().min(8).max(200), otp: z.string().optional() }),
     output: z.object({ userId: Ulid }), permission: null, rateLimit: { perSec: 1 },
@@ -52,7 +55,6 @@ export const contract = {
   'auth.setPin': spec({ input: z.object({ pin: Pin }), output: Ok, permission: 'business.view', rateLimit: { perSec: 1 }, audit: true }),
   'auth.verifyPin': spec({ input: z.object({ pin: Pin }), output: Ok, permission: 'business.view', rateLimit: { perSec: 2 } }),
 
-  // ---- device / connectivity ----
   'device.getInfo': spec({ input: Empty, output: DeviceInfo, permission: null, rateLimit: { perSec: 10 } }),
   'app.getConnectivity': spec({
     input: Empty,
@@ -60,7 +62,6 @@ export const contract = {
     permission: null, rateLimit: { perSec: 10 },
   }),
 
-  // ---- business setup ----
   'business.get': spec({ input: Empty, output: Business.nullable(), permission: 'business.view', rateLimit: { perSec: 10 } }),
   'business.create': spec({ input: BusinessInput, output: Business, permission: null, rateLimit: { perSec: 1 }, audit: true }),
   'business.update': spec({ input: BusinessInput.partial().extend({ id: Ulid, version: z.number().int() }), output: Business, permission: 'business.manage', rateLimit: { perSec: 2 }, audit: true }),
@@ -70,7 +71,6 @@ export const contract = {
   'business.createTerminal': spec({ input: TerminalInput, output: Terminal, permission: 'business.manage', rateLimit: { perSec: 2 }, audit: true }),
   'business.selectTerminal': spec({ input: z.object({ terminalId: Ulid }), output: Session, permission: 'business.view', rateLimit: { perSec: 2 }, audit: true }),
 
-  // ---- settings ----
   'settings.get': spec({ input: z.object({ key: z.string().max(80) }), output: z.object({ value: z.unknown().nullable() }), permission: 'settings.view', rateLimit: { perSec: 20 } }),
   'settings.set': spec({ input: z.object({ key: z.string().max(80), value: z.unknown() }), output: Ok, permission: 'settings.manage', rateLimit: { perSec: 5 }, audit: true }),
   'settings.listSeries': spec({ input: Empty, output: z.array(DocSeries), permission: 'settings.view', rateLimit: { perSec: 10 } }),
@@ -79,10 +79,31 @@ export const contract = {
     output: DocSeries, permission: 'settings.manage', rateLimit: { perSec: 2 }, audit: true,
   }),
 
-  // ---- sync (status only in Stage 1; worker arrives in Stage 7) ----
+  'products.search': spec({ input: ProductSearchInput, output: z.array(ProductHit), permission: 'products.view', rateLimit: { perSec: 30 } }),
+  'products.lookupBarcode': spec({ input: z.object({ code: z.string().trim().min(1).max(48) }), output: ProductHit.nullable(), permission: 'products.view', rateLimit: { perSec: 30 } }),
+  'products.list': spec({ input: ProductListInput, output: ProductPage, permission: 'products.view', rateLimit: { perSec: 10 } }),
+  'products.get': spec({ input: z.object({ id: Ulid }), output: Product, permission: 'products.view', rateLimit: { perSec: 20 } }),
+  'products.create': spec({ input: ProductInput, output: Product, permission: 'products.create', rateLimit: { perSec: 5 }, audit: true }),
+  'products.update': spec({ input: ProductUpdate, output: Product, permission: 'products.edit', rateLimit: { perSec: 5 }, audit: true }),
+  'products.deactivate': spec({ input: z.object({ id: Ulid, version: z.number().int() }), output: Product, permission: 'products.edit', rateLimit: { perSec: 5 }, audit: true }),
+  'products.reactivate': spec({ input: z.object({ id: Ulid, version: z.number().int() }), output: Product, permission: 'products.edit', rateLimit: { perSec: 5 }, audit: true }),
+  'products.importPreview': spec({ input: ImportPreviewInput, output: ImportPreview, permission: 'products.create', rateLimit: { perSec: 2 }, audit: true }),
+  'products.importCommit': spec({ input: ImportCommitInput, output: ImportSummary, permission: 'products.create', rateLimit: { perSec: 1 }, audit: true, idempotent: 'commandId' }),
+  'catalog.listUoms': spec({ input: Empty, output: z.array(Uom), permission: 'products.view', rateLimit: { perSec: 10 } }),
+  'catalog.createUom': spec({ input: UomInput, output: Uom, permission: 'products.create', rateLimit: { perSec: 2 }, audit: true }),
+  'catalog.listCategories': spec({ input: Empty, output: z.array(Category), permission: 'products.view', rateLimit: { perSec: 10 } }),
+  'catalog.createCategory': spec({ input: CategoryInput, output: Category, permission: 'products.create', rateLimit: { perSec: 5 }, audit: true }),
+  'catalog.updateCategory': spec({ input: CategoryInput.extend({ id: Ulid, version: z.number().int() }), output: Category, permission: 'products.edit', rateLimit: { perSec: 5 }, audit: true }),
+  'catalog.listBrands': spec({ input: Empty, output: z.array(Brand), permission: 'products.view', rateLimit: { perSec: 10 } }),
+  'catalog.createBrand': spec({ input: BrandInput, output: Brand, permission: 'products.create', rateLimit: { perSec: 5 }, audit: true }),
+  'catalog.updateBrand': spec({ input: BrandInput.extend({ id: Ulid, version: z.number().int() }), output: Brand, permission: 'products.edit', rateLimit: { perSec: 5 }, audit: true }),
+  'pricing.listLists': spec({ input: Empty, output: z.array(PriceList), permission: 'products.view', rateLimit: { perSec: 10 } }),
+  'pricing.createList': spec({ input: PriceListInput, output: PriceList, permission: 'products.edit', rateLimit: { perSec: 2 }, audit: true }),
+  'pricing.getItems': spec({ input: PriceItemsQuery, output: z.array(PriceListItem), permission: 'products.view', rateLimit: { perSec: 20 } }),
+  'pricing.setItems': spec({ input: SetPriceItems, output: z.array(PriceListItem), permission: 'products.edit', rateLimit: { perSec: 5 }, audit: true }),
+
   'sync.getStatus': spec({ input: Empty, output: SyncStatus, permission: null, rateLimit: { perSec: 10 } }),
 
-  // ---- diagnostics ----
   'diagnostics.getHealth': spec({ input: Empty, output: Health, permission: 'diagnostics.view', rateLimit: { perSec: 5 } }),
   'diagnostics.integrityCheck': spec({
     input: Empty,
