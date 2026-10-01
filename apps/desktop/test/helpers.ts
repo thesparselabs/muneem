@@ -60,7 +60,7 @@ export async function testApp(opts: { server?: FakeServer; now?: () => number; f
   const db = openDatabase(file, { quickCheck: false });
   await migrate(db);
   const app = createApp({
-    db: () => db, dbFile: file, backupsDir: join(dir, 'backups'), bundlesDir: join(dir, 'bundles'), secrets: new MemorySecretStore(), loggers: silentLoggers(),
+    db: () => db, dbFile: file, receiptsDir: join(dir, 'receipts'), backupsDir: join(dir, 'backups'), bundlesDir: join(dir, 'bundles'), secrets: new MemorySecretStore(), loggers: silentLoggers(),
     apiBaseUrl: 'http://cloud.test/v1', appVersion: '0.0.0-test', platform: 'linux', fetchImpl: fakeFetch(server), probeIntervalMs: 3_600_000, ...(opts.now && { now: opts.now }),
   });
   app.device.ensureIdentity();

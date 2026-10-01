@@ -31,3 +31,26 @@ export const ReceiptDoc = z.object({
   footer: z.array(z.string()),
 });
 export type ReceiptDoc = z.infer<typeof ReceiptDoc>;
+
+export const PrinterConfig = z.object({
+  kind: z.enum(['none', 'simulator', 'network']),
+  host: z.string().trim().max(255).optional(),
+  port: z.number().int().min(1).max(65_535).default(9100),
+  widthChars: z.union([z.literal(32), z.literal(42), z.literal(48)]).default(42),
+  openDrawer: z.boolean().default(true),
+}).refine((c) => c.kind !== 'network' || !!c.host, { message: 'enter the printer address', path: ['host'] });
+export type PrinterConfig = z.infer<typeof PrinterConfig>;
+
+export const PrintJobSummary = z.object({
+  id: z.string(),
+  docType: z.string(),
+  docId: z.string(),
+  copyNo: Int,
+  isDuplicate: z.boolean(),
+  status: z.enum(['queued', 'printing', 'done', 'failed', 'cancelled']),
+  attemptCount: Int,
+  errorMessage: z.string().optional(),
+  createdAt: z.string(),
+  completedAt: z.string().optional(),
+});
+export type PrintJobSummary = z.infer<typeof PrintJobSummary>;

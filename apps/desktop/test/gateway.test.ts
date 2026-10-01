@@ -13,7 +13,7 @@ describe('IPC gateway pipeline (LLD §10.3)', () => {
     expect(r).toMatchObject({ ok: false, error: { code: 'NOT_FOUND' } });
   });
   it('rejects untrusted senders', async () => {
-    const g = createGateway({ handlers: app.handlers, session: app.session, rbac: app.rbac, db: () => db, deviceId: () => 'd', loggers: { app: { warn() {}, error() {} } as never, sync: {} as never, dir: '' }, events: app.events, connectivity: () => ({ online: false, serverSkewMs: null }), isTrustedSender: (id) => id === 7 });
+    const g = createGateway({ handlers: app.handlers, session: app.session, rbac: app.rbac, db: () => db, deviceId: () => 'd', loggers: { app: { warn() {}, error() {} } as never, sync: {} as never, hardware: {} as never, dir: '' }, events: app.events, connectivity: () => ({ online: false, serverSkewMs: null }), isTrustedSender: (id) => id === 7 });
     expect(await g.handle('auth.getSession', {}, 8)).toMatchObject({ ok: false, error: { code: 'PERMISSION_DENIED' } });
     expect(await g.handle('auth.getSession', {}, 7)).toEqual({ ok: true, data: null });
   });
@@ -43,7 +43,7 @@ describe('IPC gateway pipeline (LLD §10.3)', () => {
   });
   it('rate limits per channel and principal', async () => {
     let t = 0;
-    const g = createGateway({ handlers: app.handlers, session: app.session, rbac: app.rbac, db: () => db, deviceId: () => 'd', loggers: { app: { warn() {}, error() {} } as never, sync: {} as never, dir: '' }, events: app.events, connectivity: () => ({ online: false, serverSkewMs: null }), isTrustedSender: () => true, now: () => t });
+    const g = createGateway({ handlers: app.handlers, session: app.session, rbac: app.rbac, db: () => db, deviceId: () => 'd', loggers: { app: { warn() {}, error() {} } as never, sync: {} as never, hardware: {} as never, dir: '' }, events: app.events, connectivity: () => ({ online: false, serverSkewMs: null }), isTrustedSender: () => true, now: () => t });
     const results = [] as boolean[];
     for (let i = 0; i < 12; i++) results.push((await g.handle('device.getInfo', {}, 1)).ok); // perSec: 10
     expect(results.filter(Boolean).length).toBe(10);

@@ -2,7 +2,7 @@ import {
   AppError, type CompleteSaleInput, type CompleteSaleResult, type ReceiptDoc, type Sale, type SaleDraft, type SaleQuote, type SaleSummary,
 } from '@muneem/contracts';
 import { settleTenders } from '@muneem/domain';
-import { getSale, getSession, listSales, saleIdByCommand, stmt, withTransaction } from '@muneem/db-sqlite';
+import { firstPrintJobFor, getSale, getSession, listSales, saleIdByCommand, withTransaction } from '@muneem/db-sqlite';
 import type { PosContext } from './posContext.js';
 import type { RegisterService } from './register.js';
 import { runSaleCommit } from './saleCommit.js';
@@ -78,16 +78,16 @@ export class SaleService {
 
   receipt(saleId: string): ReceiptDoc {
     this.get(saleId);
-    const json = stmt(this.ctx.db(), 'SELECT doc_json FROM print_job WHERE doc_id = ? ORDER BY copy_no LIMIT 1').pluck().get(saleId) as string | undefined;
-    if (!json) throw new Error('NOT_FOUND');
-    return JSON.parse(json) as ReceiptDoc;
+    const job = firstPrintJobFor(this.ctx.db(), saleId);
+    if (!job) throw new Error('NOT_FOUND');
+    return job.doc as ReceiptDoc;
   }
 
   private replay(commandId: string): CompleteSaleResult | null {
     const id = saleIdByCommand(this.ctx.db(), this.ctx.businessId(), commandId);
     if (!id) return null;
     const sale = this.get(id);
-    const printJobId = stmt(this.ctx.db(), 'SELECT id FROM print_job WHERE doc_id = ? ORDER BY copy_no LIMIT 1').pluck().get(id) as string;
+    const printJobId = firstPrintJobFor(this.ctx.db(), id)!.id;
     return { saleId: id, docNumber: sale.docNumber, totals: sale.totals, changePaise: sale.changePaise, printJobId, replayed: true };
   }
 

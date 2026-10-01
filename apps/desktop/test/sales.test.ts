@@ -55,7 +55,8 @@ describe('the sale commit', () => {
     expect(sale.tenders).toEqual([{ method: 'cash', amountPaise: 20_000, changePaise: 5700 }]);
     expect(count('SELECT COUNT(*) FROM audit_log') - audits).toBe(2 + 1); // series.create + sale.complete + ipc.sales.complete
     expect(db.prepare("SELECT entity_type FROM sync_outbox WHERE entity_type = 'sale'").all()).toHaveLength(1);
-    expect(db.prepare('SELECT status, open_drawer FROM print_job WHERE doc_id = ?').get(r.saleId)).toEqual({ status: 'queued', open_drawer: 1 });
+    await app.printQueue.idle();
+    expect(db.prepare('SELECT status, open_drawer FROM print_job WHERE doc_id = ?').get(r.saleId)).toEqual({ status: 'done', open_drawer: 1 });
     const receipt = await api.data<ReceiptDoc>('sales.getReceipt', { saleId: r.saleId });
     expect(receipt).toMatchObject({ title: 'TAX INVOICE', docNumber: r.docNumber, changePaise: 5700, totals: { totalPaise: 14_300, stateTaxLabel: 'SGST' } });
     expect(receipt.taxSummary.map((t) => t.rateBp)).toEqual([500, 1800]);

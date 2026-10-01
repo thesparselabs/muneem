@@ -58,7 +58,7 @@ async function boot(): Promise<void> {
   }
   const secrets = createElectronSecretStore(join(userData, 'secrets.bin'), safeStorage, isDev, (m) => loggers.app.warn(m));
   muneem = createApp({
-    db: () => db!, dbFile: paths.file, backupsDir: paths.backups, bundlesDir: join(userData, 'support-bundles'), secrets, loggers,
+    db: () => db!, dbFile: paths.file, receiptsDir: join(userData, 'receipts'), backupsDir: paths.backups, bundlesDir: join(userData, 'support-bundles'), secrets, loggers,
     apiBaseUrl: process.env.MUNEEM_API_URL ?? 'http://localhost:8080/v1', appVersion: app.getVersion(), platform: process.platform,
     isTrustedSender: (id) => mainWindow?.webContents.id === id,
   });

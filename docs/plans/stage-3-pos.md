@@ -65,7 +65,7 @@ commit, hardware after · 0016 renderer totals vs authoritative recompute · 001
 - `sales.quote / complete / get / list / getReceipt` (`complete`: perm `sales.create`, `idempotent: 'commandId'`,
   audit; input `{ commandId, customerId?, placeOfSupplyOverride?, lines[{ productId, uomId, qtyMilli, lineDiscount }],
   billDiscount, tenders[], expectedTotalPaise }`; output `{ saleId, docNumber, totals, printJobId }`)
-- `printer.getConfig / setConfig / testPrint / getQueue / retryJob / reprint`, `cashDrawer.open`
+- `printer.getConfig / setConfig / testPrint / getQueue / retryJob / reprint`, `drawer.open` (namespaces must be lowercase)
 
 ## Parts (each: tests first; each one commit)
 

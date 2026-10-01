@@ -12,7 +12,7 @@ import {
   CashMovementInput, CloseRegisterInput, Customer, CustomerInput, CustomerSearchInput, OpenRegisterInput, RegisterReport, RegisterSession,
 } from './pos.js';
 import { CompleteSaleInput, CompleteSaleResult, Sale, SaleDraft, SaleListInput, SaleQuote, SaleSummary } from './sales.js';
-import { ReceiptDoc } from './print.js';
+import { PrintJobSummary, PrinterConfig, ReceiptDoc } from './print.js';
 
 /**
  * LLD §10.1 — the IPC contract registry. The preload is GENERATED from this object, so the
@@ -123,6 +123,14 @@ export const contract = {
   'sales.get': spec({ input: z.object({ id: Ulid }), output: Sale, permission: 'sales.view', rateLimit: { perSec: 20 } }),
   'sales.list': spec({ input: SaleListInput, output: z.array(SaleSummary), permission: 'sales.view', rateLimit: { perSec: 10 } }),
   'sales.getReceipt': spec({ input: z.object({ saleId: Ulid }), output: ReceiptDoc, permission: 'sales.view', rateLimit: { perSec: 10 } }),
+
+  'printer.getConfig': spec({ input: Empty, output: PrinterConfig, permission: 'pos.view', rateLimit: { perSec: 5 } }),
+  'printer.setConfig': spec({ input: PrinterConfig, output: PrinterConfig, permission: 'settings.manage', rateLimit: { perSec: 2 }, audit: true }),
+  'printer.testPrint': spec({ input: Empty, output: Ok, permission: 'pos.view', rateLimit: { perSec: 1 } }),
+  'printer.getQueue': spec({ input: z.object({ limit: z.number().int().min(1).max(100).default(20) }), output: z.array(PrintJobSummary), permission: 'pos.view', rateLimit: { perSec: 5 } }),
+  'printer.retryJob': spec({ input: z.object({ jobId: Ulid }), output: Ok, permission: 'pos.create', rateLimit: { perSec: 2 } }),
+  'printer.reprint': spec({ input: z.object({ saleId: Ulid }), output: z.object({ jobId: Ulid }), permission: 'pos.create', rateLimit: { perSec: 2 }, audit: true }),
+  'drawer.open': spec({ input: Empty, output: Ok, permission: 'pos.create', rateLimit: { perSec: 1 }, audit: true }),
 
   'sync.getStatus': spec({ input: Empty, output: SyncStatus, permission: null, rateLimit: { perSec: 10 } }),
 

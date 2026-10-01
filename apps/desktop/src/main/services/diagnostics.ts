@@ -69,7 +69,7 @@ export class DiagnosticsService {
     }
     writeFileSync(join(dir, 'health.json'), JSON.stringify({ health: this.getHealth(), integrity: this.integrityCheck(), counts, device: this.d.device.info(), exportedAt: new Date().toISOString() }, null, 2));
     let bytes = 0;
-    for (const name of ['app.log', 'sync.log']) {
+    for (const name of ['app.log', 'sync.log', 'hardware.log']) {
       const src = join(this.d.loggers.dir, name);
       if (this.d.loggers.dir && existsSync(src)) { copyFileSync(src, join(dir, name)); bytes += readFileSync(src).length; }
     }

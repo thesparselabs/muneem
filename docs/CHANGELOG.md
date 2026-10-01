@@ -37,6 +37,20 @@ All notable changes, newest first. Each entry records **what** changed and **why
   reason and is stored on the sale. Composition and unregistered businesses issue a bill of supply with no tax.
 - **`sales.complete` performance test**: p95 9.9 ms for 10-line sales at 5,000 SKUs (budget 250 ms).
 
+- **Receipt printing** (ADR-0015). Each sale's receipt is a stored document laid out at print time for 32, 42 or 48
+  columns and encoded as ESC/POS: alignment, bold, double width, feed and cut, and the drawer kick for cash sales.
+  - **Printers:** a simulator writes each receipt to `userData/receipts/` as text and raw bytes, which is the default
+    until a printer is set up; a network printer adapter covers TCP 9100.
+  - **Queue:** jobs print one at a time after commit and retry from the queue. A failure is recorded on the job and
+    never affects the sale, and jobs left queued by a crash print on the next start.
+  - **Reprints** are new jobs marked "DUPLICATE (copy n)".
+  - **Calls:** `printer.getConfig/setConfig/testPrint/getQueue/retryJob/reprint` and `drawer.open`. Printer settings
+    are per device and never sync.
+  - **Limitation:** the plain ESC/POS code page has no ₹ or Indic characters, so ₹ prints as "Rs" and non-ASCII text
+    as "?" until bitmap text is added.
+- **`hardware` log** — the Diagnostics log viewer offered "hardware" but no such log was written; printer and drawer
+  events now go there, and it is included in support bundles.
+
 ### Fixed
 - **`pnpm dev` showed a blank window** ("@vitejs/plugin-react can't detect preamble"). The renderer's Content Security
   Policy blocks inline scripts, and Vite's dev server injects one for React hot reload. When loading from the dev server

@@ -134,13 +134,3 @@ export function listSales(db: Db, businessId: string, f: { sessionId?: string | 
     };
   });
 }
-
-export interface PrintJobInput {
-  businessId: string; docType: string; docId: string; doc: unknown; openDrawer: boolean; copyNo: number; isDuplicate: boolean; createdBy: string;
-}
-
-export function insertPrintJob(db: Db, id: string, j: PrintJobInput): void {
-  stmt(db, `INSERT INTO print_job (id, business_id, doc_type, doc_id, copy_no, is_duplicate, doc_json, open_drawer, created_by, created_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(id, j.businessId, j.docType, j.docId, j.copyNo, j.isDuplicate ? 1 : 0, JSON.stringify(j.doc),
-    j.openDrawer ? 1 : 0, j.createdBy, nowIso());
-}
