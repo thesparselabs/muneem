@@ -15,7 +15,7 @@ All notable changes, newest first. Each entry records **what** changed and **why
   tenders append-only, allows one open register per terminal, and fixes `doc_series` letting duplicate business-wide
   series through (SQLite treats NULLs as distinct in a UNIQUE).
 - **POS rules in `@muneem/domain`**: `settleTenders` (change only from cash; paid − change = total), `effectiveDiscountBp`
-  (rounded up so limits can't be slipped by rounding), `expectedCash`, GSTIN state and UTGST helpers.
+  (to the nearest basis point, so an exact 5% stays 5% after per-line rounding), `expectedCash`, GSTIN state and UTGST helpers.
 
 - **Customers** (`customers.search/get/create/update`): name, phone, GSTIN, state and address. The state is taken
   from the GSTIN, and a contradicting state is refused, because the state decides IGST vs CGST/SGST on the invoice.
@@ -23,6 +23,19 @@ All notable changes, newest first. Each entry records **what** changed and **why
   per terminal, cash in/out/safe drop with reasons, live X report, close with counted cash (optional denominations
   that must add up) and a frozen Z report. A variance above the threshold (default ₹100) needs a manager; blind close
   hides the expected cash from cashiers; a register with held bills cannot be closed (ADR-0017).
+
+- **The sale commit** (`sales.quote/complete/get/list/getReceipt`). Lines are priced in the main process from product
+  data (current price list, quantity breaks, unit conversions) and run through the GST engine. The commit then
+  allocates the terminal's invoice number (`DEL1/T01/2026-27/000001`, a new series per financial year) and saves the
+  sale with a tax snapshot per line, its tenders and its receipt print job. It writes one audit row and one outbox row
+  holding the whole sale, all in one transaction. The commit is a list of named steps so Stage 4 (stock) and Stage 6
+  (journal) slot in without rewriting it (ADR-0013).
+- **Safety checks at commit:** the total must equal the one the cashier saw (`TOTAL_MISMATCH` otherwise), payments must
+  balance with change only from cash, the effective discount must be within the user's limit (cashier 5%), and the
+  register must be open. A repeated `commandId` returns the original sale instead of billing twice.
+- **B2B and place of supply:** a customer's GSTIN state drives IGST vs CGST/SGST and the GSTR-1 bucket; an override needs a
+  reason and is stored on the sale. Composition and unregistered businesses issue a bill of supply with no tax.
+- **`sales.complete` performance test**: p95 9.9 ms for 10-line sales at 5,000 SKUs (budget 250 ms).
 
 ### Fixed
 - **`pnpm dev` showed a blank window** ("@vitejs/plugin-react can't detect preamble"). The renderer's Content Security

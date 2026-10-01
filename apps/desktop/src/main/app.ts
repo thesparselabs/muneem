@@ -20,6 +20,8 @@ import { PricingService } from './services/pricing.js';
 import { CustomerService } from './services/pos/customers.js';
 import { PosContext } from './services/pos/posContext.js';
 import { RegisterService } from './services/pos/register.js';
+import { SalePricing } from './services/pos/salePricing.js';
+import { SaleService } from './services/pos/sales.js';
 import { ProductSearch } from './services/productSearch.js';
 import { ProductService } from './services/products.js';
 import { DeviceService } from './services/device.js';
@@ -71,6 +73,7 @@ export function createApp(cfg: AppConfig) {
   const posCtx = new PosContext(catalogCtx, session, rbac);
   const customers = new CustomerService(posCtx);
   const register = new RegisterService(posCtx);
+  const sales = new SaleService(posCtx, new SalePricing(posCtx), register, () => session.require().user.name);
   const productImport = new ImportService(catalogCtx, new PreviewStore(cfg.now ?? (() => Date.now())), invalidateSearch);
   const diagnostics = new DiagnosticsService({
     db: cfg.db, dbFile: cfg.dbFile, backupsDir: cfg.backupsDir, bundlesDir: cfg.bundlesDir, loggers: cfg.loggers, session, device,
@@ -134,6 +137,11 @@ export function createApp(cfg: AppConfig) {
     'pos.xReport': () => register.xReport(),
     'pos.zReport': (i) => register.zReport(i.sessionId),
     'pos.closeRegister': (i) => register.close(i),
+    'sales.quote': (i) => sales.quote(i),
+    'sales.complete': (i) => sales.complete(i),
+    'sales.get': (i) => sales.get(i.id),
+    'sales.list': (i) => sales.list(i),
+    'sales.getReceipt': (i) => sales.receipt(i.saleId),
     'sync.getStatus': () => syncStatus(),
     'diagnostics.getHealth': () => diagnostics.getHealth(),
     'diagnostics.integrityCheck': () => diagnostics.integrityCheck(),
@@ -147,6 +155,6 @@ export function createApp(cfg: AppConfig) {
     connectivity: () => connectivity.snapshot(), isTrustedSender: cfg.isTrustedSender ?? (() => true), ...(cfg.now && { now: cfg.now }),
   });
 
-  return { events, session, rbac, cloud, connectivity, device, auth, business, settings, products, catalog, pricing, productImport, customers, register, diagnostics, gateway, handlers, syncStatus };
+  return { events, session, rbac, cloud, connectivity, device, auth, business, settings, products, catalog, pricing, productImport, customers, register, sales, diagnostics, gateway, handlers, syncStatus };
 }
 export type App = ReturnType<typeof createApp>;

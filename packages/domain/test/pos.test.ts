@@ -44,12 +44,12 @@ describe('settleTenders', () => {
 });
 
 describe('effectiveDiscountBp', () => {
-  it('rounds up so a discount just over the limit is caught', () => {
+  it('rounds to the nearest basis point', () => {
     expect(effectiveDiscountBp(10_000, 500)).toBe(500);
     expect(effectiveDiscountBp(10_000, 501)).toBe(501);
     expect(effectiveDiscountBp(30_001, 1500)).toBe(500);
-    expect(effectiveDiscountBp(29_999, 1500)).toBe(501);
-    expect(effectiveDiscountBp(30_000, 1501)).toBe(501);
+    expect(effectiveDiscountBp(29_999, 1500)).toBe(500);
+    expect(effectiveDiscountBp(29_900, 1500)).toBe(502);
     expect(effectiveDiscountBp(0, 0)).toBe(0);
   });
 });

@@ -26,3 +26,4 @@ export * from './repositories/productSearchIndex.js';
 export * from './repositories/catalogDefaults.js';
 export * from './repositories/customer.js';
 export * from './repositories/register.js';
+export * from './repositories/sale.js';

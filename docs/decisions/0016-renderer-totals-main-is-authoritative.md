@@ -13,7 +13,7 @@ must recompute totals and never trust renderer maths. Quantity-break prices depe
 - `sales.complete` re-prices and recomputes everything and compares with the renderer's `expectedTotalPaise`. A
   difference is refused with `TOTAL_MISMATCH`; the UI re-quotes and shows the new total. The customer is never charged
   an amount they were not shown.
-- Discount limits are checked in main on the effective discount (total discount ÷ pre-discount taxable, rounded up)
+- Discount limits are checked in main on the effective discount (total discount ÷ pre-discount taxable, to the nearest basis point — per-line rounding can push an exact 5% a fraction of a paisa over)
   against the user's `sales.create` `maxDiscountBp`.
 
 ## Consequences

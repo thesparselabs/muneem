@@ -1,0 +1,137 @@
+import {
+  AppError, type Branch, type Business, type Customer, type Product, type QuoteLine, type SaleDraft, type SaleQuote, type SaleTotals,
+} from '@muneem/contracts';
+import {
+  computeInvoice, DomainError, effectiveDiscountBp, isUtWithoutLegislature, resolvePrice, toBaseQty, type GstInvoiceResult, type GstLineInput,
+} from '@muneem/domain';
+import {
+  getBranch, getBusiness, getCustomer, getDefaultPriceList, getPriceItemsByProduct, getProduct, listUoms, toPriceItem,
+} from '@muneem/db-sqlite';
+import type { PosContext } from './posContext.js';
+import { POS_SETTINGS } from './register.js';
+
+const B2CL_THRESHOLD_PAISE = 10_000_000;
+
+export interface PricedSale {
+  quote: SaleQuote;
+  business: Business;
+  branch: Branch;
+  customer: Customer | null;
+  priceListId: string | null;
+  placeOfSupplyReason: string | null;
+}
+
+interface PricedLine { line: Omit<QuoteLine, keyof GstLineOutput | 'lineNo'>; gst: GstLineInput }
+type GstLineOutput = Pick<QuoteLine, 'grossPaise' | 'lineDiscountPaise' | 'apportionedBillDiscountPaise' | 'taxablePaise' | 'cgstPaise' | 'sgstPaise' | 'igstPaise' | 'cessPaise' | 'totalPaise'>;
+
+// Prices a cart from product data on the business date; the quote and the commit share this so they can never disagree.
+export class SalePricing {
+  constructor(private readonly ctx: PosContext) {}
+
+  price(draft: SaleDraft): PricedSale {
+    const db = this.ctx.db();
+    const till = this.ctx.till();
+    const business = getBusiness(db, till.businessId)!;
+    const branch = getBranch(db, till.branchId)!;
+    const customer = draft.customerId ? this.customer(draft.customerId) : null;
+    const placeOfSupplyState = draft.placeOfSupplyOverride?.stateCode ?? customer?.stateCode ?? branch.stateCode;
+    const issues: SaleQuote['issues'] = [];
+    const priced = this.priceLines(draft, issues);
+    if (priced.length === 0) throw new AppError('VALIDATION_FAILED', 'Nothing in the cart can be sold', { lines: issues.map((i) => i.message).join('; ') });
+
+    const gst = this.compute(business, branch.stateCode, placeOfSupplyState, customer, draft, priced);
+    const lines = priced.map(({ line }, i): QuoteLine => ({ ...line, lineNo: i + 1, ...pickLine(gst.lines[i]!) }));
+    const preDiscount = gst.lines.reduce((s, l) => s + l.grossExPaise, 0);
+    const totals: SaleTotals = {
+      docType: business.taxScheme === 'regular' ? 'tax_invoice' : 'bill_of_supply',
+      placeOfSupplyState, supplyType: gst.supplyType, stateTaxKind: gst.stateTaxKind, gstr1Bucket: gst.gstr1Bucket,
+      grossPaise: gst.grossPaise, lineDiscountPaise: gst.lineDiscountPaise, billDiscountPaise: gst.billDiscountPaise,
+      taxablePaise: gst.taxablePaise, cgstPaise: gst.cgstPaise, sgstPaise: gst.sgstPaise, igstPaise: gst.igstPaise, cessPaise: gst.cessPaise,
+      roundOffPaise: gst.roundOffPaise, totalPaise: gst.totalPaise,
+      discountBp: effectiveDiscountBp(preDiscount, gst.lineDiscountPaise + gst.billDiscountPaise),
+    };
+    return {
+      quote: { lines, totals, issues }, business, branch, customer,
+      priceListId: getDefaultPriceList(db, till.businessId)?.id ?? null,
+      placeOfSupplyReason: draft.placeOfSupplyOverride?.reason ?? null,
+    };
+  }
+
+  private customer(id: string): Customer {
+    const c = getCustomer(this.ctx.db(), id);
+    if (!c || c.businessId !== this.ctx.businessId()) throw new AppError('NOT_FOUND', 'Customer not found');
+    return c;
+  }
+
+  private priceLines(draft: SaleDraft, issues: SaleQuote['issues']): PricedLine[] {
+    const db = this.ctx.db();
+    const businessId = this.ctx.businessId();
+    const on = this.ctx.today();
+    const ids = [...new Set(draft.lines.map((l) => l.productId))];
+    const products = new Map(ids.map((id) => [id, getProduct(db, id, on)] as const));
+    const list = getDefaultPriceList(db, businessId);
+    const prices = list ? getPriceItemsByProduct(db, list.id, ids) : new Map();
+    const uomCodes = new Map(listUoms(db, businessId).map((u) => [u.id, u.code]));
+    return draft.lines.flatMap((l, i): PricedLine[] => {
+      const issue = (message: string) => { issues.push({ lineNo: i + 1, message }); return []; };
+      const p = products.get(l.productId);
+      if (!p || p.businessId !== businessId) return issue('product not found');
+      if (!p.isActive) return issue(`${p.name} is deactivated`);
+      const factorMilli = factorFor(p, l.uomId);
+      if (factorMilli === undefined) return issue(`${p.name} is not sold in ${uomCodes.get(l.uomId) ?? 'that unit'}`);
+      const price = resolvePrice((prices.get(p.id) ?? []).map(toPriceItem), {
+        uomId: l.uomId, qtyMilli: l.qtyMilli, on, baseUomId: p.baseUomId, ...(l.uomId !== p.baseUomId && { factorMilli }),
+      });
+      if (!price) return issue(`${p.name} has no selling price`);
+      const gst: GstLineInput = {
+        qtyMilli: l.qtyMilli, unitPricePaise: price.pricePaise, priceIsInclusive: price.isInclusive, lineDiscount: l.lineDiscount,
+        gstRateBp: p.gstRateBp, cessRateBp: p.cessRateBp, cessPerUnitPaise: p.cessPerUnitPaise, taxTreatment: p.taxTreatment,
+      };
+      return [{
+        gst,
+        line: {
+          productId: p.id, name: p.name, uomId: l.uomId, uomCode: uomCodes.get(l.uomId) ?? '?', qtyMilli: l.qtyMilli,
+          baseQtyMilli: toBaseQty(l.qtyMilli, factorMilli), unitPricePaise: price.pricePaise, priceIsInclusive: price.isInclusive,
+          gstRateBp: p.gstRateBp, cessRateBp: p.cessRateBp, cessPerUnitPaise: p.cessPerUnitPaise, taxTreatment: p.taxTreatment,
+          lineDiscount: l.lineDiscount,
+          ...(p.hsnCode && { hsnCode: p.hsnCode }),
+          ...(p.mrpPaise !== undefined && { mrpPaise: p.mrpPaise }),
+        },
+      }];
+    });
+  }
+
+  private compute(
+    business: Business, supplierState: string, placeOfSupplyState: string, customer: Customer | null, draft: SaleDraft, priced: PricedLine[],
+  ): GstInvoiceResult {
+    try {
+      return computeInvoice({
+        docType: business.taxScheme === 'regular' ? 'tax_invoice' : 'bill_of_supply',
+        supplierStateCode: supplierState,
+        placeOfSupplyStateCode: placeOfSupplyState,
+        isUnionTerritoryWithoutLegislature: isUtWithoutLegislature(supplierState),
+        taxScheme: business.taxScheme,
+        ...(customer?.gstin && { customerGstin: customer.gstin }),
+        billDiscount: draft.billDiscount,
+        roundToRupee: this.ctx.setting(POS_SETTINGS.roundToRupee, true),
+        b2clThresholdPaise: this.ctx.setting(POS_SETTINGS.b2clThresholdPaise, B2CL_THRESHOLD_PAISE),
+        lines: priced.map((p) => p.gst),
+      });
+    } catch (e) {
+      if (e instanceof DomainError) throw new AppError('VALIDATION_FAILED', e.message, { discount: e.message });
+      throw e;
+    }
+  }
+}
+
+function factorFor(p: Product, uomId: string): number | undefined {
+  if (uomId === p.baseUomId) return 1000;
+  return p.conversions.find((c) => c.fromUomId === uomId)?.factorMilli;
+}
+
+function pickLine(l: GstInvoiceResult['lines'][number]): GstLineOutput {
+  return {
+    grossPaise: l.grossPaise, lineDiscountPaise: l.lineDiscountPaise, apportionedBillDiscountPaise: l.apportionedBillDiscountPaise,
+    taxablePaise: l.taxablePaise, cgstPaise: l.cgstPaise, sgstPaise: l.sgstPaise, igstPaise: l.igstPaise, cessPaise: l.cessPaise, totalPaise: l.totalPaise,
+  };
+}
