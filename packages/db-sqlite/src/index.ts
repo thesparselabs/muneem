@@ -28,3 +28,4 @@ export * from './repositories/customer.js';
 export * from './repositories/register.js';
 export * from './repositories/sale.js';
 export * from './repositories/printJob.js';
+export * from './repositories/heldBill.js';

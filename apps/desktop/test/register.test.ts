@@ -48,3 +48,20 @@ describe('register over IPC', () => {
     expect(await api.call('customers.create', { name: 'Clash', gstin: '27AAAAA0000A1Z5' })).toMatchObject({ ok: false, error: { code: 'ALREADY_EXISTS' } });
   });
 });
+
+describe('held bills', () => {
+  it('holds a cart, lists it, blocks closing, and gives it back once', async () => {
+    const pcs = (await api.data<{ id: string; code: string }[]>('catalog.listUoms')).find((u) => u.code === 'PCS')!.id;
+    const p = await api.data<{ id: string }>('products.create', { name: 'Soap', baseUomId: pcs, sellingPricePaise: 1000 });
+    expect(await api.call('pos.holdBill', { cart: { lines: [{ productId: p.id, uomId: pcs, qtyMilli: 1000 }] } })).toMatchObject({ ok: false, error: { code: 'REGISTER_NOT_OPEN' } });
+    await api.data('pos.openRegister', { openingCashPaise: 0 });
+    const held = await api.data<{ id: string; lineCount: number }>('pos.holdBill', { label: 'Mrs Rao', cart: { lines: [{ productId: p.id, uomId: pcs, qtyMilli: 3000 }] } });
+    expect(held).toMatchObject({ lineCount: 1, label: 'Mrs Rao' });
+    expect(await api.data('pos.listHeldBills')).toHaveLength(1);
+    expect(await api.call('pos.closeRegister', { countedCashPaise: 0 })).toMatchObject({ ok: false, error: { message: expect.stringContaining('held bills') } });
+    const back = await api.data<{ cart: { lines: { qtyMilli: number }[] } }>('pos.retrieveBill', { id: held.id });
+    expect(back.cart.lines[0]!.qtyMilli).toBe(3000);
+    expect(await api.call('pos.retrieveBill', { id: held.id })).toMatchObject({ ok: false, error: { code: 'NOT_FOUND' } });
+    expect(await api.data('pos.listHeldBills')).toEqual([]);
+  });
+});

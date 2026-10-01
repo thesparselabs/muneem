@@ -20,6 +20,7 @@ import { PrinterConfigStore } from './services/print/printerConfig.js';
 import { PreviewStore } from './services/import/previewStore.js';
 import { PricingService } from './services/pricing.js';
 import { CustomerService } from './services/pos/customers.js';
+import { HeldBillService } from './services/pos/heldBills.js';
 import { PosContext } from './services/pos/posContext.js';
 import { RegisterService } from './services/pos/register.js';
 import { SalePricing } from './services/pos/salePricing.js';
@@ -76,6 +77,7 @@ export function createApp(cfg: AppConfig) {
   const posCtx = new PosContext(catalogCtx, session, rbac);
   const customers = new CustomerService(posCtx);
   const register = new RegisterService(posCtx);
+  const heldBills = new HeldBillService(posCtx, register);
   const printerConfig = new PrinterConfigStore(cfg.db);
   const printQueue = new PrintQueue({ db: cfg.db, config: printerConfig, receiptsDir: cfg.receiptsDir, log: cfg.loggers.hardware });
   const sales = new SaleService(posCtx, new SalePricing(posCtx), register, () => session.require().user.name, (r) => printQueue.enqueue(r.printJobId));
@@ -142,6 +144,10 @@ export function createApp(cfg: AppConfig) {
     'pos.xReport': () => register.xReport(),
     'pos.zReport': (i) => register.zReport(i.sessionId),
     'pos.closeRegister': (i) => register.close(i),
+    'pos.holdBill': (i) => heldBills.hold(i.label, i.cart),
+    'pos.listHeldBills': () => heldBills.list(),
+    'pos.retrieveBill': (i) => heldBills.take(i.id),
+    'pos.discardBill': (i) => { heldBills.take(i.id); return { ok: true as const }; },
     'sales.quote': (i) => sales.quote(i),
     'sales.complete': (i) => sales.complete(i),
     'sales.get': (i) => sales.get(i.id),

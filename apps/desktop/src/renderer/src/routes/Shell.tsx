@@ -6,7 +6,7 @@ import SyncBadge from '../components/SyncBadge.js';
 
 const NAV = [
   { to: '/', label: 'Home', enabled: true },
-  { to: '/pos', label: 'POS · Billing', enabled: false, stage: 'Stage 3' },
+  { to: '/pos', label: 'POS · Billing', enabled: true },
   { to: '/products', label: 'Products', enabled: true },
   { to: '/inventory', label: 'Inventory', enabled: false, stage: 'Stage 4' },
   { to: '/purchases', label: 'Purchases', enabled: false, stage: 'Stage 5' },

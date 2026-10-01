@@ -11,7 +11,7 @@ import {
 import {
   CashMovementInput, CloseRegisterInput, Customer, CustomerInput, CustomerSearchInput, OpenRegisterInput, RegisterReport, RegisterSession,
 } from './pos.js';
-import { CompleteSaleInput, CompleteSaleResult, Sale, SaleDraft, SaleListInput, SaleQuote, SaleSummary } from './sales.js';
+import { CompleteSaleInput, CompleteSaleResult, HeldBill, HoldBillInput, Sale, SaleDraft, SaleListInput, SaleQuote, SaleSummary } from './sales.js';
 import { PrintJobSummary, PrinterConfig, ReceiptDoc } from './print.js';
 
 /**
@@ -118,6 +118,10 @@ export const contract = {
   'pos.zReport': spec({ input: z.object({ sessionId: Ulid.optional() }), output: RegisterReport.nullable(), permission: 'pos.view', rateLimit: { perSec: 5 } }),
   'pos.closeRegister': spec({ input: CloseRegisterInput, output: RegisterReport, permission: 'pos.create', rateLimit: { perSec: 1 }, audit: true }),
 
+  'pos.holdBill': spec({ input: HoldBillInput, output: HeldBill, permission: 'pos.create', rateLimit: { perSec: 5 }, audit: true }),
+  'pos.listHeldBills': spec({ input: Empty, output: z.array(HeldBill), permission: 'pos.view', rateLimit: { perSec: 10 } }),
+  'pos.retrieveBill': spec({ input: z.object({ id: Ulid }), output: HeldBill, permission: 'pos.create', rateLimit: { perSec: 5 }, audit: true }),
+  'pos.discardBill': spec({ input: z.object({ id: Ulid }), output: Ok, permission: 'pos.create', rateLimit: { perSec: 5 }, audit: true }),
   'sales.quote': spec({ input: SaleDraft, output: SaleQuote, permission: 'sales.create', rateLimit: { perSec: 30 } }),
   'sales.complete': spec({ input: CompleteSaleInput, output: CompleteSaleResult, permission: 'sales.create', rateLimit: { perSec: 5 }, audit: true, idempotent: 'commandId' }),
   'sales.get': spec({ input: z.object({ id: Ulid }), output: Sale, permission: 'sales.view', rateLimit: { perSec: 20 } }),

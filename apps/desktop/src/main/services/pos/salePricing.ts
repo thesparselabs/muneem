@@ -1,5 +1,5 @@
 import {
-  AppError, type Branch, type Business, type Customer, type Product, type QuoteLine, type SaleDraft, type SaleQuote, type SaleTotals,
+  AppError, type Branch, type Business, type Customer, type Product, type QuoteContext, type QuoteLine, type SaleDraft, type SaleQuote, type SaleTotals,
 } from '@muneem/contracts';
 import {
   computeInvoice, DomainError, effectiveDiscountBp, isUtWithoutLegislature, resolvePrice, toBaseQty, type GstInvoiceResult, type GstLineInput,
@@ -39,7 +39,12 @@ export class SalePricing {
     const priced = this.priceLines(draft, issues);
     if (priced.length === 0) throw new AppError('VALIDATION_FAILED', 'Nothing in the cart can be sold', { lines: issues.map((i) => i.message).join('; ') });
 
-    const gst = this.compute(business, branch.stateCode, placeOfSupplyState, customer, draft, priced);
+    const context = {
+      supplierStateCode: branch.stateCode, taxScheme: business.taxScheme,
+      roundToRupee: this.ctx.setting(POS_SETTINGS.roundToRupee, true),
+      b2clThresholdPaise: this.ctx.setting(POS_SETTINGS.b2clThresholdPaise, B2CL_THRESHOLD_PAISE),
+    };
+    const gst = this.compute(context, placeOfSupplyState, customer, draft, priced);
     const lines = priced.map(({ line }, i): QuoteLine => ({ ...line, lineNo: i + 1, ...pickLine(gst.lines[i]!) }));
     const preDiscount = gst.lines.reduce((s, l) => s + l.grossExPaise, 0);
     const totals: SaleTotals = {
@@ -51,7 +56,7 @@ export class SalePricing {
       discountBp: effectiveDiscountBp(preDiscount, gst.lineDiscountPaise + gst.billDiscountPaise),
     };
     return {
-      quote: { lines, totals, issues }, business, branch, customer,
+      quote: { lines, totals, issues, context }, business, branch, customer,
       priceListId: getDefaultPriceList(db, till.businessId)?.id ?? null,
       placeOfSupplyReason: draft.placeOfSupplyOverride?.reason ?? null,
     };
@@ -102,19 +107,19 @@ export class SalePricing {
   }
 
   private compute(
-    business: Business, supplierState: string, placeOfSupplyState: string, customer: Customer | null, draft: SaleDraft, priced: PricedLine[],
+    context: QuoteContext, placeOfSupplyState: string, customer: Customer | null, draft: SaleDraft, priced: PricedLine[],
   ): GstInvoiceResult {
     try {
       return computeInvoice({
-        docType: business.taxScheme === 'regular' ? 'tax_invoice' : 'bill_of_supply',
-        supplierStateCode: supplierState,
+        docType: context.taxScheme === 'regular' ? 'tax_invoice' : 'bill_of_supply',
+        supplierStateCode: context.supplierStateCode,
         placeOfSupplyStateCode: placeOfSupplyState,
-        isUnionTerritoryWithoutLegislature: isUtWithoutLegislature(supplierState),
-        taxScheme: business.taxScheme,
+        isUnionTerritoryWithoutLegislature: isUtWithoutLegislature(context.supplierStateCode),
+        taxScheme: context.taxScheme,
         ...(customer?.gstin && { customerGstin: customer.gstin }),
         billDiscount: draft.billDiscount,
-        roundToRupee: this.ctx.setting(POS_SETTINGS.roundToRupee, true),
-        b2clThresholdPaise: this.ctx.setting(POS_SETTINGS.b2clThresholdPaise, B2CL_THRESHOLD_PAISE),
+        roundToRupee: context.roundToRupee,
+        b2clThresholdPaise: context.b2clThresholdPaise,
         lines: priced.map((p) => p.gst),
       });
     } catch (e) {

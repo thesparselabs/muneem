@@ -72,10 +72,20 @@ export const SaleTotals = z.object({
 });
 export type SaleTotals = z.infer<typeof SaleTotals>;
 
+// What the renderer needs to recompute totals itself between quotes (ADR-0016).
+export const QuoteContext = z.object({
+  supplierStateCode: StateCode,
+  taxScheme: z.enum(['regular', 'composition', 'unregistered']),
+  roundToRupee: z.boolean(),
+  b2clThresholdPaise: Int,
+});
+export type QuoteContext = z.infer<typeof QuoteContext>;
+
 export const SaleQuote = z.object({
   lines: z.array(QuoteLine),
   totals: SaleTotals,
   issues: z.array(z.object({ lineNo: Int, message: z.string() })),
+  context: QuoteContext,
 });
 export type SaleQuote = z.infer<typeof SaleQuote>;
 
@@ -142,3 +152,9 @@ export const SaleSummary = z.object({
 });
 export type SaleSummary = z.infer<typeof SaleSummary>;
 export const SaleListInput = z.object({ sessionId: Ulid.optional(), limit: z.number().int().min(1).max(200).default(50), before: IsoDateTime.optional() });
+
+export const HoldBillInput = z.object({ label: z.string().trim().max(60).optional(), cart: SaleDraft });
+export const HeldBill = z.object({
+  id: Ulid, label: z.string().optional(), heldAt: IsoDateTime, heldBy: z.string(), lineCount: Int, cart: SaleDraft,
+});
+export type HeldBill = z.infer<typeof HeldBill>;

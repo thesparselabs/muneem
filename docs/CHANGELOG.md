@@ -51,6 +51,21 @@ All notable changes, newest first. Each entry records **what** changed and **why
 - **`hardware` log** — the Diagnostics log viewer offered "hardware" but no such log was written; printer and drawer
   events now go there, and it is included in support bundles.
 
+- **Held bills** (`pos.holdBill/listHeldBills/retrieveBill/discardBill`, F6/F7). A held cart keeps products and
+  quantities only; prices are worked out again when it comes back. Held bills stay on the till and block closing the
+  register.
+- **POS screen** (`/pos`, keyboard-first): register gate with opening float; scanner detection (a burst of 4+
+  characters ending in Enter within the LLD timings) on the page and the search box. Keys: F2 search, F3 customer,
+  F4 bill discount, F5 payment, F6 hold, F7 retrieve, F9 reprint last, Esc clear.
+  - **Cart and totals:** quantity and line-discount editing, with instant totals from the same GST engine and the main
+    process re-pricing after each change.
+  - **Payment:** split payment with live change due.
+  - **Safeguards:** a near-duplicate warning (same amount and customer within a minute), a printer-failure banner with
+    retry, and cash in/out, X report and close with a Z report.
+  - **Printer settings:** `/settings/printer` for simulator or network, paper width, drawer, test print.
+- **Quote context** (`sales.quote` returns the supplier state, tax scheme and rounding setting) so the renderer can total
+  the cart itself between quotes (ADR-0016).
+
 ### Fixed
 - **`pnpm dev` showed a blank window** ("@vitejs/plugin-react can't detect preamble"). The renderer's Content Security
   Policy blocks inline scripts, and Vite's dev server injects one for React hot reload. When loading from the dev server
