@@ -66,7 +66,21 @@ All notable changes, newest first. Each entry records **what** changed and **why
 - **Quote context** (`sales.quote` returns the supplier state, tax scheme and rounding setting) so the renderer can total
   the cart itself between quotes (ADR-0016).
 
+- **Kill -9 suite for billing** (Stage 3 exit criterion): a child process completes sales until it is SIGKILLed at a
+  random moment; afterwards every sale must have its lines, tenders, audit row, outbox row and print job, with no
+  orphan rows. Invoice numbers must be gap-free per series, no number consumed by an unsaved sale, and the audit
+  chains intact. 20 kills run in CI; `crash-loop --scenario sales 200` passed with 578 sales.
+- **Offline golden-flow test** (PRD §8): with the cloud down, it logs in offline, opens the register, scans, adds a
+  customer, applies a bill discount, takes UPI + cash with change and prints. It then does a cash out and closes with
+  a Z report, and finally checks the sale is queued for sync and the audit chain verifies.
+
 ### Fixed
+- **The crash tests never killed the process doing the writing.** They SIGKILLed the `tsx` launcher, which runs the
+  script in a second Node process, so the writer kept running and the checks proved nothing about crashes. This
+  affected the Stage 1 `crash-loop` too. Children now run as `node --import tsx`. Re-run for real, the Stage 1 loop
+  passes (30 kills) and the new sales suite passes (200 kills).
+- **The print queue could crash the app** if recording a job's status failed (for example a busy database). It now
+  logs the problem and retries the job at the next start.
 - **`pnpm dev` showed a blank window** ("@vitejs/plugin-react can't detect preamble"). The renderer's Content Security
   Policy blocks inline scripts, and Vite's dev server injects one for React hot reload. When loading from the dev server
   only, the policy now allows inline scripts and the HMR websocket; the packaged app keeps the strict policy.

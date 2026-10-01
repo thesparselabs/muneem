@@ -1,6 +1,6 @@
 import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { ROLE_PRESETS } from '@muneem/contracts';
 import { migrate, openDatabase, type Db } from '@muneem/db-sqlite';
 import { createApp, type App } from '../src/main/app.js';
@@ -53,10 +53,10 @@ export function defaultServer(): FakeServer {
   return s;
 }
 
-export async function testApp(opts: { server?: FakeServer; now?: () => number; file?: boolean } = {}): Promise<{ app: App; db: Db; server: FakeServer; dir: string }> {
+export async function testApp(opts: { server?: FakeServer; now?: () => number; file?: boolean; dbFile?: string } = {}): Promise<{ app: App; db: Db; server: FakeServer; dir: string }> {
   const server = opts.server ?? defaultServer();
-  const dir = mkdtempSync(join(tmpdir(), 'muneem-desktop-'));
-  const file = opts.file ? join(dir, 'muneem.sqlite') : ':memory:';
+  const dir = opts.dbFile ? dirname(opts.dbFile) : mkdtempSync(join(tmpdir(), 'muneem-desktop-'));
+  const file = opts.dbFile ?? (opts.file ? join(dir, 'muneem.sqlite') : ':memory:');
   const db = openDatabase(file, { quickCheck: false });
   await migrate(db);
   const app = createApp({

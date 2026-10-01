@@ -110,6 +110,15 @@ describe('print queue', () => {
     expect(sent).toEqual([expect.stringContaining('copy9')]);
   });
 
+  it('never throws when the job cannot even be recorded (for example, the database is busy)', async () => {
+    const { db, dir, sale } = await billedApp();
+    const queue = queueWith(db, failing('unused'), dir);
+    db.exec("CREATE TRIGGER busy BEFORE UPDATE ON print_job BEGIN SELECT RAISE(ABORT, 'database is locked'); END");
+    queue.reprint(sale.saleId, 'u');
+    await expect(queue.idle()).resolves.toBeUndefined();
+    db.exec('DROP TRIGGER busy');
+  });
+
   it('reprint over IPC creates a duplicate copy', async () => {
     const { api, app, db, sale } = await billedApp();
     const { jobId } = await api.data<{ jobId: string }>('printer.reprint', { saleId: sale.saleId });

@@ -2,21 +2,31 @@
  * Stage 1 verification item 4: SIGKILL the writer mid-transaction 50 times, then prove the DB is
  * consistent — no partial writes, no orphan audit/outbox rows, gap-free local_sequence.
  */
-import { spawn } from 'node:child_process';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { openDatabase, quickCheck, foreignKeyCheck, verifyAuditChain } from '@muneem/db-sqlite';
+import { checkSalesConsistency } from '../test/crash/checkSales.js';
+import { killDuringSales, spawnTs } from '../test/crash/killLoop.js';
 
-const N = Number(process.argv[2] ?? 50);
+const args = process.argv.slice(2);
+const scenario = args.includes('--scenario') ? args[args.indexOf('--scenario') + 1] : 'setup';
+const N = Number(args.find((a) => /^\d+$/u.test(a)) ?? 50);
+
+if (scenario === 'sales') {
+  const salesFile = join(mkdtempSync(join(tmpdir(), 'muneem-crash-sales-')), 'muneem.sqlite');
+  await killDuringSales(salesFile, N);
+  const report = checkSalesConsistency(salesFile);
+  console.log(JSON.stringify({ kills: N, ...report, RESULT: report.ok ? 'PASS' : 'FAIL' }, null, 2));
+  process.exit(report.ok ? 0 : 1);
+}
 const dir = mkdtempSync(join(tmpdir(), 'muneem-crash-'));
 const file = join(dir, 'muneem.sqlite');
 const child = join(dirname(fileURLToPath(import.meta.url)), 'crash-child.ts');
-const tsx = join(dirname(fileURLToPath(import.meta.url)), '..', 'node_modules', '.bin', 'tsx');
 
 for (let i = 0; i < N; i++) {
-  const p = spawn(tsx, [child, file], { stdio: 'ignore' });
+  const p = spawnTs(child, [file], 'ignore');
   const delay = 150 + Math.floor(Math.random() * 400);
   await new Promise<void>((res) => setTimeout(res, delay));
   p.kill('SIGKILL');

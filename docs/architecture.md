@@ -47,6 +47,11 @@ docs/             this folder (reality, with reasons)
 - A failed product save or import leaves no product, barcode, price, category, audit or outbox row behind
 - An inclusive selling price never exceeds MRP; one live barcode code per business
 - Barcode lookup p95 < 30 ms and search p95 < 60 ms at 5,000 SKUs
+- A sale's total = taxable + taxes + round-off, intra-state sales carry no IGST and vice versa, and paid − change =
+  total (database CHECKs); sales, lines and tenders are append-only (triggers)
+- After repeated SIGKILLs mid-billing: no sale without its lines, tenders, audit row, outbox row and print job; no
+  orphan rows; invoice numbers gap-free per series with no number consumed by an unsaved sale
+- `sales.complete` p95 < 250 ms at 5,000 SKUs
 
 ## Catalog (Stage 2)
 
@@ -64,6 +69,22 @@ docs/             this folder (reality, with reasons)
 - **Main-process services:** `CatalogContext` (actor, business, business date, default seeding) is shared by
   `ProductService`, `ProductSearch`, `CatalogService`, `PricingService` and `ImportService`.
 
+## Billing (Stage 3)
+
+- **The commit** (HLD §8, ADR-0013): one `BEGIN IMMEDIATE` transaction made of named steps — invoice number, sale +
+  lines (tax snapshot per line) + tenders, receipt print job, one audit row, one outbox row for the whole sale. Stage 4
+  adds a stock step and Stage 6 a journal step; nothing else changes.
+- **Authority** (ADR-0016): the renderer totals the cart instantly with the same GST engine; the main process re-prices
+  and recomputes, and refuses a total the cashier did not see (`TOTAL_MISMATCH`). A repeated `commandId` returns the
+  first sale.
+- **Numbering** (ADR-0014): one series per terminal and financial year, created on first use, allocated inside the
+  commit (`DEL1/T01/2026-27/000001`).
+- **Registers** (ADR-0017): one open session per terminal; expected cash, X/Z reports, variance needing a manager.
+- **Printing** (ADR-0015): the print job is part of the sale; printing and the drawer run afterwards from a queue that
+  records every outcome and never throws. Printer settings are per device.
+- **Main-process services:** `PosContext` (till, settings, permissions) is shared by `CustomerService`,
+  `RegisterService`, `SalePricing`, `SaleService`, `HeldBillService`; `PrintQueue` owns printing.
+
 ## Identity and trust
 
 - Cloud is authoritative for users, roles and permissions; the device caches a **permission snapshot** and enforces
@@ -75,5 +96,6 @@ docs/             this folder (reality, with reasons)
 
 ## What is not built yet
 
-POS billing, printing, inventory, purchases, payments, accounting, reports, and the sync worker. Product variants,
-weighed barcodes and label printing are deferred (ADR-0008). See `build-stages.md`.
+Inventory, purchases, payments, accounting, reports and the sync worker. In billing: sale cancel, returns/credit
+notes, credit sales and manager PIN override (ADR-0013); USB/Windows printers and non-ASCII receipt text. Product
+variants, weighed barcodes and label printing are deferred (ADR-0008). See `build-stages.md`.

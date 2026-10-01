@@ -129,3 +129,17 @@ commit, hardware after · 0016 renderer totals vs authoritative recompute · 001
   `pnpm --filter @muneem/desktop crash-loop --scenario sales` run locally with its PASS output recorded.
 - Manual: `pnpm --filter @muneem/desktop dev`, open register, scan/type products, F-key flow to payment, check the
   receipt file in `userData/receipts/`, close register and read the Z report; stop the Go API and bill again offline.
+
+## As built (2026-10-02)
+
+- Price-list calls stayed `pricing.*`; the drawer call is `drawer.open` (IPC namespaces must be lowercase).
+- The effective discount is rounded to the nearest basis point, not up: an exact 5% became 5.01% after per-line
+  rounding and was refused for cashiers.
+- `sales.quote` also returns the supplier state, tax scheme and rounding setting so the renderer can total locally.
+- The kill -9 suite found that its own children were never killed: the `tsx` binary forks a second Node process, so
+  SIGKILL hit the wrapper while the writer kept running. Children now run as `node --import tsx`. The Stage 1
+  crash loop had the same flaw; re-run for real it passes (30 kills, 492 entities).
+- The print queue could throw (and crash the process) if recording a job's status failed; it now logs and retries at
+  the next start.
+- The scanner is detected on the page and the search box, not inside other inputs.
+- 20 kills run in CI (about 20 s); `pnpm --filter @muneem/desktop crash-loop --scenario sales 200` passed with 578 sales.

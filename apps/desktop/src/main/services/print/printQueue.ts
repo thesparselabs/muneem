@@ -68,6 +68,14 @@ export class PrintQueue {
   }
 
   private async process(jobId: string): Promise<void> {
+    try {
+      await this.print(jobId);
+    } catch (e) {
+      this.d.log.error({ jobId, err: e instanceof Error ? e.message : String(e) }, 'print queue could not record a job; it will be retried at next start');
+    }
+  }
+
+  private async print(jobId: string): Promise<void> {
     const db = this.d.db();
     const job = getPrintJob(db, jobId);
     if (!job || job.status === 'done' || job.status === 'cancelled') return;

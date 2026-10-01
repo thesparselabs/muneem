@@ -876,7 +876,7 @@ customers.*   search, get, create, update, getLedger, getOutstanding
 suppliers.*   search, get, create, update, getLedger
 pos.*         openRegister, closeRegister, getSession, xReport, zReport, cashMovement,
               holdBill, listHeldBills, retrieveBill, discardBill
-sales.*       quote, complete, get, list, cancel, returnAgainst, getReceiptPayload
+sales.*       quote, complete, get, list, getReceipt, cancel, returnAgainst   (cancel/returnAgainst: later stages)
 purchases.*   create, receive, get, list, return, cancel
 payments.*    create, allocate, get, list, cancel
 expenses.*    create, get, list, update
@@ -884,8 +884,8 @@ accounting.*  getTrialBalance, getLedger, postManualJournal, getPeriods, lockPer
 reports.*     run(reportId, params), export(reportId, params, format), listDefinitions
 gst.*         getSummary, getGstr1Buckets, getHsnSummary, exportGstr1
 hardware.*    listDevices, testDevice, getStatus, setConfig, onEvent (push channel)
-printer.*     print, reprint, getQueue, retryJob, cancelJob
-cashDrawer.*  open
+printer.*     getConfig, setConfig, testPrint, getQueue, retryJob, reprint
+drawer.*      open                                  (IPC namespaces are lowercase, so not cashDrawer.*)
 sync.*        getStatus, pushNow, pullNow, retryFailed, listDeadLetters, resend
 settings.*    get, set, listSeries, createSeries
 diagnostics.* getHealth, integrityCheck, backupNow, exportSupportBundle, getLogsTail
