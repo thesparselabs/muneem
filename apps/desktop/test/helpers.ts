@@ -1,6 +1,7 @@
 import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { ROLE_PRESETS } from '@muneem/contracts';
 import { migrate, openDatabase, type Db } from '@muneem/db-sqlite';
 import { createApp, type App } from '../src/main/app.js';
 import { silentLoggers } from '../src/main/infra/logger.js';
@@ -65,4 +66,34 @@ export async function testApp(opts: { server?: FakeServer; now?: () => number; f
   app.device.ensureIdentity();
   await app.connectivity.probe();
   return { app, db, server, dir };
+}
+
+export type Envelope<T> = { ok: true; data: T } | { ok: false; error: { code: string; message: string; fields?: Record<string, string> } };
+
+export function caller(app: App) {
+  const call = <T = unknown>(channel: string, input: unknown = {}) => app.gateway.handle(channel, input, 1) as Promise<Envelope<T>>;
+  const data = async <T>(channel: string, input: unknown = {}): Promise<T> => {
+    const r = await call<T>(channel, input);
+    if (!r.ok) throw new Error(`${channel}: ${JSON.stringify(r.error)}`);
+    return r.data;
+  };
+  return { call, data };
+}
+
+// Owner logged in, with a business, a Delhi branch and terminal T01 selected on this device.
+export async function ownerAtTill(app: App, over: { stateCode?: string; taxScheme?: string; gstin?: string } = {}): Promise<{ businessId: string; branchId: string; terminalId: string }> {
+  const { data } = caller(app);
+  await data('auth.login', { identifier: '9999999999', password: 'correct-horse' });
+  const stateCode = over.stateCode ?? '07';
+  const b = await data<{ id: string }>('business.create', {
+    name: 'Sharma Store', businessType: 'retail', stateCode, taxScheme: over.taxScheme ?? 'regular', ...(over.gstin && { gstin: over.gstin }),
+  });
+  const br = await data<{ id: string }>('business.createBranch', { code: 'DEL1', name: 'Main', stateCode, isDefault: true });
+  const t = await data<{ id: string }>('business.createTerminal', { branchId: br.id, code: 'T01', name: 'Till 1' });
+  await data('business.selectTerminal', { terminalId: t.id });
+  return { businessId: b.id, branchId: br.id, terminalId: t.id };
+}
+
+export function grantRole(db: Db, app: App, role: string): void {
+  db.prepare('UPDATE user_membership SET grants_json = ? WHERE user_id = ?').run(JSON.stringify(ROLE_PRESETS[role]), app.session.require().user.id);
 }

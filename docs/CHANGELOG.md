@@ -17,6 +17,13 @@ All notable changes, newest first. Each entry records **what** changed and **why
 - **POS rules in `@muneem/domain`**: `settleTenders` (change only from cash; paid − change = total), `effectiveDiscountBp`
   (rounded up so limits can't be slipped by rounding), `expectedCash`, GSTIN state and UTGST helpers.
 
+- **Customers** (`customers.search/get/create/update`): name, phone, GSTIN, state and address. The state is taken
+  from the GSTIN, and a contradicting state is refused, because the state decides IGST vs CGST/SGST on the invoice.
+- **Register sessions** (`pos.openRegister/getSession/cashMovement/xReport/zReport/closeRegister`): one open register
+  per terminal, cash in/out/safe drop with reasons, live X report, close with counted cash (optional denominations
+  that must add up) and a frozen Z report. A variance above the threshold (default ₹100) needs a manager; blind close
+  hides the expected cash from cashiers; a register with held bills cannot be closed (ADR-0017).
+
 ### Fixed
 - **`pnpm dev` showed a blank window** ("@vitejs/plugin-react can't detect preamble"). The renderer's Content Security
   Policy blocks inline scripts, and Vite's dev server injects one for React hot reload. When loading from the dev server

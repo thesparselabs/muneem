@@ -17,6 +17,9 @@ import { CatalogContext } from './services/catalogContext.js';
 import { ImportService } from './services/import/importService.js';
 import { PreviewStore } from './services/import/previewStore.js';
 import { PricingService } from './services/pricing.js';
+import { CustomerService } from './services/pos/customers.js';
+import { PosContext } from './services/pos/posContext.js';
+import { RegisterService } from './services/pos/register.js';
 import { ProductSearch } from './services/productSearch.js';
 import { ProductService } from './services/products.js';
 import { DeviceService } from './services/device.js';
@@ -65,6 +68,9 @@ export function createApp(cfg: AppConfig) {
   const products = new ProductService(catalogCtx, productSearch);
   const catalog = new CatalogService(catalogCtx, invalidateSearch);
   const pricing = new PricingService(catalogCtx, invalidateSearch);
+  const posCtx = new PosContext(catalogCtx, session, rbac);
+  const customers = new CustomerService(posCtx);
+  const register = new RegisterService(posCtx);
   const productImport = new ImportService(catalogCtx, new PreviewStore(cfg.now ?? (() => Date.now())), invalidateSearch);
   const diagnostics = new DiagnosticsService({
     db: cfg.db, dbFile: cfg.dbFile, backupsDir: cfg.backupsDir, bundlesDir: cfg.bundlesDir, loggers: cfg.loggers, session, device,
@@ -118,6 +124,16 @@ export function createApp(cfg: AppConfig) {
     'pricing.createList': (i) => pricing.createList(i),
     'pricing.getItems': (i) => pricing.getItems(i),
     'pricing.setItems': (i) => pricing.setItems(i),
+    'customers.search': (i) => customers.search(i.query, i.limit),
+    'customers.get': (i) => customers.get(i.id),
+    'customers.create': (i) => customers.create(i),
+    'customers.update': (i) => customers.update(i),
+    'pos.getSession': () => register.current(),
+    'pos.openRegister': (i) => register.open(i.openingCashPaise),
+    'pos.cashMovement': (i) => { register.cashMovement(i); return { ok: true as const }; },
+    'pos.xReport': () => register.xReport(),
+    'pos.zReport': (i) => register.zReport(i.sessionId),
+    'pos.closeRegister': (i) => register.close(i),
     'sync.getStatus': () => syncStatus(),
     'diagnostics.getHealth': () => diagnostics.getHealth(),
     'diagnostics.integrityCheck': () => diagnostics.integrityCheck(),
@@ -131,6 +147,6 @@ export function createApp(cfg: AppConfig) {
     connectivity: () => connectivity.snapshot(), isTrustedSender: cfg.isTrustedSender ?? (() => true), ...(cfg.now && { now: cfg.now }),
   });
 
-  return { events, session, rbac, cloud, connectivity, device, auth, business, settings, products, catalog, pricing, productImport, diagnostics, gateway, handlers, syncStatus };
+  return { events, session, rbac, cloud, connectivity, device, auth, business, settings, products, catalog, pricing, productImport, customers, register, diagnostics, gateway, handlers, syncStatus };
 }
 export type App = ReturnType<typeof createApp>;

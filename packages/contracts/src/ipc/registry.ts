@@ -8,6 +8,9 @@ import {
   Brand, BrandInput, Category, CategoryInput, ImportCommitInput, ImportPreview, ImportPreviewInput, ImportSummary, PriceList, PriceListInput, PriceListItem, PriceItemsQuery, Product, ProductHit,
   ProductInput, ProductListInput, ProductPage, ProductSearchInput, ProductUpdate, SetPriceItems, Uom, UomInput,
 } from './catalog.js';
+import {
+  CashMovementInput, CloseRegisterInput, Customer, CustomerInput, CustomerSearchInput, OpenRegisterInput, RegisterReport, RegisterSession,
+} from './pos.js';
 
 /**
  * LLD §10.1 — the IPC contract registry. The preload is GENERATED from this object, so the
@@ -101,6 +104,17 @@ export const contract = {
   'pricing.createList': spec({ input: PriceListInput, output: PriceList, permission: 'products.edit', rateLimit: { perSec: 2 }, audit: true }),
   'pricing.getItems': spec({ input: PriceItemsQuery, output: z.array(PriceListItem), permission: 'products.view', rateLimit: { perSec: 20 } }),
   'pricing.setItems': spec({ input: SetPriceItems, output: z.array(PriceListItem), permission: 'products.edit', rateLimit: { perSec: 5 }, audit: true }),
+
+  'customers.search': spec({ input: CustomerSearchInput, output: z.array(Customer), permission: 'customers.view', rateLimit: { perSec: 20 } }),
+  'customers.get': spec({ input: z.object({ id: Ulid }), output: Customer, permission: 'customers.view', rateLimit: { perSec: 20 } }),
+  'customers.create': spec({ input: CustomerInput, output: Customer, permission: 'customers.create', rateLimit: { perSec: 5 }, audit: true }),
+  'customers.update': spec({ input: CustomerInput.extend({ id: Ulid, version: z.number().int() }), output: Customer, permission: 'customers.edit', rateLimit: { perSec: 5 }, audit: true }),
+  'pos.getSession': spec({ input: Empty, output: RegisterSession.nullable(), permission: 'pos.view', rateLimit: { perSec: 20 } }),
+  'pos.openRegister': spec({ input: OpenRegisterInput, output: RegisterSession, permission: 'pos.create', rateLimit: { perSec: 1 }, audit: true }),
+  'pos.cashMovement': spec({ input: CashMovementInput, output: Ok, permission: 'pos.create', rateLimit: { perSec: 2 }, audit: true }),
+  'pos.xReport': spec({ input: Empty, output: RegisterReport, permission: 'pos.view', rateLimit: { perSec: 5 } }),
+  'pos.zReport': spec({ input: z.object({ sessionId: Ulid.optional() }), output: RegisterReport.nullable(), permission: 'pos.view', rateLimit: { perSec: 5 } }),
+  'pos.closeRegister': spec({ input: CloseRegisterInput, output: RegisterReport, permission: 'pos.create', rateLimit: { perSec: 1 }, audit: true }),
 
   'sync.getStatus': spec({ input: Empty, output: SyncStatus, permission: null, rateLimit: { perSec: 10 } }),
 
