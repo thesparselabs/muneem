@@ -5,6 +5,11 @@ All notable changes, newest first. Each entry records **what** changed and **why
 
 ## [Unreleased]
 
+### Fixed
+- **`pnpm dev` showed a blank window** ("@vitejs/plugin-react can't detect preamble"). The renderer's Content Security
+  Policy blocks inline scripts, and Vite's dev server injects one for React hot reload. When loading from the dev server
+  only, the policy now allows inline scripts and the HMR websocket; the packaged app keeps the strict policy.
+
 ### Added — Stage 2 catalog
 - **Stage 2 plan (`docs/plans/stage-2-catalog.md`)** — the LLD had tables and targets for the catalog but no task
   breakdown, and left category/brand, the import wizard, scope and cloud involvement open. The plan settles them.
