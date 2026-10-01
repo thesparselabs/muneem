@@ -13,7 +13,11 @@ export type OutboxEntityType =
   | 'barcode'
   | 'uom_conversion'
   | 'price_list'
-  | 'price_list_item';
+  | 'price_list_item'
+  | 'customer'
+  | 'pos_session'
+  | 'cash_movement'
+  | 'sale';
 export type OutboxOperationType = 'create' | 'update' | 'cancel' | 'void';
 export type OutboxStatus = 'pending' | 'in_flight' | 'sent' | 'failed' | 'dead' | 'superseded';
 export type OutboxErrorClass = 'transient' | 'permanent' | 'dependency';

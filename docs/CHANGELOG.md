@@ -5,6 +5,18 @@ All notable changes, newest first. Each entry records **what** changed and **why
 
 ## [Unreleased]
 
+### Added — Stage 3 POS billing
+- **Stage 3 plan (`docs/plans/stage-3-pos.md`) and ADRs 0013–0017** — the design disagreed on whether stock and the
+  journal belong in the Stage 3 commit, and left numbering, tenders, sessions and printing details open. Decided with
+  the user: stock and books join the commit in Stages 4/6 through a step seam; basic customers without credit;
+  hold/retrieve bills; no printer yet (simulator + network ESC/POS).
+- **Migration `0003_pos`** — customers, register sessions, cash movements, sales with lines and tenders, held bills and
+  print jobs. The database itself refuses a sale whose tax split or payments do not add up, makes sales, lines and
+  tenders append-only, allows one open register per terminal, and fixes `doc_series` letting duplicate business-wide
+  series through (SQLite treats NULLs as distinct in a UNIQUE).
+- **POS rules in `@muneem/domain`**: `settleTenders` (change only from cash; paid − change = total), `effectiveDiscountBp`
+  (rounded up so limits can't be slipped by rounding), `expectedCash`, GSTIN state and UTGST helpers.
+
 ### Fixed
 - **`pnpm dev` showed a blank window** ("@vitejs/plugin-react can't detect preamble"). The renderer's Content Security
   Policy blocks inline scripts, and Vite's dev server injects one for React hot reload. When loading from the dev server
