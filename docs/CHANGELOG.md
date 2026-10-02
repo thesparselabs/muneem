@@ -75,6 +75,10 @@ All notable changes, newest first. Each entry records **what** changed and **why
   a Z report, and finally checks the sale is queued for sync and the audit chain verifies.
 
 ### Fixed — Stage 3 review
+- **The desktop app failed to start when its database needed an upgrade** ("better_sqlite3.node was compiled against
+  a different Node.js version"). The pre-migration backup was verified by opening it with the Node build of SQLite
+  instead of the Electron build the app uses; the scheduled backup had the same flaw. The backup check now reuses
+  the connection's own SQLite build. Present since Stage 1; it surfaced once a desktop database had migrations to apply.
 - **Invoice numbers were too long for GST.** `DEL1/T01/2026-27/000001` is 23 characters; CGST Rule 46(b) allows 16, so
   GSTR-1 and e-invoicing would reject every bill. Numbers now read `DE01/2627/000001`: each terminal has a 1–4
   character invoice prefix, unique in the business, suggested at setup. Migration `0004` gives existing terminals one

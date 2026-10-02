@@ -20,12 +20,17 @@ export class DbCorruptError extends Error {
   }
 }
 
+// Electron needs its own build of the SQLite addon; any extra connection (e.g. verifying a backup) must reuse it.
+const nativeBindings = new WeakMap<Db, string>();
+export const nativeBindingOf = (db: Db): string | undefined => nativeBindings.get(db);
+
 /** LLD §2 pragmas — applied on EVERY connection open. synchronous=FULL is non-negotiable (NFR-019). */
 export function openDatabase(path: string, opts: OpenOptions = {}): Db {
   if (path !== ':memory:') mkdirSync(dirname(path), { recursive: true });
   const dbOpts: Database.Options = opts.readonly ? { readonly: true, fileMustExist: true } : {};
   if (opts.nativeBinding) dbOpts.nativeBinding = opts.nativeBinding;
   const db = new Database(path, dbOpts);
+  if (opts.nativeBinding) nativeBindings.set(db, opts.nativeBinding);
   db.pragma('journal_mode = WAL');
   db.pragma('synchronous = FULL');
   db.pragma('foreign_keys = ON');
@@ -60,7 +65,8 @@ export async function backupDatabase(db: Db, destPath: string): Promise<{ bytes:
   mkdirSync(dirname(destPath), { recursive: true });
   await db.backup(destPath);
   let verified = false;
-  const copy = new Database(destPath, { readonly: true, fileMustExist: true });
+  const nativeBinding = nativeBindingOf(db);
+  const copy = new Database(destPath, { readonly: true, fileMustExist: true, ...(nativeBinding && { nativeBinding }) });
   try {
     verified = quickCheck(copy).ok;
   } finally {

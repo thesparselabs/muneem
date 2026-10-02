@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
-import { MIGRATIONS, currentSchemaVersion, migrate, openDatabase, quickCheck, foreignKeyCheck, stmt } from '../src/index.js';
+import { dirname, join } from 'node:path';
+import { MIGRATIONS, backupDatabase, currentSchemaVersion, migrate, nativeBindingOf, openDatabase, quickCheck, foreignKeyCheck, stmt } from '../src/index.js';
 import { freshDb } from './helpers.js';
 
 describe('migrator', () => {
@@ -158,5 +158,18 @@ describe('0004_invoice_prefix', () => {
     await migrate(db);
     expect(db.prepare('SELECT id, invoice_prefix FROM terminal ORDER BY id').all()).toEqual([{ id: 't1', invoice_prefix: 'T1' }, { id: 't2', invoice_prefix: 'T2' }]);
     expect(db.prepare("SELECT prefix FROM doc_series WHERE id = 's'").pluck().get()).toBe('T2');
+  });
+});
+
+describe('native SQLite build', () => {
+  it('verifies a backup with the same SQLite build the database was opened with', async () => {
+    const { createRequire } = await import('node:module');
+    const binding = join(dirname(createRequire(import.meta.url).resolve('better-sqlite3/package.json')), 'build', 'Release', 'better_sqlite3.node');
+    const dir = mkdtempSync(join(tmpdir(), 'muneem-native-'));
+    const db = openDatabase(join(dir, 'a.sqlite'), { nativeBinding: binding });
+    expect(nativeBindingOf(db)).toBe(binding);
+    await migrate(db);
+    expect(await backupDatabase(db, join(dir, 'b.sqlite'))).toMatchObject({ verified: true });
+    db.close();
   });
 });
