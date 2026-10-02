@@ -80,3 +80,66 @@ describe('payment entry', () => {
     expect(previewSettlement(9500, [{ method: 'cash', amount: 'ten', reference: '' }])).toMatchObject({ ok: false, reason: 'invalid' });
   });
 });
+
+describe('discount entry', () => {
+  it('reads percents and amounts and never turns a typo into zero', async () => {
+    const { parseDiscount } = await import('../../src/renderer/src/lib/pos/discount.js');
+    expect(parseDiscount('percent', '5%')).toEqual({ ok: true, discount: { kind: 'percent', value: 500 } });
+    expect(parseDiscount('percent', '7.5')).toEqual({ ok: true, discount: { kind: 'percent', value: 750 } });
+    expect(parseDiscount('amount', '1,250.00')).toEqual({ ok: true, discount: { kind: 'amount', value: 125_000 } });
+    expect(parseDiscount('amount', '')).toEqual({ ok: true, discount: { kind: 'amount', value: 0 } });
+    expect(parseDiscount('amount', '10,5')).toMatchObject({ ok: false });
+    expect(parseDiscount('amount', '5%')).toEqual({ ok: false, error: 'Choose Percent for a % discount' });
+    expect(parseDiscount('percent', 'ten')).toMatchObject({ ok: false });
+    expect(parseDiscount('percent', '101')).toMatchObject({ ok: false });
+  });
+});
+
+describe('retrieving a held bill', () => {
+  const bill = {
+    id: 'h1', heldAt: '2026-10-02T10:00:00.000Z', heldBy: 'u', lineCount: 1,
+    cart: { customerId: 'c1', lines: [{ productId: hit().productId, uomId: PCS, qtyMilli: 2000, lineDiscount: { kind: 'amount', value: 0 } }], billDiscount: { kind: 'amount', value: 0 } },
+  };
+  const quoteFor = (qty: number) => ({ lines: [{ ...hit(), lineNo: 1, qtyMilli: qty, unitPricePaise: 4130, cessRateBp: 0, cessPerUnitPaise: 0, lineDiscount: { kind: 'amount', value: 0 } }], issues: [], context: CONTEXT }) as never;
+
+  it('rebuilds the cart and only then discards the held copy', async () => {
+    const { retrieveHeldBill } = await import('../../src/renderer/src/lib/pos/retrieve.js');
+    const calls: string[] = [];
+    const r = await retrieveHeldBill({
+      getHeldBill: async () => { calls.push('get'); return bill as never; },
+      getCustomer: async () => { calls.push('customer'); return { id: 'c1', name: 'Meena' } as never; },
+      quote: async () => { calls.push('quote'); return quoteFor(2000); },
+      discardBill: async () => { calls.push('discard'); },
+    }, 'h1');
+    expect(r.ok && r.cart.lines[0]!.qtyMilli).toBe(2000);
+    expect(calls).toEqual(['get', 'customer', 'quote', 'discard']);
+  });
+
+  it('keeps the bill held when pricing fails, and falls back to walk-in for a missing customer', async () => {
+    const { retrieveHeldBill } = await import('../../src/renderer/src/lib/pos/retrieve.js');
+    let discarded = false;
+    const failing = await retrieveHeldBill({
+      getHeldBill: async () => bill as never, getCustomer: async () => ({ id: 'c1', name: 'M' }) as never,
+      quote: async () => { throw { message: 'Nothing in the cart can be sold' }; }, discardBill: async () => { discarded = true; },
+    }, 'h1');
+    expect(failing).toEqual({ ok: false, error: 'Nothing in the cart can be sold. The bill is still held.' });
+    expect(discarded).toBe(false);
+    const walkIn = await retrieveHeldBill({
+      getHeldBill: async () => bill as never, getCustomer: async () => { throw new Error('NOT_FOUND'); },
+      quote: async (d) => { expect(d.customerId).toBeUndefined(); return quoteFor(2000); }, discardBill: async () => undefined,
+    }, 'h1');
+    expect(walkIn.ok && walkIn.cart.customer).toBeNull();
+    expect(walkIn.ok && walkIn.notes[0]).toMatch(/walk-in/);
+  });
+});
+
+describe('payment retries', () => {
+  it('reuse the same commandId while the cart is unchanged', async () => {
+    const { commandFor } = await import('../../src/renderer/src/lib/pos/payment.js');
+    let n = 0;
+    const mint = () => `cmd-${++n}`;
+    const first = commandFor(null, 'cart-A', mint);
+    expect(commandFor(first, 'cart-A', mint)).toBe(first);
+    expect(commandFor(first, 'cart-B', mint).id).toBe('cmd-2');
+  });
+});

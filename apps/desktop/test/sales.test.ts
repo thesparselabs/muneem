@@ -49,7 +49,8 @@ describe('the sale commit', () => {
     const r = await api.data<CompleteSaleResult>('sales.complete', {
       lines: [line(soap, 2000), line(rice)], commandId: newUlid(), expectedTotalPaise: 14_300, tenders: [{ method: 'cash', amountPaise: 20_000 }],
     });
-    expect(r).toMatchObject({ docNumber: expect.stringMatching(/^DEL1\/T01\/\d{4}-\d{2}\/000001$/), changePaise: 5700, replayed: false });
+    expect(r).toMatchObject({ docNumber: expect.stringMatching(/^DE01\/\d{4}\/000001$/), changePaise: 5700, replayed: false });
+    expect(r.docNumber.length).toBeLessThanOrEqual(16);
     const sale = await api.data<Sale>('sales.get', { id: r.saleId });
     expect(sale.lines.map((l) => [l.name, l.qtyMilli, l.hsnCode, l.gstRateBp])).toEqual([['Lux Soap', 2000, '3401', 1800], ['Loose Rice', 1000, '1006', 500]]);
     expect(sale.tenders).toEqual([{ method: 'cash', amountPaise: 20_000, changePaise: 5700 }]);
@@ -160,6 +161,26 @@ describe('document types and financial years', () => {
     const march = await sell({ lines: [line(soap)] });
     now = Date.parse('2027-04-01T06:30:00Z');
     const april = await sell({ lines: [line(soap)] });
-    expect([march.ok && march.data.docNumber, april.ok && april.data.docNumber]).toEqual(['DEL1/T01/2026-27/000001', 'DEL1/T01/2027-28/000001']);
+    expect([march.ok && march.data.docNumber, april.ok && april.data.docNumber]).toEqual(['DE01/2627/000001', 'DE01/2728/000001']);
+  });
+});
+
+describe('sales list', () => {
+  it('pages through sales that share a timestamp without skipping any', async () => {
+    await setup();
+    const ids: string[] = [];
+    for (let i = 0; i < 5; i++) {
+      const r = await sell({ lines: [line(rice)] });
+      ids.push((r as { data: CompleteSaleResult }).data.saleId);
+    }
+    db.prepare("UPDATE sale SET created_at = '2026-10-02T10:00:00.000Z'").run();
+    const seen: string[] = [];
+    let cursor: string | undefined;
+    do {
+      const page = app.sales.list({ limit: 2, ...(cursor && { cursor }) });
+      seen.push(...page.items.map((s) => s.id));
+      cursor = page.nextCursor ?? undefined;
+    } while (cursor);
+    expect(seen.sort()).toEqual([...ids].sort());
   });
 });

@@ -1,10 +1,9 @@
 import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import type { HeldBill } from '@muneem/contracts';
 import { api, errorMessage } from '../../api.js';
 import Dialog from '../../components/Dialog.js';
 
-export default function HeldBillsDialog({ onRetrieve, onClose }: { onRetrieve: (b: HeldBill) => void; onClose: () => void }) {
+export default function HeldBillsDialog({ cartInUse, onRetrieve, onClose }: { cartInUse: boolean; onRetrieve: (id: string, holdCurrent: boolean) => void; onClose: () => void }) {
   const qc = useQueryClient();
   const held = useQuery({ queryKey: ['heldBills'], queryFn: () => api.pos.listHeldBills({}) });
   const [error, setError] = useState<string | null>(null);
@@ -22,7 +21,7 @@ export default function HeldBillsDialog({ onRetrieve, onClose }: { onRetrieve: (
           <li key={b.id} className="flex items-center justify-between py-2">
             <span>{b.label ?? 'Unnamed'} · {b.lineCount} item(s) · {new Date(b.heldAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}</span>
             <span className="flex gap-2">
-              <button type="button" className="btn-primary py-1" onClick={() => void act(async () => onRetrieve(await api.pos.retrieveBill({ id: b.id })))}>Retrieve</button>
+              <button type="button" className="btn-primary py-1" onClick={() => onRetrieve(b.id, cartInUse)}>{cartInUse ? 'Hold current bill and retrieve' : 'Retrieve'}</button>
               <button type="button" className="btn-secondary py-1" onClick={() => void act(() => api.pos.discardBill({ id: b.id }))}>Discard</button>
             </span>
           </li>

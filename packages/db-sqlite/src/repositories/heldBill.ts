@@ -17,6 +17,11 @@ export function listHeldBills(db: Db, businessId: string, terminalId: string): H
   return (stmt(db, 'SELECT * FROM held_bill WHERE business_id = ? AND terminal_id = ? ORDER BY held_at, id').all(businessId, terminalId) as Row[]).map(toRow);
 }
 
+export function getHeldBill(db: Db, businessId: string, terminalId: string, id: string): HeldBillRow | null {
+  const r = stmt(db, 'SELECT * FROM held_bill WHERE id = ? AND business_id = ? AND terminal_id = ?').get(id, businessId, terminalId) as Row | undefined;
+  return r ? toRow(r) : null;
+}
+
 export function takeHeldBill(db: Db, businessId: string, terminalId: string, id: string): HeldBillRow | null {
   const r = stmt(db, 'SELECT * FROM held_bill WHERE id = ? AND business_id = ? AND terminal_id = ?').get(id, businessId, terminalId) as Row | undefined;
   if (!r) return null;

@@ -151,7 +151,10 @@ export const SaleSummary = z.object({
   status: z.enum(['posted', 'cancelled']), createdAt: IsoDateTime,
 });
 export type SaleSummary = z.infer<typeof SaleSummary>;
-export const SaleListInput = z.object({ sessionId: Ulid.optional(), limit: z.number().int().min(1).max(200).default(50), before: IsoDateTime.optional() });
+export const SaleListInput = z.object({ sessionId: Ulid.optional(), limit: z.number().int().min(1).max(200).default(50), cursor: z.string().max(200).optional() });
+export type SaleListInput = z.infer<typeof SaleListInput>;
+export const SalePage = z.object({ items: z.array(SaleSummary), nextCursor: z.string().nullable() });
+export type SalePage = z.infer<typeof SalePage>;
 
 export const HoldBillInput = z.object({ label: z.string().trim().max(60).optional(), cart: SaleDraft });
 export const HeldBill = z.object({

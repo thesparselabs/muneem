@@ -3,7 +3,7 @@
               Ph: 9999999999
           GSTIN: 07AAAAA0000A1Z5
                TAX INVOICE
-No: DEL1/T01/2026-27/000042
+No: DE01/2627/000042
 Date: 2026-10-02               Time: 14:05
 Till: T01                  Cashier: Aditya
 Customer: Gupta Traders

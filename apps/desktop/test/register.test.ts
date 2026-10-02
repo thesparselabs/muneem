@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
+import { TerminalInput } from '@muneem/contracts';
 import type { Db } from '@muneem/db-sqlite';
 import type { App } from '../src/main/app.js';
 import { caller, grantRole, ownerAtTill, testApp } from './helpers.js';
@@ -59,9 +60,40 @@ describe('held bills', () => {
     expect(held).toMatchObject({ lineCount: 1, label: 'Mrs Rao' });
     expect(await api.data('pos.listHeldBills')).toHaveLength(1);
     expect(await api.call('pos.closeRegister', { countedCashPaise: 0 })).toMatchObject({ ok: false, error: { message: expect.stringContaining('held bills') } });
-    const back = await api.data<{ cart: { lines: { qtyMilli: number }[] } }>('pos.retrieveBill', { id: held.id });
+    const back = await api.data<{ cart: { lines: { qtyMilli: number }[] } }>('pos.getHeldBill', { id: held.id });
     expect(back.cart.lines[0]!.qtyMilli).toBe(3000);
-    expect(await api.call('pos.retrieveBill', { id: held.id })).toMatchObject({ ok: false, error: { code: 'NOT_FOUND' } });
+    expect(await api.data('pos.listHeldBills')).toHaveLength(1); // reading never removes it
+    await api.data('pos.discardBill', { id: held.id });
+    expect(await api.call('pos.getHeldBill', { id: held.id })).toMatchObject({ ok: false, error: { code: 'NOT_FOUND' } });
     expect(await api.data('pos.listHeldBills')).toEqual([]);
+  });
+});
+
+describe('settings', () => {
+  it('refuses unknown keys and wrongly typed values', async () => {
+    expect(await api.call('settings.set', { key: 'pos.receiptFooter', value: 'Thanks' })).toMatchObject({ ok: false, error: { code: 'VALIDATION_FAILED' } });
+    expect(await api.call('settings.set', { key: 'pos.roundToRupee', value: 'false' })).toMatchObject({ ok: false, error: { code: 'VALIDATION_FAILED' } });
+    expect(await api.call('settings.set', { key: 'gst.b2clThresholdPaise', value: 'lots' })).toMatchObject({ ok: false, error: { code: 'VALIDATION_FAILED' } });
+    expect(await api.call('settings.set', { key: 'pos.nonsense', value: 1 })).toMatchObject({ ok: false, error: { code: 'VALIDATION_FAILED' } });
+    expect(await api.call('settings.set', { key: 'pos.receiptFooter', value: ['Thank you', 'Visit again'] })).toMatchObject({ ok: true });
+  });
+
+  it('ignores a bad stored value instead of breaking quotes and receipts', async () => {
+    const businessId = app.session.require().businessId!;
+    db.prepare("INSERT INTO setting (business_id, key, value_json, updated_at, updated_by) VALUES (?, 'gst.b2clThresholdPaise', '\"lots\"', 'now', 'u')").run(businessId);
+    db.prepare("INSERT INTO setting (business_id, key, value_json, updated_at, updated_by) VALUES (?, 'pos.receiptFooter', '\"Thanks\"', 'now', 'u')").run(businessId);
+    const pcs = (await api.data<{ id: string; code: string }[]>('catalog.listUoms')).find((u) => u.code === 'PCS')!.id;
+    const p = await api.data<{ id: string }>('products.create', { name: 'Soap', baseUomId: pcs, sellingPricePaise: 1000 });
+    expect(await api.call('sales.quote', { lines: [{ productId: p.id, uomId: pcs, qtyMilli: 1000 }] })).toMatchObject({ ok: true });
+  });
+});
+
+describe('terminal invoice prefix', () => {
+  it('is suggested when not chosen, and two terminals cannot share one', async () => {
+    const branchId = app.session.require().branchId!;
+    expect((await api.data<{ invoicePrefix: string }[]>('business.getTerminals', {}))[0]!.invoicePrefix).toBe('DE01');
+    expect(await api.data('business.createTerminal', { branchId, code: 'T02', name: 'Till 2', invoicePrefix: 'D2' })).toMatchObject({ invoicePrefix: 'D2' });
+    expect(() => app.business.createTerminal({ branchId, code: 'T03', name: 'Till 3', invoicePrefix: 'D2' })).toThrow(/UNIQUE/); // the gateway allows 2 creates a second
+    expect(TerminalInput.safeParse({ branchId, code: 'T04', name: 'Till 4', invoicePrefix: 'DEL1T' }).success).toBe(false);
   });
 });

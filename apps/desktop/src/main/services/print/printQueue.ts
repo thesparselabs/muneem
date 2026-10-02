@@ -1,7 +1,7 @@
-import type { PrintJobSummary, ReceiptDoc } from '@muneem/contracts';
+import { AppError, type PrintJobSummary, type ReceiptDoc } from '@muneem/contracts';
 import { newUlid } from '@muneem/domain';
 import {
-  firstPrintJobFor, getPrintJob, insertPrintJob, listPrintJobs, markPrintJob, nextCopyNo, unfinishedPrintJobIds, type Db,
+  firstPrintJobFor, getPrintJob, insertPrintJob, listPrintJobs, markPrintJob, nextCopyNo, unfinishedPrintJobs, type Db,
 } from '@muneem/db-sqlite';
 import type { Logger } from '../../infra/logger.js';
 import { drawerOnly, encodeEscPos } from './escpos.js';
@@ -28,9 +28,20 @@ export class PrintQueue {
   enqueue(jobId: string): void { this.chain = this.chain.then(() => this.process(jobId)); }
   idle(): Promise<void> { return this.chain; }
 
-  resumeUnfinished(): void { for (const id of unfinishedPrintJobIds(this.d.db())) this.enqueue(id); }
+  // A job caught mid-print may already be on paper, and yesterday's queue is stale; both wait for the cashier instead.
+  resumeUnfinished(today: string): void {
+    const db = this.d.db();
+    for (const job of unfinishedPrintJobs(db)) {
+      if (job.status === 'printing') markPrintJob(db, job.id, 'failed', 'interrupted while printing; check the printer, then retry or reprint');
+      else if (new Date(job.createdAt).toLocaleDateString('en-CA') < today) markPrintJob(db, job.id, 'failed', 'not printed before the app closed on an earlier day; retry if still needed');
+      else this.enqueue(job.id);
+    }
+  }
 
-  retry(jobId: string): void {
+  retry(jobId: string, businessId: string): void {
+    const job = getPrintJob(this.d.db(), jobId);
+    if (!job || job.businessId !== businessId) throw new Error('NOT_FOUND');
+    if (job.status !== 'failed') throw new AppError('INVALID_STATE', 'Only a receipt that failed to print can be retried; use Reprint for another copy');
     markPrintJob(this.d.db(), jobId, 'queued');
     this.enqueue(jobId);
   }
@@ -83,7 +94,8 @@ export class PrintQueue {
     const config = this.d.config.get();
     try {
       const lines = layoutReceipt(job.doc as ReceiptDoc, config.widthChars);
-      const bytes = encodeEscPos(lines, { openDrawer: job.openDrawer && config.openDrawer, cut: true });
+      const firstAttempt = job.attemptCount === 0;
+      const bytes = encodeEscPos(lines, { openDrawer: job.openDrawer && firstAttempt && config.openDrawer, cut: true });
       await this.printer().send(bytes, renderText(lines, config.widthChars), `${(job.doc as ReceiptDoc).docNumber.replace(/\//gu, '-')}-copy${job.copyNo}`);
       markPrintJob(db, jobId, 'done');
       this.d.log.info({ jobId, copyNo: job.copyNo }, 'receipt printed');

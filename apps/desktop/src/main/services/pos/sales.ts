@@ -1,14 +1,13 @@
 import {
-  AppError, type CompleteSaleInput, type CompleteSaleResult, type ReceiptDoc, type Sale, type SaleDraft, type SaleQuote, type SaleSummary,
+  AppError, type CompleteSaleInput, type CompleteSaleResult, type ReceiptDoc, type Sale, type SaleDraft, type SaleListInput, type SalePage, type SaleQuote,
 } from '@muneem/contracts';
-import { settleTenders } from '@muneem/domain';
+import { formatRupees as rupees, settleTenders } from '@muneem/domain';
 import { firstPrintJobFor, getSale, getSession, listSales, saleIdByCommand, withTransaction } from '@muneem/db-sqlite';
 import type { PosContext } from './posContext.js';
 import type { RegisterService } from './register.js';
 import { runSaleCommit } from './saleCommit.js';
 import type { SalePricing } from './salePricing.js';
 
-const rupees = (paise: number): string => `₹${Math.trunc(paise / 100)}.${String(Math.abs(paise) % 100).padStart(2, '0')}`;
 const DEFAULT_FOOTER = ['Thank you! Visit again.'];
 
 export type AfterCommit = (result: CompleteSaleResult & { openDrawer: boolean }) => void;
@@ -72,7 +71,7 @@ export class SaleService {
     return sale;
   }
 
-  list(f: { sessionId?: string | undefined; limit: number; before?: string | undefined }): SaleSummary[] {
+  list(f: SaleListInput): SalePage {
     return listSales(this.ctx.db(), this.ctx.businessId(), f);
   }
 

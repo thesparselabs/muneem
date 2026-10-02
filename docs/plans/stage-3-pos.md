@@ -143,3 +143,7 @@ commit, hardware after · 0016 renderer totals vs authoritative recompute · 001
   the next start.
 - The scanner is detected on the page and the search box, not inside other inputs.
 - 20 kills run in CI (about 20 s); `pnpm --filter @muneem/desktop crash-loop --scenario sales 200` passed with 578 sales.
+- A review pass (Part 3g) shortened invoice numbers to `PREFIX/2627/000123` (CGST Rule 46(b)); made payment retries
+  reuse the command id; made held-bill retrieval non-destructive; restricted print retry to failed jobs and stopped
+  reprints on restart; validated settings; fixed discount parsing, sales-list paging, scanning into the search box and
+  the rupee formatter.

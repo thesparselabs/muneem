@@ -34,7 +34,7 @@ function customerSnapshot(p: PricedSale): CustomerSnapshot {
 const allocateNumber: Step = {
   name: 'number',
   run(s) {
-    const prefix = `${s.priced.branch.code}/${s.terminalCode}`;
+    const prefix = getTerminal(s.db, s.till.terminalId)!.invoicePrefix;
     const seriesId = findOrCreateSeries(s.db, {
       businessId: s.till.businessId, branchId: s.till.branchId, terminalId: s.till.terminalId,
       docType: s.priced.quote.totals.docType, fy: financialYearOf(s.docDate),

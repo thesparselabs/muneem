@@ -1,6 +1,6 @@
 import { SaleDraft, type HeldBill } from '@muneem/contracts';
 import { newUlid } from '@muneem/domain';
-import { insertHeldBill, listHeldBills, takeHeldBill, type HeldBillRow } from '@muneem/db-sqlite';
+import { getHeldBill, insertHeldBill, listHeldBills, takeHeldBill, type HeldBillRow } from '@muneem/db-sqlite';
 import type { PosContext } from './posContext.js';
 import type { RegisterService } from './register.js';
 
@@ -10,6 +10,7 @@ const toHeldBill = (r: HeldBillRow): HeldBill => {
 };
 
 // A held cart keeps products and quantities only; prices are worked out again when it comes back.
+// Reading never removes it: the till discards it only once the cart is safely back on screen.
 export class HeldBillService {
   constructor(private readonly ctx: PosContext, private readonly register: RegisterService) {}
 
@@ -27,6 +28,13 @@ export class HeldBillService {
   list(): HeldBill[] {
     const till = this.ctx.till();
     return listHeldBills(this.ctx.db(), till.businessId, till.terminalId).map(toHeldBill);
+  }
+
+  get(id: string): HeldBill {
+    const till = this.ctx.till();
+    const row = getHeldBill(this.ctx.db(), till.businessId, till.terminalId, id);
+    if (!row) throw new Error('NOT_FOUND');
+    return toHeldBill(row);
   }
 
   take(id: string): HeldBill {

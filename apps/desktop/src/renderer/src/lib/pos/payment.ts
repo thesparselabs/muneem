@@ -19,3 +19,10 @@ export function previewSettlement(totalPaise: number, rows: readonly TenderRow[]
   const parsed = rowsToTenders(rows);
   return parsed.ok ? settleTenders(totalPaise, parsed.tenders) : { ok: false, reason: 'invalid', error: parsed.error };
 }
+
+export interface PendingCommand { id: string; cartKey: string }
+
+// One commandId per cart: a retry after a timeout reuses it, so the server returns the saved sale instead of billing again.
+export function commandFor(pending: PendingCommand | null, cartKey: string, mint: () => string): PendingCommand {
+  return pending && pending.cartKey === cartKey ? pending : { id: mint(), cartKey };
+}

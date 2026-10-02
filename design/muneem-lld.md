@@ -697,7 +697,7 @@ async function allocate(tx, { businessId, docType, branchId, terminalId, docDate
 
 Rules: allocation happens **inside** the document's transaction, so a rollback returns the number; `ux_sale_doc` makes a duplicate physically impossible; the number is never rewritten by sync; a gap detected during a nightly check raises an integrity alert (a gap means a crash between allocation and commit — which cannot happen with a single transaction, so a gap is a real signal).
 
-Example series: `MUN/DEL1/T01/2026-27/000123` (sale), `MUN/DEL1/CN/2026-27/000007` (credit note), `MUN/DEL1/RCPT/2026-27/000451` (receipt). GSTR-1 "Documents Issued" reports from–to per series directly off `doc_series` + `MIN/MAX(doc_seq)`.
+Example series (as built, ADR-0014 — CGST Rule 46(b) caps numbers at 16 characters): `DE01/2627/000123` (sale, terminal prefix `DE01`). Credit notes and receipts will need their own short prefixes when they arrive. GSTR-1 "Documents Issued" reports from–to per series directly off `doc_series` + `MIN/MAX(doc_seq)`.
 
 ---
 

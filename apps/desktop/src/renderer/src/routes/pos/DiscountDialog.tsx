@@ -2,7 +2,8 @@ import { useState, type FormEvent } from 'react';
 import type { DiscountInput } from '@muneem/contracts';
 import Dialog from '../../components/Dialog.js';
 import Field from '../../components/Field.js';
-import { parseOptional, scaledToText } from '../../lib/money.js';
+import { scaledToText } from '../../lib/money.js';
+import { parseDiscount } from '../../lib/pos/discount.js';
 
 // Percent is stored in basis points and amounts in paise, as the GST engine expects.
 export default function DiscountDialog({ title, current, onApply, onClose }: { title: string; current: DiscountInput; onApply: (d: DiscountInput) => void; onClose: () => void }) {
@@ -11,9 +12,9 @@ export default function DiscountDialog({ title, current, onApply, onClose }: { t
   const [error, setError] = useState<string | null>(null);
   function submit(e: FormEvent) {
     e.preventDefault();
-    const value = parseOptional(text, 2) ?? 0;
-    if (value === null || value < 0 || (kind === 'percent' && value > 10_000)) { setError(kind === 'percent' ? 'Enter 0–100' : 'Enter an amount'); return; }
-    onApply({ kind, value });
+    const parsed = parseDiscount(kind, text);
+    if (!parsed.ok) { setError(parsed.error); return; }
+    onApply(parsed.discount);
   }
   return (
     <Dialog title={title} onClose={onClose}>

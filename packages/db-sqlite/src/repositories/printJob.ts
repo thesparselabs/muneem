@@ -52,6 +52,7 @@ export function listPrintJobs(db: Db, businessId: string, limit: number): PrintJ
   return (stmt(db, 'SELECT * FROM print_job WHERE business_id = ? ORDER BY created_at DESC, id DESC LIMIT ?').all(businessId, limit) as Row[]).map(toSummary);
 }
 
-export function unfinishedPrintJobIds(db: Db): string[] {
-  return stmt(db, "SELECT id FROM print_job WHERE status IN ('queued', 'printing') ORDER BY created_at").pluck().all() as string[];
+export function unfinishedPrintJobs(db: Db): { id: string; status: 'queued' | 'printing'; createdAt: string }[] {
+  return stmt(db, "SELECT id, status, created_at AS createdAt FROM print_job WHERE status IN ('queued', 'printing') ORDER BY created_at")
+    .all() as { id: string; status: 'queued' | 'printing'; createdAt: string }[];
 }

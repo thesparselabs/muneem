@@ -1,6 +1,6 @@
 import { ProductInput, type ImportField, type ImportMapping, type Product } from '@muneem/contracts';
-import { normalizeName } from '@muneem/domain';
-import { productFieldErrors, rupees, unitPriceProblems, type LivePriceItem } from '@muneem/db-sqlite';
+import { formatRupees as rupees, normalizeName } from '@muneem/domain';
+import { productFieldErrors, unitPriceProblems, type LivePriceItem } from '@muneem/db-sqlite';
 import { mergeForUpdate } from './productMerge.js';
 import { parseRow, type RowDraft, type RowErrors } from './rowParser.js';
 import type { Table } from './tableReader.js';

@@ -1,4 +1,4 @@
-import { AppError, type Permission } from '@muneem/contracts';
+import { AppError, SETTING_SCHEMAS, type Permission, type SettingKey, type SettingValue } from '@muneem/contracts';
 import { getSetting, type Actor, type Db, type Till } from '@muneem/db-sqlite';
 import type { Rbac } from '../../rbac.js';
 import type { CatalogContext } from '../catalogContext.js';
@@ -23,8 +23,9 @@ export class PosContext {
   can(permission: Permission): boolean { return this.rbac.has(this.session.require(), permission) !== null; }
   maxDiscountBp(): number | undefined { return this.rbac.has(this.session.require(), 'sales.create')?.limit?.maxDiscountBp; }
 
-  setting<T>(key: string, fallback: T): T {
-    const v = getSetting(this.db(), this.businessId(), key);
-    return v === null ? fallback : (v as T);
+  // A stored value that no longer fits its schema (older build, hand edit) falls back rather than breaking billing.
+  setting<K extends SettingKey>(key: K, fallback: SettingValue<K>): SettingValue<K> {
+    const parsed = SETTING_SCHEMAS[key].safeParse(getSetting(this.db(), this.businessId(), key));
+    return parsed.success ? (parsed.data as SettingValue<K>) : fallback;
   }
 }

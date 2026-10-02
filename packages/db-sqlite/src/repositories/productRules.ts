@@ -44,5 +44,3 @@ export function unitPriceProblems(p: PricedUnits, items: readonly UnitPrice[]): 
     return exceedsMrp(item.pricePaise, item.isInclusive, ceilingPaise) ? [{ index, kind: 'above_mrp', ceilingPaise }] : [];
   });
 }
-
-export const rupees = (paise: number): string => `₹${Math.trunc(paise / 100)}.${String(paise % 100).padStart(2, '0')}`;

@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useRef, useState, type RefObject } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import type { CompleteSaleResult, Customer, HeldBill, ProductHit, QuoteContext, RegisterReport, TenderLine } from '@muneem/contracts';
+import type { CompleteSaleResult, Customer, ProductHit, QuoteContext, RegisterReport, TenderLine } from '@muneem/contracts';
 import { newUlid } from '@muneem/domain';
 import { api, errorMessage, isClientError } from '../../api.js';
 import { formatPaise, formatRateBp, parseOptional, scaledToText } from '../../lib/money.js';
-import { addHit, applyQuote, cartFromQuote, emptyCart, localTotals, removeLine, setLineDiscount, setQty, toDraft, type Cart } from '../../lib/pos/cart.js';
+import { addHit, applyQuote, emptyCart, localTotals, removeLine, setLineDiscount, setQty, toDraft, type Cart } from '../../lib/pos/cart.js';
+import { commandFor, type PendingCommand } from '../../lib/pos/payment.js';
+import { retrieveHeldBill } from '../../lib/pos/retrieve.js';
 import { useScanner } from '../../lib/pos/useScanner.js';
 import { useDebounced } from '../../lib/useDebounced.js';
 import CustomerDialog from './CustomerDialog.js';
@@ -30,7 +32,9 @@ export default function PosScreen() {
   const [lastSale, setLastSale] = useState<{ result: CompleteSaleResult; customerId: string | null; at: number } | null>(null);
   const [zReport, setZReport] = useState<RegisterReport | null>(null);
   const search = useRef<HTMLInputElement>(null);
+  const [query, setQuery] = useState('');
   const quoteSeq = useRef(0);
+  const pendingCommand = useRef<PendingCommand | null>(null);
 
   const requote = useCallback(async (next: Cart) => {
     if (next.lines.length === 0) return;
@@ -46,6 +50,7 @@ export default function PosScreen() {
 
   const addProduct = useCallback((hit: ProductHit) => { setMessage(null); setCart((c) => { const next = addHit(c, hit); void requote(next); return next; }); }, [requote]);
   const onScan = useCallback(async (code: string) => {
+    setQuery('');
     try {
       const hit = await api.products.lookupBarcode({ code });
       if (hit) addProduct(hit); else setMessage({ kind: 'error', text: `No product with barcode ${code}` });
@@ -61,6 +66,7 @@ export default function PosScreen() {
       setCart((c) => applyQuote(c, q));
       if (q.issues.length > 0) { setMessage({ kind: 'error', text: q.issues.map((i) => i.message).join('; ') }); return; }
       setPayTotal(q.totals.totalPaise);
+      pendingCommand.current = commandFor(pendingCommand.current, JSON.stringify(toDraft(cart)), newUlid);
       setModal('payment');
     } catch (e) { setMessage({ kind: 'error', text: errorMessage(e) }); }
   }
@@ -69,7 +75,10 @@ export default function PosScreen() {
     if (payTotal === null) return;
     setBusy(true);
     try {
-      const result = await api.sales.complete({ ...toDraft(cart), commandId: newUlid(), tenders, expectedTotalPaise: payTotal });
+      const draft = toDraft(cart);
+      pendingCommand.current = commandFor(pendingCommand.current, JSON.stringify(draft), newUlid);
+      const result = await api.sales.complete({ ...draft, commandId: pendingCommand.current.id, tenders, expectedTotalPaise: payTotal });
+      pendingCommand.current = null;
       setLastSale({ result, customerId: cart.customer?.id ?? null, at: Date.now() });
       setCart(emptyCart());
       setModal(null);
@@ -94,15 +103,21 @@ export default function PosScreen() {
     } catch (e) { setMessage({ kind: 'error', text: errorMessage(e) }); }
   }
 
-  async function retrieve(b: HeldBill) {
+  async function retrieve(id: string, holdCurrent: boolean) {
     setModal(null);
-    try {
-      const customer = b.cart.customerId ? await api.customers.get({ id: b.cart.customerId }) : null;
-      const q = await api.sales.quote(b.cart);
-      setContext(q.context);
-      setCart(cartFromQuote({ customer, billDiscount: b.cart.billDiscount, placeOfSupplyOverride: b.cart.placeOfSupplyOverride }, q));
-      if (q.issues.length > 0) setMessage({ kind: 'error', text: `Left out: ${q.issues.map((i) => i.message).join('; ')}` });
-    } catch (e) { setMessage({ kind: 'error', text: errorMessage(e) }); }
+    if (holdCurrent && cart.lines.length > 0) {
+      try { await api.pos.holdBill({ cart: toDraft(cart), ...(cart.customer && { label: cart.customer.name }) }); } catch (e) { setMessage({ kind: 'error', text: errorMessage(e) }); return; }
+    }
+    const r = await retrieveHeldBill({
+      getHeldBill: (billId) => api.pos.getHeldBill({ id: billId }),
+      getCustomer: (customerId) => api.customers.get({ id: customerId }),
+      quote: (draft) => api.sales.quote(draft),
+      discardBill: (billId) => api.pos.discardBill({ id: billId }),
+    }, id);
+    if (!r.ok) { setMessage({ kind: 'error', text: r.error }); return; }
+    setContext(r.quote.context);
+    setCart(r.cart);
+    setMessage(r.notes.length > 0 ? { kind: 'error', text: r.notes.join(' ') } : { kind: 'ok', text: 'Bill retrieved.' });
   }
 
   async function reprintLast() {
@@ -133,7 +148,7 @@ export default function PosScreen() {
   return (
     <div className="grid h-full grid-cols-[1fr_340px] gap-4">
       <section className="flex min-h-0 flex-col gap-3">
-        <ProductSearch inputRef={search} onPick={addProduct} />
+        <ProductSearch inputRef={search} query={query} setQuery={setQuery} onPick={addProduct} />
         {message && <p className={`text-sm ${message.kind === 'ok' ? 'text-green-800' : 'text-red-700'}`} role={message.kind === 'ok' ? 'status' : 'alert'}>{message.text}</p>}
         <PrinterBanner />
         <CartTable cart={cart} onQty={(key, q) => update(setQty(cart, key, q))} onRemove={(key) => update(removeLine(cart, key))} onDiscount={(key) => setModal({ lineDiscount: key })} />
@@ -174,7 +189,7 @@ export default function PosScreen() {
           onClose={() => setModal(null)} onApply={(d) => { setModal(null); update(setLineDiscount(cart, modal.lineDiscount, d)); }} />
       )}
       {modal === 'payment' && payTotal !== null && <PaymentDialog totalPaise={payTotal} busy={busy} warning={nearDuplicate} onClose={() => setModal(null)} onPay={(t) => void complete(t)} />}
-      {modal === 'held' && <HeldBillsDialog onClose={() => setModal(null)} onRetrieve={(b) => void retrieve(b)} />}
+      {modal === 'held' && <HeldBillsDialog cartInUse={cart.lines.length > 0} onClose={() => setModal(null)} onRetrieve={(id, holdCurrent) => void retrieve(id, holdCurrent)} />}
       {modal === 'cash' && <CashMovementDialog onClose={() => setModal(null)} />}
       {modal === 'x' && <XReportDialog onClose={() => setModal(null)} />}
       {modal === 'close' && <CloseRegisterDialog onClose={() => setModal(null)} onClosed={(z) => { setModal(null); setZReport(z); void qc.invalidateQueries({ queryKey: ['posSession'] }); }} />}
@@ -184,8 +199,7 @@ export default function PosScreen() {
 
 const Row = ({ label, value }: { label: string; value: string }) => <div className="flex justify-between"><span className="text-slate-600">{label}</span><span>{value}</span></div>;
 
-function ProductSearch({ inputRef, onPick }: { inputRef: RefObject<HTMLInputElement>; onPick: (h: ProductHit) => void }) {
-  const [query, setQuery] = useState('');
+function ProductSearch({ inputRef, query, setQuery, onPick }: { inputRef: RefObject<HTMLInputElement>; query: string; setQuery: (q: string) => void; onPick: (h: ProductHit) => void }) {
   const q = useDebounced(query.trim(), 120);
   const hits = useQuery({ queryKey: ['posSearch', q], queryFn: () => api.products.search({ query: q, limit: 8 }), enabled: q.length > 0 });
   const pick = (h: ProductHit) => { onPick(h); setQuery(''); };

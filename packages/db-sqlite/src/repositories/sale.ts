@@ -1,4 +1,4 @@
-import type { CustomerSnapshot, QuoteLine, Sale, SaleSummary, SaleTotals } from '@muneem/contracts';
+import type { CustomerSnapshot, QuoteLine, Sale, SalePage, SaleTotals } from '@muneem/contracts';
 import { effectiveDiscountBp, type SettledTender } from '@muneem/domain';
 import type { Db } from '../open.js';
 import { stmt } from '../statements.js';
@@ -121,16 +121,37 @@ export function getSale(db: Db, id: string): (Sale & { businessId: string }) | n
   };
 }
 
-export function listSales(db: Db, businessId: string, f: { sessionId?: string | undefined; limit: number; before?: string | undefined }): SaleSummary[] {
+type ListCursor = { t: string; id: string };
+const encodeCursor = (c: ListCursor): string => Buffer.from(JSON.stringify(c)).toString('base64url');
+function decodeCursor(s: string | undefined): ListCursor | null {
+  if (!s) return null;
+  try {
+    const c = JSON.parse(Buffer.from(s, 'base64url').toString('utf8')) as ListCursor;
+    return typeof c.t === 'string' && typeof c.id === 'string' ? c : null;
+  } catch {
+    return null;
+  }
+}
+
+// Newest first, keyed on (created_at, id) so sales sharing a timestamp are never skipped at a page boundary.
+export function listSales(db: Db, businessId: string, f: { sessionId?: string | undefined; limit: number; cursor?: string | undefined }): SalePage {
+  const after = decodeCursor(f.cursor);
   const rows = stmt(db, `SELECT id, doc_number, doc_date, customer_snapshot_json, total_paise, status, created_at FROM sale
-    WHERE business_id = @businessId AND (@sessionId IS NULL OR session_id = @sessionId) AND (@before IS NULL OR created_at < @before)
-    ORDER BY created_at DESC, id DESC LIMIT @limit`).all({ businessId, sessionId: f.sessionId ?? null, before: f.before ?? null, limit: f.limit }) as
-    { id: string; doc_number: string; doc_date: string; customer_snapshot_json: string; total_paise: number; status: Sale['status']; created_at: string }[];
-  return rows.map((r) => {
-    const c = JSON.parse(r.customer_snapshot_json) as CustomerSnapshot;
-    return {
-      id: r.id, docNumber: r.doc_number, docDate: r.doc_date, totalPaise: r.total_paise, status: r.status, createdAt: r.created_at,
-      ...(c.name && { customerName: c.name }),
-    };
-  });
+    WHERE business_id = @businessId AND (@sessionId IS NULL OR session_id = @sessionId)
+      AND (@t IS NULL OR (created_at, id) < (@t, @id))
+    ORDER BY created_at DESC, id DESC LIMIT @limit`).all({
+    businessId, sessionId: f.sessionId ?? null, t: after?.t ?? null, id: after?.id ?? null, limit: f.limit + 1,
+  }) as { id: string; doc_number: string; doc_date: string; customer_snapshot_json: string; total_paise: number; status: Sale['status']; created_at: string }[];
+  const page = rows.slice(0, f.limit);
+  const last = page.at(-1);
+  return {
+    items: page.map((r) => {
+      const c = JSON.parse(r.customer_snapshot_json) as CustomerSnapshot;
+      return {
+        id: r.id, docNumber: r.doc_number, docDate: r.doc_date, totalPaise: r.total_paise, status: r.status, createdAt: r.created_at,
+        ...(c.name && { customerName: c.name }),
+      };
+    }),
+    nextCursor: rows.length > f.limit && last ? encodeCursor({ t: last.created_at, id: last.id }) : null,
+  };
 }

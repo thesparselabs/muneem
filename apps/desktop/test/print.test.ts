@@ -16,7 +16,7 @@ import { caller, ownerAtTill, testApp } from './helpers.js';
 const DOC: ReceiptDoc = {
   title: 'TAX INVOICE', duplicate: false, copyNo: 1,
   header: { businessName: 'Sharma General Store', lines: ['12 Chandni Chowk, Delhi', 'Ph: 9999999999'], gstin: '07AAAAA0000A1Z5' },
-  docNumber: 'DEL1/T01/2026-27/000042', docDate: '2026-10-02', time: '14:05', terminalCode: 'T01', cashier: 'Aditya',
+  docNumber: 'DE01/2627/000042', docDate: '2026-10-02', time: '14:05', terminalCode: 'T01', cashier: 'Aditya',
   customer: { name: 'Gupta Traders', gstin: '07BBBBB1111B1Z5' }, placeOfSupply: '07',
   lines: [
     { name: 'Lux Soap 100g', hsnCode: '3401', qty: '2 PCS', unitPricePaise: 4130, discountPaise: 0, amountPaise: 8260 },
@@ -92,7 +92,7 @@ describe('print queue', () => {
     await broken.idle();
     expect(getPrintJob(db, jobId)).toMatchObject({ status: 'failed', errorMessage: 'paper out', attemptCount: 1, isDuplicate: true, copyNo: 2 });
     expect(app.sales.get(sale.saleId).status).toBe('posted');
-    app.printQueue.retry(jobId);
+    app.printQueue.retry(jobId, getPrintJob(db, jobId)!.businessId);
     await app.printQueue.idle();
     expect(getPrintJob(db, jobId)).toMatchObject({ status: 'done', attemptCount: 2 });
     expect(readFileSync(join(dir, 'receipts', `${sale.docNumber.replace(/\//gu, '-')}-copy2.txt`), 'utf8')).toContain('DUPLICATE');
@@ -104,7 +104,7 @@ describe('print queue', () => {
     insertPrintJob(db, 'stuck-job', { businessId: original.businessId, docType: 'sale', docId: sale.saleId, doc: original.doc, openDrawer: false, copyNo: 9, isDuplicate: true, createdBy: 'u' });
     const sent: string[] = [];
     const recovered = queueWith(db, { id: 'mem', send: (_b, _t, name) => { sent.push(name); return Promise.resolve(); } }, dir);
-    recovered.resumeUnfinished();
+    recovered.resumeUnfinished(new Date().toLocaleDateString('en-CA'));
     await recovered.idle();
     expect(getPrintJob(db, 'stuck-job')!.status).toBe('done');
     expect(sent).toEqual([expect.stringContaining('copy9')]);
@@ -117,6 +117,41 @@ describe('print queue', () => {
     queue.reprint(sale.saleId, 'u');
     await expect(queue.idle()).resolves.toBeUndefined();
     db.exec('DROP TRIGGER busy');
+  });
+
+  it('only failed jobs of this business can be retried, and a retry never opens the drawer', async () => {
+    const { api, app, db, sale } = await billedApp();
+    const original = db.prepare('SELECT id FROM print_job WHERE doc_id = ?').pluck().get(sale.saleId) as string;
+    expect(await api.call('printer.retryJob', { jobId: original })).toMatchObject({ ok: false, error: { code: 'INVALID_STATE' } });
+    db.prepare("UPDATE print_job SET status = 'failed', error_message = 'paper out' WHERE id = ?").run(original);
+    const kicks: boolean[] = [];
+    const recording = queueWith(db, { id: 'mem', send: (bytes) => { kicks.push(bytes.includes(Buffer.from(DRAWER_KICK))); return Promise.resolve(); } }, '');
+    recording.retry(original, getPrintJob(db, original)!.businessId);
+    await recording.idle();
+    expect(getPrintJob(db, original)!.status).toBe('done');
+    expect(kicks).toEqual([false]);
+    expect(() => recording.retry(original, 'another-business')).toThrow();
+    void app;
+  });
+
+  it('after a crash, an interrupted job and an old queued job are marked failed instead of printing again', async () => {
+    const { db, dir, sale } = await billedApp();
+    const original = getPrintJob(db, db.prepare('SELECT id FROM print_job LIMIT 1').pluck().get() as string)!;
+    const add = (id: string, status: string, createdAt: string) => {
+      insertPrintJob(db, id, { businessId: original.businessId, docType: 'sale', docId: sale.saleId, doc: original.doc, openDrawer: true, copyNo: 1, isDuplicate: false, createdBy: 'u' });
+      db.prepare('UPDATE print_job SET status = ?, created_at = ? WHERE id = ?').run(status, createdAt, id);
+    };
+    add('was-printing', 'printing', new Date().toISOString());
+    add('yesterday', 'queued', '2020-01-01T10:00:00.000Z');
+    add('today', 'queued', new Date().toISOString());
+    const sent: string[] = [];
+    const q = queueWith(db, { id: 'mem', send: (_b, _t, name) => { sent.push(name); return Promise.resolve(); } }, dir);
+    q.resumeUnfinished(new Date().toLocaleDateString('en-CA'));
+    await q.idle();
+    expect(getPrintJob(db, 'was-printing')).toMatchObject({ status: 'failed', errorMessage: expect.stringContaining('interrupted') });
+    expect(getPrintJob(db, 'yesterday')).toMatchObject({ status: 'failed', errorMessage: expect.stringContaining('earlier day') });
+    expect(getPrintJob(db, 'today')!.status).toBe('done');
+    expect(sent).toHaveLength(1);
   });
 
   it('reprint over IPC creates a duplicate copy', async () => {

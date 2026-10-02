@@ -146,7 +146,7 @@ export function createApp(cfg: AppConfig) {
     'pos.closeRegister': (i) => register.close(i),
     'pos.holdBill': (i) => heldBills.hold(i.label, i.cart),
     'pos.listHeldBills': () => heldBills.list(),
-    'pos.retrieveBill': (i) => heldBills.take(i.id),
+    'pos.getHeldBill': (i) => heldBills.get(i.id),
     'pos.discardBill': (i) => { heldBills.take(i.id); return { ok: true as const }; },
     'sales.quote': (i) => sales.quote(i),
     'sales.complete': (i) => sales.complete(i),
@@ -157,7 +157,7 @@ export function createApp(cfg: AppConfig) {
     'printer.setConfig': (i) => printerConfig.set(i),
     'printer.testPrint': async () => { await printQueue.testPrint(); return { ok: true as const }; },
     'printer.getQueue': (i) => printQueue.list(posCtx.businessId(), i.limit),
-    'printer.retryJob': (i) => { printQueue.retry(i.jobId); return { ok: true as const }; },
+    'printer.retryJob': (i) => { printQueue.retry(i.jobId, posCtx.businessId()); return { ok: true as const }; },
     'printer.reprint': (i) => { sales.get(i.saleId); return { jobId: printQueue.reprint(i.saleId, posCtx.userId()) }; },
     'drawer.open': async () => { await printQueue.openDrawer(); return { ok: true as const }; },
     'sync.getStatus': () => syncStatus(),
@@ -168,7 +168,7 @@ export function createApp(cfg: AppConfig) {
     'diagnostics.getLogsTail': (i) => diagnostics.getLogsTail(i.log, i.lines),
   };
 
-  printQueue.resumeUnfinished();
+  printQueue.resumeUnfinished(catalogCtx.today());
 
   const gateway = createGateway({
     handlers, session, rbac, db: cfg.db, deviceId: () => device.localDeviceId(), loggers: cfg.loggers, events,

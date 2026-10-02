@@ -37,7 +37,7 @@ describe('golden flow, offline', () => {
       ...draft, commandId: newUlid(), expectedTotalPaise: total,
       tenders: [{ method: 'upi', amountPaise: 10_000, reference: 'UPI-55' }, { method: 'cash', amountPaise: total - 10_000 + 2000 }],
     });
-    expect(sale).toMatchObject({ changePaise: 2000, docNumber: expect.stringMatching(/^DEL1\/T01\/.+\/000001$/) });
+    expect(sale).toMatchObject({ changePaise: 2000, docNumber: expect.stringMatching(/^DE01\/\d{4}\/000001$/) });
 
     await app.printQueue.idle();
     const receiptFile = readdirSync(join(dir, 'receipts')).find((f) => f.endsWith('.txt'))!;

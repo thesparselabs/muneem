@@ -119,12 +119,12 @@ function BranchForm({ onSubmit, busy, businessState, gstin }: { onSubmit: (v: Br
   );
 }
 
-function TerminalForm({ branchId, existing, onCreate, onSelect, busy }: { branchId: string; existing: { id: string; code: string; name: string; deviceId: string | null }[]; onCreate: (v: TerminalInputT) => void; onSelect: (id: string) => void; busy: boolean }) {
-  const [f, setF] = useState({ code: `T${String(existing.length + 1).padStart(2, '0')}`, name: `Counter ${existing.length + 1}` });
+function TerminalForm({ branchId, existing, onCreate, onSelect, busy }: { branchId: string; existing: { id: string; code: string; name: string; invoicePrefix: string; deviceId: string | null }[]; onCreate: (v: TerminalInputT) => void; onSelect: (id: string) => void; busy: boolean }) {
+  const [f, setF] = useState({ code: `T${String(existing.length + 1).padStart(2, '0')}`, name: `Counter ${existing.length + 1}`, invoicePrefix: '' });
   const [err, setErr] = useState<Record<string, string>>({});
   function submit(e: FormEvent) {
     e.preventDefault();
-    const r = TerminalInput.safeParse({ branchId, code: f.code.toUpperCase(), name: f.name });
+    const r = TerminalInput.safeParse({ branchId, code: f.code.toUpperCase(), name: f.name, ...(f.invoicePrefix && { invoicePrefix: f.invoicePrefix.toUpperCase() }) });
     if (!r.success) { setErr(Object.fromEntries(r.error.issues.map((i) => [i.path.join('.'), i.message]))); return; }
     onCreate(r.data);
   }
@@ -137,7 +137,7 @@ function TerminalForm({ branchId, existing, onCreate, onSelect, busy }: { branch
           <ul className="divide-y border rounded-md">
             {existing.map((t) => (
               <li key={t.id} className="flex items-center justify-between px-3 py-2 text-sm">
-                <span><b>{t.code}</b> · {t.name}{t.deviceId && <span className="ml-2 text-xs text-slate-500">(bound to a device)</span>}</span>
+                <span><b>{t.code}</b> · {t.name} · invoices {t.invoicePrefix}/…{t.deviceId && <span className="ml-2 text-xs text-slate-500">(bound to a device)</span>}</span>
                 <button type="button" className="btn-secondary" disabled={busy} onClick={() => onSelect(t.id)}>Use this terminal</button>
               </li>
             ))}
@@ -148,6 +148,9 @@ function TerminalForm({ branchId, existing, onCreate, onSelect, busy }: { branch
         <p className="col-span-2 text-sm text-slate-600">Or create a new one. Each terminal keeps its own invoice series, so two tills never clash — even offline.</p>
         <Field label="Terminal code" htmlFor="tcode"><input id="tcode" className="input uppercase" value={f.code} onChange={(e) => setF({ ...f, code: e.target.value })} required autoFocus />{err.code && <p className="err">{err.code}</p>}</Field>
         <Field label="Terminal name" htmlFor="tname"><input id="tname" className="input" value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} required /></Field>
+        <Field label="Invoice prefix (optional)" htmlFor="tprefix" hint="1–4 letters or digits, e.g. D1. Bills are numbered D1/2627/000001. Leave empty to have one suggested.">
+          <input id="tprefix" className="input uppercase" maxLength={4} value={f.invoicePrefix} onChange={(e) => setF({ ...f, invoicePrefix: e.target.value })} />{err.invoicePrefix && <p className="err">{err.invoicePrefix}</p>}
+        </Field>
         <div className="col-span-2 flex justify-end"><button type="submit" className="btn-primary" disabled={busy}>Create terminal</button></div>
       </form>
     </div>

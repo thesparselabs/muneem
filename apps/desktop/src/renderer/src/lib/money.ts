@@ -1,12 +1,7 @@
-import { parseScaled } from '@muneem/domain';
-
-const grouping = new Intl.NumberFormat('en-IN');
+import { formatRupees, parseScaled } from '@muneem/domain';
 
 export function formatPaise(paise: number | null | undefined): string {
-  if (paise === null || paise === undefined) return '—';
-  const sign = paise < 0 ? '-' : '';
-  const abs = Math.abs(paise);
-  return `${sign}₹${grouping.format(Math.trunc(abs / 100))}.${String(abs % 100).padStart(2, '0')}`;
+  return paise === null || paise === undefined ? '—' : formatRupees(paise);
 }
 
 export const paiseToText = (paise: number | undefined): string =>

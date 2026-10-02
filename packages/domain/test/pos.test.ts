@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import fc from 'fast-check';
 import {
-  effectiveDiscountBp, expectedCash, isUtWithoutLegislature, settleTenders, stateOfGstin, type TenderInput,
+  effectiveDiscountBp, expectedCash, formatInvoiceNumber, isUtWithoutLegislature, settleTenders, stateOfGstin, suggestInvoicePrefix, type TenderInput,
 } from '../src/index.js';
 
 describe('settleTenders', () => {
@@ -66,5 +66,28 @@ describe('GST state helpers', () => {
     expect(isUtWithoutLegislature('04')).toBe(true);
     expect(isUtWithoutLegislature('38')).toBe(true);
     expect(isUtWithoutLegislature('07')).toBe(false);
+  });
+});
+
+describe('invoice numbers (CGST Rule 46(b))', () => {
+  it('formats PREFIX/2627/000123 within 16 characters of letters, digits and /', () => {
+    expect(formatInvoiceNumber('D1', '2026-27', 123)).toBe('D1/2627/000123');
+    expect(formatInvoiceNumber('DL1A', '2099-00', 999_999)).toBe('DL1A/9900/999999');
+    for (const n of [formatInvoiceNumber('ABCD', '2026-27', 999_999)]) {
+      expect(n.length).toBeLessThanOrEqual(16);
+      expect(n).toMatch(/^[A-Za-z0-9/-]+$/);
+    }
+  });
+  it('refuses bad prefixes and a sequence past 999999', () => {
+    expect(() => formatInvoiceNumber('DEL1T', '2026-27', 1)).toThrow();
+    expect(() => formatInvoiceNumber('d1', '2026-27', 1)).toThrow();
+    expect(() => formatInvoiceNumber('D1', '2026-27', 1_000_000)).toThrow(/999999/);
+    expect(() => formatInvoiceNumber('D1', '2026-27', 0)).toThrow();
+  });
+  it('suggests a short prefix from the branch and terminal codes, avoiding ones in use', () => {
+    expect(suggestInvoicePrefix('DEL1', 'T01', new Set())).toBe('DE01');
+    expect(suggestInvoicePrefix('DEL1', 'T01', new Set(['DE01']))).toBe('T1');
+    expect(suggestInvoicePrefix('DEL1', 'T01', new Set(['DE01', 'T1']))).toBe('T2');
+    expect(suggestInvoicePrefix('MAIN', 'COUNTR', new Set())).toBe('MATR');
   });
 });

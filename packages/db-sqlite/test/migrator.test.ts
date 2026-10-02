@@ -141,3 +141,22 @@ describe('0003_pos', () => {
     expect(() => db.prepare(series).run('r2')).toThrow(/UNIQUE/);
   });
 });
+
+describe('0004_invoice_prefix', () => {
+  it('gives existing terminals a short prefix and moves their series onto it', async () => {
+    const db = openDatabase(':memory:', { quickCheck: false });
+    await migrate(db, { migrations: MIGRATIONS.slice(0, 3) });
+    const t = "'2026-10-02T00:00:00.000Z', '2026-10-02T00:00:00.000Z', 'u', 'd'";
+    db.exec(`
+      INSERT INTO organization (id, name, created_at, updated_at) VALUES ('o', 'O', 'a', 'a');
+      INSERT INTO business (id, organization_id, name, business_type, state_code, tax_scheme, created_at, updated_at, created_by, device_id) VALUES ('b', 'o', 'S', 'retail', '07', 'regular', ${t});
+      INSERT INTO branch (id, business_id, code, name, state_code, created_at, updated_at, created_by, device_id) VALUES ('br', 'b', 'DEL1', 'D', '07', ${t});
+      INSERT INTO terminal (id, business_id, branch_id, code, name, created_at, updated_at, created_by, device_id) VALUES ('t1', 'b', 'br', 'T01', 'A', ${t});
+      INSERT INTO terminal (id, business_id, branch_id, code, name, created_at, updated_at, created_by, device_id) VALUES ('t2', 'b', 'br', 'T02', 'B', ${t});
+      INSERT INTO doc_series (id, business_id, branch_id, terminal_id, doc_type, fy, prefix, created_at, updated_at, created_by, device_id) VALUES ('s', 'b', 'br', 't2', 'tax_invoice', '2026-27', 'DEL1/T02', ${t});
+    `);
+    await migrate(db);
+    expect(db.prepare('SELECT id, invoice_prefix FROM terminal ORDER BY id').all()).toEqual([{ id: 't1', invoice_prefix: 'T1' }, { id: 't2', invoice_prefix: 'T2' }]);
+    expect(db.prepare("SELECT prefix FROM doc_series WHERE id = 's'").pluck().get()).toBe('T2');
+  });
+});
