@@ -124,3 +124,6 @@ rebuildProjections / importOpeningPreview / importOpeningCommit / listWarehouses
 - The Stage 2 barcode cache now refreshes stock on every hit; it had been returning stale on-hand quantities.
 - The import preview store and column matching were generalised so the product and opening-stock imports share them.
 - Screens are checked by typecheck, build and unit tests of their logic, not by clicking through the running app.
+- A review pass (Part 4g) changed costing below zero (no re-valuing of earlier oversold units), made opening stock
+  "on the shelf now" (allowed after sales, re-costing them), showed this branch's stock, refused duplicate counts,
+  reported too-small quantities, and made the integrity check batched and sliced.

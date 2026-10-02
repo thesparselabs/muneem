@@ -1,6 +1,6 @@
 import type { ProductHit, ProductSearchInput } from '@muneem/contracts';
 import { normalizeName } from '@muneem/domain';
-import { hitByBarcode, hitBySku, hitsByNamePrefix, hitsByText, stockOnHand } from '@muneem/db-sqlite';
+import { defaultWarehouseId, hitByBarcode, hitBySku, hitsByNamePrefix, hitsByText, stockOnHand } from '@muneem/db-sqlite';
 import type { CatalogContext } from './catalogContext.js';
 import { Lru } from './lru.js';
 
@@ -14,16 +14,23 @@ export class ProductSearch {
 
   invalidate(): void { this.barcodeCache.clear(); }
 
+  // On hand in this branch's warehouse, the same stock sale warnings use; read fresh, never cached.
+  withStock<T extends ProductHit>(hits: T[]): T[] {
+    const branchId = this.ctx.branchId();
+    const warehouseId = branchId ? defaultWarehouseId(this.ctx.db(), branchId) : null;
+    return hits.map((h) => ({ ...h, stockMilli: stockOnHand(this.ctx.db(), this.ctx.businessId(), warehouseId, h.productId) }));
+  }
+
   lookupBarcode(code: string): ProductHit | null {
     const businessId = this.ctx.businessId();
     const on = this.ctx.today();
     const key = `${businessId}|${on}|${code}`;
     const cached = this.barcodeCache.get(key);
-    // Stock changes with every sale, so a cached hit keeps its product and price but always reads stock afresh.
-    if (cached) return { ...cached, stockMilli: stockOnHand(this.ctx.db(), businessId, cached.productId) };
+    if (cached) return this.withStock([cached])[0]!;
     const hit = hitByBarcode(this.ctx.db(), businessId, code, on);
-    if (hit) this.barcodeCache.set(key, hit);
-    return hit;
+    if (!hit) return null;
+    this.barcodeCache.set(key, hit);
+    return this.withStock([hit])[0]!;
   }
 
   search(input: ProductSearchInput): ProductHit[] {
@@ -31,7 +38,7 @@ export class ProductSearch {
     if (!query) return [];
     const exact = this.exactMatch(query, input.mode);
     if (exact || input.mode === 'barcode' || input.mode === 'sku') return exact ? [exact] : [];
-    return this.byName(query, input.limit);
+    return this.withStock(this.byName(query, input.limit));
   }
 
   private exactMatch(query: string, mode: ProductSearchInput['mode']): ProductHit | null {
@@ -40,7 +47,8 @@ export class ProductSearch {
       const hit = this.lookupBarcode(query);
       if (hit || mode === 'barcode') return hit;
     }
-    return hitBySku(this.ctx.db(), this.ctx.businessId(), query, this.ctx.today());
+    const bySku = hitBySku(this.ctx.db(), this.ctx.businessId(), query, this.ctx.today());
+    return bySku ? this.withStock([bySku])[0]! : null;
   }
 
   private byName(query: string, limit: number): ProductHit[] {

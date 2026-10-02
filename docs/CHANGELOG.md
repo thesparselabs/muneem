@@ -60,6 +60,28 @@ All notable changes, newest first. Each entry records **what** changed and **why
 - **Offline golden flow now covers stock**: opening stock, the sale reduces stock at average cost, COGS is recorded and
   the valuation sub-ledger balances.
 
+### Fixed — Stage 4 review
+- **The cost of goods sold landed on the wrong sale.** After stock went negative, the next sale picked up the
+  re-costing of every earlier oversold unit. For example: sell 5 at ₹10 provisional, receive 2 at ₹20, then sell 1;
+  that sale recorded ₹50 instead of ₹20. Units below zero now keep their cost, and a receipt re-costs only the units it
+  covers, as its own correction (ADR-0018 amended).
+- **Shops that billed before entering opening stock could never record its cost.** Opening stock was refused for any
+  product with movements. It now means "on the shelf now, at this cost", is allowed once per product even after
+  sales, and re-costs those earlier sales (ADR-0021 amended).
+- **A stock take that listed a product twice applied the difference twice.** It is now refused.
+- **Stock shown in search, the stock list and the stock take added up every branch,** while warnings and blocking used
+  this branch only. All of them now show this branch's warehouse; the valuation stays business-wide.
+- **The stock take screen** could only count the first 500 products and dropped counts when the category changed. It
+  now has search and "load more", and keeps every count until it is posted.
+- **A quantity too small for the base unit** (0.4 g of a product sold by the kg) crashed the sale. It is now a clear
+  quote issue.
+- **The stock integrity check could freeze the app.** It now works in batches that yield to the UI, scheduled runs
+  check a rotating slice, and drift is rebuilt in one transaction without replaying twice.
+- **Average cost had two definitions:** the stock list used its own SQL and showed ₹0.00 at zero stock. It now uses the
+  costing engine's, which falls back to the last unit cost.
+- **Search on products and customers** used an invisible literal U+FFFF character as the prefix upper bound; it is now
+  the visible `\uffff` escape.
+
 ### Fixed — Stage 4
 - **Scanned products showed stale stock.** The Stage 2 barcode cache kept whole search results, including on-hand
   quantity, which changes with every sale. The cache now keeps product and price but reads stock afresh on each hit,

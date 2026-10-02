@@ -3,7 +3,7 @@ import {
 } from '@muneem/domain';
 import type { Db } from '../open.js';
 import { stmt } from '../statements.js';
-import { nowIso } from '../uow.js';
+import { nowIso, withTransaction } from '../uow.js';
 import type { Actor } from './business.js';
 import { getBranch } from './business.js';
 import { recordChange, syncColumns } from './catalogWrite.js';
@@ -134,32 +134,38 @@ function movementRecords(db: Db, businessId: string, warehouseId: string, produc
 }
 
 export interface StockDrift { warehouseId: string; productId: string; cached: StockState; replayed: StockState; badMovementIds: string[] }
+export interface StockKey { warehouseId: string; productId: string }
 
-// replay = projection, checked against the database: re-run the engine over each level's movements (in the order written).
-export function replayCheck(db: Db, businessId: string, productIds?: readonly string[]): StockDrift[] {
-  const keys = stmt(db, `SELECT DISTINCT warehouse_id AS warehouseId, product_id AS productId FROM stock_movement WHERE business_id = ?
-    UNION SELECT warehouse_id, product_id FROM stock_level WHERE business_id = ?`).all(businessId, businessId) as { warehouseId: string; productId: string }[];
+export function stockKeys(db: Db, businessId: string, productIds?: readonly string[]): StockKey[] {
+  const keys = stmt(db, `SELECT warehouse_id AS warehouseId, product_id AS productId FROM stock_movement WHERE business_id = ?
+    UNION SELECT warehouse_id, product_id FROM stock_level WHERE business_id = ? ORDER BY 2, 1`).all(businessId, businessId) as StockKey[];
   const wanted = productIds ? new Set(productIds) : null;
+  return wanted ? keys.filter((k) => wanted.has(k.productId)) : keys;
+}
+
+// replay = projection for the given levels: re-run the engine over each level's movements, in the order written.
+export function replayKeys(db: Db, businessId: string, keys: readonly StockKey[]): StockDrift[] {
   const drift: StockDrift[] = [];
-  for (const k of keys.filter((x) => !wanted || wanted.has(x.productId))) {
+  for (const k of keys) {
     const rows = movementRecords(db, businessId, k.warehouseId, k.productId);
     const { state, mismatches } = replayMovements(rows.map((r) => ({ kind: kindOf(r), qtyMilli: r.signed_qty_milli, valuePaise: r.value_paise, unitCostPaise: r.unit_cost_paise })));
     const cached = stockState(db, businessId, k.warehouseId, k.productId);
     const sameLevel = cached.qtyMilli === state.qtyMilli && cached.valuePaise === state.valuePaise && cached.lastUnitCostPaise === state.lastUnitCostPaise;
-    if (!sameLevel || mismatches.length > 0) {
-      drift.push({ ...k, cached, replayed: state, badMovementIds: mismatches.map((i) => rows[i]?.id ?? 'end') });
-    }
+    if (!sameLevel || mismatches.length > 0) drift.push({ ...k, cached, replayed: state, badMovementIds: mismatches.map((i) => rows[i]?.id ?? 'end') });
   }
   return drift;
 }
 
-// Rewrites cached levels from the movements; idempotent (LLD §4.2 rebuildStockLevels).
-export function rebuildStockLevels(db: Db, businessId: string, productIds?: readonly string[]): number {
-  const drift = replayCheck(db, businessId, productIds);
+export const replayCheck = (db: Db, businessId: string, productIds?: readonly string[]): StockDrift[] => replayKeys(db, businessId, stockKeys(db, businessId, productIds));
+
+// Rewrites the drifted levels from their replayed state in one transaction (LLD §4.2 rebuildStockLevels).
+export function rewriteLevels(db: Db, businessId: string, drift: readonly StockDrift[]): number {
   const at = nowIso();
-  for (const d of drift) writeLevel(db, businessId, d.warehouseId, d.productId, d.replayed, at);
+  withTransaction(db, () => { for (const d of drift) writeLevel(db, businessId, d.warehouseId, d.productId, d.replayed, at); });
   return drift.length;
 }
+
+export const rebuildStockLevels = (db: Db, businessId: string, productIds?: readonly string[]): number => rewriteLevels(db, businessId, replayCheck(db, businessId, productIds));
 
 export function movementsForRef(db: Db, businessId: string, refType: RefType, refId: string): PostedMovement[] {
   return (stmt(db, `SELECT id, product_id, movement_type, signed_qty_milli, value_paise, unit_cost_paise, cost_provisional, ref_type, ref_id, ref_line_id, reason_code
@@ -182,4 +188,9 @@ export function insertAdjustmentHeader(
 
 export function hasMovements(db: Db, businessId: string, warehouseId: string, productId: string): boolean {
   return stmt(db, 'SELECT 1 FROM stock_movement WHERE business_id = ? AND warehouse_id = ? AND product_id = ? LIMIT 1').get(businessId, warehouseId, productId) !== undefined;
+}
+
+export function hasOpening(db: Db, businessId: string, warehouseId: string, productId: string): boolean {
+  return stmt(db, "SELECT 1 FROM stock_movement WHERE business_id = ? AND warehouse_id = ? AND product_id = ? AND movement_type = 'opening' LIMIT 1")
+    .get(businessId, warehouseId, productId) !== undefined;
 }

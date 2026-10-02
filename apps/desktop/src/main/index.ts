@@ -69,7 +69,7 @@ async function boot(): Promise<void> {
   // Nightly-ish scheduled local backup (HLD §12): every 6 hours while running, first after 10 minutes.
   const backupTimer = setInterval(() => {
     void muneem?.diagnostics.backupNow('scheduled').catch((e) => loggers.app.error({ err: String(e) }, 'scheduled backup failed'));
-    try { muneem?.diagnostics.checkStock(); } catch (e) { loggers.app.error({ err: String(e) }, 'scheduled stock check failed'); }
+    void muneem?.diagnostics.checkStock({ slice: true }).catch((e) => loggers.app.error({ err: String(e) }, 'scheduled stock check failed'));
   }, 6 * 3600_000);
   backupTimer.unref();
   setTimeout(() => void muneem?.diagnostics.backupNow('scheduled').catch(() => undefined), 10 * 60_000).unref();

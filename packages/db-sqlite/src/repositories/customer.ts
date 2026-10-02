@@ -46,7 +46,7 @@ export function searchCustomers(db: Db, businessId: string, query: string, limit
   return (stmt(db, `SELECT * FROM customer WHERE business_id = @businessId AND deleted_at IS NULL
       AND ((name_norm >= @norm AND name_norm < @normEnd) OR phone LIKE @phone OR gstin = @gstin)
     ORDER BY name_norm, id LIMIT @limit`).all({
-    businessId, norm, normEnd: norm + '￿', phone: `${q.replace(/[%_]/gu, '')}%`, gstin: q.toUpperCase(), limit,
+    businessId, norm, normEnd: norm + '\uffff', phone: `${q.replace(/[%_]/gu, '')}%`, gstin: q.toUpperCase(), limit,
   }) as CustomerRow[]).map(toCustomer);
 }
 

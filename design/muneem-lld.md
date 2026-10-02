@@ -304,7 +304,7 @@ CREATE TABLE batch (
 CREATE INDEX ix_batch_expiry ON batch(business_id, expiry_date);
 ```
 
-*As built (Stage 4, ADR-0018/0021):* a `warehouse` table (one default per branch) and a `stock_adjustment` document header are added; `stock_movement` gains `cost_provisional` and a value-only `cost_correction` type, its unique key uses `COALESCE(ref_line_id,'')`, and **`value_paise` is the exact change the movement made to the level's value**, so Σ movement values always equals `stock_level.value_paise` despite the zero clamp and negative-stock re-valuation in §4.1. `stock_level` gains `last_unit_cost_paise` (the fallback for issues below zero).
+*As built (Stage 4, ADR-0018/0021):* a `warehouse` table (one default per branch) and a `stock_adjustment` document header are added; `stock_movement` gains `cost_provisional` and a value-only `cost_correction` type, its unique key uses `COALESCE(ref_line_id,'')`, and **`value_paise` is the exact change the movement made to the level's value**, so Σ movement values always equals `stock_level.value_paise` despite the zero clamp and negative-stock re-valuation in §4.1. `stock_level` gains `last_unit_cost_paise` (the fallback for issues below zero). Costing below zero differs from §4.1: units already below zero keep their cost (an issue adds only its own units), and a receipt re-costs only the units it covers, booking the difference as a `cost_correction`; §4.1's `value = qty × unit_cost` re-valued the whole negative balance and charged it to the next sale.
 
 ### 2.4 Accounting
 

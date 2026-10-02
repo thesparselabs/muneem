@@ -1,5 +1,4 @@
--- 0005_inventory — Stage 4 (LLD §2.3, §4.1; ADR-0018–0021). Movements are the source of truth; stock_level is a cache
--- written in the same transaction. Each movement stores the exact change it made to the level's value.
+-- 0005_inventory — Stage 4 (LLD §2.3, §4.1; ADR-0018–0021): movements are the source of truth, stock_level their cache.
 
 CREATE TABLE warehouse (
   id          TEXT PRIMARY KEY,

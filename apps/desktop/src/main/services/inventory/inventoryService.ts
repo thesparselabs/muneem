@@ -1,7 +1,7 @@
 import { AppError, type AdjustmentResult, type AdjustStockInput, type OpeningStockInput, type StockTakeInput } from '@muneem/contracts';
 import { averageCostPaise, divRound, newUlid } from '@muneem/domain';
 import {
-  ensureDefaultWarehouse, getProduct, hasMovements, insertAdjustmentHeader, movementsForRef, postMovement, productFallbackCost, recordChange,
+  ensureDefaultWarehouse, getProduct, hasOpening, insertAdjustmentHeader, movementsForRef, postMovement, productFallbackCost, recordChange,
   stockState, withTransaction, type PostedMovement, type ReasonCode,
 } from '@muneem/db-sqlite';
 import type { PosContext } from '../pos/posContext.js';
@@ -18,19 +18,33 @@ export class InventoryService {
     return withTransaction(this.ctx.db(), () => ensureDefaultWarehouse(this.ctx.db(), till.businessId, till.branchId, this.ctx.actor()));
   }
 
+  // Opening stock = "on the shelf now": it receives the gap to the current level, re-costing earlier provisional sales (ADR-0021).
+  openingProblem(warehouseId: string, productId: string, countedMilli: number): { field: 'productId' | 'qtyMilli'; message: string } | null {
+    if (hasOpening(this.ctx.db(), this.ctx.businessId(), warehouseId, productId)) {
+      return { field: 'productId', message: 'already has opening stock; use an adjustment or a stock take' };
+    }
+    const current = stockState(this.ctx.db(), this.ctx.businessId(), warehouseId, productId).qtyMilli;
+    if (countedMilli <= current) {
+      return { field: 'qtyMilli', message: `the system already holds ${current / 1000}; record the difference with an adjustment` };
+    }
+    return null;
+  }
+
   setOpeningStock(input: OpeningStockInput): AdjustmentResult {
     return withTransaction(this.ctx.db(), () => {
       const warehouseId = this.warehouseId();
       const fields: Record<string, string> = {};
       input.lines.forEach((l, i) => {
         this.product(l.productId);
-        if (hasMovements(this.ctx.db(), this.ctx.businessId(), warehouseId, l.productId)) fields[`lines.${i}.productId`] = 'already has stock movements; use an adjustment instead';
+        const problem = this.openingProblem(warehouseId, l.productId, l.qtyMilli);
+        if (problem) fields[`lines.${i}.${problem.field}`] = problem.message;
       });
       if (new Set(input.lines.map((l) => l.productId)).size !== input.lines.length) fields.lines = 'a product is listed twice';
       if (Object.keys(fields).length > 0) throw new AppError('VALIDATION_FAILED', 'Opening stock cannot be recorded for some products', fields);
-      return this.post('opening', warehouseId, input.note, input.lines.map((l) => ({
-        productId: l.productId, qtyMilli: l.qtyMilli, reason: 'opening', receiptValuePaise: divRound(l.qtyMilli * l.unitCostPaise, 1000),
-      })), 0);
+      return this.post('opening', warehouseId, input.note, input.lines.map((l) => {
+        const receiveMilli = l.qtyMilli - stockState(this.ctx.db(), this.ctx.businessId(), warehouseId, l.productId).qtyMilli;
+        return { productId: l.productId, qtyMilli: receiveMilli, reason: 'opening', receiptValuePaise: divRound(receiveMilli * l.unitCostPaise, 1000) };
+      }), 0);
     });
   }
 
@@ -44,6 +58,14 @@ export class InventoryService {
 
   // Differences are taken against the level at the moment of posting, so sales made during the count are respected.
   stockTake(input: StockTakeInput): AdjustmentResult {
+    const seen = new Map<string, number>();
+    const fields: Record<string, string> = {};
+    input.counts.forEach((c, i) => {
+      const first = seen.get(c.productId);
+      if (first !== undefined) fields[`counts.${i}.productId`] = `counted twice (also row ${first + 1})`;
+      else seen.set(c.productId, i);
+    });
+    if (Object.keys(fields).length > 0) throw new AppError('VALIDATION_FAILED', 'A product can be counted only once per stock take', fields);
     return withTransaction(this.ctx.db(), () => {
       const warehouseId = this.warehouseId();
       const lines: Line[] = [];

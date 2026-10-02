@@ -15,14 +15,16 @@ function assertQty(qtyMilli: number): void {
 
 export interface IssueResult { state: StockState; valueDeltaPaise: number; unitCostPaise: number; provisional: boolean }
 
-// LLD §4.1 ISSUE. Below zero the cost is provisional (last known cost, else the fallback) and is corrected on the next receipt.
+// LLD §4.1 ISSUE, except below zero: units already sold short keep their cost; only this sale's units are added at the provisional cost.
 export function issueStock(s: StockState, qtyMilli: number, fallbackUnitCostPaise: number): IssueResult {
   assertQty(qtyMilli);
   const unitCostPaise = s.qtyMilli > 0 ? divRound(s.valuePaise * MILLI, s.qtyMilli) : s.lastUnitCostPaise || Math.max(0, fallbackUnitCostPaise);
   const qty = s.qtyMilli - qtyMilli;
-  let value = s.valuePaise - divRound(qtyMilli * unitCostPaise, MILLI);
+  let value: number;
   if (qty === 0) value = 0;
-  if (qty < 0) value = divRound(qty * unitCostPaise, MILLI);
+  else if (qty > 0) value = s.valuePaise - divRound(qtyMilli * unitCostPaise, MILLI);
+  else if (s.qtyMilli > 0) value = divRound(qty * unitCostPaise, MILLI);
+  else value = s.valuePaise - divRound(qtyMilli * unitCostPaise, MILLI);
   return {
     state: { qtyMilli: qty, valuePaise: value, lastUnitCostPaise: unitCostPaise },
     valueDeltaPaise: value - s.valuePaise,
@@ -33,29 +35,27 @@ export function issueStock(s: StockState, qtyMilli: number, fallbackUnitCostPais
 
 export interface ReceiptResult { state: StockState; receiptDeltaPaise: number; correctionPaise: number }
 
-// LLD §4.1 RECEIPT. Units that were sold below zero at a provisional cost are re-costed at this receipt's cost;
-// the difference is returned separately so it can be booked as a cost correction (COGS ↔ inventory).
+// LLD §4.1 RECEIPT; the units it covers below zero move from their provisional cost to this receipt's cost, returned as a correction.
 export function receiveStock(s: StockState, qtyMilli: number, receiptValuePaise: number): ReceiptResult {
   assertQty(qtyMilli);
   if (!Number.isSafeInteger(receiptValuePaise) || receiptValuePaise < 0) throw new DomainError('INVALID_INPUT', `receipt value must be ≥ 0, got ${receiptValuePaise}`);
   const qty = s.qtyMilli + qtyMilli;
   const receiptUnitCost = divRound(receiptValuePaise * MILLI, qtyMilli);
-  const plain = s.valuePaise + receiptValuePaise;
-  let target = plain;
+  let correctionPaise = 0;
   if (s.qtyMilli < 0) {
-    if (qty > 0) target = divRound(receiptValuePaise * qty, qtyMilli);
-    else if (qty === 0) target = 0;
-    else target = divRound(qty * s.lastUnitCostPaise, MILLI);
+    const covered = Math.min(-s.qtyMilli, qtyMilli);
+    const provisionalCovered = divRound(-s.valuePaise * covered, -s.qtyMilli);
+    const trueCovered = divRound(receiptValuePaise * covered, qtyMilli);
+    correctionPaise = provisionalCovered - trueCovered;
   }
   return {
-    state: { qtyMilli: qty, valuePaise: target, lastUnitCostPaise: receiptUnitCost },
+    state: { qtyMilli: qty, valuePaise: s.valuePaise + receiptValuePaise + correctionPaise, lastUnitCostPaise: receiptUnitCost },
     receiptDeltaPaise: receiptValuePaise,
-    correctionPaise: target - plain,
+    correctionPaise,
   };
 }
 
-// A stored movement as the engine needs it: receipts carry their value, issues their quantity (negative) and the
-// unit cost they used (which is also the fallback to reuse), corrections only a value.
+// Receipts carry their value, issues their (negative) quantity and the unit cost used, corrections only a value.
 export interface StockMovementRecord { kind: 'receipt' | 'issue' | 'correction'; qtyMilli: number; valuePaise: number; unitCostPaise: number }
 
 // replay(movements) = projection: re-run the engine over the stored movements and point at any delta it disagrees with.

@@ -1,22 +1,29 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useInfiniteQuery, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { AdjustmentResult } from '@muneem/contracts';
 import { api, errorMessage } from '../../api.js';
 import { formatPaise, scaledToText } from '../../lib/money.js';
-import { countDiffs } from '../../lib/inventory/stockTake.js';
+import { countDiffs, setCount, type Counts } from '../../lib/inventory/stockTake.js';
+import { useDebounced } from '../../lib/useDebounced.js';
 
 export default function StockTake() {
   const qc = useQueryClient();
   const [categoryId, setCategoryId] = useState('');
-  const [counts, setCounts] = useState<Record<string, string>>({});
+  const [query, setQuery] = useState('');
+  const [counts, setCounts] = useState<Counts>({});
   const [reviewing, setReviewing] = useState(false);
   const [result, setResult] = useState<AdjustmentResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const categories = useQuery({ queryKey: ['categories'], queryFn: () => api.catalog.listCategories({}) });
-  const stock = useQuery({ queryKey: ['stockTake', categoryId], queryFn: () => api.inventory.getStock({ limit: 500, lowOnly: false, ...(categoryId && { categoryId }) }) });
-  const rows = stock.data?.items ?? [];
-  const { diffs, errors } = countDiffs(rows, counts);
+  const q = useDebounced(query.trim(), 150);
+  const stock = useInfiniteQuery({
+    queryKey: ['stockTake', categoryId, q],
+    queryFn: ({ pageParam }) => api.inventory.getStock({ limit: 200, lowOnly: false, ...(categoryId && { categoryId }), ...(q && { query: q }), ...(pageParam && { cursor: pageParam }) }),
+    initialPageParam: '', getNextPageParam: (last) => last.nextCursor ?? undefined,
+  });
+  const rows = stock.data?.pages.flatMap((p) => p.items) ?? [];
+  const { diffs, errors, counted } = countDiffs(counts);
 
   async function post() {
     setError(null);
@@ -46,7 +53,8 @@ export default function StockTake() {
             <option value="">All products</option>{categories.data?.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
           </select>
         </div>
-        <p className="pb-2 text-sm text-slate-600">{Object.values(counts).filter((v) => v.trim()).length} counted</p>
+        <div className="grow"><label className="label" htmlFor="st-q">Search</label><input id="st-q" className="input" value={query} onChange={(e) => setQuery(e.target.value)} /></div>
+        <p className="pb-2 text-sm text-slate-600">{counted} counted across all categories</p>
       </div>
       {!reviewing ? (
         <table className="w-full rounded-lg border bg-white text-sm">
@@ -56,7 +64,7 @@ export default function StockTake() {
               <tr key={r.productId} className="border-t">
                 <td className="p-2">{r.name} <span className="text-slate-500">{r.sku}</span></td>
                 <td className="p-2 text-right tabular-nums">{scaledToText(r.qtyMilli, 3)} {r.uomCode}</td>
-                <td className="p-2"><input aria-label={`Counted ${r.name}`} className="input w-28 py-1" inputMode="decimal" value={counts[r.productId] ?? ''} onChange={(e) => setCounts({ ...counts, [r.productId]: e.target.value })} />
+                <td className="p-2"><input aria-label={`Counted ${r.name}`} className="input w-28 py-1" inputMode="decimal" value={counts[r.productId]?.text ?? ''} onChange={(e) => setCounts(setCount(counts, r, e.target.value))} />
                   {errors[r.productId] && <p className="err">{errors[r.productId]}</p>}</td>
               </tr>
             ))}
@@ -77,6 +85,7 @@ export default function StockTake() {
           </tbody>
         </table>
       )}
+      {!reviewing && stock.hasNextPage && <button className="btn-secondary" onClick={() => void stock.fetchNextPage()}>Load more products</button>}
       {error && <p className="err" role="alert">{error}</p>}
       <div className="flex gap-2">
         {!reviewing

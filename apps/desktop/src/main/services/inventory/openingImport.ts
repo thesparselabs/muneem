@@ -1,6 +1,6 @@
 import { AppError, type OpeningImportField, type OpeningImportMapping, type OpeningImportPreview } from '@muneem/contracts';
 import { parseScaled } from '@muneem/domain';
-import { findProductIdByBarcode, findProductIdBySku, getMeta, getProduct, hasMovements, setMeta, withTransaction } from '@muneem/db-sqlite';
+import { findProductIdByBarcode, findProductIdBySku, getMeta, getProduct, setMeta, withTransaction } from '@muneem/db-sqlite';
 import type { PosContext } from '../pos/posContext.js';
 import { suggestFrom } from '../import/columnMapping.js';
 import type { PreviewSession, PreviewStore } from '../import/previewStore.js';
@@ -81,7 +81,8 @@ export class OpeningImportService {
         const first = firstLine.get(product.id);
         if (first !== undefined) errors.product = `same product as row ${first}`;
         else firstLine.set(product.id, line);
-        if (hasMovements(db, businessId, warehouseId, product.id)) errors.product = 'already has stock movements; use an adjustment instead';
+        const problem = qty !== null && qty > 0 ? this.inventory.openingProblem(warehouseId, product.id, qty) : null;
+        if (problem) errors[problem.field === 'qtyMilli' ? 'qty' : 'product'] = problem.message;
       }
       return {
         line, errors, ...(product && { name: product.name, productId: product.id }),

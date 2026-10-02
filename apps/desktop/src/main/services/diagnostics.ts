@@ -4,9 +4,13 @@ import { newUlid } from '@muneem/domain';
 import { AppError, type Health } from '@muneem/contracts';
 import {
   backupDatabase, dbSizeBytes, foreignKeyCheck, getMeta, META_KEYS, outboxDepth, quickCheck, setMeta, verifyAuditChain,
-  currentSchemaVersion, type Db,
- rebuildStockLevels, replayCheck } from '@muneem/db-sqlite';
+  currentSchemaVersion, replayKeys, rewriteLevels, stockKeys, type Db, type StockDrift,
+} from '@muneem/db-sqlite';
 import { DEVICE_AUDIT_SCOPE } from '../ipc/gateway.js';
+
+const STOCK_CHECK_BATCH = 200;
+const STOCK_CHECK_SLICE = 2000;
+const STOCK_CHECK_CURSOR = 'stock.check.cursor';
 import type { Loggers } from '../infra/logger.js';
 import type { SessionService } from './session.js';
 import type { DeviceService } from './device.js';
@@ -33,18 +37,32 @@ export class DiagnosticsService {
     };
   }
 
-  // replay = projection (ADR-0018): any cached level the movements disagree with is logged and rebuilt from the movements.
-  checkStock(): 'ok' | 'healed' | 'not_run' {
+  // replay = projection (ADR-0018) in batches that yield to the UI; scheduled runs take a rotating slice (LLD §4.2).
+  async checkStock(opts: { slice?: boolean; batchSize?: number; sliceSize?: number } = {}): Promise<'ok' | 'healed' | 'not_run'> {
     const businessId = this.d.session.get()?.businessId;
     if (!businessId) return 'not_run';
-    const drift = replayCheck(this.d.db(), businessId);
+    const db = this.d.db();
+    let keys = stockKeys(db, businessId);
+    if (opts.slice && keys.length > 0) {
+      const all = keys;
+      const size = Math.min(opts.sliceSize ?? STOCK_CHECK_SLICE, all.length);
+      const start = Number(getMeta(db, STOCK_CHECK_CURSOR) ?? 0) % all.length;
+      keys = Array.from({ length: size }, (_, i) => all[(start + i) % all.length]!);
+      setMeta(db, STOCK_CHECK_CURSOR, String((start + size) % all.length));
+    }
+    const drift: StockDrift[] = [];
+    const batch = opts.batchSize ?? STOCK_CHECK_BATCH;
+    for (let i = 0; i < keys.length; i += batch) {
+      drift.push(...replayKeys(db, businessId, keys.slice(i, i + batch)));
+      await new Promise((r) => setImmediate(r));
+    }
     if (drift.length === 0) return 'ok';
     this.d.loggers.app.error({ code: 'STOCK_PROJECTION_DRIFT', drift }, 'stock levels disagreed with their movements; rebuilding');
-    rebuildStockLevels(this.d.db(), businessId, drift.map((d) => d.productId));
+    rewriteLevels(db, businessId, drift);
     return 'healed';
   }
 
-  integrityCheck() {
+  async integrityCheck() {
     const db = this.d.db();
     const qc = quickCheck(db);
     const fk = foreignKeyCheck(db);
@@ -54,7 +72,7 @@ export class DiagnosticsService {
     const broken = chains.filter((c) => !c.r.ok);
     const detail = [...qc.detail.filter((x) => x !== 'ok'), ...fk.detail, ...broken.map((c) => `audit chain ${c.b} broken at seq ${c.r.brokenAtSeq}`)];
     if (!qc.ok) this.d.loggers.app.error({ detail }, 'DB_CORRUPT detected by integrity check');
-    const stock = this.checkStock();
+    const stock = await this.checkStock();
     if (stock === 'healed') detail.push('stock levels disagreed with their movements and were rebuilt');
     return { quickCheck: qc.ok ? 'ok' : 'failed', foreignKeys: fk.ok ? 'ok' : 'failed', auditChain: broken.length ? 'broken' : 'ok', stock, detail } as const;
   }
@@ -71,7 +89,7 @@ export class DiagnosticsService {
   }
 
   /** Logs + health JSON + schema version + row counts. No invoice contents. Returns an opaque handle, never a path. */
-  exportSupportBundle() {
+  async exportSupportBundle() {
     const id = newUlid();
     const dir = join(this.d.bundlesDir, id);
     mkdirSync(dir, { recursive: true });
@@ -80,7 +98,7 @@ export class DiagnosticsService {
     for (const t of ['business', 'branch', 'terminal', 'user', 'sync_outbox', 'audit_log', 'backup_log']) {
       counts[t] = (db.prepare(`SELECT COUNT(*) AS n FROM ${t}`).get() as { n: number }).n;
     }
-    writeFileSync(join(dir, 'health.json'), JSON.stringify({ health: this.getHealth(), integrity: this.integrityCheck(), counts, device: this.d.device.info(), exportedAt: new Date().toISOString() }, null, 2));
+    writeFileSync(join(dir, 'health.json'), JSON.stringify({ health: this.getHealth(), integrity: await this.integrityCheck(), counts, device: this.d.device.info(), exportedAt: new Date().toISOString() }, null, 2));
     let bytes = 0;
     for (const name of ['app.log', 'sync.log', 'hardware.log']) {
       const src = join(this.d.loggers.dir, name);

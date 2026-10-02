@@ -1,5 +1,5 @@
 import type { MovementPage, StockPage, StockRow, Valuation } from '@muneem/contracts';
-import { normalizeName } from '@muneem/domain';
+import { averageCostPaise, normalizeName } from '@muneem/domain';
 import type { Db } from '../open.js';
 import { stmt } from '../statements.js';
 
@@ -11,25 +11,28 @@ function decode<T extends Cursor>(s: string | undefined): T | null {
 }
 
 type StockRowDb = {
-  id: string; name: string; name_norm: string; sku: string | null; uom_code: string; qty: number; value: number; avg: number; reorder: number | null;
+  id: string; name: string; name_norm: string; sku: string | null; uom_code: string; qty: number; value: number; last_cost: number; reorder: number | null;
 };
+// One definition of average cost: the costing engine's, which falls back to the last unit cost at or below zero.
 const toStockRow = (r: StockRowDb): StockRow => ({
-  productId: r.id, name: r.name, uomCode: r.uom_code, qtyMilli: r.qty, valuePaise: r.value, avgCostPaise: r.avg,
+  productId: r.id, name: r.name, uomCode: r.uom_code, qtyMilli: r.qty, valuePaise: r.value,
+  avgCostPaise: averageCostPaise({ qtyMilli: r.qty, valuePaise: r.value, lastUnitCostPaise: r.last_cost }),
   low: r.reorder !== null && r.qty <= r.reorder,
   ...(r.sku !== null && { sku: r.sku }), ...(r.reorder !== null && { reorderLevelMilli: r.reorder }),
 });
 
-const STOCK_SELECT = `SELECT p.id, p.name, p.name_norm, p.sku, u.code AS uom_code, p.reorder_level_milli AS reorder,
+const stockSelect = (levelFilter: string) => `SELECT p.id, p.name, p.name_norm, p.sku, u.code AS uom_code, p.reorder_level_milli AS reorder,
     COALESCE(SUM(sl.qty_milli), 0) AS qty, COALESCE(SUM(sl.value_paise), 0) AS value,
-    CASE WHEN COALESCE(SUM(sl.qty_milli), 0) > 0 THEN (COALESCE(SUM(sl.value_paise), 0) * 1000 + COALESCE(SUM(sl.qty_milli), 0) / 2) / COALESCE(SUM(sl.qty_milli), 0) ELSE 0 END AS avg
+    COALESCE((SELECT x.last_unit_cost_paise FROM stock_level x WHERE x.business_id = p.business_id AND x.product_id = p.id ${levelFilter.replaceAll('sl.', 'x.')}
+      ORDER BY x.last_movement_at DESC LIMIT 1), 0) AS last_cost
   FROM product p JOIN uom u ON u.id = p.base_uom_id
-  LEFT JOIN stock_level sl ON sl.business_id = p.business_id AND sl.product_id = p.id`;
+  LEFT JOIN stock_level sl ON sl.business_id = p.business_id AND sl.product_id = p.id ${levelFilter}`;
 
-// Stock per product summed over the business's warehouses (one per branch until multi-warehouse lands). Low = on hand ≤ reorder level.
-export function listStock(db: Db, businessId: string, f: { query?: string | undefined; lowOnly: boolean; categoryId?: string | undefined; limit: number; cursor?: string | undefined }): StockPage {
+// Stock in one warehouse (this branch's), the same stock that sale warnings use. Low = on hand ≤ reorder level.
+export function listStock(db: Db, businessId: string, warehouseId: string, f: { query?: string | undefined; lowOnly: boolean; categoryId?: string | undefined; limit: number; cursor?: string | undefined }): StockPage {
   const after = decode<{ n: string; id: string }>(f.cursor);
   const norm = f.query ? normalizeName(f.query) : null;
-  const rows = stmt(db, `${STOCK_SELECT}
+  const rows = stmt(db, `${stockSelect('AND sl.warehouse_id = @warehouseId')}
     WHERE p.business_id = @businessId AND p.deleted_at IS NULL AND p.is_active = 1
       AND (@norm IS NULL OR (p.name_norm >= @norm AND p.name_norm < @normEnd) OR p.sku = @raw)
       AND (@categoryId IS NULL OR p.category_id = @categoryId)
@@ -37,7 +40,7 @@ export function listStock(db: Db, businessId: string, f: { query?: string | unde
     GROUP BY p.id
     HAVING @lowOnly = 0 OR (p.reorder_level_milli IS NOT NULL AND COALESCE(SUM(sl.qty_milli), 0) <= p.reorder_level_milli)
     ORDER BY p.name_norm, p.id LIMIT @limit`).all({
-    businessId, norm, normEnd: norm === null ? null : `${norm}￿`, raw: f.query ?? null, categoryId: f.categoryId ?? null,
+    businessId, warehouseId, norm, normEnd: norm === null ? null : `${norm}\uffff`, raw: f.query ?? null, categoryId: f.categoryId ?? null,
     afterN: after?.n ?? null, afterId: after?.id ?? null, lowOnly: f.lowOnly ? 1 : 0, limit: f.limit + 1,
   }) as StockRowDb[];
   const page = rows.slice(0, f.limit);
@@ -71,7 +74,7 @@ export function productMovements(db: Db, businessId: string, productId: string, 
 
 // The inventory sub-ledger (ADR-0018): Σ cached levels must equal Σ movement values; Stage 6 ties this to account 1400.
 export function stockValuation(db: Db, businessId: string): Valuation {
-  const rows = (stmt(db, `${STOCK_SELECT}
+  const rows = (stmt(db, `${stockSelect('')}
     WHERE p.business_id = @businessId AND p.deleted_at IS NULL
     GROUP BY p.id HAVING COALESCE(SUM(sl.qty_milli), 0) <> 0 OR COALESCE(SUM(sl.value_paise), 0) <> 0
     ORDER BY p.name_norm, p.id`).all({ businessId }) as StockRowDb[]).map(toStockRow);
@@ -80,6 +83,8 @@ export function stockValuation(db: Db, businessId: string): Valuation {
   return { rows, totalValuePaise, movementValuePaise, balanced: totalValuePaise === movementValuePaise, negativeCount: rows.filter((r) => r.qtyMilli < 0).length };
 }
 
-export function stockOnHand(db: Db, businessId: string, productId: string): number {
-  return stmt(db, 'SELECT COALESCE(SUM(qty_milli), 0) FROM stock_level WHERE business_id = ? AND product_id = ?').pluck().get(businessId, productId) as number;
+export function stockOnHand(db: Db, businessId: string, warehouseId: string | null, productId: string): number {
+  if (!warehouseId) return 0;
+  return (stmt(db, "SELECT qty_milli FROM stock_level WHERE business_id = ? AND warehouse_id = ? AND product_id = ? AND variant_id = ''")
+    .pluck().get(businessId, warehouseId, productId) as number | undefined) ?? 0;
 }

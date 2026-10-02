@@ -33,6 +33,20 @@ describe('moving average costing (LLD §4.1)', () => {
     expect(r.receiptDeltaPaise + r.correctionPaise).toBe(84_000 - -30_000);
   });
 
+  it('a later sale never picks up the re-costing of units already sold below zero', () => {
+    let s = issueStock(EMPTY_STOCK, 5000, 1000).state;            // sell 5 with no stock at ₹10 provisional
+    expect(s).toMatchObject({ qtyMilli: -5000, valuePaise: -5000 });
+    const r = receiveStock(s, 2000, 4000);                         // receive 2 at ₹20: covers 2 of the 5
+    expect(r.correctionPaise).toBe(-2000);                         // those 2 really cost ₹10 more each
+    s = r.state;
+    expect(s).toMatchObject({ qtyMilli: -3000, valuePaise: -3000 }); // the other 3 keep their ₹10 provisional cost
+    const sale = issueStock(s, 1000, 1000);
+    expect(sale).toMatchObject({ unitCostPaise: 2000, valueDeltaPaise: -2000, provisional: true });
+    const covered = receiveStock(sale.state, 10_000, 30_000);     // 10 at ₹30 covers the remaining 4
+    expect(covered.correctionPaise).toBe(-(3 * 2000 + 1000));      // 3 units ₹10→₹30, 1 unit ₹20→₹30
+    expect(covered.state).toMatchObject({ qtyMilli: 6000, valuePaise: 18_000 });
+  });
+
   it('falls back to the given cost when there has never been a receipt', () => {
     expect(issueStock(EMPTY_STOCK, 1000, 4500)).toMatchObject({ unitCostPaise: 4500, provisional: true, valueDeltaPaise: -4500 });
   });

@@ -31,8 +31,31 @@ describe('opening stock', () => {
     expect(r).toMatchObject({ kind: 'opening', lines: [{ productId: soap, qtyMilli: 10_000, valuePaise: 30_000 }] });
     expect(level(soap)).toMatchObject({ qtyMilli: 10_000, valuePaise: 30_000 });
     expect(await api.call('inventory.setOpeningStock', { lines: [{ productId: soap, qtyMilli: 1000, unitCostPaise: 3000 }] }))
-      .toMatchObject({ ok: false, error: { code: 'VALIDATION_FAILED', fields: { 'lines.0.productId': expect.stringContaining('adjustment') } } });
+      .toMatchObject({ ok: false, error: { code: 'VALIDATION_FAILED', fields: { 'lines.0.productId': expect.stringContaining('already has opening stock') } } });
     expect(db.prepare("SELECT COUNT(*) FROM sync_outbox WHERE entity_type = 'stock_adjustment'").pluck().get()).toBe(1);
+  });
+});
+
+describe('opening stock after billing has started', () => {
+  it('sets stock to the count and re-costs the sales made before it', async () => {
+    await api.data('pos.openRegister', { openingCashPaise: 0 });
+    const { CompleteSaleInput, SaleDraft } = await import('@muneem/contracts');
+    const draft = SaleDraft.parse({ lines: [{ productId: soap, uomId: pcs, qtyMilli: 5000 }] });
+    const total = app.sales.quote(draft).totals.totalPaise;
+    const sale = app.sales.complete(CompleteSaleInput.parse({ ...draft, commandId: newUlid(), expectedTotalPaise: total, tenders: [{ method: 'cash', amountPaise: total }] }));
+    expect(level(soap)).toMatchObject({ qtyMilli: -5000, valuePaise: -15_000 });           // provisional at the ₹30 purchase price
+    const r = await api.data<AdjustmentResult>('inventory.setOpeningStock', { lines: [{ productId: soap, qtyMilli: 20_000, unitCostPaise: 3500 }] });
+    expect(r.lines).toEqual([{ productId: soap, qtyMilli: 25_000, valuePaise: 87_500 }]);   // received the 5 sold plus the 20 on the shelf
+    expect(level(soap)).toMatchObject({ qtyMilli: 20_000, valuePaise: 70_000 });
+    expect(db.prepare("SELECT value_paise FROM stock_movement WHERE movement_type = 'cost_correction'").pluck().all()).toEqual([-2500]);
+    expect(await api.data('inventory.valuation')).toMatchObject({ balanced: true });
+    expect(sale.saleId).toBeTruthy();
+  });
+
+  it('refuses a count below what the system already holds', async () => {
+    app.inventory.adjust({ lines: [{ productId: soap, qtyMilli: 4000, reason: 'other' }] });
+    expect(await api.call('inventory.setOpeningStock', { lines: [{ productId: soap, qtyMilli: 3000, unitCostPaise: 3000 }] }))
+      .toMatchObject({ ok: false, error: { fields: { 'lines.0.qtyMilli': expect.stringContaining('adjustment') } } });
   });
 });
 
@@ -49,6 +72,12 @@ describe('adjustments and stock take', () => {
   it('a cashier cannot adjust stock', async () => {
     grantRole(db, app, 'cashier');
     expect(await api.call('inventory.adjust', { lines: [{ productId: soap, qtyMilli: -1000, reason: 'theft' }] })).toMatchObject({ ok: false, error: { code: 'PERMISSION_DENIED' } });
+  });
+
+  it('refuses a stock take that counts the same product twice', async () => {
+    expect(await api.call('inventory.stockTake', { counts: [{ productId: soap, countedMilli: 10_000 }, { productId: soap, countedMilli: 10_000 }] }))
+      .toMatchObject({ ok: false, error: { code: 'VALIDATION_FAILED' } });
+    expect(level(soap).qtyMilli).toBe(10_000);
   });
 
   it('a stock take posts only the differences, measured at the moment of posting', async () => {
@@ -111,6 +140,36 @@ describe('stock queries', () => {
     db.prepare('UPDATE stock_level SET qty_milli = 1, value_paise = 1 WHERE product_id = ?').run(soap);
     expect(await api.data('diagnostics.integrityCheck')).toMatchObject({ stock: 'healed' });
     expect(level(soap)).toMatchObject({ qtyMilli: 10_000, valuePaise: 30_000 });
-    expect(app.diagnostics.checkStock()).toBe('ok');
+    expect(await app.diagnostics.checkStock()).toBe('ok');
+  });
+
+  it('scheduled checks take a rotating slice and still heal drift inside it', async () => {
+    db.prepare('UPDATE stock_level SET qty_milli = 7, value_paise = 7 WHERE product_id = ?').run(rice);
+    const first = await app.diagnostics.checkStock({ slice: true, sliceSize: 1, batchSize: 1 });
+    const second = await app.diagnostics.checkStock({ slice: true, sliceSize: 1, batchSize: 1 });
+    expect([first, second].sort()).toEqual(['healed', 'ok']);
+    expect(level(rice)).toMatchObject({ qtyMilli: 2000, valuePaise: 10_000 });
+  });
+});
+
+describe('stock per branch', () => {
+  it('a till sees its own branch stock in search and the stock list, matching its sale warnings', async () => {
+    app.inventory.setOpeningStock({ lines: [{ productId: soap, qtyMilli: 10_000, unitCostPaise: 3000 }] });
+    expect(await api.data('products.lookupBarcode', { code: '8901030865275' })).toMatchObject({ stockMilli: 10_000 });
+    const noida = await api.data<{ id: string }>('business.createBranch', { code: 'NOI1', name: 'Noida', stateCode: '09' });
+    const till = app.business.createTerminal({ branchId: noida.id, code: 'T01', name: 'Noida till', invoicePrefix: 'N1' });
+    app.business.selectTerminal(till.id);
+    expect(await api.data('products.lookupBarcode', { code: '8901030865275' })).toMatchObject({ stockMilli: 0 });
+    expect((await api.data<{ items: { productId: string; qtyMilli: number }[] }>('inventory.getStock', {})).items.find((r) => r.productId === soap)?.qtyMilli).toBe(0);
+    const { SaleDraft } = await import('@muneem/contracts');
+    expect(app.sales.quote(SaleDraft.parse({ lines: [{ productId: soap, uomId: pcs, qtyMilli: 1000 }] })).warnings).toEqual([expect.objectContaining({ stockMilli: 0 })]);
+    expect(await api.data('inventory.valuation')).toMatchObject({ totalValuePaise: 30_000 });
+  });
+
+  it('shows the last unit cost as average cost when stock is at zero', async () => {
+    app.inventory.setOpeningStock({ lines: [{ productId: soap, qtyMilli: 1000, unitCostPaise: 3200 }] });
+    app.inventory.adjust({ lines: [{ productId: soap, qtyMilli: -1000, reason: 'damage' }] });
+    const row = (await api.data<{ items: { productId: string; avgCostPaise: number; qtyMilli: number }[] }>('inventory.getStock', {})).items.find((r) => r.productId === soap);
+    expect(row).toMatchObject({ qtyMilli: 0, avgCostPaise: 3200 });
   });
 });

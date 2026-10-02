@@ -75,3 +75,14 @@ describe('stock in the sale commit (ADR-0019)', () => {
     expect(replayCheck(db, businessId)).toEqual([]);
   });
 });
+
+describe('quantities too small for the base unit', () => {
+  it('are reported as a quote issue instead of failing the sale', async () => {
+    const uoms = await api.data<{ id: string; code: string }[]>('catalog.listUoms');
+    const kg = uoms.find((u) => u.code === 'KG')!.id;
+    const g = uoms.find((u) => u.code === 'G')!.id;
+    const saffron = await api.data<{ id: string }>('products.create', { name: 'Saffron', baseUomId: kg, sellingPricePaise: 30_000_000, conversions: [{ fromUomId: g, factorMilli: 1 }] });
+    const q = app.sales.quote(SaleDraft.parse({ lines: [{ productId: soap, uomId: pcs, qtyMilli: 1000 }, { productId: saffron.id, uomId: g, qtyMilli: 400 }] })).issues;
+    expect(q).toEqual([{ lineNo: 2, message: 'Too small: 0.4 G of Saffron is less than 0.001 KG' }]);
+  });
+});

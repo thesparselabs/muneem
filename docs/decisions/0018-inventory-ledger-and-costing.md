@@ -19,6 +19,14 @@ the inventory account" cannot be checked yet.
 - An issue at or below zero uses the last known unit cost, else the product's purchase price, else 0, and is marked
   `cost_provisional`. The next receipt re-costs those units at the receipt's cost. The difference is written as a
   **`cost_correction` movement** (quantity 0, value only), which Stage 6 posts as COGS ↔ Inventory.
+- *Amended before merge — differs from LLD §4.1:*
+  - **The problem:** LLD §4.1 re-values the whole negative balance at each new issue's cost (`value = qty × unit_cost`).
+    That charged the re-costing of earlier oversold units to the next sale.
+  - **Selling below zero:** units already below zero keep their cost, and an issue below zero adds only its own units.
+    The exception is a sale that crosses zero: it takes the positive stock at its real value, and the rest is
+    provisional.
+  - **Receiving:** a receipt re-costs only the units it covers, from their recorded below-zero cost to the receipt's
+    cost.
 - `replayMovements` re-runs the engine over stored movements and reports any movement whose stored delta it does
   not reproduce. This is the `replay = projection` check, run as a domain property test, a database check and a
   Diagnostics/integrity job.

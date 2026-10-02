@@ -108,6 +108,8 @@ export class SalePricing {
         uomId: l.uomId, qtyMilli: l.qtyMilli, on, baseUomId: p.baseUomId, ...(l.uomId !== p.baseUomId && { factorMilli }),
       });
       if (!price) return issue(`${p.name} has no selling price`);
+      const baseQtyMilli = toBaseQty(l.qtyMilli, factorMilli);
+      if (baseQtyMilli <= 0) return issue(`Too small: ${qtyText(l.qtyMilli, uomCodes.get(l.uomId) ?? '')} of ${p.name} is less than 0.001 ${uomCodes.get(p.baseUomId) ?? ''}`);
       const gst: GstLineInput = {
         qtyMilli: l.qtyMilli, unitPricePaise: price.pricePaise, priceIsInclusive: price.isInclusive, lineDiscount: l.lineDiscount,
         gstRateBp: p.gstRateBp, cessRateBp: p.cessRateBp, cessPerUnitPaise: p.cessPerUnitPaise, taxTreatment: p.taxTreatment,
@@ -116,7 +118,7 @@ export class SalePricing {
         gst, draftLineNo: i + 1, product: p, baseUomCode: uomCodes.get(p.baseUomId) ?? '',
         line: {
           productId: p.id, name: p.name, uomId: l.uomId, uomCode: uomCodes.get(l.uomId) ?? '?', qtyMilli: l.qtyMilli,
-          baseQtyMilli: toBaseQty(l.qtyMilli, factorMilli), unitPricePaise: price.pricePaise, priceIsInclusive: price.isInclusive,
+          baseQtyMilli, unitPricePaise: price.pricePaise, priceIsInclusive: price.isInclusive,
           gstRateBp: p.gstRateBp, cessRateBp: p.cessRateBp, cessPerUnitPaise: p.cessPerUnitPaise, taxTreatment: p.taxTreatment,
           lineDiscount: l.lineDiscount,
           ...(p.hsnCode && { hsnCode: p.hsnCode }),

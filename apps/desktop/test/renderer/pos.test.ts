@@ -158,18 +158,25 @@ describe('stock in the cart and the count', () => {
 
   it('turns counts into differences, skipping blanks and rejecting bad numbers', async () => {
     const { countDiffs } = await import('../../src/renderer/src/lib/inventory/stockTake.js');
-    const rows = [
-      { productId: 'a', name: 'A', uomCode: 'PCS', qtyMilli: 5000, valuePaise: 0, avgCostPaise: 0, low: false },
-      { productId: 'b', name: 'B', uomCode: 'KG', qtyMilli: 2500, valuePaise: 0, avgCostPaise: 0, low: false },
-      { productId: 'c', name: 'C', uomCode: 'PCS', qtyMilli: 1000, valuePaise: 0, avgCostPaise: 0, low: false },
-    ];
-    expect(countDiffs(rows, { a: '4', b: '2.75', c: '' })).toEqual({
+    const row = (productId: string, uomCode: string, qtyMilli: number) => ({ productId, name: productId.toUpperCase(), uomCode, qtyMilli, valuePaise: 0, avgCostPaise: 0, low: false });
+    const counts = { a: { row: row('a', 'PCS', 5000), text: '4' }, b: { row: row('b', 'KG', 2500), text: '2.75' }, c: { row: row('c', 'PCS', 1000), text: '' } };
+    expect(countDiffs(counts)).toEqual({
       diffs: [
         { productId: 'a', name: 'A', uomCode: 'PCS', systemMilli: 5000, countedMilli: 4000, diffMilli: -1000 },
         { productId: 'b', name: 'B', uomCode: 'KG', systemMilli: 2500, countedMilli: 2750, diffMilli: 250 },
       ],
       errors: {},
+      counted: 2,
     });
-    expect(countDiffs(rows, { a: 'four' }).errors).toEqual({ a: 'enter a count of 0 or more' });
+    expect(countDiffs({ a: { row: row('a', 'PCS', 5000), text: 'four' } }).errors).toEqual({ a: 'enter a count of 0 or more' });
+  });
+
+  it('keeps counts made under another category filter', async () => {
+    const { countDiffs, setCount } = await import('../../src/renderer/src/lib/inventory/stockTake.js');
+    const row = (productId: string) => ({ productId, name: productId, uomCode: 'PCS', qtyMilli: 1000, valuePaise: 0, avgCostPaise: 0, low: false });
+    let counts = setCount({}, row('biscuit'), '3');
+    counts = setCount(counts, row('soap'), '0');
+    expect(countDiffs(counts).diffs.map((d) => d.productId)).toEqual(['biscuit', 'soap']);
+    expect(countDiffs(setCount(counts, row('soap'), '')).counted).toBe(1);
   });
 });
