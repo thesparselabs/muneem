@@ -8,7 +8,10 @@ export class ProductService {
 
   search(input: ProductSearchInput): ProductHit[] { return this.searcher.search(input); }
   lookupBarcode(code: string): ProductHit | null { return this.searcher.lookupBarcode(code); }
-  list(input: ProductListInput): ProductPage { return listProductHits(this.ctx.db(), this.ctx.businessId(), input, this.ctx.today()); }
+  list(input: ProductListInput): ProductPage {
+    const page = listProductHits(this.ctx.db(), this.ctx.businessId(), input, this.ctx.today());
+    return { ...page, items: this.searcher.withStock(page.items) };
+  }
 
   get(id: string): Product {
     const p = getProduct(this.ctx.db(), id, this.ctx.today());

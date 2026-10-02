@@ -85,6 +85,8 @@ export const SaleQuote = z.object({
   lines: z.array(QuoteLine),
   totals: SaleTotals,
   issues: z.array(z.object({ lineNo: Int, message: z.string() })),
+  // Lines that would take stock below zero; blocking ones stop the sale under the 'block' policy (ADR-0020).
+  warnings: z.array(z.object({ lineNo: Int, productId: Ulid, message: z.string(), stockMilli: Int, blocking: z.boolean() })),
   context: QuoteContext,
 });
 export type SaleQuote = z.infer<typeof SaleQuote>;

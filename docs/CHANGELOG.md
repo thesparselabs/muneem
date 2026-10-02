@@ -5,6 +5,94 @@ All notable changes, newest first. Each entry records **what** changed and **why
 
 ## [Unreleased]
 
+### Added — Stage 4 inventory
+- **Stage 4 plan (`docs/plans/stage-4-inventory.md`) and ADRs 0018–0021.** Decided with the user: no back-fill (stock
+  starts from an opening count); the inventory sub-ledger is proved now and the GL tie-out to account 1400 waits for
+  Stage 6; stock take, opening-stock import, stock ledger and stock in POS are in scope; negative stock is "warn and
+  allow" by default.
+- **Moving-average costing engine** (`@muneem/domain` `receiveStock`/`issueStock`/`replayMovements`), exactly LLD §4.1,
+  with each movement recording the exact change it made to the stock value. That is what makes
+  `replay(movements) = projection` hold: as the design was written, clamping at zero left residue. A 500-run property
+  test proves the replay reproduces every level and every movement. Issues below zero use the last known cost and are
+  corrected on the next receipt by a value-only movement.
+- **Migration `0005_inventory`:** warehouses, stock movements (append-only, idempotent per document line), cached stock
+  levels, adjustment documents, and a schema-ready batch table.
+- **Stock ledger repository** (`postMovement`, the only writer of cached stock levels; `planIssues`; `replayCheck`;
+  `rebuildStockLevels`; one default warehouse per branch, made on first use).
+- **Sales now move stock** (ADR-0019). The commit works out each line's cost before writing the append-only lines, so
+  sale lines and the sale carry COGS. It posts one sale movement per line and puts the movements in the sale's sync
+  payload.
+  - **Negative stock** (ADR-0020): the quote warns when a line would take stock below zero, and the policy
+    (`inventory.negativeStock`: block / warn / allow, default warn; per-product override) can refuse the sale with
+    `STOCK_INSUFFICIENT`. A sale that goes negative is audited.
+  - **Crash suite:** it now also checks one movement per sale line and replay = projection after the kills.
+  - **Speed:** `sales.complete` p95 is 13 ms with the stock step.
+- **Opening stock, adjustments and stock take** (`inventory.setOpeningStock/adjust/stockTake`, ADR-0021). Each is a
+  document with one movement per line, audited and queued for sync.
+  - **Opening stock:** quantity and cost, allowed only once per product.
+  - **Adjustments:** a reason per line; losses leave at average cost and gains enter at it.
+  - **Stock take:** posts only the differences, measured when it is posted, so sales during the count are respected.
+  - **Permissions:** `inventory.adjust` is needed for adjustments and stock takes (cashiers don't have it).
+- **Opening-stock import** (`inventory.importOpeningPreview/importOpeningCommit`). It matches products by SKU or
+  barcode, uses the product's purchase price when there is no cost column, and reports bad, duplicate or
+  already-stocked rows. The commit is one transaction and safe to retry. The preview store and column matching from
+  the Stage 2 import are now generic so both imports share them.
+- **Stock queries** (`inventory.getStock/getMovements/valuation/listLowStock/rebuildProjections`):
+  - **Stock list:** with low stock (on hand ≤ reorder level).
+  - **Product ledger:** each movement with the running quantity and value after it (FR-024).
+  - **Valuation:** proves the inventory sub-ledger, with Σ stock levels equal to Σ movement values.
+  - **Product search:** results show on-hand stock in the base unit.
+- **Stock integrity check** — Diagnostics' integrity check, and a 6-hourly timer, replay the movements against the
+  cached levels. Any drift is logged as `STOCK_PROJECTION_DRIFT` and rebuilt from the movements.
+- **Inventory screens** (`/inventory`, now in the menu):
+  - **Stock list:** low-stock badges and filter.
+  - **Valuation:** stock value, products below zero, and a ledger check that the sub-ledger balances.
+  - **Product ledger:** every movement with running balances and provisional-cost markers.
+  - **Adjust stock:** add or remove, with a reason per line.
+  - **Stock take:** count by category, review differences, post.
+  - **Opening stock:** by hand, or imported from a file with column matching.
+- **Stock in POS and Home:**
+  - **Search:** POS results show on-hand stock.
+  - **Cart:** cart lines show stock warnings, and payment is stopped when the policy blocks a sale.
+  - **Home:** a low-stock card.
+  - **Tests:** the logic behind these screens (count differences, warnings on cart lines) has node tests.
+
+- **Offline golden flow now covers stock**: opening stock, the sale reduces stock at average cost, COGS is recorded and
+  the valuation sub-ledger balances.
+
+### Fixed — Stage 4 review
+- **The integrity check could undo a sale.** The rebuild wrote back levels worked out before its pauses, so a sale made
+  during a pause was overwritten. It now replays again inside the write transaction. A rebuilt level is now always the
+  sum of the stored movements, so the valuation balances. Movements costed from a drifted level are reported for
+  review (`STOCK_COST_MISMATCH`) instead of being "healed" on every run.
+- **A bad count hidden by the stock take's filter blocked posting with no explanation;** every bad count is now named next
+  to the button.
+- **The cost of goods sold landed on the wrong sale.** After stock went negative, the next sale picked up the
+  re-costing of every earlier oversold unit. For example: sell 5 at ₹10 provisional, receive 2 at ₹20, then sell 1;
+  that sale recorded ₹50 instead of ₹20. Units below zero now keep their cost, and a receipt re-costs only the units it
+  covers, as its own correction (ADR-0018 amended).
+- **Shops that billed before entering opening stock could never record its cost.** Opening stock was refused for any
+  product with movements. It now means "on the shelf now, at this cost", is allowed once per product even after
+  sales, and re-costs those earlier sales (ADR-0021 amended).
+- **A stock take that listed a product twice applied the difference twice.** It is now refused.
+- **Stock shown in search, the stock list and the stock take added up every branch,** while warnings and blocking used
+  this branch only. All of them now show this branch's warehouse; the valuation stays business-wide.
+- **The stock take screen** could only count the first 500 products and dropped counts when the category changed. It
+  now has search and "load more", and keeps every count until it is posted.
+- **A quantity too small for the base unit** (0.4 g of a product sold by the kg) crashed the sale. It is now a clear
+  quote issue.
+- **The stock integrity check could freeze the app.** It now works in batches that yield to the UI, scheduled runs
+  check a rotating slice, and drift is rebuilt in one transaction without replaying twice.
+- **Average cost had two definitions:** the stock list used its own SQL and showed ₹0.00 at zero stock. It now uses the
+  costing engine's, which falls back to the last unit cost.
+- **Search on products and customers** used an invisible literal U+FFFF character as the prefix upper bound; it is now
+  the visible `\uffff` escape.
+
+### Fixed — Stage 4
+- **Scanned products showed stale stock.** The Stage 2 barcode cache kept whole search results, including on-hand
+  quantity, which changes with every sale. The cache now keeps product and price but reads stock afresh on each hit,
+  and warm scans still take about 0.01 ms.
+
 ### Added — Stage 3 POS billing
 - **Stage 3 plan (`docs/plans/stage-3-pos.md`) and ADRs 0013–0017** — the design disagreed on whether stock and the
   journal belong in the Stage 3 commit, and left numbering, tenders, sessions and printing details open. Decided with

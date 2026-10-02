@@ -173,3 +173,44 @@ describe('native SQLite build', () => {
     db.close();
   });
 });
+
+describe('0005_inventory', () => {
+  async function stocked() {
+    const db = await freshDb();
+    const t = "'2026-10-02T00:00:00.000Z', '2026-10-02T00:00:00.000Z', 'u', 'd'";
+    db.exec(`
+      INSERT INTO organization (id, name, created_at, updated_at) VALUES ('o', 'O', 'a', 'a');
+      INSERT INTO business (id, organization_id, name, business_type, state_code, tax_scheme, created_at, updated_at, created_by, device_id) VALUES ('b', 'o', 'S', 'retail', '07', 'regular', ${t});
+      INSERT INTO branch (id, business_id, code, name, state_code, created_at, updated_at, created_by, device_id) VALUES ('br', 'b', 'DEL1', 'D', '07', ${t});
+      INSERT INTO warehouse (id, business_id, branch_id, code, name, is_default, created_at, updated_at, created_by, device_id) VALUES ('w', 'b', 'br', 'MAIN', 'Main', 1, ${t});
+      INSERT INTO uom (id, business_id, code, name, created_at, updated_at, created_by, device_id) VALUES ('pcs', 'b', 'PCS', 'Pieces', ${t});
+      INSERT INTO product (id, business_id, name, name_norm, base_uom_id, created_at, updated_at, created_by, device_id) VALUES ('p', 'b', 'Soap', 'soap', 'pcs', ${t});
+    `);
+    const move = db.prepare(`INSERT INTO stock_movement (id, business_id, warehouse_id, product_id, movement_type, signed_qty_milli, value_paise,
+        ref_type, ref_id, ref_line_id, occurred_at, created_at, updated_at, created_by, device_id)
+      VALUES (?, 'b', 'w', 'p', ?, ?, ?, ?, ?, ?, 'a', 'a', 'a', 'u', 'd')`);
+    return { db, move };
+  }
+
+  it('keeps movements append-only and idempotent per reference', async () => {
+    const { db, move } = await stocked();
+    move.run('m1', 'opening', 1000, 500, 'opening', 'doc1', null);
+    expect(() => move.run('m2', 'opening', 1000, 500, 'opening', 'doc1', null)).toThrow(/UNIQUE/);
+    expect(() => db.prepare("UPDATE stock_movement SET value_paise = 1 WHERE id = 'm1'").run()).toThrow(/append-only/);
+    expect(() => db.prepare("DELETE FROM stock_movement WHERE id = 'm1'").run()).toThrow(/append-only/);
+    expect(db.prepare("UPDATE stock_movement SET sync_state = 'synced' WHERE id = 'm1'").run().changes).toBe(1);
+  });
+
+  it('allows a zero quantity only for a value-only cost correction', async () => {
+    const { move } = await stocked();
+    expect(() => move.run('m1', 'sale', 0, 0, 'sale', 's1', 'l1')).toThrow(/CHECK/);
+    expect(() => move.run('m2', 'cost_correction', 0, 0, 'correction', 'c1', null)).toThrow(/CHECK/);
+    expect(() => move.run('m3', 'cost_correction', 0, -600, 'correction', 'c1', null)).not.toThrow();
+    expect(() => move.run('m4', 'cost_correction', 1000, -600, 'correction', 'c2', null)).toThrow(/CHECK/);
+  });
+
+  it('refuses a cached level that has value without quantity', async () => {
+    const { db } = await stocked();
+    expect(() => db.prepare("INSERT INTO stock_level (business_id, warehouse_id, product_id, qty_milli, value_paise) VALUES ('b', 'w', 'p', 0, 5)").run()).toThrow(/CHECK/);
+  });
+});

@@ -31,4 +31,6 @@ export class CatalogContext {
   }
 
   today(): string { return localDate(this.d.now?.() ?? Date.now()); }
+
+  branchId(): string | null { return this.d.session.require().branchId; }
 }

@@ -54,7 +54,8 @@ describe('the sale commit', () => {
     const sale = await api.data<Sale>('sales.get', { id: r.saleId });
     expect(sale.lines.map((l) => [l.name, l.qtyMilli, l.hsnCode, l.gstRateBp])).toEqual([['Lux Soap', 2000, '3401', 1800], ['Loose Rice', 1000, '1006', 500]]);
     expect(sale.tenders).toEqual([{ method: 'cash', amountPaise: 20_000, changePaise: 5700 }]);
-    expect(count('SELECT COUNT(*) FROM audit_log') - audits).toBe(2 + 1); // series.create + sale.complete + ipc.sales.complete
+    // series.create + warehouse.create + sale.complete + stock.negative (no opening stock) + ipc.sales.complete
+    expect(count('SELECT COUNT(*) FROM audit_log') - audits).toBe(5);
     expect(db.prepare("SELECT entity_type FROM sync_outbox WHERE entity_type = 'sale'").all()).toHaveLength(1);
     await app.printQueue.idle();
     expect(db.prepare('SELECT status, open_drawer FROM print_job WHERE doc_id = ?').get(r.saleId)).toEqual({ status: 'done', open_drawer: 1 });
@@ -140,6 +141,7 @@ describe('the sale commit', () => {
     expect(count('SELECT COUNT(*) FROM audit_log')).toBe(before.audit);
     expect(count('SELECT COUNT(*) FROM sync_outbox')).toBe(before.outbox);
     expect(count('SELECT COUNT(*) FROM doc_series')).toBe(before.series);
+    expect(count('SELECT COUNT(*) FROM stock_movement') + count('SELECT COUNT(*) FROM stock_level')).toBe(0);
     db.exec('DROP TRIGGER boom');
     const ok = await sell({ lines: [line(soap)] });
     expect(ok.ok && ok.data.docNumber).toMatch(/000001$/);

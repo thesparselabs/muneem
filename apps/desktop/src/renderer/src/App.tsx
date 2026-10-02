@@ -13,6 +13,11 @@ import ProductEdit from './routes/ProductEdit.js';
 import ImportProducts from './routes/ImportProducts.js';
 import CatalogSettings from './routes/CatalogSettings.js';
 import PosScreen from './routes/pos/PosScreen.js';
+import StockList from './routes/inventory/StockList.js';
+import ProductLedger from './routes/inventory/ProductLedger.js';
+import AdjustStock from './routes/inventory/AdjustStock.js';
+import StockTake from './routes/inventory/StockTake.js';
+import OpeningStock from './routes/inventory/OpeningStock.js';
 import PrinterSettings from './routes/PrinterSettings.js';
 
 export default function App() {
@@ -48,6 +53,11 @@ export default function App() {
         <Route path="/products/:id" element={<ProductEdit />} />
         <Route path="/settings/catalog" element={<CatalogSettings />} />
         <Route path="/pos" element={<PosScreen />} />
+        <Route path="/inventory" element={<StockList />} />
+        <Route path="/inventory/product/:id" element={<ProductLedger />} />
+        <Route path="/inventory/adjust" element={<AdjustStock />} />
+        <Route path="/inventory/stock-take" element={<StockTake />} />
+        <Route path="/inventory/opening" element={<OpeningStock />} />
         <Route path="/settings/printer" element={<PrinterSettings />} />
         <Route path="/diagnostics" element={<Diagnostics />} />
       </Route>

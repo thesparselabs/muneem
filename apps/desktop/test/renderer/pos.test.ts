@@ -8,7 +8,7 @@ const PCS = '01J0000000000000000000PCS0';
 const BOX = '01J0000000000000000000B0X0';
 const hit = (over: Partial<ProductHit> = {}): ProductHit => ({
   productId: '01J00000000000000000000P01', name: 'Lux Soap', uomId: PCS, uomCode: 'PCS', packQtyMilli: 1000, pricePaise: 4130,
-  priceIsInclusive: true, gstRateBp: 1800, taxTreatment: 'taxable', isActive: true, matchedBy: 'barcode', ...over,
+  priceIsInclusive: true, gstRateBp: 1800, taxTreatment: 'taxable', isActive: true, matchedBy: 'barcode', stockMilli: 0, baseUomCode: 'PCS', ...over,
 });
 const CONTEXT = { supplierStateCode: '07', taxScheme: 'regular' as const, roundToRupee: true, b2clThresholdPaise: 10_000_000 };
 
@@ -53,7 +53,7 @@ describe('cart', () => {
     const cart = addHit(addHit(emptyCart(), hit()), hit({ productId: '01J00000000000000000000P02', name: 'Rice', pricePaise: null }));
     const quote = {
       lines: [{ ...hit(), lineNo: 1, unitPricePaise: 3900, cessRateBp: 0, cessPerUnitPaise: 0, qtyMilli: 1000 }],
-      issues: [{ lineNo: 2, message: 'Rice has no selling price' }],
+      issues: [{ lineNo: 2, message: 'Rice has no selling price' }], warnings: [],
     } as unknown as SaleQuote;
     const next = applyQuote(cart, quote);
     expect(next.lines.map((l) => [l.pricing?.unitPricePaise ?? null, l.issue ?? null])).toEqual([[3900, null], [null, 'Rice has no selling price']]);
@@ -141,5 +141,49 @@ describe('payment retries', () => {
     const first = commandFor(null, 'cart-A', mint);
     expect(commandFor(first, 'cart-A', mint)).toBe(first);
     expect(commandFor(first, 'cart-B', mint).id).toBe('cmd-2');
+  });
+});
+
+describe('stock in the cart and the count', () => {
+  it('attaches stock warnings to the cart line they belong to', () => {
+    const cart = addHit(addHit(emptyCart(), hit()), hit({ productId: '01J00000000000000000000P02', name: 'Rice' }));
+    const quote = {
+      lines: [{ ...hit(), lineNo: 1, unitPricePaise: 4130, cessRateBp: 0, cessPerUnitPaise: 0 }, { ...hit({ productId: '01J00000000000000000000P02' }), lineNo: 2, unitPricePaise: 6000, cessRateBp: 0, cessPerUnitPaise: 0 }],
+      issues: [], warnings: [{ lineNo: 2, productId: '01J00000000000000000000P02', message: 'Rice: no stock recorded', stockMilli: 0, blocking: false }],
+    } as unknown as SaleQuote;
+    const next = applyQuote(cart, quote);
+    expect(next.lines.map((l) => l.stockWarning?.message ?? null)).toEqual([null, 'Rice: no stock recorded']);
+    expect(applyQuote(next, { ...quote, warnings: [] }).lines[1]!.stockWarning).toBeUndefined();
+  });
+
+  it('turns counts into differences, skipping blanks and rejecting bad numbers', async () => {
+    const { countDiffs } = await import('../../src/renderer/src/lib/inventory/stockTake.js');
+    const row = (productId: string, uomCode: string, qtyMilli: number) => ({ productId, name: productId.toUpperCase(), uomCode, qtyMilli, valuePaise: 0, avgCostPaise: 0, low: false });
+    const counts = { a: { row: row('a', 'PCS', 5000), text: '4' }, b: { row: row('b', 'KG', 2500), text: '2.75' }, c: { row: row('c', 'PCS', 1000), text: '' } };
+    expect(countDiffs(counts)).toEqual({
+      diffs: [
+        { productId: 'a', name: 'A', uomCode: 'PCS', systemMilli: 5000, countedMilli: 4000, diffMilli: -1000 },
+        { productId: 'b', name: 'B', uomCode: 'KG', systemMilli: 2500, countedMilli: 2750, diffMilli: 250 },
+      ],
+      errors: {},
+      counted: 2,
+    });
+    expect(countDiffs({ a: { row: row('a', 'PCS', 5000), text: 'four' } }).errors).toEqual({ a: 'enter a count of 0 or more' });
+  });
+
+  it('keeps counts made under another category filter', async () => {
+    const { countDiffs, setCount } = await import('../../src/renderer/src/lib/inventory/stockTake.js');
+    const row = (productId: string) => ({ productId, name: productId, uomCode: 'PCS', qtyMilli: 1000, valuePaise: 0, avgCostPaise: 0, low: false });
+    let counts = setCount({}, row('biscuit'), '3');
+    counts = setCount(counts, row('soap'), '0');
+    expect(countDiffs(counts).diffs.map((d) => d.productId)).toEqual(['biscuit', 'soap']);
+    expect(countDiffs(setCount(counts, row('soap'), '')).counted).toBe(1);
+  });
+
+  it('names every bad count, including ones the current filter hides', async () => {
+    const { countDiffs, countProblems, setCount } = await import('../../src/renderer/src/lib/inventory/stockTake.js');
+    const row = (productId: string, name: string) => ({ productId, name, uomCode: 'PCS', qtyMilli: 1000, valuePaise: 0, avgCostPaise: 0, low: false });
+    const counts = setCount(setCount({}, row('a', 'Lux Soap'), 'abc'), row('b', 'Rice'), '4');
+    expect(countProblems(counts, countDiffs(counts).errors)).toEqual(['Lux Soap ("abc")']);
   });
 });

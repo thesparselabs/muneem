@@ -17,12 +17,14 @@ const ALIASES: Record<ImportField, readonly string[]> = {
 
 const key = (header: string): string => header.toLowerCase().replace(/[^a-z0-9]/gu, '');
 
-export function suggestMapping(columns: readonly string[]): ImportMapping {
-  const mapping: ImportMapping = {};
+export function suggestFrom<F extends string>(columns: readonly string[], aliases: Readonly<Record<F, readonly string[]>>): Partial<Record<F, number>> {
+  const mapping: Partial<Record<F, number>> = {};
   const keys = columns.map(key);
-  for (const [field, aliases] of Object.entries(ALIASES) as [ImportField, readonly string[]][]) {
-    const index = aliases.map((a) => keys.indexOf(a)).find((i) => i >= 0);
+  for (const [field, names] of Object.entries(aliases) as [F, readonly string[]][]) {
+    const index = names.map((a) => keys.indexOf(a)).find((i) => i >= 0);
     if (index !== undefined && !Object.values(mapping).includes(index)) mapping[field] = index;
   }
   return mapping;
 }
+
+export const suggestMapping = (columns: readonly string[]): ImportMapping => suggestFrom(columns, ALIASES);

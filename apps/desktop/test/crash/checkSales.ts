@@ -1,4 +1,4 @@
-import { foreignKeyCheck, openDatabase, quickCheck, verifyAuditChain, type Db } from '@muneem/db-sqlite';
+import { foreignKeyCheck, openDatabase, quickCheck, replayCheck, verifyAuditChain, type Db } from '@muneem/db-sqlite';
 
 const n = (db: Db, sql: string): number => db.prepare(sql).pluck().get() as number;
 
@@ -24,6 +24,10 @@ export function checkSalesConsistency(file: string) {
         (SELECT COUNT(*) FROM sale s WHERE s.series_id = d.id) <> (SELECT MAX(doc_seq) FROM sale s WHERE s.series_id = d.id)
         OR d.next_seq <> (SELECT MAX(doc_seq) + 1 FROM sale s WHERE s.series_id = d.id))`),
       seriesConsumedWithoutSale: n(db, 'SELECT COUNT(*) FROM doc_series d WHERE d.next_seq > 1 AND NOT EXISTS (SELECT 1 FROM sale s WHERE s.series_id = d.id)'),
+      salesWithWrongMovements: n(db, `SELECT COUNT(*) FROM sale s WHERE (SELECT COUNT(*) FROM sale_item i WHERE i.sale_id = s.id)
+        <> (SELECT COUNT(*) FROM stock_movement m WHERE m.ref_type = 'sale' AND m.ref_id = s.id)`),
+      orphanSaleMovements: n(db, "SELECT COUNT(*) FROM stock_movement m WHERE m.ref_type = 'sale' AND NOT EXISTS (SELECT 1 FROM sale s WHERE s.id = m.ref_id)"),
+      stockDrift: (db.prepare('SELECT DISTINCT business_id FROM sale').pluck().all() as string[]).reduce((sum, b) => sum + replayCheck(db, b).length, 0),
       brokenAuditChains: (db.prepare('SELECT DISTINCT business_id, device_id FROM audit_log').all() as { business_id: string; device_id: string }[])
         .filter((c) => !verifyAuditChain(db, c.business_id, c.device_id).ok).length,
     };

@@ -14,6 +14,10 @@ import {
 import { CompleteSaleInput, CompleteSaleResult, HeldBill, HoldBillInput, Sale, SaleDraft, SaleListInput, SalePage, SaleQuote } from './sales.js';
 import { PrintJobSummary, PrinterConfig, ReceiptDoc } from './print.js';
 import { SETTING_KEYS } from './settings.js';
+import {
+  AdjustmentResult, AdjustStockInput, MovementPage, MovementsInput, OpeningImportCommitInput, OpeningImportPreview, OpeningImportPreviewInput,
+  OpeningStockInput, StockListInput, StockPage, StockRow, StockTakeInput, Valuation,
+} from './inventory.js';
 
 /**
  * LLD §10.1 — the IPC contract registry. The preload is GENERATED from this object, so the
@@ -137,12 +141,24 @@ export const contract = {
   'printer.reprint': spec({ input: z.object({ saleId: Ulid }), output: z.object({ jobId: Ulid }), permission: 'pos.create', rateLimit: { perSec: 2 }, audit: true }),
   'drawer.open': spec({ input: Empty, output: Ok, permission: 'pos.create', rateLimit: { perSec: 1 }, audit: true }),
 
+  'inventory.getStock': spec({ input: StockListInput, output: StockPage, permission: 'inventory.view', rateLimit: { perSec: 10 } }),
+  'inventory.getMovements': spec({ input: MovementsInput, output: MovementPage, permission: 'inventory.view', rateLimit: { perSec: 10 } }),
+  'inventory.valuation': spec({ input: Empty, output: Valuation, permission: 'inventory.view', rateLimit: { perSec: 2 } }),
+  'inventory.listLowStock': spec({ input: Empty, output: z.array(StockRow), permission: 'inventory.view', rateLimit: { perSec: 5 } }),
+  'inventory.rebuildProjections': spec({ input: Empty, output: z.object({ rebuilt: z.number().int() }), permission: 'inventory.manage', rateLimit: { perSec: 1 }, audit: true }),
+  'inventory.listWarehouses': spec({ input: Empty, output: z.array(z.object({ id: z.string(), code: z.string(), name: z.string() })), permission: 'inventory.view', rateLimit: { perSec: 5 } }),
+  'inventory.setOpeningStock': spec({ input: OpeningStockInput, output: AdjustmentResult, permission: 'inventory.create', rateLimit: { perSec: 2 }, audit: true }),
+  'inventory.adjust': spec({ input: AdjustStockInput, output: AdjustmentResult, permission: 'inventory.adjust', rateLimit: { perSec: 2 }, audit: true }),
+  'inventory.stockTake': spec({ input: StockTakeInput, output: AdjustmentResult, permission: 'inventory.adjust', rateLimit: { perSec: 1 }, audit: true }),
+  'inventory.importOpeningPreview': spec({ input: OpeningImportPreviewInput, output: OpeningImportPreview, permission: 'inventory.create', rateLimit: { perSec: 2 }, audit: true }),
+  'inventory.importOpeningCommit': spec({ input: OpeningImportCommitInput, output: AdjustmentResult, permission: 'inventory.create', rateLimit: { perSec: 1 }, audit: true, idempotent: 'commandId' }),
+
   'sync.getStatus': spec({ input: Empty, output: SyncStatus, permission: null, rateLimit: { perSec: 10 } }),
 
   'diagnostics.getHealth': spec({ input: Empty, output: Health, permission: 'diagnostics.view', rateLimit: { perSec: 5 } }),
   'diagnostics.integrityCheck': spec({
     input: Empty,
-    output: z.object({ quickCheck: z.enum(['ok', 'failed']), foreignKeys: z.enum(['ok', 'failed']), auditChain: z.enum(['ok', 'broken']), detail: z.array(z.string()) }),
+    output: z.object({ quickCheck: z.enum(['ok', 'failed']), foreignKeys: z.enum(['ok', 'failed']), auditChain: z.enum(['ok', 'broken']), stock: z.enum(['ok', 'healed', 'not_run']), detail: z.array(z.string()) }),
     permission: 'diagnostics.view', rateLimit: { perSec: 1 }, audit: true,
   }),
   'diagnostics.backupNow': spec({ input: Empty, output: z.object({ path: z.string(), bytes: z.number().int(), verified: z.boolean() }), permission: 'diagnostics.view', rateLimit: { perSec: 1 }, audit: true }),

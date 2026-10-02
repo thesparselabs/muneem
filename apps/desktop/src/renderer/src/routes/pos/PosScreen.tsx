@@ -65,6 +65,8 @@ export default function PosScreen() {
       setContext(q.context);
       setCart((c) => applyQuote(c, q));
       if (q.issues.length > 0) { setMessage({ kind: 'error', text: q.issues.map((i) => i.message).join('; ') }); return; }
+      const blocked = q.warnings.filter((w) => w.blocking);
+      if (blocked.length > 0) { setMessage({ kind: 'error', text: `Not enough stock: ${blocked.map((w) => w.message).join('; ')}` }); return; }
       setPayTotal(q.totals.totalPaise);
       pendingCommand.current = commandFor(pendingCommand.current, JSON.stringify(toDraft(cart)), newUlid);
       setModal('payment');
@@ -212,7 +214,7 @@ function ProductSearch({ inputRef, query, setQuery, onPick }: { inputRef: RefObj
         <ul className="absolute z-10 mt-1 w-full divide-y rounded-md border bg-white text-sm shadow">
           {hits.data.map((h) => (
             <li key={`${h.productId}-${h.uomId}`}><button type="button" className="flex w-full justify-between px-3 py-2 text-left hover:bg-blue-50" onClick={() => pick(h)}>
-              <span>{h.name} <span className="text-slate-500">{h.sku}</span></span><span className="tabular-nums">{formatPaise(h.pricePaise)} /{h.uomCode}</span>
+              <span>{h.name} <span className="text-slate-500">{h.sku}</span></span><span className="tabular-nums">{formatPaise(h.pricePaise)} /{h.uomCode} <span className={`text-xs ${h.stockMilli <= 0 ? 'text-red-700' : 'text-slate-500'}`}>· {scaledToText(h.stockMilli, 3)} {h.baseUomCode} in stock</span></span>
             </button></li>
           ))}
         </ul>
@@ -230,7 +232,8 @@ function CartTable({ cart, onQty, onRemove, onDiscount }: { cart: Cart; onQty: (
         <tbody>
           {cart.lines.map((l) => (
             <tr key={l.key} className="border-t">
-              <td className="p-2">{l.name}{l.issue && <p className="err mt-0">{l.issue}</p>}</td>
+              <td className="p-2">{l.name}{l.issue && <p className="err mt-0">{l.issue}</p>}
+                {l.stockWarning && <p className={`mt-0 text-xs ${l.stockWarning.blocking ? 'text-red-700' : 'text-amber-800'}`}>{l.stockWarning.message}</p>}</td>
               <td className="p-2"><QtyInput qtyMilli={l.qtyMilli} uomCode={l.uomCode} onChange={(q) => onQty(l.key, q)} /></td>
               <td className="p-2 text-right tabular-nums">{formatPaise(l.pricing?.unitPricePaise ?? null)}</td>
               <td className="p-2 text-right">{l.pricing ? formatRateBp(l.pricing.gstRateBp) : ''}</td>

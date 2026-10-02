@@ -8,7 +8,7 @@ const NAV = [
   { to: '/', label: 'Home', enabled: true },
   { to: '/pos', label: 'POS · Billing', enabled: true },
   { to: '/products', label: 'Products', enabled: true },
-  { to: '/inventory', label: 'Inventory', enabled: false, stage: 'Stage 4' },
+  { to: '/inventory', label: 'Inventory', enabled: true },
   { to: '/purchases', label: 'Purchases', enabled: false, stage: 'Stage 5' },
   { to: '/reports', label: 'Reports', enabled: false, stage: 'Stage 8' },
   { to: '/diagnostics', label: 'Diagnostics', enabled: true },

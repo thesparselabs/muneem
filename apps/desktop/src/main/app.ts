@@ -2,7 +2,7 @@
  * Composition root. Builds services + IPC handlers from explicit dependencies so tests can wire
  * an in-memory SQLite, a memory secret store and a fake fetch without touching Electron.
  */
-import { readSyncStatus, type Db } from '@muneem/db-sqlite';
+import { listStock, listWarehouses, productMovements, readSyncStatus, rebuildStockLevels, stockValuation, type Db } from '@muneem/db-sqlite';
 import { CloudClient } from './infra/cloudClient.js';
 import { Connectivity } from './infra/connectivity.js';
 import { EventBus } from './infra/events.js';
@@ -20,6 +20,8 @@ import { PrinterConfigStore } from './services/print/printerConfig.js';
 import { PreviewStore } from './services/import/previewStore.js';
 import { PricingService } from './services/pricing.js';
 import { CustomerService } from './services/pos/customers.js';
+import { InventoryService } from './services/inventory/inventoryService.js';
+import { OpeningImportService } from './services/inventory/openingImport.js';
 import { HeldBillService } from './services/pos/heldBills.js';
 import { PosContext } from './services/pos/posContext.js';
 import { RegisterService } from './services/pos/register.js';
@@ -78,6 +80,8 @@ export function createApp(cfg: AppConfig) {
   const customers = new CustomerService(posCtx);
   const register = new RegisterService(posCtx);
   const heldBills = new HeldBillService(posCtx, register);
+  const inventory = new InventoryService(posCtx);
+  const openingImport = new OpeningImportService(posCtx, inventory, new PreviewStore(cfg.now ?? (() => Date.now())));
   const printerConfig = new PrinterConfigStore(cfg.db);
   const printQueue = new PrintQueue({ db: cfg.db, config: printerConfig, receiptsDir: cfg.receiptsDir, log: cfg.loggers.hardware });
   const sales = new SaleService(posCtx, new SalePricing(posCtx), register, () => session.require().user.name, (r) => printQueue.enqueue(r.printJobId));
@@ -160,6 +164,17 @@ export function createApp(cfg: AppConfig) {
     'printer.retryJob': (i) => { printQueue.retry(i.jobId, posCtx.businessId()); return { ok: true as const }; },
     'printer.reprint': (i) => { sales.get(i.saleId); return { jobId: printQueue.reprint(i.saleId, posCtx.userId()) }; },
     'drawer.open': async () => { await printQueue.openDrawer(); return { ok: true as const }; },
+    'inventory.getStock': (i) => listStock(cfg.db(), posCtx.businessId(), inventory.warehouseId(), i),
+    'inventory.getMovements': (i) => productMovements(cfg.db(), posCtx.businessId(), i.productId, i),
+    'inventory.valuation': () => stockValuation(cfg.db(), posCtx.businessId()),
+    'inventory.listLowStock': () => listStock(cfg.db(), posCtx.businessId(), inventory.warehouseId(), { lowOnly: true, limit: 50 }).items,
+    'inventory.rebuildProjections': () => ({ rebuilt: rebuildStockLevels(cfg.db(), posCtx.businessId()) }),
+    'inventory.listWarehouses': () => { inventory.warehouseId(); return listWarehouses(cfg.db(), posCtx.businessId()); },
+    'inventory.setOpeningStock': (i) => inventory.setOpeningStock(i),
+    'inventory.adjust': (i) => inventory.adjust(i),
+    'inventory.stockTake': (i) => inventory.stockTake(i),
+    'inventory.importOpeningPreview': (i) => openingImport.preview(i),
+    'inventory.importOpeningCommit': (i) => openingImport.commit(i.importId, i.commandId),
     'sync.getStatus': () => syncStatus(),
     'diagnostics.getHealth': () => diagnostics.getHealth(),
     'diagnostics.integrityCheck': () => diagnostics.integrityCheck(),
@@ -175,6 +190,6 @@ export function createApp(cfg: AppConfig) {
     connectivity: () => connectivity.snapshot(), isTrustedSender: cfg.isTrustedSender ?? (() => true), ...(cfg.now && { now: cfg.now }),
   });
 
-  return { events, session, rbac, cloud, connectivity, device, auth, business, settings, products, catalog, pricing, productImport, customers, register, sales, printQueue, diagnostics, gateway, handlers, syncStatus };
+  return { events, session, rbac, cloud, connectivity, device, auth, business, settings, products, catalog, pricing, productImport, customers, register, sales, printQueue, inventory, openingImport, diagnostics, gateway, handlers, syncStatus };
 }
 export type App = ReturnType<typeof createApp>;

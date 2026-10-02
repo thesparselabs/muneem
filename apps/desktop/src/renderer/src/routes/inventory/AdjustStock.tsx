@@ -1,0 +1,71 @@
+import { useState, type FormEvent } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
+import { ADJUSTMENT_REASONS, type ProductHit } from '@muneem/contracts';
+import { api, errorMessage } from '../../api.js';
+import ProductPicker from '../../components/ProductPicker.js';
+import { parseOptional, scaledToText } from '../../lib/money.js';
+
+type Reason = (typeof ADJUSTMENT_REASONS)[number];
+interface Row { productId: string; name: string; uomCode: string; stockMilli: number; direction: 'out' | 'in'; qty: string; reason: Reason }
+
+export default function AdjustStock() {
+  const nav = useNavigate();
+  const qc = useQueryClient();
+  const [rows, setRows] = useState<Row[]>([]);
+  const [note, setNote] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const add = (h: ProductHit) => setRows((r) => (r.some((x) => x.productId === h.productId) ? r
+    : [...r, { productId: h.productId, name: h.name, uomCode: h.baseUomCode, stockMilli: h.stockMilli, direction: 'out', qty: '', reason: 'damage' }]));
+  const set = (i: number, patch: Partial<Row>) => setRows(rows.map((r, j) => (j === i ? { ...r, ...patch } : r)));
+
+  async function submit(e: FormEvent) {
+    e.preventDefault();
+    const lines = [];
+    for (const r of rows) {
+      const q = parseOptional(r.qty, 3);
+      if (!q || q <= 0) { setError(`Enter a quantity for ${r.name}`); return; }
+      lines.push({ productId: r.productId, qtyMilli: r.direction === 'out' ? -q : q, reason: r.reason });
+    }
+    try {
+      await api.inventory.adjust({ lines, ...(note.trim() && { note: note.trim() }) });
+      await qc.invalidateQueries();
+      nav('/inventory');
+    } catch (err) { setError(errorMessage(err)); }
+  }
+
+  return (
+    <form onSubmit={submit} className="max-w-4xl space-y-4">
+      <div className="flex items-center justify-between"><h1 className="text-2xl font-semibold">Adjust stock</h1><Link to="/inventory" className="btn-secondary">Cancel</Link></div>
+      <div className="card"><ProductPicker id="adj-product" label="Add a product" onPick={add} /></div>
+      {rows.length > 0 && (
+        <table className="w-full rounded-lg border bg-white text-sm">
+          <thead className="bg-slate-50 text-left text-slate-600"><tr><th className="p-2">Product</th><th className="p-2">In stock</th><th className="p-2">Change</th><th className="p-2">Quantity</th><th className="p-2">Reason</th><th /></tr></thead>
+          <tbody>
+            {rows.map((r, i) => (
+              <tr key={r.productId} className="border-t">
+                <td className="p-2">{r.name}</td>
+                <td className="p-2 tabular-nums">{scaledToText(r.stockMilli, 3)} {r.uomCode}</td>
+                <td className="p-2">
+                  <select aria-label={`Direction for ${r.name}`} className="input py-1" value={r.direction} onChange={(e) => set(i, { direction: e.target.value as Row['direction'] })}>
+                    <option value="out">Remove</option><option value="in">Add</option>
+                  </select>
+                </td>
+                <td className="p-2"><input aria-label={`Quantity for ${r.name}`} className="input w-24 py-1" inputMode="decimal" value={r.qty} onChange={(e) => set(i, { qty: e.target.value })} /></td>
+                <td className="p-2">
+                  <select aria-label={`Reason for ${r.name}`} className="input py-1" value={r.reason} onChange={(e) => set(i, { reason: e.target.value as Reason })}>
+                    {ADJUSTMENT_REASONS.map((x) => <option key={x} value={x}>{x.replace('_', ' ')}</option>)}
+                  </select>
+                </td>
+                <td className="p-2"><button type="button" className="btn-secondary py-1" onClick={() => setRows(rows.filter((_, j) => j !== i))}>Remove</button></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+      <div><label className="label" htmlFor="adj-note">Note (optional)</label><input id="adj-note" className="input" maxLength={200} value={note} onChange={(e) => setNote(e.target.value)} /></div>
+      {error && <p className="err" role="alert">{error}</p>}
+      <button type="submit" className="btn-primary" disabled={rows.length === 0}>Post adjustment</button>
+    </form>
+  );
+}

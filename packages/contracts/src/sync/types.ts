@@ -17,7 +17,9 @@ export type OutboxEntityType =
   | 'customer'
   | 'pos_session'
   | 'cash_movement'
-  | 'sale';
+  | 'sale'
+  | 'warehouse'
+  | 'stock_adjustment';
 export type OutboxOperationType = 'create' | 'update' | 'cancel' | 'void';
 export type OutboxStatus = 'pending' | 'in_flight' | 'sent' | 'failed' | 'dead' | 'superseded';
 export type OutboxErrorClass = 'transient' | 'permanent' | 'dependency';
