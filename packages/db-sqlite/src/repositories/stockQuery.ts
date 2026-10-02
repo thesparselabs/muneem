@@ -79,3 +79,7 @@ export function stockValuation(db: Db, businessId: string): Valuation {
   const movementValuePaise = stmt(db, 'SELECT COALESCE(SUM(value_paise), 0) FROM stock_movement WHERE business_id = ?').pluck().get(businessId) as number;
   return { rows, totalValuePaise, movementValuePaise, balanced: totalValuePaise === movementValuePaise, negativeCount: rows.filter((r) => r.qtyMilli < 0).length };
 }
+
+export function stockOnHand(db: Db, businessId: string, productId: string): number {
+  return stmt(db, 'SELECT COALESCE(SUM(qty_milli), 0) FROM stock_level WHERE business_id = ? AND product_id = ?').pluck().get(businessId, productId) as number;
+}

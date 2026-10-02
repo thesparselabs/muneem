@@ -1,6 +1,6 @@
 import type { ProductHit, ProductSearchInput } from '@muneem/contracts';
 import { normalizeName } from '@muneem/domain';
-import { hitByBarcode, hitBySku, hitsByNamePrefix, hitsByText } from '@muneem/db-sqlite';
+import { hitByBarcode, hitBySku, hitsByNamePrefix, hitsByText, stockOnHand } from '@muneem/db-sqlite';
 import type { CatalogContext } from './catalogContext.js';
 import { Lru } from './lru.js';
 
@@ -19,7 +19,8 @@ export class ProductSearch {
     const on = this.ctx.today();
     const key = `${businessId}|${on}|${code}`;
     const cached = this.barcodeCache.get(key);
-    if (cached) return cached;
+    // Stock changes with every sale, so a cached hit keeps its product and price but always reads stock afresh.
+    if (cached) return { ...cached, stockMilli: stockOnHand(this.ctx.db(), businessId, cached.productId) };
     const hit = hitByBarcode(this.ctx.db(), businessId, code, on);
     if (hit) this.barcodeCache.set(key, hit);
     return hit;

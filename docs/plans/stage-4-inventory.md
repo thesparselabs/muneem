@@ -114,3 +114,13 @@ rebuildProjections / importOpeningPreview / importOpeningCommit / listWarehouses
   in tests (GL tie-out recorded as a Stage 6 item).
 - Manual (`pnpm --filter @muneem/desktop dev`): enter opening stock, sell, see stock fall and the ledger line; sell
   past zero and see the warning; do a stock take; check valuation and low stock.
+
+## As built (2026-10-02)
+
+- The costing engine's movements record the exact value change they made; LLD §4.1's clamp otherwise leaves residue
+  between Σ movement values and the stock value.
+- The provisional-cost correction is a value-only `cost_correction` movement, not a journal (Stage 6 posts it).
+- Stock warnings reference cart lines by position, like quote issues; `block` makes them blocking.
+- The Stage 2 barcode cache now refreshes stock on every hit; it had been returning stale on-hand quantities.
+- The import preview store and column matching were generalised so the product and opening-stock imports share them.
+- Screens are checked by typecheck, build and unit tests of their logic, not by clicking through the running app.

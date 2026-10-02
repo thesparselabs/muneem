@@ -57,6 +57,14 @@ All notable changes, newest first. Each entry records **what** changed and **why
   - **Home:** a low-stock card.
   - **Tests:** the logic behind these screens (count differences, warnings on cart lines) has node tests.
 
+- **Offline golden flow now covers stock**: opening stock, the sale reduces stock at average cost, COGS is recorded and
+  the valuation sub-ledger balances.
+
+### Fixed — Stage 4
+- **Scanned products showed stale stock.** The Stage 2 barcode cache kept whole search results, including on-hand
+  quantity, which changes with every sale. The cache now keeps product and price but reads stock afresh on each hit,
+  and warm scans still take about 0.01 ms.
+
 ### Added — Stage 3 POS billing
 - **Stage 3 plan (`docs/plans/stage-3-pos.md`) and ADRs 0013–0017** — the design disagreed on whether stock and the
   journal belong in the Stage 3 commit, and left numbering, tenders, sessions and printing details open. Decided with

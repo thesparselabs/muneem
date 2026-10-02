@@ -52,6 +52,9 @@ docs/             this folder (reality, with reasons)
 - After repeated SIGKILLs mid-billing: no sale without its lines, tenders, audit row, outbox row and print job; no
   orphan rows; invoice numbers gap-free per series with no number consumed by an unsaved sale
 - `sales.complete` p95 < 250 ms at 5,000 SKUs
+- replay(movements) = projection, for every (product, warehouse); Σ movement values = Σ stock levels (valuation
+  sub-ledger); a stock level never has value without quantity; movements are append-only
+- After repeated SIGKILLs mid-billing: one movement per sale line and no stock drift
 
 ## Catalog (Stage 2)
 
@@ -85,6 +88,20 @@ docs/             this folder (reality, with reasons)
 - **Main-process services:** `PosContext` (till, settings, permissions) is shared by `CustomerService`,
   `RegisterService`, `SalePricing`, `SaleService`, `HeldBillService`; `PrintQueue` owns printing.
 
+## Inventory (Stage 4)
+
+- **Ledger** (ADR-0018): `stock_movement` is the source of truth and append-only; `stock_level` is a cache written only
+  by `postMovement`, in the same transaction, through the pure moving-average engine (`@muneem/domain`). Each movement
+  stores the exact change it made to the stock value, so Σ movement values = Σ levels and `replayMovements` can
+  re-run the engine to verify every level and every movement.
+- **Below zero**: issues use the last known cost and are marked provisional; the next receipt re-costs them with a
+  value-only `cost_correction` movement.
+- **Writers**: sales (a cost step before the append-only lines and a stock step after them, ADR-0019), opening stock,
+  adjustments and stock takes (adjustment documents, ADR-0021). Purchases join in Stage 5.
+- **Policy** (ADR-0020): `inventory.negativeStock` block / warn / allow, with a per-product override; quotes carry stock
+  warnings; a negative sale is audited.
+- **Integrity**: Diagnostics and a 6-hourly timer replay the movements against the cache and rebuild any drift.
+
 ## Identity and trust
 
 - Cloud is authoritative for users, roles and permissions; the device caches a **permission snapshot** and enforces
@@ -96,6 +113,7 @@ docs/             this folder (reality, with reasons)
 
 ## What is not built yet
 
-Inventory, purchases, payments, accounting, reports and the sync worker. In billing: sale cancel, returns/credit
+Purchases, payments, accounting, reports and the sync worker. In inventory: transfers, multiple warehouses per branch,
+batch/serial tracking and the GL tie-out (Stage 6). In billing: sale cancel, returns/credit
 notes, credit sales and manager PIN override (ADR-0013); USB/Windows printers and non-ASCII receipt text. Product
 variants, weighed barcodes and label printing are deferred (ADR-0008). See `build-stages.md`.

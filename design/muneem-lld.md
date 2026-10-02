@@ -873,7 +873,8 @@ business.*    get, update, getBranches, getTerminals, getTaxConfig
 products.*    search, lookupBarcode, list, get, create, update, deactivate, reactivate, importPreview, importCommit
 catalog.*     listUoms, createUom, listCategories, createCategory, updateCategory, listBrands, createBrand, updateBrand
 pricing.*     listLists, createList, getItems, setItems
-inventory.*   getStock, getMovements, adjust, transfer, listLowStock, rebuildProjections
+inventory.*   getStock, getMovements, valuation, listLowStock, setOpeningStock, adjust, stockTake, importOpeningPreview,
+              importOpeningCommit, listWarehouses, rebuildProjections   (transfer: deferred with multi-warehouse)
 customers.*   search, get, create, update, getLedger, getOutstanding
 suppliers.*   search, get, create, update, getLedger
 pos.*         openRegister, closeRegister, getSession, xReport, zReport, cashMovement,
