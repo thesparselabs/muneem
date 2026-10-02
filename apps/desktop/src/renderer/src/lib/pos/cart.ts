@@ -7,7 +7,7 @@ export interface LinePricing {
 }
 export interface CartLine {
   key: string; productId: string; name: string; uomId: string; uomCode: string; qtyMilli: number; lineDiscount: DiscountInput;
-  pricing: LinePricing | null; issue?: string;
+  pricing: LinePricing | null; issue?: string; stockWarning?: { message: string; blocking: boolean };
 }
 export interface Cart {
   lines: CartLine[]; customer: Customer | null; billDiscount: DiscountInput;
@@ -52,10 +52,14 @@ export function toDraft(cart: Cart): SaleDraft {
 // Quote lines skip lines with issues, so they are matched back to the cart by position.
 export function applyQuote(cart: Cart, quote: SaleQuote): Cart {
   const issues = new Map(quote.issues.map((i) => [i.lineNo, i.message]));
+  const warnings = new Map(quote.warnings.map((w) => [w.lineNo, { message: w.message, blocking: w.blocking }]));
   let next = 0;
   return {
     ...cart,
-    lines: cart.lines.map((l, i) => {
+    lines: cart.lines.map((line, i) => {
+      const warning = warnings.get(i + 1);
+      const l: CartLine = { ...line };
+      if (warning) l.stockWarning = warning; else delete l.stockWarning;
       const issue = issues.get(i + 1);
       if (issue) return { ...l, issue };
       const q = quote.lines[next++];

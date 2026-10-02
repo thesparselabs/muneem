@@ -44,6 +44,18 @@ All notable changes, newest first. Each entry records **what** changed and **why
   - **Product search:** results show on-hand stock in the base unit.
 - **Stock integrity check** — Diagnostics' integrity check, and a 6-hourly timer, replay the movements against the
   cached levels. Any drift is logged as `STOCK_PROJECTION_DRIFT` and rebuilt from the movements.
+- **Inventory screens** (`/inventory`, now in the menu):
+  - **Stock list:** low-stock badges and filter.
+  - **Valuation:** stock value, products below zero, and a ledger check that the sub-ledger balances.
+  - **Product ledger:** every movement with running balances and provisional-cost markers.
+  - **Adjust stock:** add or remove, with a reason per line.
+  - **Stock take:** count by category, review differences, post.
+  - **Opening stock:** by hand, or imported from a file with column matching.
+- **Stock in POS and Home:**
+  - **Search:** POS results show on-hand stock.
+  - **Cart:** cart lines show stock warnings, and payment is stopped when the policy blocks a sale.
+  - **Home:** a low-stock card.
+  - **Tests:** the logic behind these screens (count differences, warnings on cart lines) has node tests.
 
 ### Added — Stage 3 POS billing
 - **Stage 3 plan (`docs/plans/stage-3-pos.md`) and ADRs 0013–0017** — the design disagreed on whether stock and the

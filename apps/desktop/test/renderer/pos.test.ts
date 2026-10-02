@@ -53,7 +53,7 @@ describe('cart', () => {
     const cart = addHit(addHit(emptyCart(), hit()), hit({ productId: '01J00000000000000000000P02', name: 'Rice', pricePaise: null }));
     const quote = {
       lines: [{ ...hit(), lineNo: 1, unitPricePaise: 3900, cessRateBp: 0, cessPerUnitPaise: 0, qtyMilli: 1000 }],
-      issues: [{ lineNo: 2, message: 'Rice has no selling price' }],
+      issues: [{ lineNo: 2, message: 'Rice has no selling price' }], warnings: [],
     } as unknown as SaleQuote;
     const next = applyQuote(cart, quote);
     expect(next.lines.map((l) => [l.pricing?.unitPricePaise ?? null, l.issue ?? null])).toEqual([[3900, null], [null, 'Rice has no selling price']]);
@@ -141,5 +141,35 @@ describe('payment retries', () => {
     const first = commandFor(null, 'cart-A', mint);
     expect(commandFor(first, 'cart-A', mint)).toBe(first);
     expect(commandFor(first, 'cart-B', mint).id).toBe('cmd-2');
+  });
+});
+
+describe('stock in the cart and the count', () => {
+  it('attaches stock warnings to the cart line they belong to', () => {
+    const cart = addHit(addHit(emptyCart(), hit()), hit({ productId: '01J00000000000000000000P02', name: 'Rice' }));
+    const quote = {
+      lines: [{ ...hit(), lineNo: 1, unitPricePaise: 4130, cessRateBp: 0, cessPerUnitPaise: 0 }, { ...hit({ productId: '01J00000000000000000000P02' }), lineNo: 2, unitPricePaise: 6000, cessRateBp: 0, cessPerUnitPaise: 0 }],
+      issues: [], warnings: [{ lineNo: 2, productId: '01J00000000000000000000P02', message: 'Rice: no stock recorded', stockMilli: 0, blocking: false }],
+    } as unknown as SaleQuote;
+    const next = applyQuote(cart, quote);
+    expect(next.lines.map((l) => l.stockWarning?.message ?? null)).toEqual([null, 'Rice: no stock recorded']);
+    expect(applyQuote(next, { ...quote, warnings: [] }).lines[1]!.stockWarning).toBeUndefined();
+  });
+
+  it('turns counts into differences, skipping blanks and rejecting bad numbers', async () => {
+    const { countDiffs } = await import('../../src/renderer/src/lib/inventory/stockTake.js');
+    const rows = [
+      { productId: 'a', name: 'A', uomCode: 'PCS', qtyMilli: 5000, valuePaise: 0, avgCostPaise: 0, low: false },
+      { productId: 'b', name: 'B', uomCode: 'KG', qtyMilli: 2500, valuePaise: 0, avgCostPaise: 0, low: false },
+      { productId: 'c', name: 'C', uomCode: 'PCS', qtyMilli: 1000, valuePaise: 0, avgCostPaise: 0, low: false },
+    ];
+    expect(countDiffs(rows, { a: '4', b: '2.75', c: '' })).toEqual({
+      diffs: [
+        { productId: 'a', name: 'A', uomCode: 'PCS', systemMilli: 5000, countedMilli: 4000, diffMilli: -1000 },
+        { productId: 'b', name: 'B', uomCode: 'KG', systemMilli: 2500, countedMilli: 2750, diffMilli: 250 },
+      ],
+      errors: {},
+    });
+    expect(countDiffs(rows, { a: 'four' }).errors).toEqual({ a: 'enter a count of 0 or more' });
   });
 });
