@@ -22,3 +22,7 @@ Template: Context → Decision → Consequences → Status.
 | [0015](0015-print-job-inside-commit-hardware-after.md) | The print job is part of the sale; printing and the drawer happen after commit |
 | [0016](0016-renderer-totals-main-is-authoritative.md) | The renderer shows totals instantly; the main process is authoritative |
 | [0017](0017-tenders-and-register-sessions.md) | Tender rules and register sessions |
+| [0018](0018-inventory-ledger-and-costing.md) | Inventory ledger and moving-average costing |
+| [0019](0019-stock-step-in-the-sale-commit.md) | Where stock happens in the sale commit (supersedes ADR-0013's placement) |
+| [0020](0020-negative-stock-policy.md) | Negative stock policy |
+| [0021](0021-warehouses-opening-adjustments-stock-take.md) | Warehouses, opening stock, adjustments and stock take |

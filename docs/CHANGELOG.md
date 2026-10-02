@@ -5,6 +5,19 @@ All notable changes, newest first. Each entry records **what** changed and **why
 
 ## [Unreleased]
 
+### Added — Stage 4 inventory
+- **Stage 4 plan (`docs/plans/stage-4-inventory.md`) and ADRs 0018–0021.** Decided with the user: no back-fill (stock
+  starts from an opening count); the inventory sub-ledger is proved now and the GL tie-out to account 1400 waits for
+  Stage 6; stock take, opening-stock import, stock ledger and stock in POS are in scope; negative stock is "warn and
+  allow" by default.
+- **Moving-average costing engine** (`@muneem/domain` `receiveStock`/`issueStock`/`replayMovements`), exactly LLD §4.1,
+  with each movement recording the exact change it made to the stock value. That is what makes
+  `replay(movements) = projection` hold: as the design was written, clamping at zero left residue. A 500-run property
+  test proves the replay reproduces every level and every movement. Issues below zero use the last known cost and are
+  corrected on the next receipt by a value-only movement.
+- **Migration `0005_inventory`:** warehouses, stock movements (append-only, idempotent per document line), cached stock
+  levels, adjustment documents, and a schema-ready batch table.
+
 ### Added — Stage 3 POS billing
 - **Stage 3 plan (`docs/plans/stage-3-pos.md`) and ADRs 0013–0017** — the design disagreed on whether stock and the
   journal belong in the Stage 3 commit, and left numbering, tenders, sessions and printing details open. Decided with
