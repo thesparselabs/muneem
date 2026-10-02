@@ -4,7 +4,7 @@ import { useInfiniteQuery, useQuery, useQueryClient } from '@tanstack/react-quer
 import type { AdjustmentResult } from '@muneem/contracts';
 import { api, errorMessage } from '../../api.js';
 import { formatPaise, scaledToText } from '../../lib/money.js';
-import { countDiffs, setCount, type Counts } from '../../lib/inventory/stockTake.js';
+import { countDiffs, countProblems, setCount, type Counts } from '../../lib/inventory/stockTake.js';
 import { useDebounced } from '../../lib/useDebounced.js';
 
 export default function StockTake() {
@@ -87,6 +87,7 @@ export default function StockTake() {
       )}
       {!reviewing && stock.hasNextPage && <button className="btn-secondary" onClick={() => void stock.fetchNextPage()}>Load more products</button>}
       {error && <p className="err" role="alert">{error}</p>}
+      {Object.keys(errors).length > 0 && <p className="err" role="alert">Fix these counts first: {countProblems(counts, errors).join(', ')}</p>}
       <div className="flex gap-2">
         {!reviewing
           ? <button className="btn-primary" disabled={diffs.length === 0 || Object.keys(errors).length > 0} onClick={() => setReviewing(true)}>Review differences</button>

@@ -133,7 +133,10 @@ function movementRecords(db: Db, businessId: string, warehouseId: string, produc
     WHERE business_id = ? AND warehouse_id = ? AND product_id = ? ORDER BY rowid`).all(businessId, warehouseId, productId) as MovementRow[];
 }
 
-export interface StockDrift { warehouseId: string; productId: string; cached: StockState; replayed: StockState; badMovementIds: string[] }
+// levelDrift is healed by rewriting the cache; badMovementIds (e.g. sales costed from a drifted cache) are reported, never rewritten.
+export interface StockDrift {
+  warehouseId: string; productId: string; cached: StockState; projected: StockState; levelDrift: boolean; badMovementIds: string[];
+}
 export interface StockKey { warehouseId: string; productId: string }
 
 export function stockKeys(db: Db, businessId: string, productIds?: readonly string[]): StockKey[] {
@@ -149,23 +152,32 @@ export function replayKeys(db: Db, businessId: string, keys: readonly StockKey[]
   for (const k of keys) {
     const rows = movementRecords(db, businessId, k.warehouseId, k.productId);
     const { state, mismatches } = replayMovements(rows.map((r) => ({ kind: kindOf(r), qtyMilli: r.signed_qty_milli, valuePaise: r.value_paise, unitCostPaise: r.unit_cost_paise })));
+    // The cache is the projection of the stored movements, so Σ movement values = Σ levels whatever the costs were.
+    const projected: StockState = {
+      qtyMilli: rows.reduce((sum, r) => sum + r.signed_qty_milli, 0), valuePaise: rows.reduce((sum, r) => sum + r.value_paise, 0),
+      lastUnitCostPaise: state.lastUnitCostPaise,
+    };
     const cached = stockState(db, businessId, k.warehouseId, k.productId);
-    const sameLevel = cached.qtyMilli === state.qtyMilli && cached.valuePaise === state.valuePaise && cached.lastUnitCostPaise === state.lastUnitCostPaise;
-    if (!sameLevel || mismatches.length > 0) drift.push({ ...k, cached, replayed: state, badMovementIds: mismatches.map((i) => rows[i]?.id ?? 'end') });
+    const levelDrift = cached.qtyMilli !== projected.qtyMilli || cached.valuePaise !== projected.valuePaise || cached.lastUnitCostPaise !== projected.lastUnitCostPaise;
+    if (levelDrift || mismatches.length > 0) drift.push({ ...k, cached, projected, levelDrift, badMovementIds: mismatches.map((i) => rows[i]?.id ?? 'end') });
   }
   return drift;
 }
 
 export const replayCheck = (db: Db, businessId: string, productIds?: readonly string[]): StockDrift[] => replayKeys(db, businessId, stockKeys(db, businessId, productIds));
 
-// Rewrites the drifted levels from their replayed state in one transaction (LLD §4.2 rebuildStockLevels).
-export function rewriteLevels(db: Db, businessId: string, drift: readonly StockDrift[]): number {
-  const at = nowIso();
-  withTransaction(db, () => { for (const d of drift) writeLevel(db, businessId, d.warehouseId, d.productId, d.replayed, at); });
-  return drift.length;
+// Replays again inside the write transaction, so a sale made since the levels were found drifted is never overwritten.
+export function rewriteLevels(db: Db, businessId: string, keys: readonly StockKey[]): number {
+  return withTransaction(db, () => {
+    const at = nowIso();
+    const drift = replayKeys(db, businessId, keys).filter((d) => d.levelDrift);
+    for (const d of drift) writeLevel(db, businessId, d.warehouseId, d.productId, d.projected, at);
+    return drift.length;
+  });
 }
 
-export const rebuildStockLevels = (db: Db, businessId: string, productIds?: readonly string[]): number => rewriteLevels(db, businessId, replayCheck(db, businessId, productIds));
+export const rebuildStockLevels = (db: Db, businessId: string, productIds?: readonly string[]): number =>
+  rewriteLevels(db, businessId, stockKeys(db, businessId, productIds));
 
 export function movementsForRef(db: Db, businessId: string, refType: RefType, refId: string): PostedMovement[] {
   return (stmt(db, `SELECT id, product_id, movement_type, signed_qty_milli, value_paise, unit_cost_paise, cost_provisional, ref_type, ref_id, ref_line_id, reason_code

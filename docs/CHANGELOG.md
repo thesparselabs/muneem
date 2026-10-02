@@ -61,6 +61,12 @@ All notable changes, newest first. Each entry records **what** changed and **why
   the valuation sub-ledger balances.
 
 ### Fixed — Stage 4 review
+- **The integrity check could undo a sale.** The rebuild wrote back levels worked out before its pauses, so a sale made
+  during a pause was overwritten. It now replays again inside the write transaction. A rebuilt level is now always the
+  sum of the stored movements, so the valuation balances. Movements costed from a drifted level are reported for
+  review (`STOCK_COST_MISMATCH`) instead of being "healed" on every run.
+- **A bad count hidden by the stock take's filter blocked posting with no explanation;** every bad count is now named next
+  to the button.
 - **The cost of goods sold landed on the wrong sale.** After stock went negative, the next sale picked up the
   re-costing of every earlier oversold unit. For example: sell 5 at ₹10 provisional, receive 2 at ₹20, then sell 1;
   that sale recorded ₹50 instead of ₹20. Units below zero now keep their cost, and a receipt re-costs only the units it

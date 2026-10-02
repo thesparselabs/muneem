@@ -179,4 +179,11 @@ describe('stock in the cart and the count', () => {
     expect(countDiffs(counts).diffs.map((d) => d.productId)).toEqual(['biscuit', 'soap']);
     expect(countDiffs(setCount(counts, row('soap'), '')).counted).toBe(1);
   });
+
+  it('names every bad count, including ones the current filter hides', async () => {
+    const { countDiffs, countProblems, setCount } = await import('../../src/renderer/src/lib/inventory/stockTake.js');
+    const row = (productId: string, name: string) => ({ productId, name, uomCode: 'PCS', qtyMilli: 1000, valuePaise: 0, avgCostPaise: 0, low: false });
+    const counts = setCount(setCount({}, row('a', 'Lux Soap'), 'abc'), row('b', 'Rice'), '4');
+    expect(countProblems(counts, countDiffs(counts).errors)).toEqual(['Lux Soap ("abc")']);
+  });
 });

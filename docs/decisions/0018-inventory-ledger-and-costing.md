@@ -30,6 +30,11 @@ the inventory account" cannot be checked yet.
 - `replayMovements` re-runs the engine over stored movements and reports any movement whose stored delta it does
   not reproduce. This is the `replay = projection` check, run as a domain property test, a database check and a
   Diagnostics/integrity job.
+- *Amended before merge:* healing a drifted cache rewrites it to the **projection of the stored movements**: Σ quantity,
+  Σ value, and the engine's last unit cost. It does this in one transaction, replaying again inside it so a sale made
+  meanwhile is never overwritten. The valuation therefore always balances. A movement whose stored cost the engine
+  does not reproduce (a sale costed from a drifted cache) is a fact: it is reported as `STOCK_COST_MISMATCH` for
+  review, never rewritten.
 - Until Stage 6 the valuation is the inventory sub-ledger: valuation report = Σ movement values = Σ cached levels.
   Every value the journal will need is stored: COGS per sale line and header, adjustment values and corrections.
   Stage 6 adds the tie-out to account 1400.

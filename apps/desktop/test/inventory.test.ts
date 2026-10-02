@@ -143,6 +143,22 @@ describe('stock queries', () => {
     expect(await app.diagnostics.checkStock()).toBe('ok');
   });
 
+  it('a sale made while the check is paused between batches is never undone by the rebuild', async () => {
+    db.prepare('UPDATE stock_level SET qty_milli = 1, value_paise = 1 WHERE product_id = ?').run(soap);
+    const running = app.diagnostics.checkStock({ batchSize: 1 });   // the first batch runs now, then the check pauses
+    await api.data('pos.openRegister', { openingCashPaise: 0 });
+    const { CompleteSaleInput, SaleDraft } = await import('@muneem/contracts');
+    const draft = SaleDraft.parse({ lines: [{ productId: soap, uomId: pcs, qtyMilli: 2000 }] });
+    const total = app.sales.quote(draft).totals.totalPaise;
+    app.sales.complete(CompleteSaleInput.parse({ ...draft, commandId: newUlid(), expectedTotalPaise: total, tenders: [{ method: 'cash', amountPaise: total }] }));
+    expect(await running).toBe('healed');
+    expect(level(soap).qtyMilli).toBe(8000);
+    expect(await api.data('inventory.valuation')).toMatchObject({ balanced: true });
+    // The sale was costed from the corrupted level: its movement is reported for review, but no level drifts any more.
+    expect(replayCheck(db, businessId)).toEqual([expect.objectContaining({ productId: soap, levelDrift: false, badMovementIds: [expect.any(String)] })]);
+    expect(await app.diagnostics.checkStock()).toBe('ok');
+  });
+
   it('scheduled checks take a rotating slice and still heal drift inside it', async () => {
     db.prepare('UPDATE stock_level SET qty_milli = 7, value_paise = 7 WHERE product_id = ?').run(rice);
     const first = await app.diagnostics.checkStock({ slice: true, sliceSize: 1, batchSize: 1 });

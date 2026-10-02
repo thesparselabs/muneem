@@ -56,9 +56,14 @@ export class DiagnosticsService {
       drift.push(...replayKeys(db, businessId, keys.slice(i, i + batch)));
       await new Promise((r) => setImmediate(r));
     }
-    if (drift.length === 0) return 'ok';
-    this.d.loggers.app.error({ code: 'STOCK_PROJECTION_DRIFT', drift }, 'stock levels disagreed with their movements; rebuilding');
-    rewriteLevels(db, businessId, drift);
+    const miscosted = drift.filter((d) => d.badMovementIds.length > 0);
+    if (miscosted.length > 0) {
+      this.d.loggers.app.warn({ code: 'STOCK_COST_MISMATCH', movements: miscosted.map((d) => ({ productId: d.productId, ids: d.badMovementIds })) }, 'movements costed from a drifted stock level; review them');
+    }
+    const levels = drift.filter((d) => d.levelDrift);
+    if (levels.length === 0) return 'ok';
+    this.d.loggers.app.error({ code: 'STOCK_PROJECTION_DRIFT', drift: levels }, 'stock levels disagreed with their movements; rebuilding');
+    rewriteLevels(db, businessId, levels.map((d) => ({ warehouseId: d.warehouseId, productId: d.productId })));
     return 'healed';
   }
 

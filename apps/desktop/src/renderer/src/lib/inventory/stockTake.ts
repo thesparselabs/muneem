@@ -28,3 +28,7 @@ export function countDiffs(counts: Counts): { diffs: CountDiff[]; errors: Record
   }
   return { diffs, errors, counted };
 }
+
+// Every count that blocks posting, by product name, including ones hidden by the current filter or search.
+export const countProblems = (counts: Counts, errors: Readonly<Record<string, string>>): string[] =>
+  Object.keys(errors).map((id) => `${counts[id]?.row.name ?? id} ("${counts[id]?.text ?? ''}")`);
