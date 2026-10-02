@@ -15,6 +15,8 @@ const here = fileURLToPath(new URL('.', import.meta.url));
 const PRELOAD = join(here, '../preload/index.cjs');
 const RENDERER_INDEX = join(here, '../renderer/index.html');
 const CSP = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; font-src 'self' data:; object-src 'none'; base-uri 'none'; frame-ancestors 'none'";
+// Vite's dev server injects an inline React Refresh preamble and talks to its HMR websocket; packaged builds never use this.
+const DEV_SERVER_CSP = CSP.replace("script-src 'self'", "script-src 'self' 'unsafe-inline'").replace("connect-src 'self'", "connect-src 'self' ws://localhost:*");
 
 if (!app.requestSingleInstanceLock()) app.quit();
 
@@ -56,7 +58,7 @@ async function boot(): Promise<void> {
   }
   const secrets = createElectronSecretStore(join(userData, 'secrets.bin'), safeStorage, isDev, (m) => loggers.app.warn(m));
   muneem = createApp({
-    db: () => db!, dbFile: paths.file, backupsDir: paths.backups, bundlesDir: join(userData, 'support-bundles'), secrets, loggers,
+    db: () => db!, dbFile: paths.file, receiptsDir: join(userData, 'receipts'), backupsDir: paths.backups, bundlesDir: join(userData, 'support-bundles'), secrets, loggers,
     apiBaseUrl: process.env.MUNEEM_API_URL ?? 'http://localhost:8080/v1', appVersion: app.getVersion(), platform: process.platform,
     isTrustedSender: (id) => mainWindow?.webContents.id === id,
   });
@@ -96,7 +98,8 @@ app.on('web-contents-created', (_e, contents) => {
 
 app.whenReady().then(async () => {
   session.defaultSession.webRequest.onHeadersReceived((details, cb) => {
-    cb({ responseHeaders: { ...details.responseHeaders, 'Content-Security-Policy': [CSP] } });
+    const policy = isDev && process.env.ELECTRON_RENDERER_URL ? DEV_SERVER_CSP : CSP;
+    cb({ responseHeaders: { ...details.responseHeaders, 'Content-Security-Policy': [policy] } });
   });
   await boot();
   if (muneem) createWindow();

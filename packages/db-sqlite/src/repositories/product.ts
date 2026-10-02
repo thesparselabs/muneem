@@ -1,5 +1,5 @@
 import { AppError, type Barcode, type Product, type ProductInput, type ProductUpdate, type UomConversion } from '@muneem/contracts';
-import { newUlid, normalizeName } from '@muneem/domain';
+import { formatRupees as rupees, newUlid, normalizeName } from '@muneem/domain';
 import type { Db } from '../open.js';
 import { stmt } from '../statements.js';
 import { nowIso, withTransaction } from '../uow.js';
@@ -7,7 +7,7 @@ import type { Actor } from './business.js';
 import { queueChild, recordChange, syncColumns } from './catalogWrite.js';
 import { closeNoBreakPrice, currentBasePrice, getDefaultPriceList, livePriceItems, setBasePrice } from './priceList.js';
 import { indexProduct } from './productSearchIndex.js';
-import { productFieldErrors, resolvedSymbology, rupees, unitPriceProblems } from './productRules.js';
+import { productFieldErrors, resolvedSymbology, unitPriceProblems } from './productRules.js';
 
 type ProductRow = {
   id: string; business_id: string; name: string; sku: string | null; hsn_code: string | null; category_id: string | null;

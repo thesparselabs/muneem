@@ -1,5 +1,5 @@
 import type { Branch, Business, Terminal } from '@muneem/contracts';
-import { newUlid } from '@muneem/domain';
+import { newUlid, suggestInvoicePrefix } from '@muneem/domain';
 import { appendAudit } from '../audit.js';
 import type { Db } from '../open.js';
 import { appendOutbox } from '../outbox.js';
@@ -116,8 +116,8 @@ export function createBranch(db: Db, businessId: string, input: Omit<Branch, 'id
   });
 }
 
-type TerminalRow = { id: string; business_id: string; branch_id: string; code: string; name: string; device_id_bound: string | null; created_at: string; version: number };
-const toTerminal = (r: TerminalRow): Terminal => ({ id: r.id, businessId: r.business_id, branchId: r.branch_id, code: r.code, name: r.name, deviceId: r.device_id_bound, createdAt: r.created_at, version: r.version });
+type TerminalRow = { id: string; business_id: string; branch_id: string; code: string; name: string; invoice_prefix: string; device_id_bound: string | null; created_at: string; version: number };
+const toTerminal = (r: TerminalRow): Terminal => ({ id: r.id, businessId: r.business_id, branchId: r.branch_id, code: r.code, name: r.name, invoicePrefix: r.invoice_prefix, deviceId: r.device_id_bound, createdAt: r.created_at, version: r.version });
 export function listTerminals(db: Db, businessId: string, branchId?: string): Terminal[] {
   const rows = branchId
     ? db.prepare('SELECT * FROM terminal WHERE business_id = ? AND branch_id = ? AND deleted_at IS NULL ORDER BY code').all(businessId, branchId)
@@ -128,12 +128,20 @@ export function getTerminal(db: Db, id: string): Terminal | null {
   const r = db.prepare('SELECT * FROM terminal WHERE id = ? AND deleted_at IS NULL').get(id) as TerminalRow | undefined;
   return r ? toTerminal(r) : null;
 }
-export function createTerminal(db: Db, businessId: string, input: { id?: string; branchId: string; code: string; name: string }, actor: Actor): Terminal {
+// Without a chosen prefix, one is suggested from the branch and terminal codes (ADR-0014).
+function invoicePrefixFor(db: Db, businessId: string, branchId: string, code: string, chosen: string | undefined): string {
+  if (chosen) return chosen;
+  const taken = new Set(db.prepare('SELECT invoice_prefix FROM terminal WHERE business_id = ?').pluck().all(businessId) as string[]);
+  return suggestInvoicePrefix(getBranch(db, branchId)?.code ?? '', code, taken);
+}
+
+export function createTerminal(db: Db, businessId: string, input: { id?: string; branchId: string; code: string; name: string; invoicePrefix?: string | undefined }, actor: Actor): Terminal {
   return withTransaction(db, () => {
     const id = input.id ?? newUlid();
     const t = nowIso();
-    db.prepare(`INSERT INTO terminal (id, business_id, branch_id, code, name, created_at, updated_at, created_by, device_id)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(id, businessId, input.branchId, input.code, input.name, t, t, actor.userId, actor.deviceId);
+    const prefix = invoicePrefixFor(db, businessId, input.branchId, input.code, input.invoicePrefix);
+    db.prepare(`INSERT INTO terminal (id, business_id, branch_id, code, name, invoice_prefix, created_at, updated_at, created_by, device_id)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(id, businessId, input.branchId, input.code, input.name, prefix, t, t, actor.userId, actor.deviceId);
     const terminal = getTerminal(db, id)!;
     nextLocalSeq(db);
     appendAudit(db, { businessId, deviceId: actor.deviceId, userId: actor.userId, terminalId: actor.terminalId, action: 'terminal.create', entityType: 'terminal', entityId: id, after: terminal });

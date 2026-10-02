@@ -1,7 +1,8 @@
 import { AppError, type PriceList, type PriceListItem, type Product, type SetPriceItems } from '@muneem/contracts';
 import {
-  createPriceList, getPriceItems, getPriceList, getProduct, listPriceLists, listUoms, replacePriceItems, rupees, unitPriceProblems,
+  createPriceList, getPriceItems, getPriceList, getProduct, listPriceLists, listUoms, replacePriceItems, unitPriceProblems,
 } from '@muneem/db-sqlite';
+import { formatRupees as rupees } from '@muneem/domain';
 import type { CatalogContext } from './catalogContext.js';
 
 export class PricingService {

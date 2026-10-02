@@ -5,3 +5,4 @@ export * from './errors.js';
 export * from './gst/types.js';
 export * from './gst/computeInvoice.js';
 export * from './catalog/index.js';
+export * from './pos/index.js';

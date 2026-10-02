@@ -9,6 +9,7 @@ import {
   mrpForUnit,
   normalizeName,
   parseScaled,
+  formatRupees,
   resolvePrice,
   toBaseQty,
   type PriceItem,
@@ -169,5 +170,23 @@ describe('parseScaled', () => {
         expect(parseScaled(`${Math.floor(p / 100)}.${String(p % 100).padStart(2, '0')}`, 2)).toBe(p);
       }),
     );
+  });
+});
+
+describe('formatRupees', () => {
+  it('formats with Indian grouping and a sign before the symbol', () => {
+    expect(formatRupees(123_456_789)).toBe('₹12,34,567.89');
+    expect(formatRupees(-50)).toBe('-₹0.50');
+    expect(formatRupees(0)).toBe('₹0.00');
+    expect(formatRupees(-1_000_000)).toBe('-₹10,000.00');
+  });
+});
+
+describe('parseScaled commas', () => {
+  it.each(['1,234.50', '1,23,456', '12,34,567.89', '123,456'])('accepts %s as thousands grouping', (text) => {
+    expect(parseScaled(text, 2)).not.toBeNull();
+  });
+  it.each(['10,5', '1,2345', ',100', '1,,000'])('rejects %s', (text) => {
+    expect(parseScaled(text, 2)).toBeNull();
   });
 });

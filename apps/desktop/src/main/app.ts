@@ -15,8 +15,16 @@ import { BusinessService } from './services/business.js';
 import { CatalogService } from './services/catalog.js';
 import { CatalogContext } from './services/catalogContext.js';
 import { ImportService } from './services/import/importService.js';
+import { PrintQueue } from './services/print/printQueue.js';
+import { PrinterConfigStore } from './services/print/printerConfig.js';
 import { PreviewStore } from './services/import/previewStore.js';
 import { PricingService } from './services/pricing.js';
+import { CustomerService } from './services/pos/customers.js';
+import { HeldBillService } from './services/pos/heldBills.js';
+import { PosContext } from './services/pos/posContext.js';
+import { RegisterService } from './services/pos/register.js';
+import { SalePricing } from './services/pos/salePricing.js';
+import { SaleService } from './services/pos/sales.js';
 import { ProductSearch } from './services/productSearch.js';
 import { ProductService } from './services/products.js';
 import { DeviceService } from './services/device.js';
@@ -28,6 +36,7 @@ import { setMeta, META_KEYS, currentSchemaVersion } from '@muneem/db-sqlite';
 export interface AppConfig {
   db: () => Db;
   dbFile: string;
+  receiptsDir: string;
   backupsDir: string;
   bundlesDir: string;
   secrets: SecretStore;
@@ -65,6 +74,13 @@ export function createApp(cfg: AppConfig) {
   const products = new ProductService(catalogCtx, productSearch);
   const catalog = new CatalogService(catalogCtx, invalidateSearch);
   const pricing = new PricingService(catalogCtx, invalidateSearch);
+  const posCtx = new PosContext(catalogCtx, session, rbac);
+  const customers = new CustomerService(posCtx);
+  const register = new RegisterService(posCtx);
+  const heldBills = new HeldBillService(posCtx, register);
+  const printerConfig = new PrinterConfigStore(cfg.db);
+  const printQueue = new PrintQueue({ db: cfg.db, config: printerConfig, receiptsDir: cfg.receiptsDir, log: cfg.loggers.hardware });
+  const sales = new SaleService(posCtx, new SalePricing(posCtx), register, () => session.require().user.name, (r) => printQueue.enqueue(r.printJobId));
   const productImport = new ImportService(catalogCtx, new PreviewStore(cfg.now ?? (() => Date.now())), invalidateSearch);
   const diagnostics = new DiagnosticsService({
     db: cfg.db, dbFile: cfg.dbFile, backupsDir: cfg.backupsDir, bundlesDir: cfg.bundlesDir, loggers: cfg.loggers, session, device,
@@ -118,6 +134,32 @@ export function createApp(cfg: AppConfig) {
     'pricing.createList': (i) => pricing.createList(i),
     'pricing.getItems': (i) => pricing.getItems(i),
     'pricing.setItems': (i) => pricing.setItems(i),
+    'customers.search': (i) => customers.search(i.query, i.limit),
+    'customers.get': (i) => customers.get(i.id),
+    'customers.create': (i) => customers.create(i),
+    'customers.update': (i) => customers.update(i),
+    'pos.getSession': () => register.current(),
+    'pos.openRegister': (i) => register.open(i.openingCashPaise),
+    'pos.cashMovement': (i) => { register.cashMovement(i); return { ok: true as const }; },
+    'pos.xReport': () => register.xReport(),
+    'pos.zReport': (i) => register.zReport(i.sessionId),
+    'pos.closeRegister': (i) => register.close(i),
+    'pos.holdBill': (i) => heldBills.hold(i.label, i.cart),
+    'pos.listHeldBills': () => heldBills.list(),
+    'pos.getHeldBill': (i) => heldBills.get(i.id),
+    'pos.discardBill': (i) => { heldBills.take(i.id); return { ok: true as const }; },
+    'sales.quote': (i) => sales.quote(i),
+    'sales.complete': (i) => sales.complete(i),
+    'sales.get': (i) => sales.get(i.id),
+    'sales.list': (i) => sales.list(i),
+    'sales.getReceipt': (i) => sales.receipt(i.saleId),
+    'printer.getConfig': () => printerConfig.get(),
+    'printer.setConfig': (i) => printerConfig.set(i),
+    'printer.testPrint': async () => { await printQueue.testPrint(); return { ok: true as const }; },
+    'printer.getQueue': (i) => printQueue.list(posCtx.businessId(), i.limit),
+    'printer.retryJob': (i) => { printQueue.retry(i.jobId, posCtx.businessId()); return { ok: true as const }; },
+    'printer.reprint': (i) => { sales.get(i.saleId); return { jobId: printQueue.reprint(i.saleId, posCtx.userId()) }; },
+    'drawer.open': async () => { await printQueue.openDrawer(); return { ok: true as const }; },
     'sync.getStatus': () => syncStatus(),
     'diagnostics.getHealth': () => diagnostics.getHealth(),
     'diagnostics.integrityCheck': () => diagnostics.integrityCheck(),
@@ -126,11 +168,13 @@ export function createApp(cfg: AppConfig) {
     'diagnostics.getLogsTail': (i) => diagnostics.getLogsTail(i.log, i.lines),
   };
 
+  printQueue.resumeUnfinished(catalogCtx.today());
+
   const gateway = createGateway({
     handlers, session, rbac, db: cfg.db, deviceId: () => device.localDeviceId(), loggers: cfg.loggers, events,
     connectivity: () => connectivity.snapshot(), isTrustedSender: cfg.isTrustedSender ?? (() => true), ...(cfg.now && { now: cfg.now }),
   });
 
-  return { events, session, rbac, cloud, connectivity, device, auth, business, settings, products, catalog, pricing, productImport, diagnostics, gateway, handlers, syncStatus };
+  return { events, session, rbac, cloud, connectivity, device, auth, business, settings, products, catalog, pricing, productImport, customers, register, sales, printQueue, diagnostics, gateway, handlers, syncStatus };
 }
 export type App = ReturnType<typeof createApp>;

@@ -1,0 +1,36 @@
+           Sharma General Store
+         12 Chandni Chowk, Delhi
+              Ph: 9999999999
+          GSTIN: 07AAAAA0000A1Z5
+               TAX INVOICE
+No: DE01/2627/000042
+Date: 2026-10-02               Time: 14:05
+Till: T01                  Cashier: Aditya
+Customer: Gupta Traders
+GSTIN: 07BBBBB1111B1Z5
+Place of supply: 07
+------------------------------------------
+Item                                Amount
+Lux Soap 100g (3401)
+  2 PCS x 41.30                      82.60
+Tata Salt Iodised Crystal 1kg Family Pack
+  1.5 KG x 28.00                     40.00
+  Discount                           -2.00
+------------------------------------------
+Gross                               124.60
+Discount                             -2.00
+Taxable value                       109.00
+CGST                                  6.80
+SGST                                  6.80
+Round off                            -0.60
+TOTAL                            Rs 122.00
+------------------------------------------
+GST rate  Taxable                      Tax
+5%        38.10                       1.90
+18%       70.90                      11.70
+------------------------------------------
+UPI                                  50.00
+  Ref: UPI-778899
+CASH                                100.00
+Change                               28.00
+         Thank you! Visit again.

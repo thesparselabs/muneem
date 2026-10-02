@@ -54,7 +54,7 @@ describe.skipIf(!LIVE)('LIVE Stage 1: install → register device → login → 
     db = openDatabase(file, { quickCheck: false });
     await migrate(db);
     app = createApp({
-      db: () => db, dbFile: file, backupsDir: join(dir, 'backups'), bundlesDir: join(dir, 'bundles'),
+      db: () => db, dbFile: file, receiptsDir: join(dir, 'receipts'), backupsDir: join(dir, 'backups'), bundlesDir: join(dir, 'bundles'),
       secrets: new MemorySecretStore(), loggers: silentLoggers(), apiBaseUrl: BASE, appVersion: '0.0.0-e2e', platform: 'linux',
       probeIntervalMs: 3_600_000,
     });

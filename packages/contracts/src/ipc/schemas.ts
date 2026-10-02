@@ -65,16 +65,18 @@ export const TerminalInput = z.object({
   branchId: Ulid,
   code: z.string().regex(/^[A-Z0-9]{1,6}$/),
   name: z.string().min(1).max(80),
+  invoicePrefix: z.string().regex(/^[A-Z0-9]{1,4}$/, '1–4 capital letters or digits').optional(),
 });
 export const Terminal = TerminalInput.extend({
   id: Ulid, businessId: Ulid, deviceId: z.string().nullable(), createdAt: IsoDateTime, version: z.number().int(),
+  invoicePrefix: z.string(),
 });
 export type Terminal = z.infer<typeof Terminal>;
 
 export const DocSeries = z.object({
   id: Ulid, businessId: Ulid, branchId: Ulid.nullable(), terminalId: Ulid.nullable(),
   docType: z.enum(['tax_invoice', 'bill_of_supply', 'credit_note', 'delivery_challan', 'receipt', 'payment', 'purchase', 'debit_note']),
-  fy: z.string().regex(/^\d{4}-\d{2}$/), prefix: z.string().max(40), padWidth: z.number().int().min(3).max(10), nextSeq: z.number().int(),
+  fy: z.string().regex(/^\d{4}-\d{2}$/), prefix: z.string().regex(/^[A-Z0-9]{1,4}$/, '1–4 capital letters or digits'), padWidth: z.number().int().min(3).max(10), nextSeq: z.number().int(),
 });
 
 export const SyncStatus = z.object({

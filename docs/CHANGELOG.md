@@ -5,6 +5,117 @@ All notable changes, newest first. Each entry records **what** changed and **why
 
 ## [Unreleased]
 
+### Added — Stage 3 POS billing
+- **Stage 3 plan (`docs/plans/stage-3-pos.md`) and ADRs 0013–0017** — the design disagreed on whether stock and the
+  journal belong in the Stage 3 commit, and left numbering, tenders, sessions and printing details open. Decided with
+  the user: stock and books join the commit in Stages 4/6 through a step seam; basic customers without credit;
+  hold/retrieve bills; no printer yet (simulator + network ESC/POS).
+- **Migration `0003_pos`** — customers, register sessions, cash movements, sales with lines and tenders, held bills and
+  print jobs. The database itself refuses a sale whose tax split or payments do not add up, makes sales, lines and
+  tenders append-only, allows one open register per terminal, and fixes `doc_series` letting duplicate business-wide
+  series through (SQLite treats NULLs as distinct in a UNIQUE).
+- **POS rules in `@muneem/domain`**: `settleTenders` (change only from cash; paid − change = total), `effectiveDiscountBp`
+  (to the nearest basis point, so an exact 5% stays 5% after per-line rounding), `expectedCash`, GSTIN state and UTGST helpers.
+
+- **Customers** (`customers.search/get/create/update`): name, phone, GSTIN, state and address. The state is taken
+  from the GSTIN, and a contradicting state is refused, because the state decides IGST vs CGST/SGST on the invoice.
+- **Register sessions** (`pos.openRegister/getSession/cashMovement/xReport/zReport/closeRegister`): one open register
+  per terminal, cash in/out/safe drop with reasons, live X report, close with counted cash (optional denominations
+  that must add up) and a frozen Z report. A variance above the threshold (default ₹100) needs a manager; blind close
+  hides the expected cash from cashiers; a register with held bills cannot be closed (ADR-0017).
+
+- **The sale commit** (`sales.quote/complete/get/list/getReceipt`). Lines are priced in the main process from product
+  data (current price list, quantity breaks, unit conversions) and run through the GST engine. The commit then
+  allocates the terminal's invoice number (`DEL1/T01/2026-27/000001`, a new series per financial year) and saves the
+  sale with a tax snapshot per line, its tenders and its receipt print job. It writes one audit row and one outbox row
+  holding the whole sale, all in one transaction. The commit is a list of named steps so Stage 4 (stock) and Stage 6
+  (journal) slot in without rewriting it (ADR-0013).
+- **Safety checks at commit:** the total must equal the one the cashier saw (`TOTAL_MISMATCH` otherwise), payments must
+  balance with change only from cash, the effective discount must be within the user's limit (cashier 5%), and the
+  register must be open. A repeated `commandId` returns the original sale instead of billing twice.
+- **B2B and place of supply:** a customer's GSTIN state drives IGST vs CGST/SGST and the GSTR-1 bucket; an override needs a
+  reason and is stored on the sale. Composition and unregistered businesses issue a bill of supply with no tax.
+- **`sales.complete` performance test**: p95 9.9 ms for 10-line sales at 5,000 SKUs (budget 250 ms).
+
+- **Receipt printing** (ADR-0015). Each sale's receipt is a stored document laid out at print time for 32, 42 or 48
+  columns and encoded as ESC/POS: alignment, bold, double width, feed and cut, and the drawer kick for cash sales.
+  - **Printers:** a simulator writes each receipt to `userData/receipts/` as text and raw bytes, which is the default
+    until a printer is set up; a network printer adapter covers TCP 9100.
+  - **Queue:** jobs print one at a time after commit and retry from the queue. A failure is recorded on the job and
+    never affects the sale, and jobs left queued by a crash print on the next start.
+  - **Reprints** are new jobs marked "DUPLICATE (copy n)".
+  - **Calls:** `printer.getConfig/setConfig/testPrint/getQueue/retryJob/reprint` and `drawer.open`. Printer settings
+    are per device and never sync.
+  - **Limitation:** the plain ESC/POS code page has no ₹ or Indic characters, so ₹ prints as "Rs" and non-ASCII text
+    as "?" until bitmap text is added.
+- **`hardware` log** — the Diagnostics log viewer offered "hardware" but no such log was written; printer and drawer
+  events now go there, and it is included in support bundles.
+
+- **Held bills** (`pos.holdBill/listHeldBills/retrieveBill/discardBill`, F6/F7). A held cart keeps products and
+  quantities only; prices are worked out again when it comes back. Held bills stay on the till and block closing the
+  register.
+- **POS screen** (`/pos`, keyboard-first): register gate with opening float; scanner detection (a burst of 4+
+  characters ending in Enter within the LLD timings) on the page and the search box. Keys: F2 search, F3 customer,
+  F4 bill discount, F5 payment, F6 hold, F7 retrieve, F9 reprint last, Esc clear.
+  - **Cart and totals:** quantity and line-discount editing, with instant totals from the same GST engine and the main
+    process re-pricing after each change.
+  - **Payment:** split payment with live change due.
+  - **Safeguards:** a near-duplicate warning (same amount and customer within a minute), a printer-failure banner with
+    retry, and cash in/out, X report and close with a Z report.
+  - **Printer settings:** `/settings/printer` for simulator or network, paper width, drawer, test print.
+- **Quote context** (`sales.quote` returns the supplier state, tax scheme and rounding setting) so the renderer can total
+  the cart itself between quotes (ADR-0016).
+
+- **Kill -9 suite for billing** (Stage 3 exit criterion): a child process completes sales until it is SIGKILLed at a
+  random moment; afterwards every sale must have its lines, tenders, audit row, outbox row and print job, with no
+  orphan rows. Invoice numbers must be gap-free per series, no number consumed by an unsaved sale, and the audit
+  chains intact. 20 kills run in CI; `crash-loop --scenario sales 200` passed with 578 sales.
+- **Offline golden-flow test** (PRD §8): with the cloud down, it logs in offline, opens the register, scans, adds a
+  customer, applies a bill discount, takes UPI + cash with change and prints. It then does a cash out and closes with
+  a Z report, and finally checks the sale is queued for sync and the audit chain verifies.
+
+### Fixed — Stage 3 review
+- **The desktop app failed to start when its database needed an upgrade** ("better_sqlite3.node was compiled against
+  a different Node.js version"). The pre-migration backup was verified by opening it with the Node build of SQLite
+  instead of the Electron build the app uses; the scheduled backup had the same flaw. The backup check now reuses
+  the connection's own SQLite build. Present since Stage 1; it surfaced once a desktop database had migrations to apply.
+- **Invoice numbers were too long for GST.** `DEL1/T01/2026-27/000001` is 23 characters; CGST Rule 46(b) allows 16, so
+  GSTR-1 and e-invoicing would reject every bill. Numbers now read `DE01/2627/000001`: each terminal has a 1–4
+  character invoice prefix, unique in the business, suggested at setup. Migration `0004` gives existing terminals one
+  (ADR-0014 amended).
+- **A retried payment could bill twice.** Each press of "Complete sale" sent a new command id, so after a timeout a
+  second sale could be recorded. The id now stays the same while the cart is unchanged, and the server returns the
+  first sale.
+- **Retrieving a held bill could lose it.** The bill was deleted before it was re-priced, so any failure lost it. Now
+  it is read, rebuilt in the cart and only then discarded. A deleted customer becomes walk-in with a note, and a cart
+  already in use is held first.
+- **Retry could reprint a finished receipt** as an original and open the drawer. Only failed jobs of the current
+  business can be retried, and the drawer opens only on a job's first attempt.
+- **A crash mid-print reprinted on restart.** Interrupted jobs and jobs queued on an earlier day are now marked failed
+  for the cashier to retry, instead of being sent again.
+- **Scanning while the search box had text** also added the first search match; the scan now stops the Enter event
+  and clears the box.
+- **Settings were not validated.** `settings.set` accepted any value for any key, so `"false"` counted as true and a
+  string footer broke every receipt. Keys now have schemas, bad values are refused, and readers fall back to defaults
+  if a stored value is invalid.
+- **A discount typo silently removed the discount.** Unreadable text is now an error. `10,5` is rejected instead of
+  read as 105: commas are only accepted as thousands grouping. "%" in the amount field asks for Percent.
+- **Sales could be missing from the sales list** when several shared a timestamp at a page boundary; `sales.list` now
+  pages by (time, id) and returns `nextCursor`.
+- **Negative amounts printed without their sign** (−₹0.50 as ₹0.50) in two separate copies of the rupee formatter.
+  There is now one, `formatRupees` in `@muneem/domain`.
+
+### Fixed
+- **The crash tests never killed the process doing the writing.** They SIGKILLed the `tsx` launcher, which runs the
+  script in a second Node process, so the writer kept running and the checks proved nothing about crashes. This
+  affected the Stage 1 `crash-loop` too. Children now run as `node --import tsx`. Re-run for real, the Stage 1 loop
+  passes (30 kills) and the new sales suite passes (200 kills).
+- **The print queue could crash the app** if recording a job's status failed (for example a busy database). It now
+  logs the problem and retries the job at the next start.
+- **`pnpm dev` showed a blank window** ("@vitejs/plugin-react can't detect preamble"). The renderer's Content Security
+  Policy blocks inline scripts, and Vite's dev server injects one for React hot reload. When loading from the dev server
+  only, the policy now allows inline scripts and the HMR websocket; the packaged app keeps the strict policy.
+
 ### Added — Stage 2 catalog
 - **Stage 2 plan (`docs/plans/stage-2-catalog.md`)** — the LLD had tables and targets for the catalog but no task
   breakdown, and left category/brand, the import wizard, scope and cloud involvement open. The plan settles them.

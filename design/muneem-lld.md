@@ -697,7 +697,7 @@ async function allocate(tx, { businessId, docType, branchId, terminalId, docDate
 
 Rules: allocation happens **inside** the document's transaction, so a rollback returns the number; `ux_sale_doc` makes a duplicate physically impossible; the number is never rewritten by sync; a gap detected during a nightly check raises an integrity alert (a gap means a crash between allocation and commit — which cannot happen with a single transaction, so a gap is a real signal).
 
-Example series: `MUN/DEL1/T01/2026-27/000123` (sale), `MUN/DEL1/CN/2026-27/000007` (credit note), `MUN/DEL1/RCPT/2026-27/000451` (receipt). GSTR-1 "Documents Issued" reports from–to per series directly off `doc_series` + `MIN/MAX(doc_seq)`.
+Example series (as built, ADR-0014 — CGST Rule 46(b) caps numbers at 16 characters): `DE01/2627/000123` (sale, terminal prefix `DE01`). Credit notes and receipts will need their own short prefixes when they arrive. GSTR-1 "Documents Issued" reports from–to per series directly off `doc_series` + `MIN/MAX(doc_seq)`.
 
 ---
 
@@ -876,7 +876,7 @@ customers.*   search, get, create, update, getLedger, getOutstanding
 suppliers.*   search, get, create, update, getLedger
 pos.*         openRegister, closeRegister, getSession, xReport, zReport, cashMovement,
               holdBill, listHeldBills, retrieveBill, discardBill
-sales.*       quote, complete, get, list, cancel, returnAgainst, getReceiptPayload
+sales.*       quote, complete, get, list, getReceipt, cancel, returnAgainst   (cancel/returnAgainst: later stages)
 purchases.*   create, receive, get, list, return, cancel
 payments.*    create, allocate, get, list, cancel
 expenses.*    create, get, list, update
@@ -884,8 +884,8 @@ accounting.*  getTrialBalance, getLedger, postManualJournal, getPeriods, lockPer
 reports.*     run(reportId, params), export(reportId, params, format), listDefinitions
 gst.*         getSummary, getGstr1Buckets, getHsnSummary, exportGstr1
 hardware.*    listDevices, testDevice, getStatus, setConfig, onEvent (push channel)
-printer.*     print, reprint, getQueue, retryJob, cancelJob
-cashDrawer.*  open
+printer.*     getConfig, setConfig, testPrint, getQueue, retryJob, reprint
+drawer.*      open                                  (IPC namespaces are lowercase, so not cashDrawer.*)
 sync.*        getStatus, pushNow, pullNow, retryFailed, listDeadLetters, resend
 settings.*    get, set, listSeries, createSeries
 diagnostics.* getHealth, integrityCheck, backupNow, exportSupportBundle, getLogsTail

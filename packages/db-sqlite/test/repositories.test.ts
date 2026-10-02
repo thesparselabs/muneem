@@ -58,11 +58,14 @@ describe('business setup writes are atomic with audit + outbox', () => {
     const b = createBusiness(db, biz, ACTOR);
     setSetting(db, b.id, 'pos.roundToRupee', true, ACTOR);
     expect(getSetting(db, b.id, 'pos.roundToRupee')).toBe(true);
-    const s = createDocSeries(db, b.id, { branchId: null, terminalId: null, docType: 'tax_invoice', fy: '2026-27', prefix: 'MUN/DEL1/T01', padWidth: 6 }, ACTOR);
+    const s = createDocSeries(db, b.id, { branchId: null, terminalId: null, docType: 'tax_invoice', fy: '2026-27', prefix: 'D1T1', padWidth: 6 }, ACTOR);
     expect(() => allocateDocNumber(db, s.id)).toThrow(/inside/);
     const n = withTransaction(db, () => allocateDocNumber(db, s.id));
-    expect(n).toEqual({ seq: 1, number: 'MUN/DEL1/T01/2026-27/000001' });
+    expect(n).toEqual({ seq: 1, number: 'D1T1/2627/000001' });
     expect(withTransaction(db, () => allocateDocNumber(db, s.id)).seq).toBe(2);
+    db.prepare('UPDATE doc_series SET next_seq = 1000000 WHERE id = ?').run(s.id);
+    expect(() => withTransaction(db, () => allocateDocNumber(db, s.id))).toThrow(/999999/);
+    expect(db.prepare('SELECT next_seq FROM doc_series WHERE id = ?').pluck().get(s.id)).toBe(1_000_000);
   });
   it('sync status derives from the outbox', async () => {
     const db = await freshDb();

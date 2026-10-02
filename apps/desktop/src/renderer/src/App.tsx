@@ -12,6 +12,8 @@ import Products from './routes/Products.js';
 import ProductEdit from './routes/ProductEdit.js';
 import ImportProducts from './routes/ImportProducts.js';
 import CatalogSettings from './routes/CatalogSettings.js';
+import PosScreen from './routes/pos/PosScreen.js';
+import PrinterSettings from './routes/PrinterSettings.js';
 
 export default function App() {
   const { session, setSession, setSync, setOnline } = useUi();
@@ -45,6 +47,8 @@ export default function App() {
         <Route path="/products/import" element={<ImportProducts />} />
         <Route path="/products/:id" element={<ProductEdit />} />
         <Route path="/settings/catalog" element={<CatalogSettings />} />
+        <Route path="/pos" element={<PosScreen />} />
+        <Route path="/settings/printer" element={<PrinterSettings />} />
         <Route path="/diagnostics" element={<Diagnostics />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />

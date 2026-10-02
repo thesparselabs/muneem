@@ -16,7 +16,7 @@ function rotate(path: string): void {
   renameSync(path, `${path}.1`);
 }
 
-export interface Loggers { app: Logger; sync: Logger; dir: string }
+export interface Loggers { app: Logger; sync: Logger; hardware: Logger; dir: string }
 
 export function createLoggers(logDir: string, level = 'info'): Loggers {
   mkdirSync(logDir, { recursive: true });
@@ -25,10 +25,10 @@ export function createLoggers(logDir: string, level = 'info'): Loggers {
     rotate(file);
     return pino({ level, base: { log: name }, timestamp: pino.stdTimeFunctions.isoTime }, pino.destination({ dest: file, sync: false, mkdir: true }));
   };
-  return { app: make('app'), sync: make('sync'), dir: logDir };
+  return { app: make('app'), sync: make('sync'), hardware: make('hardware'), dir: logDir };
 }
 
 export function silentLoggers(): Loggers {
   const l = pino({ level: 'silent' });
-  return { app: l, sync: l, dir: '' };
+  return { app: l, sync: l, hardware: l, dir: '' };
 }

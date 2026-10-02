@@ -1,4 +1,5 @@
-import { newUlid } from '@muneem/domain';
+import { DomainError, formatInvoiceNumber, newUlid } from '@muneem/domain';
+import { AppError } from '@muneem/contracts';
 import { appendAudit } from '../audit.js';
 import type { Db } from '../open.js';
 import { appendOutbox } from '../outbox.js';
@@ -33,7 +34,14 @@ export function allocateDocNumber(db: Db, seriesId: string): { seq: number; numb
   if (!db.inTransaction) throw new Error('allocateDocNumber must run inside the document transaction');
   const s = db.prepare('SELECT * FROM doc_series WHERE id = ?').get(seriesId) as Raw | undefined;
   if (!s) throw new Error('NOT_FOUND');
+  let number: string;
+  try {
+    number = formatInvoiceNumber(s.prefix, s.fy, s.next_seq);
+  } catch (e) {
+    if (e instanceof DomainError) throw new AppError('INVALID_STATE', e.message);
+    throw e;
+  }
   const r = db.prepare('UPDATE doc_series SET next_seq = next_seq + 1, updated_at = ? WHERE id = ? AND next_seq = ?').run(nowIso(), seriesId, s.next_seq);
   if (r.changes !== 1) throw new Error('SERIES_CONTENTION');
-  return { seq: s.next_seq, number: `${s.prefix}/${s.fy}/${String(s.next_seq).padStart(s.pad_width, '0')}` };
+  return { seq: s.next_seq, number };
 }

@@ -17,3 +17,8 @@ Template: Context → Decision → Consequences → Status.
 | [0010](0010-product-import-two-phase.md) | Product import: file bytes over IPC, preview in memory, one-transaction commit |
 | [0011](0011-selling-price-in-default-price-list.md) | Selling price lives in the default price list, not on `product` |
 | [0012](0012-hot-path-statement-cache-and-barcode-lru.md) | Cached prepared statements and a barcode LRU for the scan path |
+| [0013](0013-stage-3-commit-scope-and-step-seam.md) | The Stage 3 sale commit, with seams for stock and journal |
+| [0014](0014-document-numbering-per-terminal.md) | Invoice numbering: one series per terminal and FY, created on first use |
+| [0015](0015-print-job-inside-commit-hardware-after.md) | The print job is part of the sale; printing and the drawer happen after commit |
+| [0016](0016-renderer-totals-main-is-authoritative.md) | The renderer shows totals instantly; the main process is authoritative |
+| [0017](0017-tenders-and-register-sessions.md) | Tender rules and register sessions |

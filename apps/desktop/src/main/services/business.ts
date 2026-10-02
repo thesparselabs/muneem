@@ -64,7 +64,7 @@ export class BusinessService {
     return b;
   }
   getTerminals(branchId?: string): Terminal[] { return listTerminals(this.d.db(), this.activeBusinessId(), branchId); }
-  createTerminal(input: { branchId: string; code: string; name: string }): Terminal {
+  createTerminal(input: { branchId: string; code: string; name: string; invoicePrefix?: string | undefined }): Terminal {
     return createTerminal(this.d.db(), this.activeBusinessId(), input, this.actor());
   }
   /** Bind this device to a terminal and make it the session's terminal. */

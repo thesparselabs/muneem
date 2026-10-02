@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
-import { MIGRATIONS, currentSchemaVersion, migrate, openDatabase, quickCheck, foreignKeyCheck, stmt } from '../src/index.js';
+import { dirname, join } from 'node:path';
+import { MIGRATIONS, backupDatabase, currentSchemaVersion, migrate, nativeBindingOf, openDatabase, quickCheck, foreignKeyCheck, stmt } from '../src/index.js';
 import { freshDb } from './helpers.js';
 
 describe('migrator', () => {
@@ -78,5 +78,98 @@ describe('stmt', () => {
     const b = await freshDb();
     expect(stmt(a, 'SELECT 1')).toBe(stmt(a, 'SELECT 1'));
     expect(stmt(a, 'SELECT 1')).not.toBe(stmt(b, 'SELECT 1'));
+  });
+});
+
+describe('0003_pos', () => {
+  async function seeded() {
+    const db = await freshDb();
+    const t = '2026-10-02T00:00:00.000Z';
+    const sync = `'${t}', '${t}', 'u', 'd'`;
+    db.exec(`
+      INSERT INTO organization (id, name, created_at, updated_at) VALUES ('o', 'O', '${t}', '${t}');
+      INSERT INTO business (id, organization_id, name, business_type, state_code, tax_scheme, created_at, updated_at, created_by, device_id)
+        VALUES ('b', 'o', 'Shop', 'retail', '07', 'regular', ${sync});
+      INSERT INTO branch (id, business_id, code, name, state_code, created_at, updated_at, created_by, device_id) VALUES ('br', 'b', 'DEL1', 'Delhi', '07', ${sync});
+      INSERT INTO terminal (id, business_id, branch_id, code, name, created_at, updated_at, created_by, device_id) VALUES ('t', 'b', 'br', 'T01', 'Till', ${sync});
+      INSERT INTO uom (id, business_id, code, name, created_at, updated_at, created_by, device_id) VALUES ('pcs', 'b', 'PCS', 'Pieces', ${sync});
+      INSERT INTO product (id, business_id, name, name_norm, base_uom_id, created_at, updated_at, created_by, device_id) VALUES ('p', 'b', 'Soap', 'soap', 'pcs', ${sync});
+      INSERT INTO doc_series (id, business_id, branch_id, terminal_id, doc_type, fy, prefix, created_at, updated_at, created_by, device_id)
+        VALUES ('s', 'b', 'br', 't', 'tax_invoice', '2026-27', 'DEL1/T01', ${sync});
+      INSERT INTO pos_session (id, business_id, branch_id, terminal_id, session_no, opened_by, opened_at, opening_cash_paise, created_at, updated_at, created_by, device_id)
+        VALUES ('ps', 'b', 'br', 't', 1, 'u', '${t}', 0, ${sync});
+      INSERT INTO sale (id, business_id, branch_id, terminal_id, session_id, command_id, doc_type, series_id, doc_number, doc_seq, doc_date, fy,
+          customer_snapshot_json, place_of_supply_state, supply_type, gstr1_bucket, tax_scheme, gross_paise, taxable_paise, cgst_paise, sgst_paise,
+          total_paise, paid_paise, created_at, updated_at, created_by, device_id)
+        VALUES ('sale1', 'b', 'br', 't', 'ps', 'c1', 'tax_invoice', 's', 'DEL1/T01/2026-27/000001', 1, '2026-10-02', '2026-27',
+          '{}', '07', 'intra', 'b2cs', 'regular', 1000, 1000, 90, 90, 1180, 1180, ${sync});
+      INSERT INTO sale_item (id, sale_id, business_id, line_no, product_id, product_name, uom_id, uom_code, qty_milli, base_qty_milli,
+          unit_price_paise, price_is_inclusive, gross_paise, taxable_paise, tax_treatment, gst_rate_bp, cgst_paise, sgst_paise, total_paise)
+        VALUES ('si1', 'sale1', 'b', 1, 'p', 'Soap', 'pcs', 'PCS', 1000, 1000, 1000, 0, 1000, 1000, 'taxable', 1800, 90, 90, 1180);
+      INSERT INTO sale_tender (id, sale_id, business_id, line_no, method, amount_paise) VALUES ('st1', 'sale1', 'b', 1, 'cash', 1180);
+    `);
+    return db;
+  }
+
+  it('keeps sales, lines and tenders append-only while allowing sync bookkeeping', async () => {
+    const db = await seeded();
+    expect(() => db.prepare("UPDATE sale SET total_paise = 1 WHERE id = 'sale1'").run()).toThrow(/append-only/);
+    expect(() => db.prepare("DELETE FROM sale WHERE id = 'sale1'").run()).toThrow(/append-only/);
+    expect(() => db.prepare("UPDATE sale_item SET qty_milli = 2000").run()).toThrow(/append-only/);
+    expect(() => db.prepare('DELETE FROM sale_tender').run()).toThrow(/append-only/);
+    expect(db.prepare("UPDATE sale SET sync_state = 'synced' WHERE id = 'sale1'").run().changes).toBe(1);
+  });
+
+  it('refuses a sale whose payments do not balance or whose tax split is wrong', async () => {
+    const db = await seeded();
+    const insert = (over: string) => () => db.exec(`INSERT INTO sale (id, business_id, branch_id, terminal_id, session_id, command_id, doc_type, series_id,
+        doc_number, doc_seq, doc_date, fy, customer_snapshot_json, place_of_supply_state, supply_type, gstr1_bucket, tax_scheme,
+        gross_paise, taxable_paise, igst_paise, total_paise, paid_paise, created_at, updated_at, created_by, device_id)
+      VALUES ('x', 'b', 'br', 't', 'ps', 'c2', 'tax_invoice', 's', 'n', 2, '2026-10-02', '2026-27', '{}', '07', ${over}, 'b2cs', 'regular',
+        1000, 1000, 180, 1180, 1180, 'a', 'a', 'u', 'd')`);
+    expect(insert("'intra'")).toThrow(/CHECK/);
+    expect(insert("'inter'")).not.toThrow();
+    expect(() => db.prepare("INSERT INTO sale_tender (id, sale_id, business_id, line_no, method, amount_paise, change_paise) VALUES ('st2', 'sale1', 'b', 2, 'upi', 100, 10)").run()).toThrow(/CHECK/);
+  });
+
+  it('allows one open register per terminal and one business-wide series per key', async () => {
+    const db = await seeded();
+    expect(() => db.exec(`INSERT INTO pos_session (id, business_id, branch_id, terminal_id, session_no, opened_by, opened_at, opening_cash_paise, created_at, updated_at, created_by, device_id)
+      VALUES ('ps2', 'b', 'br', 't', 2, 'u', 'a', 0, 'a', 'a', 'u', 'd')`)).toThrow(/UNIQUE/);
+    const series = `INSERT INTO doc_series (id, business_id, doc_type, fy, prefix, created_at, updated_at, created_by, device_id) VALUES (?, 'b', 'receipt', '2026-27', 'R', 'a', 'a', 'u', 'd')`;
+    db.prepare(series).run('r1');
+    expect(() => db.prepare(series).run('r2')).toThrow(/UNIQUE/);
+  });
+});
+
+describe('0004_invoice_prefix', () => {
+  it('gives existing terminals a short prefix and moves their series onto it', async () => {
+    const db = openDatabase(':memory:', { quickCheck: false });
+    await migrate(db, { migrations: MIGRATIONS.slice(0, 3) });
+    const t = "'2026-10-02T00:00:00.000Z', '2026-10-02T00:00:00.000Z', 'u', 'd'";
+    db.exec(`
+      INSERT INTO organization (id, name, created_at, updated_at) VALUES ('o', 'O', 'a', 'a');
+      INSERT INTO business (id, organization_id, name, business_type, state_code, tax_scheme, created_at, updated_at, created_by, device_id) VALUES ('b', 'o', 'S', 'retail', '07', 'regular', ${t});
+      INSERT INTO branch (id, business_id, code, name, state_code, created_at, updated_at, created_by, device_id) VALUES ('br', 'b', 'DEL1', 'D', '07', ${t});
+      INSERT INTO terminal (id, business_id, branch_id, code, name, created_at, updated_at, created_by, device_id) VALUES ('t1', 'b', 'br', 'T01', 'A', ${t});
+      INSERT INTO terminal (id, business_id, branch_id, code, name, created_at, updated_at, created_by, device_id) VALUES ('t2', 'b', 'br', 'T02', 'B', ${t});
+      INSERT INTO doc_series (id, business_id, branch_id, terminal_id, doc_type, fy, prefix, created_at, updated_at, created_by, device_id) VALUES ('s', 'b', 'br', 't2', 'tax_invoice', '2026-27', 'DEL1/T02', ${t});
+    `);
+    await migrate(db);
+    expect(db.prepare('SELECT id, invoice_prefix FROM terminal ORDER BY id').all()).toEqual([{ id: 't1', invoice_prefix: 'T1' }, { id: 't2', invoice_prefix: 'T2' }]);
+    expect(db.prepare("SELECT prefix FROM doc_series WHERE id = 's'").pluck().get()).toBe('T2');
+  });
+});
+
+describe('native SQLite build', () => {
+  it('verifies a backup with the same SQLite build the database was opened with', async () => {
+    const { createRequire } = await import('node:module');
+    const binding = join(dirname(createRequire(import.meta.url).resolve('better-sqlite3/package.json')), 'build', 'Release', 'better_sqlite3.node');
+    const dir = mkdtempSync(join(tmpdir(), 'muneem-native-'));
+    const db = openDatabase(join(dir, 'a.sqlite'), { nativeBinding: binding });
+    expect(nativeBindingOf(db)).toBe(binding);
+    await migrate(db);
+    expect(await backupDatabase(db, join(dir, 'b.sqlite'))).toMatchObject({ verified: true });
+    db.close();
   });
 });

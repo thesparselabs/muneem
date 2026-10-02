@@ -8,6 +8,12 @@ import {
   Brand, BrandInput, Category, CategoryInput, ImportCommitInput, ImportPreview, ImportPreviewInput, ImportSummary, PriceList, PriceListInput, PriceListItem, PriceItemsQuery, Product, ProductHit,
   ProductInput, ProductListInput, ProductPage, ProductSearchInput, ProductUpdate, SetPriceItems, Uom, UomInput,
 } from './catalog.js';
+import {
+  CashMovementInput, CloseRegisterInput, Customer, CustomerInput, CustomerSearchInput, OpenRegisterInput, RegisterReport, RegisterSession,
+} from './pos.js';
+import { CompleteSaleInput, CompleteSaleResult, HeldBill, HoldBillInput, Sale, SaleDraft, SaleListInput, SalePage, SaleQuote } from './sales.js';
+import { PrintJobSummary, PrinterConfig, ReceiptDoc } from './print.js';
+import { SETTING_KEYS } from './settings.js';
 
 /**
  * LLD §10.1 — the IPC contract registry. The preload is GENERATED from this object, so the
@@ -71,8 +77,8 @@ export const contract = {
   'business.createTerminal': spec({ input: TerminalInput, output: Terminal, permission: 'business.manage', rateLimit: { perSec: 2 }, audit: true }),
   'business.selectTerminal': spec({ input: z.object({ terminalId: Ulid }), output: Session, permission: 'business.view', rateLimit: { perSec: 2 }, audit: true }),
 
-  'settings.get': spec({ input: z.object({ key: z.string().max(80) }), output: z.object({ value: z.unknown().nullable() }), permission: 'settings.view', rateLimit: { perSec: 20 } }),
-  'settings.set': spec({ input: z.object({ key: z.string().max(80), value: z.unknown() }), output: Ok, permission: 'settings.manage', rateLimit: { perSec: 5 }, audit: true }),
+  'settings.get': spec({ input: z.object({ key: z.enum(SETTING_KEYS) }), output: z.object({ value: z.unknown().nullable() }), permission: 'settings.view', rateLimit: { perSec: 20 } }),
+  'settings.set': spec({ input: z.object({ key: z.enum(SETTING_KEYS), value: z.unknown() }), output: Ok, permission: 'settings.manage', rateLimit: { perSec: 5 }, audit: true }),
   'settings.listSeries': spec({ input: Empty, output: z.array(DocSeries), permission: 'settings.view', rateLimit: { perSec: 10 } }),
   'settings.createSeries': spec({
     input: DocSeries.omit({ id: true, businessId: true, nextSeq: true }),
@@ -101,6 +107,35 @@ export const contract = {
   'pricing.createList': spec({ input: PriceListInput, output: PriceList, permission: 'products.edit', rateLimit: { perSec: 2 }, audit: true }),
   'pricing.getItems': spec({ input: PriceItemsQuery, output: z.array(PriceListItem), permission: 'products.view', rateLimit: { perSec: 20 } }),
   'pricing.setItems': spec({ input: SetPriceItems, output: z.array(PriceListItem), permission: 'products.edit', rateLimit: { perSec: 5 }, audit: true }),
+
+  'customers.search': spec({ input: CustomerSearchInput, output: z.array(Customer), permission: 'customers.view', rateLimit: { perSec: 20 } }),
+  'customers.get': spec({ input: z.object({ id: Ulid }), output: Customer, permission: 'customers.view', rateLimit: { perSec: 20 } }),
+  'customers.create': spec({ input: CustomerInput, output: Customer, permission: 'customers.create', rateLimit: { perSec: 5 }, audit: true }),
+  'customers.update': spec({ input: CustomerInput.extend({ id: Ulid, version: z.number().int() }), output: Customer, permission: 'customers.edit', rateLimit: { perSec: 5 }, audit: true }),
+  'pos.getSession': spec({ input: Empty, output: RegisterSession.nullable(), permission: 'pos.view', rateLimit: { perSec: 20 } }),
+  'pos.openRegister': spec({ input: OpenRegisterInput, output: RegisterSession, permission: 'pos.create', rateLimit: { perSec: 1 }, audit: true }),
+  'pos.cashMovement': spec({ input: CashMovementInput, output: Ok, permission: 'pos.create', rateLimit: { perSec: 2 }, audit: true }),
+  'pos.xReport': spec({ input: Empty, output: RegisterReport, permission: 'pos.view', rateLimit: { perSec: 5 } }),
+  'pos.zReport': spec({ input: z.object({ sessionId: Ulid.optional() }), output: RegisterReport.nullable(), permission: 'pos.view', rateLimit: { perSec: 5 } }),
+  'pos.closeRegister': spec({ input: CloseRegisterInput, output: RegisterReport, permission: 'pos.create', rateLimit: { perSec: 1 }, audit: true }),
+
+  'pos.holdBill': spec({ input: HoldBillInput, output: HeldBill, permission: 'pos.create', rateLimit: { perSec: 5 }, audit: true }),
+  'pos.listHeldBills': spec({ input: Empty, output: z.array(HeldBill), permission: 'pos.view', rateLimit: { perSec: 10 } }),
+  'pos.getHeldBill': spec({ input: z.object({ id: Ulid }), output: HeldBill, permission: 'pos.view', rateLimit: { perSec: 10 } }),
+  'pos.discardBill': spec({ input: z.object({ id: Ulid }), output: Ok, permission: 'pos.create', rateLimit: { perSec: 5 }, audit: true }),
+  'sales.quote': spec({ input: SaleDraft, output: SaleQuote, permission: 'sales.create', rateLimit: { perSec: 30 } }),
+  'sales.complete': spec({ input: CompleteSaleInput, output: CompleteSaleResult, permission: 'sales.create', rateLimit: { perSec: 5 }, audit: true, idempotent: 'commandId' }),
+  'sales.get': spec({ input: z.object({ id: Ulid }), output: Sale, permission: 'sales.view', rateLimit: { perSec: 20 } }),
+  'sales.list': spec({ input: SaleListInput, output: SalePage, permission: 'sales.view', rateLimit: { perSec: 10 } }),
+  'sales.getReceipt': spec({ input: z.object({ saleId: Ulid }), output: ReceiptDoc, permission: 'sales.view', rateLimit: { perSec: 10 } }),
+
+  'printer.getConfig': spec({ input: Empty, output: PrinterConfig, permission: 'pos.view', rateLimit: { perSec: 5 } }),
+  'printer.setConfig': spec({ input: PrinterConfig, output: PrinterConfig, permission: 'settings.manage', rateLimit: { perSec: 2 }, audit: true }),
+  'printer.testPrint': spec({ input: Empty, output: Ok, permission: 'pos.view', rateLimit: { perSec: 1 } }),
+  'printer.getQueue': spec({ input: z.object({ limit: z.number().int().min(1).max(100).default(20) }), output: z.array(PrintJobSummary), permission: 'pos.view', rateLimit: { perSec: 5 } }),
+  'printer.retryJob': spec({ input: z.object({ jobId: Ulid }), output: Ok, permission: 'pos.create', rateLimit: { perSec: 2 } }),
+  'printer.reprint': spec({ input: z.object({ saleId: Ulid }), output: z.object({ jobId: Ulid }), permission: 'pos.create', rateLimit: { perSec: 2 }, audit: true }),
+  'drawer.open': spec({ input: Empty, output: Ok, permission: 'pos.create', rateLimit: { perSec: 1 }, audit: true }),
 
   'sync.getStatus': spec({ input: Empty, output: SyncStatus, permission: null, rateLimit: { perSec: 10 } }),
 
