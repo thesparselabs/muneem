@@ -14,6 +14,9 @@ import {
 import { CompleteSaleInput, CompleteSaleResult, HeldBill, HoldBillInput, Sale, SaleDraft, SaleListInput, SalePage, SaleQuote } from './sales.js';
 import { PrintJobSummary, PrinterConfig, ReceiptDoc } from './print.js';
 import { SETTING_KEYS } from './settings.js';
+import {
+  AdjustmentResult, AdjustStockInput, OpeningImportCommitInput, OpeningImportPreview, OpeningImportPreviewInput, OpeningStockInput, StockTakeInput,
+} from './inventory.js';
 
 /**
  * LLD §10.1 — the IPC contract registry. The preload is GENERATED from this object, so the
@@ -136,6 +139,13 @@ export const contract = {
   'printer.retryJob': spec({ input: z.object({ jobId: Ulid }), output: Ok, permission: 'pos.create', rateLimit: { perSec: 2 } }),
   'printer.reprint': spec({ input: z.object({ saleId: Ulid }), output: z.object({ jobId: Ulid }), permission: 'pos.create', rateLimit: { perSec: 2 }, audit: true }),
   'drawer.open': spec({ input: Empty, output: Ok, permission: 'pos.create', rateLimit: { perSec: 1 }, audit: true }),
+
+  'inventory.listWarehouses': spec({ input: Empty, output: z.array(z.object({ id: z.string(), code: z.string(), name: z.string() })), permission: 'inventory.view', rateLimit: { perSec: 5 } }),
+  'inventory.setOpeningStock': spec({ input: OpeningStockInput, output: AdjustmentResult, permission: 'inventory.create', rateLimit: { perSec: 2 }, audit: true }),
+  'inventory.adjust': spec({ input: AdjustStockInput, output: AdjustmentResult, permission: 'inventory.adjust', rateLimit: { perSec: 2 }, audit: true }),
+  'inventory.stockTake': spec({ input: StockTakeInput, output: AdjustmentResult, permission: 'inventory.adjust', rateLimit: { perSec: 1 }, audit: true }),
+  'inventory.importOpeningPreview': spec({ input: OpeningImportPreviewInput, output: OpeningImportPreview, permission: 'inventory.create', rateLimit: { perSec: 2 }, audit: true }),
+  'inventory.importOpeningCommit': spec({ input: OpeningImportCommitInput, output: AdjustmentResult, permission: 'inventory.create', rateLimit: { perSec: 1 }, audit: true, idempotent: 'commandId' }),
 
   'sync.getStatus': spec({ input: Empty, output: SyncStatus, permission: null, rateLimit: { perSec: 10 } }),
 

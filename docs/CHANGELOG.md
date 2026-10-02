@@ -27,6 +27,16 @@ All notable changes, newest first. Each entry records **what** changed and **why
     `STOCK_INSUFFICIENT`. A sale that goes negative is audited.
   - **Crash suite:** it now also checks one movement per sale line and replay = projection after the kills.
   - **Speed:** `sales.complete` p95 is 13 ms with the stock step.
+- **Opening stock, adjustments and stock take** (`inventory.setOpeningStock/adjust/stockTake`, ADR-0021). Each is a
+  document with one movement per line, audited and queued for sync.
+  - **Opening stock:** quantity and cost, allowed only once per product.
+  - **Adjustments:** a reason per line; losses leave at average cost and gains enter at it.
+  - **Stock take:** posts only the differences, measured when it is posted, so sales during the count are respected.
+  - **Permissions:** `inventory.adjust` is needed for adjustments and stock takes (cashiers don't have it).
+- **Opening-stock import** (`inventory.importOpeningPreview/importOpeningCommit`). It matches products by SKU or
+  barcode, uses the product's purchase price when there is no cost column, and reports bad, duplicate or
+  already-stocked rows. The commit is one transaction and safe to retry. The preview store and column matching from
+  the Stage 2 import are now generic so both imports share them.
 
 ### Added — Stage 3 POS billing
 - **Stage 3 plan (`docs/plans/stage-3-pos.md`) and ADRs 0013–0017** — the design disagreed on whether stock and the

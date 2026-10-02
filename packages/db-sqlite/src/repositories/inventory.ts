@@ -171,3 +171,15 @@ export function movementsForRef(db: Db, businessId: string, refType: RefType, re
     provisional: r.cost_provisional === 1, refType: r.ref_type, refId: r.ref_id, refLineId: r.ref_line_id, reasonCode: r.reason_code,
   }));
 }
+
+export function insertAdjustmentHeader(
+  db: Db, h: { id: string; businessId: string; warehouseId: string; kind: 'opening' | 'adjustment' | 'stock_take'; note: string | null }, actor: Actor,
+): void {
+  const s = syncColumns(actor);
+  stmt(db, `INSERT INTO stock_adjustment (id, business_id, warehouse_id, kind, note, created_at, updated_at, created_by, device_id)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(h.id, h.businessId, h.warehouseId, h.kind, h.note, s.t, s.t, s.created_by, s.device_id);
+}
+
+export function hasMovements(db: Db, businessId: string, warehouseId: string, productId: string): boolean {
+  return stmt(db, 'SELECT 1 FROM stock_movement WHERE business_id = ? AND warehouse_id = ? AND product_id = ? LIMIT 1').get(businessId, warehouseId, productId) !== undefined;
+}
