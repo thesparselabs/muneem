@@ -100,6 +100,9 @@ export const ProductHit = z.object({
   taxTreatment: TaxTreatment,
   isActive: z.boolean(),
   matchedBy: z.enum(['barcode', 'sku', 'name', 'text', 'list']),
+  // On hand in the base unit, summed over the business's warehouses.
+  stockMilli: z.number().int(),
+  baseUomCode: z.string(),
 });
 export type ProductHit = z.infer<typeof ProductHit>;
 

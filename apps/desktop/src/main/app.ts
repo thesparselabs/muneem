@@ -2,7 +2,7 @@
  * Composition root. Builds services + IPC handlers from explicit dependencies so tests can wire
  * an in-memory SQLite, a memory secret store and a fake fetch without touching Electron.
  */
-import { listWarehouses, readSyncStatus, type Db } from '@muneem/db-sqlite';
+import { listStock, listWarehouses, productMovements, readSyncStatus, rebuildStockLevels, stockValuation, type Db } from '@muneem/db-sqlite';
 import { CloudClient } from './infra/cloudClient.js';
 import { Connectivity } from './infra/connectivity.js';
 import { EventBus } from './infra/events.js';
@@ -164,6 +164,11 @@ export function createApp(cfg: AppConfig) {
     'printer.retryJob': (i) => { printQueue.retry(i.jobId, posCtx.businessId()); return { ok: true as const }; },
     'printer.reprint': (i) => { sales.get(i.saleId); return { jobId: printQueue.reprint(i.saleId, posCtx.userId()) }; },
     'drawer.open': async () => { await printQueue.openDrawer(); return { ok: true as const }; },
+    'inventory.getStock': (i) => listStock(cfg.db(), posCtx.businessId(), i),
+    'inventory.getMovements': (i) => productMovements(cfg.db(), posCtx.businessId(), i.productId, i),
+    'inventory.valuation': () => stockValuation(cfg.db(), posCtx.businessId()),
+    'inventory.listLowStock': () => listStock(cfg.db(), posCtx.businessId(), { lowOnly: true, limit: 50 }).items,
+    'inventory.rebuildProjections': () => ({ rebuilt: rebuildStockLevels(cfg.db(), posCtx.businessId()) }),
     'inventory.listWarehouses': () => { inventory.warehouseId(); return listWarehouses(cfg.db(), posCtx.businessId()); },
     'inventory.setOpeningStock': (i) => inventory.setOpeningStock(i),
     'inventory.adjust': (i) => inventory.adjust(i),

@@ -5,7 +5,7 @@ import { AppError, type Health } from '@muneem/contracts';
 import {
   backupDatabase, dbSizeBytes, foreignKeyCheck, getMeta, META_KEYS, outboxDepth, quickCheck, setMeta, verifyAuditChain,
   currentSchemaVersion, type Db,
-} from '@muneem/db-sqlite';
+ rebuildStockLevels, replayCheck } from '@muneem/db-sqlite';
 import { DEVICE_AUDIT_SCOPE } from '../ipc/gateway.js';
 import type { Loggers } from '../infra/logger.js';
 import type { SessionService } from './session.js';
@@ -33,6 +33,17 @@ export class DiagnosticsService {
     };
   }
 
+  // replay = projection (ADR-0018): any cached level the movements disagree with is logged and rebuilt from the movements.
+  checkStock(): 'ok' | 'healed' | 'not_run' {
+    const businessId = this.d.session.get()?.businessId;
+    if (!businessId) return 'not_run';
+    const drift = replayCheck(this.d.db(), businessId);
+    if (drift.length === 0) return 'ok';
+    this.d.loggers.app.error({ code: 'STOCK_PROJECTION_DRIFT', drift }, 'stock levels disagreed with their movements; rebuilding');
+    rebuildStockLevels(this.d.db(), businessId, drift.map((d) => d.productId));
+    return 'healed';
+  }
+
   integrityCheck() {
     const db = this.d.db();
     const qc = quickCheck(db);
@@ -43,7 +54,9 @@ export class DiagnosticsService {
     const broken = chains.filter((c) => !c.r.ok);
     const detail = [...qc.detail.filter((x) => x !== 'ok'), ...fk.detail, ...broken.map((c) => `audit chain ${c.b} broken at seq ${c.r.brokenAtSeq}`)];
     if (!qc.ok) this.d.loggers.app.error({ detail }, 'DB_CORRUPT detected by integrity check');
-    return { quickCheck: qc.ok ? 'ok' : 'failed', foreignKeys: fk.ok ? 'ok' : 'failed', auditChain: broken.length ? 'broken' : 'ok', detail } as const;
+    const stock = this.checkStock();
+    if (stock === 'healed') detail.push('stock levels disagreed with their movements and were rebuilt');
+    return { quickCheck: qc.ok ? 'ok' : 'failed', foreignKeys: fk.ok ? 'ok' : 'failed', auditChain: broken.length ? 'broken' : 'ok', stock, detail } as const;
   }
 
   async backupNow(kind: 'manual' | 'scheduled' = 'manual') {

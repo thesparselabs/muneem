@@ -77,3 +77,40 @@ describe('opening stock import', () => {
     expect(level(rice)).toMatchObject({ qtyMilli: 25_500, valuePaise: 122_400 });
   });
 });
+
+describe('stock queries', () => {
+  beforeEach(async () => {
+    app.inventory.setOpeningStock({ lines: [{ productId: soap, qtyMilli: 10_000, unitCostPaise: 3000 }, { productId: rice, qtyMilli: 2000, unitCostPaise: 5000 }] });
+    const r = await api.data<Record<string, unknown>>('products.get', { id: rice });
+    await api.data('products.update', { ...r, reorderLevelMilli: 5000 });
+  });
+
+  it('lists stock with low-stock flags and a low-only filter', async () => {
+    const all = await api.data<{ items: { name: string; qtyMilli: number; low: boolean }[] }>('inventory.getStock', {});
+    expect(all.items.map((r) => [r.name, r.qtyMilli, r.low])).toEqual([['Lux Soap', 10_000, false], ['Rice', 2000, true]]);
+    expect((await api.data<{ name: string }[]>('inventory.listLowStock')).map((r) => r.name)).toEqual(['Rice']);
+  });
+
+  it('shows a product ledger newest first with running balances', async () => {
+    app.inventory.adjust({ lines: [{ productId: soap, qtyMilli: -1000, reason: 'damage' }] });
+    const page = await api.data<{ items: { type: string; qtyMilli: number; balanceQtyMilli: number; balanceValuePaise: number; reason?: string }[] }>('inventory.getMovements', { productId: soap });
+    expect(page.items.map((m) => [m.type, m.qtyMilli, m.balanceQtyMilli, m.balanceValuePaise, m.reason ?? null])).toEqual([
+      ['adjustment', -1000, 9000, 27_000, 'damage'], ['opening', 10_000, 10_000, 30_000, 'opening'],
+    ]);
+  });
+
+  it('values stock and proves the sub-ledger balances', async () => {
+    expect(await api.data('inventory.valuation')).toMatchObject({ totalValuePaise: 40_000, movementValuePaise: 40_000, balanced: true, negativeCount: 0 });
+  });
+
+  it('shows on-hand stock on product search results', async () => {
+    expect(await api.data('products.lookupBarcode', { code: '8901030865275' })).toMatchObject({ stockMilli: 10_000, baseUomCode: 'PCS' });
+  });
+
+  it('the integrity check finds a drifted cache and heals it', async () => {
+    db.prepare('UPDATE stock_level SET qty_milli = 1, value_paise = 1 WHERE product_id = ?').run(soap);
+    expect(await api.data('diagnostics.integrityCheck')).toMatchObject({ stock: 'healed' });
+    expect(level(soap)).toMatchObject({ qtyMilli: 10_000, valuePaise: 30_000 });
+    expect(app.diagnostics.checkStock()).toBe('ok');
+  });
+});

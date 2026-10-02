@@ -8,7 +8,7 @@ const PCS = '01J0000000000000000000PCS0';
 const BOX = '01J0000000000000000000B0X0';
 const hit = (over: Partial<ProductHit> = {}): ProductHit => ({
   productId: '01J00000000000000000000P01', name: 'Lux Soap', uomId: PCS, uomCode: 'PCS', packQtyMilli: 1000, pricePaise: 4130,
-  priceIsInclusive: true, gstRateBp: 1800, taxTreatment: 'taxable', isActive: true, matchedBy: 'barcode', ...over,
+  priceIsInclusive: true, gstRateBp: 1800, taxTreatment: 'taxable', isActive: true, matchedBy: 'barcode', stockMilli: 0, baseUomCode: 'PCS', ...over,
 });
 const CONTEXT = { supplierStateCode: '07', taxScheme: 'regular' as const, roundToRupee: true, b2clThresholdPaise: 10_000_000 };
 

@@ -30,3 +30,4 @@ export * from './repositories/sale.js';
 export * from './repositories/printJob.js';
 export * from './repositories/heldBill.js';
 export * from './repositories/inventory.js';
+export * from './repositories/stockQuery.js';

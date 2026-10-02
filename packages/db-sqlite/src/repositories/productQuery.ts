@@ -9,10 +9,13 @@ type HitRow = {
   base_uom_id: string; price_is_inclusive: number; mrp_paise: number | null; gst_rate_bp: number;
   tax_treatment: ProductHit['taxTreatment']; is_active: number; brand_name: string | null; category_name: string | null;
   uom_id: string; uom_code: string; pack_qty_milli: number; barcode: string | null; factor_milli: number | null;
+  stock_milli: number; base_uom_code: string;
 };
 
 const HIT_SELECT = `SELECT p.id, p.business_id, p.name, p.name_norm, p.sku, p.hsn_code, p.base_uom_id, p.price_is_inclusive, p.mrp_paise,
-    p.gst_rate_bp, p.tax_treatment, p.is_active, b.name AS brand_name, c.name AS category_name`;
+    p.gst_rate_bp, p.tax_treatment, p.is_active, b.name AS brand_name, c.name AS category_name,
+    (SELECT COALESCE(SUM(sl.qty_milli), 0) FROM stock_level sl WHERE sl.business_id = p.business_id AND sl.product_id = p.id) AS stock_milli,
+    (SELECT code FROM uom WHERE id = p.base_uom_id) AS base_uom_code`;
 const HIT_JOINS = `LEFT JOIN brand b ON b.id = p.brand_id LEFT JOIN category c ON c.id = p.category_id`;
 const BASE_UOM = `, p.base_uom_id AS uom_id, u.code AS uom_code, 1000 AS pack_qty_milli,
     (SELECT code FROM barcode WHERE product_id = p.id AND deleted_at IS NULL ORDER BY is_primary DESC, code LIMIT 1) AS barcode,
@@ -27,6 +30,7 @@ function toHit(r: HitRow, matchedBy: ProductHit['matchedBy'], on: string, items:
     productId: r.id, name: r.name, uomId: r.uom_id, uomCode: r.uom_code, packQtyMilli: r.pack_qty_milli,
     pricePaise: price?.pricePaise ?? null, priceIsInclusive: price?.isInclusive ?? r.price_is_inclusive === 1,
     gstRateBp: r.gst_rate_bp, taxTreatment: r.tax_treatment, isActive: r.is_active === 1, matchedBy,
+    stockMilli: r.stock_milli, baseUomCode: r.base_uom_code,
     ...(r.sku !== null && { sku: r.sku }),
     ...(r.hsn_code !== null && { hsnCode: r.hsn_code }),
     ...(r.brand_name !== null && { brandName: r.brand_name }),

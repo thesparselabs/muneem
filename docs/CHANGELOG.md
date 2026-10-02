@@ -37,6 +37,13 @@ All notable changes, newest first. Each entry records **what** changed and **why
   barcode, uses the product's purchase price when there is no cost column, and reports bad, duplicate or
   already-stocked rows. The commit is one transaction and safe to retry. The preview store and column matching from
   the Stage 2 import are now generic so both imports share them.
+- **Stock queries** (`inventory.getStock/getMovements/valuation/listLowStock/rebuildProjections`):
+  - **Stock list:** with low stock (on hand ≤ reorder level).
+  - **Product ledger:** each movement with the running quantity and value after it (FR-024).
+  - **Valuation:** proves the inventory sub-ledger, with Σ stock levels equal to Σ movement values.
+  - **Product search:** results show on-hand stock in the base unit.
+- **Stock integrity check** — Diagnostics' integrity check, and a 6-hourly timer, replay the movements against the
+  cached levels. Any drift is logged as `STOCK_PROJECTION_DRIFT` and rebuilt from the movements.
 
 ### Added — Stage 3 POS billing
 - **Stage 3 plan (`docs/plans/stage-3-pos.md`) and ADRs 0013–0017** — the design disagreed on whether stock and the
