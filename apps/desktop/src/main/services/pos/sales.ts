@@ -32,6 +32,8 @@ export class SaleService {
     if (issues.length > 0) {
       throw new AppError('VALIDATION_FAILED', 'Some lines cannot be billed', Object.fromEntries(issues.map((i) => [`lines.${i.lineNo - 1}`, i.message])));
     }
+    const blocked = priced.quote.warnings.filter((w) => w.blocking);
+    if (blocked.length > 0) throw new AppError('STOCK_INSUFFICIENT', blocked.map((w) => w.message).join('; '));
     const limit = this.ctx.maxDiscountBp();
     if (limit !== undefined && totals.discountBp > limit) {
       throw new AppError('PERMISSION_DENIED', `Discount of ${totals.discountBp / 100}% is above your limit of ${limit / 100}%`);

@@ -26,7 +26,10 @@ export interface SaleRecord {
   seriesId: string; docNumber: string; docSeq: number; docDate: string; fy: string; taxScheme: string;
   customerId: string | null; customer: CustomerSnapshot; placeOfSupplyReason: string | null; priceListId: string | null;
   totals: SaleTotals; paidPaise: number; changePaise: number; lines: readonly QuoteLine[]; tenders: readonly SaleTender[];
+  lineCosts: readonly { unitCostPaise: number; cogsPaise: number }[];
 }
+
+export const saleItemId = (saleId: string, lineNo: number): string => `${saleId}-${String(lineNo).padStart(3, '0')}`;
 
 export function insertSale(db: Db, r: SaleRecord, actor: Actor): void {
   const t = r.totals;
@@ -34,26 +37,27 @@ export function insertSale(db: Db, r: SaleRecord, actor: Actor): void {
   stmt(db, `INSERT INTO sale (id, business_id, branch_id, terminal_id, session_id, command_id, doc_type, series_id, doc_number, doc_seq,
       doc_date, fy, customer_id, customer_snapshot_json, place_of_supply_state, place_of_supply_reason, supply_type, state_tax_kind,
       gstr1_bucket, tax_scheme, price_list_id, gross_paise, line_discount_paise, bill_discount_paise, taxable_paise, cgst_paise, sgst_paise,
-      igst_paise, cess_paise, round_off_paise, total_paise, paid_paise, change_paise, created_at, updated_at, created_by, device_id)
+      igst_paise, cess_paise, round_off_paise, total_paise, paid_paise, change_paise, cogs_paise, created_at, updated_at, created_by, device_id)
     VALUES (@id, @businessId, @branchId, @terminalId, @sessionId, @commandId, @docType, @seriesId, @docNumber, @docSeq,
       @docDate, @fy, @customerId, @customerJson, @posState, @posReason, @supplyType, @stateTaxKind,
       @bucket, @taxScheme, @priceListId, @gross, @lineDisc, @billDisc, @taxable, @cgst, @sgst,
-      @igst, @cess, @roundOff, @total, @paid, @change, @now, @now, @createdBy, @deviceId)`).run({
+      @igst, @cess, @roundOff, @total, @paid, @change, @cogs, @now, @now, @createdBy, @deviceId)`).run({
     id: r.id, businessId: r.businessId, branchId: r.branchId, terminalId: r.terminalId, sessionId: r.sessionId, commandId: r.commandId,
     docType: t.docType, seriesId: r.seriesId, docNumber: r.docNumber, docSeq: r.docSeq, docDate: r.docDate, fy: r.fy,
     customerId: r.customerId, customerJson: JSON.stringify(r.customer), posState: t.placeOfSupplyState, posReason: r.placeOfSupplyReason,
     supplyType: t.supplyType, stateTaxKind: t.stateTaxKind, bucket: t.gstr1Bucket, taxScheme: r.taxScheme, priceListId: r.priceListId,
     gross: t.grossPaise, lineDisc: t.lineDiscountPaise, billDisc: t.billDiscountPaise, taxable: t.taxablePaise, cgst: t.cgstPaise,
     sgst: t.sgstPaise, igst: t.igstPaise, cess: t.cessPaise, roundOff: t.roundOffPaise, total: t.totalPaise, paid: r.paidPaise,
-    change: r.changePaise, now, createdBy: actor.userId, deviceId: actor.deviceId,
+    change: r.changePaise, cogs: r.lineCosts.reduce((s, c) => s + c.cogsPaise, 0), now, createdBy: actor.userId, deviceId: actor.deviceId,
   });
   const item = stmt(db, `INSERT INTO sale_item (id, sale_id, business_id, line_no, product_id, product_name, hsn_code, uom_id, uom_code, qty_milli,
       base_qty_milli, unit_price_paise, price_is_inclusive, mrp_paise, gross_paise, line_discount_paise, apportioned_bill_discount_paise,
-      taxable_paise, tax_treatment, gst_rate_bp, cgst_paise, sgst_paise, igst_paise, cess_rate_bp, cess_per_unit_paise, cess_paise, total_paise)
+      taxable_paise, tax_treatment, gst_rate_bp, cgst_paise, sgst_paise, igst_paise, cess_rate_bp, cess_per_unit_paise, cess_paise, total_paise,
+      unit_cost_paise, cogs_paise)
     VALUES (@id, @saleId, @businessId, @lineNo, @productId, @name, @hsn, @uomId, @uomCode, @qty, @baseQty, @price, @inclusive, @mrp, @gross,
-      @lineDisc, @billDisc, @taxable, @treatment, @rate, @cgst, @sgst, @igst, @cessRate, @cessPerUnit, @cess, @total)`);
-  r.lines.forEach((l) => item.run({
-    id: `${r.id}-${String(l.lineNo).padStart(3, '0')}`, saleId: r.id, businessId: r.businessId, lineNo: l.lineNo, productId: l.productId,
+      @lineDisc, @billDisc, @taxable, @treatment, @rate, @cgst, @sgst, @igst, @cessRate, @cessPerUnit, @cess, @total, @unitCost, @cogs)`);
+  r.lines.forEach((l, i) => item.run({
+    id: saleItemId(r.id, l.lineNo), unitCost: r.lineCosts[i]?.unitCostPaise ?? 0, cogs: r.lineCosts[i]?.cogsPaise ?? 0, saleId: r.id, businessId: r.businessId, lineNo: l.lineNo, productId: l.productId,
     name: l.name, hsn: l.hsnCode ?? null, uomId: l.uomId, uomCode: l.uomCode, qty: l.qtyMilli, baseQty: l.baseQtyMilli, price: l.unitPricePaise,
     inclusive: l.priceIsInclusive ? 1 : 0, mrp: l.mrpPaise ?? null, gross: l.grossPaise, lineDisc: l.lineDiscountPaise,
     billDisc: l.apportionedBillDiscountPaise, taxable: l.taxablePaise, treatment: l.taxTreatment, rate: l.gstRateBp, cgst: l.cgstPaise,

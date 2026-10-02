@@ -17,6 +17,16 @@ All notable changes, newest first. Each entry records **what** changed and **why
   corrected on the next receipt by a value-only movement.
 - **Migration `0005_inventory`:** warehouses, stock movements (append-only, idempotent per document line), cached stock
   levels, adjustment documents, and a schema-ready batch table.
+- **Stock ledger repository** (`postMovement`, the only writer of cached stock levels; `planIssues`; `replayCheck`;
+  `rebuildStockLevels`; one default warehouse per branch, made on first use).
+- **Sales now move stock** (ADR-0019). The commit works out each line's cost before writing the append-only lines, so
+  sale lines and the sale carry COGS. It posts one sale movement per line and puts the movements in the sale's sync
+  payload.
+  - **Negative stock** (ADR-0020): the quote warns when a line would take stock below zero, and the policy
+    (`inventory.negativeStock`: block / warn / allow, default warn; per-product override) can refuse the sale with
+    `STOCK_INSUFFICIENT`. A sale that goes negative is audited.
+  - **Crash suite:** it now also checks one movement per sale line and replay = projection after the kills.
+  - **Speed:** `sales.complete` p95 is 13 ms with the stock step.
 
 ### Added — Stage 3 POS billing
 - **Stage 3 plan (`docs/plans/stage-3-pos.md`) and ADRs 0013–0017** — the design disagreed on whether stock and the

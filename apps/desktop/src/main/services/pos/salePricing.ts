@@ -5,10 +5,12 @@ import {
   computeInvoice, DomainError, effectiveDiscountBp, isUtWithoutLegislature, resolvePrice, toBaseQty, type GstInvoiceResult, type GstLineInput,
 } from '@muneem/domain';
 import {
-  getBranch, getBusiness, getCustomer, getDefaultPriceList, getPriceItemsByProduct, getProduct, listUoms, toPriceItem,
+  defaultWarehouseId, getBranch, getBusiness, getCustomer, getDefaultPriceList, getPriceItemsByProduct, getProduct, listUoms, stockState,
+  toPriceItem,
 } from '@muneem/db-sqlite';
+import { qtyText } from '../print/receiptDoc.js';
 import type { PosContext } from './posContext.js';
-import { POS_SETTINGS } from './register.js';
+import { INVENTORY_SETTINGS, POS_SETTINGS } from './register.js';
 
 const B2CL_THRESHOLD_PAISE = 10_000_000;
 
@@ -21,7 +23,7 @@ export interface PricedSale {
   placeOfSupplyReason: string | null;
 }
 
-interface PricedLine { line: Omit<QuoteLine, keyof GstLineOutput | 'lineNo'>; gst: GstLineInput }
+interface PricedLine { draftLineNo: number; product: Product; baseUomCode: string; line: Omit<QuoteLine, keyof GstLineOutput | 'lineNo'>; gst: GstLineInput }
 type GstLineOutput = Pick<QuoteLine, 'grossPaise' | 'lineDiscountPaise' | 'apportionedBillDiscountPaise' | 'taxablePaise' | 'cgstPaise' | 'sgstPaise' | 'igstPaise' | 'cessPaise' | 'totalPaise'>;
 
 // Prices a cart from product data on the business date; the quote and the commit share this so they can never disagree.
@@ -56,10 +58,28 @@ export class SalePricing {
       discountBp: effectiveDiscountBp(preDiscount, gst.lineDiscountPaise + gst.billDiscountPaise),
     };
     return {
-      quote: { lines, totals, issues, context }, business, branch, customer,
+      quote: { lines, totals, issues, warnings: this.stockWarnings(priced, branch.id), context }, business, branch, customer,
       priceListId: getDefaultPriceList(db, till.businessId)?.id ?? null,
       placeOfSupplyReason: draft.placeOfSupplyOverride?.reason ?? null,
     };
+  }
+
+  // ADR-0020: running total per product across the cart, compared with the default warehouse's stock.
+  private stockWarnings(priced: readonly PricedLine[], branchId: string): SaleQuote['warnings'] {
+    const db = this.ctx.db();
+    const businessId = this.ctx.businessId();
+    const warehouseId = defaultWarehouseId(db, branchId);
+    const policy = this.ctx.setting(INVENTORY_SETTINGS.negativeStock, 'warn');
+    const remaining = new Map<string, number>();
+    return priced.flatMap(({ draftLineNo, product, baseUomCode, line }) => {
+      const stock = remaining.get(product.id) ?? (warehouseId ? stockState(db, businessId, warehouseId, product.id).qtyMilli : 0);
+      remaining.set(product.id, stock - line.baseQtyMilli);
+      if (stock - line.baseQtyMilli >= 0) return [];
+      const rule = product.allowNegativeStock === true ? 'allow' : product.allowNegativeStock === false ? 'block' : policy;
+      if (rule === 'allow') return [];
+      const message = stock > 0 ? `${product.name}: only ${qtyText(stock, baseUomCode)} in stock` : `${product.name}: no stock recorded`;
+      return [{ lineNo: draftLineNo, productId: product.id, message, stockMilli: stock, blocking: rule === 'block' }];
+    });
   }
 
   private customer(id: string): Customer {
@@ -93,7 +113,7 @@ export class SalePricing {
         gstRateBp: p.gstRateBp, cessRateBp: p.cessRateBp, cessPerUnitPaise: p.cessPerUnitPaise, taxTreatment: p.taxTreatment,
       };
       return [{
-        gst,
+        gst, draftLineNo: i + 1, product: p, baseUomCode: uomCodes.get(p.baseUomId) ?? '',
         line: {
           productId: p.id, name: p.name, uomId: l.uomId, uomCode: uomCodes.get(l.uomId) ?? '?', qtyMilli: l.qtyMilli,
           baseQtyMilli: toBaseQty(l.qtyMilli, factorMilli), unitPricePaise: price.pricePaise, priceIsInclusive: price.isInclusive,

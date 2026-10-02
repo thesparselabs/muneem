@@ -9,6 +9,7 @@ export const SETTING_SCHEMAS = {
   'pos.blindClose': z.boolean(),
   'pos.varianceThresholdPaise': Paise,
   'gst.b2clThresholdPaise': Paise.refine((v) => v > 0, 'must be more than zero'),
+  'inventory.negativeStock': z.enum(['block', 'warn', 'allow']),
   'pos.receiptFooter': z.array(z.string().trim().max(48, 'at most 48 characters per line')).max(5, 'at most 5 lines'),
 } as const;
 export type SettingKey = keyof typeof SETTING_SCHEMAS;

@@ -10,6 +10,7 @@ export const POS_SETTINGS = {
   roundToRupee: 'pos.roundToRupee',
   b2clThresholdPaise: 'gst.b2clThresholdPaise',
 } as const;
+export const INVENTORY_SETTINGS = { negativeStock: 'inventory.negativeStock' } as const;
 const DEFAULT_VARIANCE_THRESHOLD_PAISE = 10_000;
 
 export class RegisterService {
