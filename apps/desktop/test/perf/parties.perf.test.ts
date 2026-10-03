@@ -1,7 +1,7 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 import { CreatePurchaseInput, PaymentInput, ProductInput, SupplierInput } from '@muneem/contracts';
 import { newUlid } from '@muneem/domain';
-import { createProduct, createSupplier, findUomByCode, reconcilePartiesDb, withTransaction, type Db } from '@muneem/db-sqlite';
+import { createProduct, createSupplier, findUomByCode, getPayment, openItems, partyStatement, reconcilePartiesDb, withTransaction, type Db } from '@muneem/db-sqlite';
 import type { App } from '../../src/main/app.js';
 import { ownerAtTill, testApp } from '../helpers.js';
 
@@ -13,6 +13,7 @@ let businessId: string;
 let pcs: string;
 let products: string[];
 let actor: { userId: string; deviceId: string };
+let lastPayment: { id: string; supplierId: string };
 
 beforeAll(async () => {
   ({ app, db } = await testApp({ file: true }));
@@ -57,6 +58,7 @@ describe('parties and purchases at shop scale (5g)', () => {
       const t0 = performance.now();
       const paid = app.payments.create(input);
       samples.push(performance.now() - t0);
+      lastPayment = { id: paid.id, supplierId: supplier.id };
       expect(paid.allocations).toHaveLength(500);
     }
     console.info(`payments.create over 500 bills: worst = ${Math.max(...samples).toFixed(1)} ms`);
@@ -83,5 +85,25 @@ describe('parties and purchases at shop scale (5g)', () => {
     expect(docs).toBeGreaterThanOrEqual(10_000);
     expect(r).toEqual({ mismatches: [], faults: [] });
     expect(ms).toBeLessThan(2000);
+  }, 120_000);
+
+  it('one party\'s statement, open items and a payment read only that party, at 20,000+ documents (5h #10)', () => {
+    withTransaction(db, () => {
+      for (let i = 0; i < 10_000; i++) {
+        db.prepare(`INSERT INTO party_opening (id, business_id, party_type, party_id, side, amount_paise, as_of_date, created_at, updated_at, created_by, device_id)
+          VALUES (?, ?, 'supplier', ?, 'payable', 1000, '2026-04-01', 'a', 'a', 'u', 'd')`).run(newUlid(), businessId, newUlid());
+      }
+    });
+    const docs = db.prepare('SELECT (SELECT COUNT(*) FROM purchase) + (SELECT COUNT(*) FROM party_opening) + (SELECT COUNT(*) FROM payment)').pluck().get() as number;
+    expect(docs).toBeGreaterThanOrEqual(20_000);
+    const party = { businessId, partyType: 'supplier' as const, partyId: lastPayment.supplierId };
+    const time = (f: () => unknown) => { const t0 = performance.now(); for (let i = 0; i < 10; i++) f(); return (performance.now() - t0) / 10; };
+    const statement = time(() => partyStatement(db, party, { limit: 100 }));
+    const open = time(() => openItems(db, party));
+    const payment = time(() => getPayment(db, lastPayment.id));
+    console.info(`at ${docs} documents: statement page ${statement.toFixed(1)} ms, open items ${open.toFixed(1)} ms, payments.get ${payment.toFixed(1)} ms`);
+    expect(statement).toBeLessThan(20);
+    expect(open).toBeLessThan(20);
+    expect(payment).toBeLessThan(20);
   }, 120_000);
 });

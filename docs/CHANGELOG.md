@@ -42,6 +42,14 @@ All notable changes, newest first. Each entry records **what** changed and **why
     cancelled by it, and only the allocations made and not voided by it.
   - **Proof:** tests check that on every date the net equals the statement's balance, including a payment cancelled
     later and a backdated payment that predates its bill. Today's numbers are unchanged.
+- **Statements, open items and payments read one party's documents, not the shop's** (#10).
+  - **The cause:** each statement page and each `payments.get` joined against every document of every party and built
+    a temporary index each time.
+  - **The fix:** the shared document query filters every branch by business and party (and runs only the branches for
+    that party type). Document numbers are looked up only for the rows shown. Migration `0010_party_indexes` indexes
+    the party columns that lacked one.
+  - **Result:** at 22,500 documents a statement page takes 2.5 ms, open items 3.2 ms and `payments.get` 3.1 ms (before:
+    13 ms per page at 3,000 purchases).
 - **Documented, not changed** (#8): a purchase's `fy` is the supplier bill's year, while its number uses the year it
   was entered. Stage 6 decides the posting period.
 

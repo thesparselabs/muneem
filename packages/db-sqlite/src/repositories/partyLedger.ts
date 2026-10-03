@@ -4,7 +4,7 @@ import type { Db } from '../open.js';
 import { stmt } from '../statements.js';
 import type { Actor } from './business.js';
 import { syncColumns } from './catalogWrite.js';
-import { PARTY_DOCUMENTS_SQL, type PartyDocumentRow } from './partyDocuments.js';
+import { partyDocumentsSql, type PartyDocumentRow } from './partyDocuments.js';
 
 export type PartyRefType = 'sale' | 'purchase' | 'debit_note' | 'payment' | 'write_off' | 'opening' | 'expense';
 
@@ -65,7 +65,7 @@ export function reconcilePartiesDb(db: Db, businessId: string): Reconciliation {
   const entries = (stmt(db, 'SELECT party_type, party_id, amount_paise FROM party_ledger_entry WHERE business_id = ?').all(businessId) as {
     party_type: PartyType; party_id: string; amount_paise: number;
   }[]).map((r) => ({ partyType: r.party_type, partyId: r.party_id, amountPaise: r.amount_paise }));
-  const docs = (stmt(db, `SELECT * FROM (${PARTY_DOCUMENTS_SQL}) WHERE business_id = ?`).all(businessId) as PartyDocumentRow[])
+  const docs = (stmt(db, partyDocumentsSql()).all({ businessId }) as PartyDocumentRow[])
     .map((d) => ({ role: d.role, doc: { id: d.id, partyType: d.party_type, partyId: d.party_id, amountPaise: d.amount_paise, live: d.live === 1 } }));
   const allocations = (stmt(db, 'SELECT source_id, target_id, amount_paise, voided_at IS NULL AS live FROM allocation WHERE business_id = ?').all(businessId) as {
     source_id: string; target_id: string; amount_paise: number; live: number;

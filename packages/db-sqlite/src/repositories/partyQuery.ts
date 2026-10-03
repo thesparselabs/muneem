@@ -2,7 +2,7 @@ import type { AgeingBuckets, LedgerPage, Outstanding } from '@muneem/contracts';
 import { ageingBucket, type PartyType } from '@muneem/domain';
 import type { Db } from '../open.js';
 import { stmt } from '../statements.js';
-import { PARTY_DOCUMENTS_SQL, type PartyDocumentRole } from './partyDocuments.js';
+import { docNumbers, partyDocumentsSql, type PartyDocumentRole } from './partyDocuments.js';
 
 type Cursor = { d: string; id: string };
 const encode = (c: Cursor): string => Buffer.from(JSON.stringify(c)).toString('base64url');
@@ -20,8 +20,8 @@ export interface OpenItemRow {
 // Live charges with something still owed and live settlements with something still to apply, oldest due first.
 export function openItems(db: Db, p: PartyRef): OpenItemRow[] {
   return (stmt(db, `SELECT role, type, id, doc_number, doc_date, due_date, amount_paise, amount_paise - used_paise AS open_paise
-      FROM (${PARTY_DOCUMENTS_SQL})
-      WHERE business_id = @businessId AND party_type = @partyType AND party_id = @partyId AND live = 1 AND amount_paise > used_paise
+      FROM (${partyDocumentsSql({ partyType: p.partyType, byParty: true })})
+      WHERE live = 1 AND amount_paise > used_paise
       ORDER BY due_date, doc_date, id`).all(p) as {
     role: PartyDocumentRole; type: string; id: string; doc_number: string | null; doc_date: string; due_date: string; amount_paise: number; open_paise: number;
   }[]).map((r) => ({
@@ -35,24 +35,24 @@ export function partyStatement(db: Db, p: PartyRef, f: { from?: string | undefin
   const params = { ...p, from: f.from ?? null, to: f.to ?? null };
   const sumWhere = (cond: string) => stmt(db, `SELECT COALESCE(SUM(amount_paise), 0) FROM party_ledger_entry
     WHERE business_id = @businessId AND party_type = @partyType AND party_id = @partyId AND ${cond}`).pluck().get(params) as number;
-  const rows = stmt(db, `SELECT e.*, d.doc_number FROM (
+  const rows = stmt(db, `SELECT e.* FROM (
         SELECT id, ref_type, ref_id, entry_kind, amount_paise, doc_date, due_date,
           SUM(amount_paise) OVER (ORDER BY doc_date, id) AS balance
         FROM party_ledger_entry WHERE business_id = @businessId AND party_type = @partyType AND party_id = @partyId) e
-      LEFT JOIN (${PARTY_DOCUMENTS_SQL}) d ON d.id = e.ref_id AND d.type = e.ref_type
       WHERE (@from IS NULL OR e.doc_date >= @from) AND (@to IS NULL OR e.doc_date <= @to)
         AND (@afterDate IS NULL OR (e.doc_date, e.id) > (@afterDate, @afterId))
       ORDER BY e.doc_date, e.id LIMIT @limit`).all({ ...params, afterDate: after?.d ?? null, afterId: after?.id ?? null, limit: f.limit + 1 }) as {
     id: string; ref_type: string; ref_id: string; entry_kind: 'post' | 'cancel'; amount_paise: number; doc_date: string; due_date: string | null;
-    balance: number; doc_number: string | null;
+    balance: number;
   }[];
   const page = rows.slice(0, f.limit);
+  const numbers = docNumbers(db, page.map((r) => ({ type: r.ref_type, id: r.ref_id })));
   const last = page.at(-1);
   return {
     openingBalancePaise: f.from ? sumWhere('doc_date < @from') : 0,
     items: page.map((r) => ({
       id: r.id, refType: r.ref_type, refId: r.ref_id, kind: r.entry_kind, docDate: r.doc_date, amountPaise: r.amount_paise, balancePaise: r.balance,
-      ...(r.doc_number !== null && { docNumber: r.doc_number }), ...(r.due_date !== null && { dueDate: r.due_date }),
+      ...(numbers.has(`${r.ref_type}:${r.ref_id}`) && { docNumber: numbers.get(`${r.ref_type}:${r.ref_id}`)! }), ...(r.due_date !== null && { dueDate: r.due_date }),
     })),
     closingBalancePaise: f.to ? sumWhere('doc_date <= @to') : sumWhere('1 = 1'),
     nextCursor: rows.length > f.limit && last ? encode({ d: last.doc_date, id: last.id }) : null,
@@ -76,8 +76,8 @@ export function partyOutstanding(db: Db, businessId: string, partyType: PartyTyp
           d.amount_paise - COALESCE((SELECT SUM(a.amount_paise) FROM allocation a
             WHERE a.business_id = d.business_id AND a.allocated_on <= @asOf AND (a.voided_on IS NULL OR a.voided_on > @asOf)
               AND CASE d.role WHEN 'charge' THEN a.target_type = d.type AND a.target_id = d.id ELSE a.source_type = d.type AND a.source_id = d.id END), 0) AS open_paise
-        FROM (${PARTY_DOCUMENTS_SQL}) d JOIN ${party} n ON n.id = d.party_id
-        WHERE d.business_id = @businessId AND d.party_type = @partyType AND d.doc_date <= @asOf AND (@partyId IS NULL OR d.party_id = @partyId)
+        FROM (${partyDocumentsSql({ partyType, byParty: partyId !== undefined })}) d JOIN ${party} n ON n.id = d.party_id
+        WHERE d.doc_date <= @asOf
           AND NOT EXISTS (SELECT 1 FROM party_ledger_entry e WHERE e.business_id = d.business_id AND e.ref_type = d.type AND e.ref_id = d.id
             AND e.entry_kind = 'cancel' AND e.doc_date <= @asOf))
       WHERE open_paise > 0 ORDER BY name_norm, nid`).all({ businessId, partyType, asOf, partyId: partyId ?? null }) as {

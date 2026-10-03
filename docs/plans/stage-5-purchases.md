@@ -706,3 +706,16 @@ party ledgers reconciled.
 - **The integrity check reports party mismatches** (`PARTY_LEDGER_MISMATCH`) and never rewrites entries.
 - **Screens are not clicked through.** They are checked by typecheck, build and helper tests; the 5f manual checklist
   is for the user.
+- **Review fixes (5h, user-reviewed list), all four parts done:**
+  - customer edits keep every field;
+  - the owner's permissions come with setup;
+  - the import returns its products;
+  - series accept kind-letter prefixes;
+  - quote rows carry `draftLineNo`;
+  - a full return takes back the round-off;
+  - reverse charge is refused;
+  - number format is by document type;
+  - allocations carry business dates for as-of ageing (migration 0009);
+  - party queries read one party (migration 0010).
+
+  The year difference near 31 March (#8) is documented in ADR-0023 for Stage 6.

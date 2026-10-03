@@ -3,7 +3,7 @@ import type { Db } from '../open.js';
 import { stmt } from '../statements.js';
 import type { Actor } from './business.js';
 import { syncColumns } from './catalogWrite.js';
-import { PARTY_DOCUMENTS_SQL } from './partyDocuments.js';
+import { docNumbers } from './partyDocuments.js';
 
 export type AllocationSource = 'payment' | 'debit_note' | 'write_off' | 'opening';
 export type AllocationTarget = 'sale' | 'purchase' | 'expense' | 'opening';
@@ -39,14 +39,15 @@ export interface AllocationRow { id: string; targetType: string; targetId: strin
 
 // Allocations made from one settlement, with the number of the document each one settled.
 export function allocationsOfSource(db: Db, sourceType: AllocationSource, sourceId: string): AllocationRow[] {
-  return (stmt(db, `SELECT a.id, a.target_type, a.target_id, a.amount_paise, a.voided_at IS NOT NULL AS voided, d.doc_number
-      FROM allocation a LEFT JOIN (${PARTY_DOCUMENTS_SQL}) d ON d.id = a.target_id AND d.type = a.target_type
-      WHERE a.source_type = ? AND a.source_id = ? ORDER BY a.rowid`).all(sourceType, sourceId) as {
-    id: string; target_type: string; target_id: string; amount_paise: number; voided: number; doc_number: string | null;
-  }[]).map((r) => ({
-    id: r.id, targetType: r.target_type, targetId: r.target_id, amountPaise: r.amount_paise, voided: r.voided === 1,
-    ...(r.doc_number !== null && { docNumber: r.doc_number }),
-  }));
+  const rows = stmt(db, `SELECT a.id, a.target_type, a.target_id, a.amount_paise, a.voided_at IS NOT NULL AS voided
+      FROM allocation a WHERE a.source_type = ? AND a.source_id = ? ORDER BY a.rowid`).all(sourceType, sourceId) as {
+    id: string; target_type: string; target_id: string; amount_paise: number; voided: number;
+  }[];
+  const numbers = docNumbers(db, rows.map((r) => ({ type: r.target_type, id: r.target_id })));
+  return rows.map((r) => {
+    const docNumber = numbers.get(`${r.target_type}:${r.target_id}`);
+    return { id: r.id, targetType: r.target_type, targetId: r.target_id, amountPaise: r.amount_paise, voided: r.voided === 1, ...(docNumber && { docNumber }) };
+  });
 }
 
 // Voiding is the only change an allocation allows; the triggers give the amount back to both documents.
