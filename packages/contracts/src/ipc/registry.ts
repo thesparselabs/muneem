@@ -11,6 +11,18 @@ import {
 import {
   CashMovementInput, CloseRegisterInput, Customer, CustomerInput, CustomerSearchInput, OpenRegisterInput, RegisterReport, RegisterSession,
 } from './pos.js';
+import {
+  LedgerInput, LedgerPage, OpeningBalanceInput, Outstanding, OutstandingInput, PartyOpening, SetCreditLimitInput, Supplier, SupplierInput,
+  SupplierSearchInput,
+} from './parties.js';
+import {
+  CancelPurchaseInput, CreatePurchaseInput, DebitNote, Purchase, PurchaseDraft, PurchaseImportPreview, PurchaseImportPreviewInput, PurchaseListInput,
+  PurchasePage, PurchaseQuote, ReturnPurchaseInput,
+} from './purchases.js';
+import {
+  AllocateInput, AllocateResult, CancelDocumentInput, Expense, ExpenseCategory, ExpenseInput, ExpenseListInput, ExpensePage, OpenItems, PartyRefInput,
+  Payment, PaymentInput, PaymentListInput, PaymentPage, WriteOff, WriteOffInput,
+} from './payments.js';
 import { CompleteSaleInput, CompleteSaleResult, HeldBill, HoldBillInput, Sale, SaleDraft, SaleListInput, SalePage, SaleQuote } from './sales.js';
 import { PrintJobSummary, PrinterConfig, ReceiptDoc } from './print.js';
 import { SETTING_KEYS } from './settings.js';
@@ -85,6 +97,7 @@ export const contract = {
   'settings.set': spec({ input: z.object({ key: z.enum(SETTING_KEYS), value: z.unknown() }), output: Ok, permission: 'settings.manage', rateLimit: { perSec: 5 }, audit: true }),
   'settings.listSeries': spec({ input: Empty, output: z.array(DocSeries), permission: 'settings.view', rateLimit: { perSec: 10 } }),
   'settings.createSeries': spec({
+    // The prefix's shape per document type is checked where series are created (5i #3).
     input: DocSeries.omit({ id: true, businessId: true, nextSeq: true }),
     output: DocSeries, permission: 'settings.manage', rateLimit: { perSec: 2 }, audit: true,
   }),
@@ -116,6 +129,18 @@ export const contract = {
   'customers.get': spec({ input: z.object({ id: Ulid }), output: Customer, permission: 'customers.view', rateLimit: { perSec: 20 } }),
   'customers.create': spec({ input: CustomerInput, output: Customer, permission: 'customers.create', rateLimit: { perSec: 5 }, audit: true }),
   'customers.update': spec({ input: CustomerInput.extend({ id: Ulid, version: z.number().int() }), output: Customer, permission: 'customers.edit', rateLimit: { perSec: 5 }, audit: true }),
+  'customers.setCreditLimit': spec({ input: SetCreditLimitInput, output: Customer, permission: 'customers.approve', rateLimit: { perSec: 2 }, audit: true }),
+  'customers.setOpening': spec({ input: OpeningBalanceInput, output: PartyOpening, permission: 'customers.edit', rateLimit: { perSec: 2 }, audit: true }),
+  'customers.getLedger': spec({ input: LedgerInput, output: LedgerPage, permission: 'customers.view', rateLimit: { perSec: 10 } }),
+  'customers.getOutstanding': spec({ input: OutstandingInput, output: Outstanding, permission: 'customers.view', rateLimit: { perSec: 2 } }),
+
+  'suppliers.search': spec({ input: SupplierSearchInput, output: z.array(Supplier), permission: 'suppliers.view', rateLimit: { perSec: 20 } }),
+  'suppliers.get': spec({ input: z.object({ id: Ulid }), output: Supplier, permission: 'suppliers.view', rateLimit: { perSec: 20 } }),
+  'suppliers.create': spec({ input: SupplierInput, output: Supplier, permission: 'suppliers.create', rateLimit: { perSec: 5 }, audit: true }),
+  'suppliers.update': spec({ input: SupplierInput.extend({ id: Ulid, version: z.number().int() }), output: Supplier, permission: 'suppliers.edit', rateLimit: { perSec: 5 }, audit: true }),
+  'suppliers.setOpening': spec({ input: OpeningBalanceInput, output: PartyOpening, permission: 'suppliers.edit', rateLimit: { perSec: 2 }, audit: true }),
+  'suppliers.getLedger': spec({ input: LedgerInput, output: LedgerPage, permission: 'suppliers.view', rateLimit: { perSec: 10 } }),
+  'suppliers.getOutstanding': spec({ input: OutstandingInput, output: Outstanding, permission: 'suppliers.view', rateLimit: { perSec: 2 } }),
   'pos.getSession': spec({ input: Empty, output: RegisterSession.nullable(), permission: 'pos.view', rateLimit: { perSec: 20 } }),
   'pos.openRegister': spec({ input: OpenRegisterInput, output: RegisterSession, permission: 'pos.create', rateLimit: { perSec: 1 }, audit: true }),
   'pos.cashMovement': spec({ input: CashMovementInput, output: Ok, permission: 'pos.create', rateLimit: { perSec: 2 }, audit: true }),
@@ -153,12 +178,34 @@ export const contract = {
   'inventory.importOpeningPreview': spec({ input: OpeningImportPreviewInput, output: OpeningImportPreview, permission: 'inventory.create', rateLimit: { perSec: 2 }, audit: true }),
   'inventory.importOpeningCommit': spec({ input: OpeningImportCommitInput, output: AdjustmentResult, permission: 'inventory.create', rateLimit: { perSec: 1 }, audit: true, idempotent: 'commandId' }),
 
+  'purchases.quote': spec({ input: PurchaseDraft, output: PurchaseQuote, permission: 'purchases.create', rateLimit: { perSec: 10 } }),
+  'purchases.create': spec({ input: CreatePurchaseInput, output: Purchase, permission: 'purchases.create', rateLimit: { perSec: 2 }, audit: true, idempotent: 'commandId' }),
+  'purchases.get': spec({ input: z.object({ id: Ulid }), output: Purchase, permission: 'purchases.view', rateLimit: { perSec: 20 } }),
+  'purchases.list': spec({ input: PurchaseListInput, output: PurchasePage, permission: 'purchases.view', rateLimit: { perSec: 10 } }),
+  'purchases.return': spec({ input: ReturnPurchaseInput, output: DebitNote, permission: 'purchases.create', rateLimit: { perSec: 2 }, audit: true, idempotent: 'commandId' }),
+  'purchases.cancel': spec({ input: CancelPurchaseInput, output: Purchase, permission: 'purchases.cancel', rateLimit: { perSec: 1 }, audit: true }),
+  'purchases.importLinesPreview': spec({ input: PurchaseImportPreviewInput, output: PurchaseImportPreview, permission: 'purchases.create', rateLimit: { perSec: 2 }, audit: true }),
+
+  'payments.create': spec({ input: PaymentInput, output: Payment, permission: 'payments.create', rateLimit: { perSec: 2 }, audit: true, idempotent: 'commandId' }),
+  'payments.get': spec({ input: z.object({ id: Ulid }), output: Payment, permission: 'payments.view', rateLimit: { perSec: 20 } }),
+  'payments.list': spec({ input: PaymentListInput, output: PaymentPage, permission: 'payments.view', rateLimit: { perSec: 10 } }),
+  'payments.openItems': spec({ input: PartyRefInput, output: OpenItems, permission: 'payments.view', rateLimit: { perSec: 10 } }),
+  'payments.allocate': spec({ input: AllocateInput, output: AllocateResult, permission: 'payments.create', rateLimit: { perSec: 2 }, audit: true }),
+  'payments.cancel': spec({ input: CancelDocumentInput, output: Payment, permission: 'payments.cancel', rateLimit: { perSec: 1 }, audit: true }),
+  'payments.writeOff': spec({ input: WriteOffInput, output: WriteOff, permission: 'payments.approve', rateLimit: { perSec: 1 }, audit: true, idempotent: 'commandId' }),
+
+  'expenses.listCategories': spec({ input: Empty, output: z.array(ExpenseCategory), permission: 'expenses.view', rateLimit: { perSec: 5 } }),
+  'expenses.create': spec({ input: ExpenseInput, output: Expense, permission: 'expenses.create', rateLimit: { perSec: 2 }, audit: true, idempotent: 'commandId' }),
+  'expenses.get': spec({ input: z.object({ id: Ulid }), output: Expense, permission: 'expenses.view', rateLimit: { perSec: 20 } }),
+  'expenses.list': spec({ input: ExpenseListInput, output: ExpensePage, permission: 'expenses.view', rateLimit: { perSec: 10 } }),
+  'expenses.cancel': spec({ input: CancelDocumentInput, output: Expense, permission: 'expenses.cancel', rateLimit: { perSec: 1 }, audit: true }),
+
   'sync.getStatus': spec({ input: Empty, output: SyncStatus, permission: null, rateLimit: { perSec: 10 } }),
 
   'diagnostics.getHealth': spec({ input: Empty, output: Health, permission: 'diagnostics.view', rateLimit: { perSec: 5 } }),
   'diagnostics.integrityCheck': spec({
     input: Empty,
-    output: z.object({ quickCheck: z.enum(['ok', 'failed']), foreignKeys: z.enum(['ok', 'failed']), auditChain: z.enum(['ok', 'broken']), stock: z.enum(['ok', 'healed', 'not_run']), detail: z.array(z.string()) }),
+    output: z.object({ quickCheck: z.enum(['ok', 'failed']), foreignKeys: z.enum(['ok', 'failed']), auditChain: z.enum(['ok', 'broken']), stock: z.enum(['ok', 'healed', 'not_run']), parties: z.enum(['ok', 'mismatch', 'not_run']), detail: z.array(z.string()) }),
     permission: 'diagnostics.view', rateLimit: { perSec: 1 }, audit: true,
   }),
   'diagnostics.backupNow': spec({ input: Empty, output: z.object({ path: z.string(), bytes: z.number().int(), verified: z.boolean() }), permission: 'diagnostics.view', rateLimit: { perSec: 1 }, audit: true }),

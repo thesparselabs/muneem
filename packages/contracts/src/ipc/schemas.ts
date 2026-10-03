@@ -22,6 +22,8 @@ export const Session = z.object({
   mode: z.enum(['online', 'offline']),
   permVer: z.number().int(),
   offlineDaysRemaining: z.number().int().nullable(),
+  // For showing and hiding screens only; main checks every call itself (5f details).
+  permissions: z.array(z.string()),
 });
 export type Session = z.infer<typeof Session>;
 
@@ -75,8 +77,9 @@ export type Terminal = z.infer<typeof Terminal>;
 
 export const DocSeries = z.object({
   id: Ulid, businessId: Ulid, branchId: Ulid.nullable(), terminalId: Ulid.nullable(),
-  docType: z.enum(['tax_invoice', 'bill_of_supply', 'credit_note', 'delivery_challan', 'receipt', 'payment', 'purchase', 'debit_note']),
-  fy: z.string().regex(/^\d{4}-\d{2}$/), prefix: z.string().regex(/^[A-Z0-9]{1,4}$/, '1–4 capital letters or digits'), padWidth: z.number().int().min(3).max(10), nextSeq: z.number().int(),
+  docType: z.enum(['tax_invoice', 'bill_of_supply', 'credit_note', 'delivery_challan', 'receipt', 'payment', 'purchase', 'debit_note', 'expense']),
+  // Other documents add a kind letter to the terminal prefix (ADR-0028), e.g. DE01P.
+  fy: z.string().regex(/^\d{4}-\d{2}$/), prefix: z.string().regex(/^[A-Z0-9]{1,4}[A-Z]?$/, '1–4 capital letters or digits, plus a kind letter'), padWidth: z.number().int().min(3).max(10), nextSeq: z.number().int(),
 });
 
 export const SyncStatus = z.object({

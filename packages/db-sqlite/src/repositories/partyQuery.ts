@@ -1,0 +1,112 @@
+import type { AgeingBuckets, LedgerPage, Outstanding } from '@muneem/contracts';
+import { ageingBucket, type PartyType } from '@muneem/domain';
+import type { Db } from '../open.js';
+import { stmt } from '../statements.js';
+import { docNumbers, partyDocumentsSql, type PartyDocumentRole } from './partyDocuments.js';
+
+type Cursor = { d: string; id: string };
+const encode = (c: Cursor): string => Buffer.from(JSON.stringify(c)).toString('base64url');
+function decode(s: string | undefined): Cursor | null {
+  if (!s) return null;
+  try { return JSON.parse(Buffer.from(s, 'base64url').toString('utf8')) as Cursor; } catch { return null; }
+}
+
+export interface PartyRef { businessId: string; partyType: PartyType; partyId: string }
+
+export interface OpenItemRow {
+  role: PartyDocumentRole; type: string; id: string; docNumber: string | null; docDate: string; dueDate: string; amountPaise: number; openPaise: number;
+}
+
+// Live charges with something still owed and live settlements with something still to apply, oldest due first.
+export function openItems(db: Db, p: PartyRef): OpenItemRow[] {
+  return (stmt(db, `SELECT role, type, id, doc_number, doc_date, due_date, amount_paise, amount_paise - used_paise AS open_paise
+      FROM (${partyDocumentsSql({ partyType: p.partyType, byParty: true })})
+      WHERE live = 1 AND amount_paise > used_paise
+      ORDER BY due_date, doc_date, id`).all(p) as {
+    role: PartyDocumentRole; type: string; id: string; doc_number: string | null; doc_date: string; due_date: string; amount_paise: number; open_paise: number;
+  }[]).map((r) => ({
+    role: r.role, type: r.type, id: r.id, docNumber: r.doc_number, docDate: r.doc_date, dueDate: r.due_date, amountPaise: r.amount_paise, openPaise: r.open_paise,
+  }));
+}
+
+// FR-039: entries in date order with a running balance; positive = the party owes the business.
+export function partyStatement(db: Db, p: PartyRef, f: { from?: string | undefined; to?: string | undefined; limit: number; cursor?: string | undefined }): LedgerPage {
+  const after = decode(f.cursor);
+  const params = { ...p, from: f.from ?? null, to: f.to ?? null };
+  const sumWhere = (cond: string) => stmt(db, `SELECT COALESCE(SUM(amount_paise), 0) FROM party_ledger_entry
+    WHERE business_id = @businessId AND party_type = @partyType AND party_id = @partyId AND ${cond}`).pluck().get(params) as number;
+  const rows = stmt(db, `SELECT e.* FROM (
+        SELECT id, ref_type, ref_id, entry_kind, amount_paise, doc_date, due_date,
+          SUM(amount_paise) OVER (ORDER BY doc_date, id) AS balance
+        FROM party_ledger_entry WHERE business_id = @businessId AND party_type = @partyType AND party_id = @partyId) e
+      WHERE (@from IS NULL OR e.doc_date >= @from) AND (@to IS NULL OR e.doc_date <= @to)
+        AND (@afterDate IS NULL OR (e.doc_date, e.id) > (@afterDate, @afterId))
+      ORDER BY e.doc_date, e.id LIMIT @limit`).all({ ...params, afterDate: after?.d ?? null, afterId: after?.id ?? null, limit: f.limit + 1 }) as {
+    id: string; ref_type: string; ref_id: string; entry_kind: 'post' | 'cancel'; amount_paise: number; doc_date: string; due_date: string | null;
+    balance: number;
+  }[];
+  const page = rows.slice(0, f.limit);
+  const numbers = docNumbers(db, page.map((r) => ({ type: r.ref_type, id: r.ref_id })));
+  const last = page.at(-1);
+  return {
+    openingBalancePaise: f.from ? sumWhere('doc_date < @from') : 0,
+    items: page.map((r) => ({
+      id: r.id, refType: r.ref_type, refId: r.ref_id, kind: r.entry_kind, docDate: r.doc_date, amountPaise: r.amount_paise, balancePaise: r.balance,
+      ...(numbers.has(`${r.ref_type}:${r.ref_id}`) && { docNumber: numbers.get(`${r.ref_type}:${r.ref_id}`)! }), ...(r.due_date !== null && { dueDate: r.due_date }),
+    })),
+    closingBalancePaise: f.to ? sumWhere('doc_date <= @to') : sumWhere('1 = 1'),
+    nextCursor: rows.length > f.limit && last ? encode({ d: last.doc_date, id: last.id }) : null,
+  };
+}
+
+const emptyBuckets = (): AgeingBuckets => ({
+  notDuePaise: 0, days0to30Paise: 0, days31to60Paise: 0, days61to90Paise: 0, over90Paise: 0, advancePaise: 0, netPaise: 0,
+});
+const BUCKET_FIELD = {
+  notDue: 'notDuePaise', days0to30: 'days0to30Paise', days31to60: 'days31to60Paise', days61to90: 'days61to90Paise', over90: 'over90Paise',
+} as const;
+
+// Open charges aged by days past their due date; unallocated settlements are the party's advance.
+// Everything is taken as it stood on `asOf` (5h #5): documents dated and not cancelled by then, allocations made and not
+// voided by then. From `today` on, that is exactly the documents' current totals, so that common case reads them
+// directly and skips settled documents (5i #1).
+export function partyOutstanding(
+  db: Db, businessId: string, partyType: PartyType, asOf: string, partyId?: string, today?: string,
+): Outstanding {
+  const party = partyType === 'customer' ? 'customer' : 'supplier';
+  const docs = partyDocumentsSql({ partyType, byParty: partyId !== undefined });
+  const params = { businessId, partyType, asOf, partyId: partyId ?? null };
+  const current = today !== undefined && asOf >= today;
+  const allocated = (side: 'target' | 'source') => `(SELECT COALESCE(SUM(a.amount_paise), 0) FROM allocation a
+      WHERE a.business_id = d.business_id AND a.${side}_type = d.type AND a.${side}_id = d.id
+        AND a.allocated_on <= @asOf AND (a.voided_on IS NULL OR a.voided_on > @asOf))`;
+  const rows = stmt(db, current
+    ? `SELECT d.role, d.party_id, d.due_date, d.amount_paise - d.used_paise AS open_paise, n.name
+        FROM (${docs}) d JOIN ${party} n ON n.id = d.party_id
+        WHERE d.live = 1 AND d.amount_paise > d.used_paise AND d.doc_date <= @asOf
+        ORDER BY n.name_norm, n.id`
+    : `SELECT role, party_id, due_date, open_paise, name FROM (
+        SELECT d.role, d.party_id, d.due_date, n.name, n.name_norm, n.id AS nid,
+          d.amount_paise - CASE d.role WHEN 'charge' THEN ${allocated('target')} ELSE ${allocated('source')} END AS open_paise
+        FROM (${docs}) d JOIN ${party} n ON n.id = d.party_id
+        WHERE d.doc_date <= @asOf
+          AND NOT EXISTS (SELECT 1 FROM party_ledger_entry e WHERE e.business_id = d.business_id AND e.ref_type = d.type AND e.ref_id = d.id
+            AND e.entry_kind = 'cancel' AND e.doc_date <= @asOf))
+      WHERE open_paise > 0 ORDER BY name_norm, nid`).all(params) as {
+    role: PartyDocumentRole; party_id: string; due_date: string; open_paise: number; name: string;
+  }[];
+  const byParty = new Map<string, AgeingBuckets & { partyId: string; name: string }>();
+  const totals = emptyBuckets();
+  for (const r of rows) {
+    const row = byParty.get(r.party_id) ?? { ...emptyBuckets(), partyId: r.party_id, name: r.name };
+    byParty.set(r.party_id, row);
+    const field = r.role === 'charge' ? BUCKET_FIELD[ageingBucket(r.due_date, asOf)] : 'advancePaise';
+    const signed = r.role === 'charge' ? r.open_paise : -r.open_paise;
+    for (const b of [row, totals]) { b[field] += r.open_paise; b.netPaise += signed; }
+  }
+  return { asOf, rows: [...byParty.values()], totals };
+}
+
+export const partyBalance = (db: Db, p: PartyRef): number =>
+  stmt(db, `SELECT COALESCE(SUM(amount_paise), 0) FROM party_ledger_entry WHERE business_id = @businessId AND party_type = @partyType
+    AND party_id = @partyId`).pluck().get(p) as number;

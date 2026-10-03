@@ -8,11 +8,12 @@ import { createDocSeries } from './docSeries.js';
 
 export interface SeriesKey { businessId: string; branchId: string; terminalId: string; docType: string; fy: string }
 
-export function findOrCreateSeries(db: Db, key: SeriesKey, prefix: string, actor: Actor): string {
+// Pad width 6 is a sale invoice (ADR-0014); 5 is any other document, numbered with a kind letter (ADR-0028).
+export function findOrCreateSeries(db: Db, key: SeriesKey, prefix: string, actor: Actor, padWidth = 6): string {
   const id = stmt(db, 'SELECT id FROM doc_series WHERE business_id = ? AND doc_type = ? AND fy = ? AND branch_id = ? AND terminal_id = ?')
     .pluck().get(key.businessId, key.docType, key.fy, key.branchId, key.terminalId) as string | undefined;
   if (id) return id;
-  return createDocSeries(db, key.businessId, { branchId: key.branchId, terminalId: key.terminalId, docType: key.docType, fy: key.fy, prefix, padWidth: 6 }, actor).id;
+  return createDocSeries(db, key.businessId, { branchId: key.branchId, terminalId: key.terminalId, docType: key.docType, fy: key.fy, prefix, padWidth }, actor).id;
 }
 
 export function saleIdByCommand(db: Db, businessId: string, commandId: string): string | null {
@@ -25,7 +26,7 @@ export interface SaleRecord {
   id: string; businessId: string; branchId: string; terminalId: string; sessionId: string; commandId: string;
   seriesId: string; docNumber: string; docSeq: number; docDate: string; fy: string; taxScheme: string;
   customerId: string | null; customer: CustomerSnapshot; placeOfSupplyReason: string | null; priceListId: string | null;
-  totals: SaleTotals; paidPaise: number; changePaise: number; lines: readonly QuoteLine[]; tenders: readonly SaleTender[];
+  totals: SaleTotals; paidPaise: number; changePaise: number; creditPaise: number; dueDate: string | null; lines: readonly QuoteLine[]; tenders: readonly SaleTender[];
   lineCosts: readonly { unitCostPaise: number; cogsPaise: number }[];
 }
 
@@ -37,18 +38,19 @@ export function insertSale(db: Db, r: SaleRecord, actor: Actor): void {
   stmt(db, `INSERT INTO sale (id, business_id, branch_id, terminal_id, session_id, command_id, doc_type, series_id, doc_number, doc_seq,
       doc_date, fy, customer_id, customer_snapshot_json, place_of_supply_state, place_of_supply_reason, supply_type, state_tax_kind,
       gstr1_bucket, tax_scheme, price_list_id, gross_paise, line_discount_paise, bill_discount_paise, taxable_paise, cgst_paise, sgst_paise,
-      igst_paise, cess_paise, round_off_paise, total_paise, paid_paise, change_paise, cogs_paise, created_at, updated_at, created_by, device_id)
+      igst_paise, cess_paise, round_off_paise, total_paise, paid_paise, change_paise, credit_paise, due_date, cogs_paise, created_at, updated_at,
+      created_by, device_id)
     VALUES (@id, @businessId, @branchId, @terminalId, @sessionId, @commandId, @docType, @seriesId, @docNumber, @docSeq,
       @docDate, @fy, @customerId, @customerJson, @posState, @posReason, @supplyType, @stateTaxKind,
       @bucket, @taxScheme, @priceListId, @gross, @lineDisc, @billDisc, @taxable, @cgst, @sgst,
-      @igst, @cess, @roundOff, @total, @paid, @change, @cogs, @now, @now, @createdBy, @deviceId)`).run({
+      @igst, @cess, @roundOff, @total, @paid, @change, @credit, @dueDate, @cogs, @now, @now, @createdBy, @deviceId)`).run({
     id: r.id, businessId: r.businessId, branchId: r.branchId, terminalId: r.terminalId, sessionId: r.sessionId, commandId: r.commandId,
     docType: t.docType, seriesId: r.seriesId, docNumber: r.docNumber, docSeq: r.docSeq, docDate: r.docDate, fy: r.fy,
     customerId: r.customerId, customerJson: JSON.stringify(r.customer), posState: t.placeOfSupplyState, posReason: r.placeOfSupplyReason,
     supplyType: t.supplyType, stateTaxKind: t.stateTaxKind, bucket: t.gstr1Bucket, taxScheme: r.taxScheme, priceListId: r.priceListId,
     gross: t.grossPaise, lineDisc: t.lineDiscountPaise, billDisc: t.billDiscountPaise, taxable: t.taxablePaise, cgst: t.cgstPaise,
     sgst: t.sgstPaise, igst: t.igstPaise, cess: t.cessPaise, roundOff: t.roundOffPaise, total: t.totalPaise, paid: r.paidPaise,
-    change: r.changePaise, cogs: r.lineCosts.reduce((s, c) => s + c.cogsPaise, 0), now, createdBy: actor.userId, deviceId: actor.deviceId,
+    change: r.changePaise, credit: r.creditPaise, dueDate: r.dueDate, cogs: r.lineCosts.reduce((s, c) => s + c.cogsPaise, 0), now, createdBy: actor.userId, deviceId: actor.deviceId,
   });
   const item = stmt(db, `INSERT INTO sale_item (id, sale_id, business_id, line_no, product_id, product_name, hsn_code, uom_id, uom_code, qty_milli,
       base_qty_milli, unit_price_paise, price_is_inclusive, mrp_paise, gross_paise, line_discount_paise, apportioned_bill_discount_paise,
@@ -74,6 +76,7 @@ type SaleRow = {
   supply_type: SaleTotals['supplyType']; state_tax_kind: SaleTotals['stateTaxKind']; gstr1_bucket: string; gross_paise: number;
   line_discount_paise: number; bill_discount_paise: number; taxable_paise: number; cgst_paise: number; sgst_paise: number; igst_paise: number;
   cess_paise: number; round_off_paise: number; total_paise: number; paid_paise: number; change_paise: number; created_at: string; created_by: string;
+  credit_paise: number; due_date: string | null;
 };
 type ItemRow = {
   line_no: number; product_id: string; product_name: string; hsn_code: string | null; uom_id: string; uom_code: string; qty_milli: number;
@@ -119,9 +122,10 @@ export function getSale(db: Db, id: string): (Sale & { businessId: string }) | n
   return {
     id: r.id, businessId: r.business_id, docNumber: r.doc_number, docDate: r.doc_date, docType: r.doc_type, status: r.status,
     sessionId: r.session_id, terminalId: r.terminal_id, customer: JSON.parse(r.customer_snapshot_json) as CustomerSnapshot,
-    totals: totalsOf(r, discountBpOf(lines)), paidPaise: r.paid_paise, changePaise: r.change_paise, lines, tenders, createdAt: r.created_at, createdBy: r.created_by,
+    totals: totalsOf(r, discountBpOf(lines)), paidPaise: r.paid_paise, changePaise: r.change_paise, creditPaise: r.credit_paise, lines, tenders, createdAt: r.created_at, createdBy: r.created_by,
     ...(r.customer_id !== null && { customerId: r.customer_id }),
     ...(r.place_of_supply_reason !== null && { placeOfSupplyReason: r.place_of_supply_reason }),
+    ...(r.due_date !== null && { dueDate: r.due_date }),
   };
 }
 

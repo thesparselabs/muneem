@@ -1,5 +1,5 @@
-import type { Customer, CustomerInput } from '@muneem/contracts';
-import { createCustomer, getCustomer, searchCustomers, updateCustomer } from '@muneem/db-sqlite';
+import type { Customer, CustomerInput, SetCreditLimitInput } from '@muneem/contracts';
+import { createCustomer, getCustomer, searchCustomers, setCustomerCreditLimit, updateCustomer } from '@muneem/db-sqlite';
 import type { PosContext } from './posContext.js';
 
 export class CustomerService {
@@ -19,5 +19,10 @@ export class CustomerService {
     this.get(input.id);
     const { id, version, ...fields } = input;
     return updateCustomer(this.ctx.db(), id, version, fields, this.ctx.actor());
+  }
+
+  setCreditLimit(input: SetCreditLimitInput): Customer {
+    this.get(input.id);
+    return setCustomerCreditLimit(this.ctx.db(), input.id, input.version, input.limitPaise, this.ctx.actor());
   }
 }

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import fc from 'fast-check';
-import { EMPTY_STOCK, issueStock, receiveStock, replayMovements, type StockMovementRecord, type StockState } from '../src/index.js';
+import { EMPTY_STOCK, issueStock, receiveStock, replayMovements, returnToSupplier, type StockMovementRecord, type StockState } from '../src/index.js';
 
 describe('moving average costing (LLD §4.1)', () => {
   it('averages receipts and issues at the average', () => {
@@ -47,23 +47,75 @@ describe('moving average costing (LLD §4.1)', () => {
     expect(covered.state).toMatchObject({ qtyMilli: 6000, valuePaise: 18_000 });
   });
 
+  it('costs a cheap item by its share of the value, never below what is on hand (ADR-0027)', () => {
+    const s = receiveStock(EMPTY_STOCK, 1_000_000, 1500).state;   // 1000 units for ₹15: 1.5 paise each
+    const r = issueStock(s, 999_000, 0);
+    expect(r.valueDeltaPaise).toBe(-1499);                          // 999 × 1.5 = 1498.5, rounded
+    expect(r.state).toMatchObject({ qtyMilli: 1000, valuePaise: 1 });
+    const tiny = issueStock(receiveStock(EMPTY_STOCK, 2501, 2).state, 2500, 0);
+    expect(tiny.state).toMatchObject({ qtyMilli: 1, valuePaise: 0 });
+  });
+
   it('falls back to the given cost when there has never been a receipt', () => {
     expect(issueStock(EMPTY_STOCK, 1000, 4500)).toMatchObject({ unitCostPaise: 4500, provisional: true, valueDeltaPaise: -4500 });
   });
 });
 
+describe('return to supplier (ADR-0024)', () => {
+  it('takes goods out at what they were bought for, not the average', () => {
+    let s = receiveStock(EMPTY_STOCK, 10_000, 100_000).state;     // 10 @ ₹100
+    s = receiveStock(s, 10_000, 140_000).state;                    // 10 @ ₹140 → avg ₹120
+    const r = returnToSupplier(s, 5000, 70_000);                   // 5 of the ₹140 lot go back
+    expect(r).toMatchObject({ returnDeltaPaise: -70_000, correctionPaise: 0, unitCostPaise: 14_000, provisional: false });
+    expect(r.state).toMatchObject({ qtyMilli: 15_000, valuePaise: 170_000 });
+  });
+
+  it('books what is left as a correction when the return empties the stock', () => {
+    let s = receiveStock(EMPTY_STOCK, 10_000, 100_000).state;
+    s = receiveStock(s, 10_000, 140_000).state;
+    s = issueStock(s, 10_000, 0).state;                            // 10 sold at ₹120 → ₹120,000 left
+    const r = returnToSupplier(s, 10_000, 140_000);                // the ₹140 lot goes back
+    expect(r.state).toMatchObject({ qtyMilli: 0, valuePaise: 0 });
+    expect(r.correctionPaise).toBe(20_000);
+    expect(r.returnDeltaPaise + r.correctionPaise).toBe(-s.valuePaise);
+  });
+
+  it('never leaves value below zero while stock remains', () => {
+    const s = receiveStock(EMPTY_STOCK, 10_000, 10_000).state;   // 10 @ ₹10
+    const r = returnToSupplier(s, 5000, 50_000);                   // 5 bought at ₹100 go back
+    expect(r.state).toMatchObject({ qtyMilli: 5000, valuePaise: 0 });
+    expect(r.correctionPaise).toBe(40_000);
+  });
+
+  it('values goods returned past zero at the return cost, marked provisional', () => {
+    const s = receiveStock(EMPTY_STOCK, 2000, 20_000).state;
+    const r = returnToSupplier(s, 5000, 60_000);                   // 5 @ ₹120 go back, only 2 on hand
+    expect(r).toMatchObject({ provisional: true, unitCostPaise: 12_000 });
+    expect(r.state).toMatchObject({ qtyMilli: -3000, valuePaise: -36_000 });
+  });
+});
+
+// Unit costs up to ₹1 lakh per base unit; past that the money kernel refuses the intermediate values with OVERFLOW.
+const valued = <K extends 'receive' | 'return'>(kind: K) => fc.record({ qtyMilli: fc.integer({ min: 1, max: 50_000 }), unitCostPaise: fc.integer({ min: 0, max: 10_000_000 }) })
+  .map(({ qtyMilli, unitCostPaise }) => ({ kind, qtyMilli, valuePaise: Math.floor((qtyMilli * unitCostPaise) / 1000) }));
 const op = fc.oneof(
-  fc.record({ kind: fc.constant('receive' as const), qtyMilli: fc.integer({ min: 1, max: 50_000 }), valuePaise: fc.integer({ min: 0, max: 5_000_000 }) }),
+  valued('receive'),
   fc.record({ kind: fc.constant('issue' as const), qtyMilli: fc.integer({ min: 1, max: 50_000 }), fallbackPaise: fc.integer({ min: 0, max: 50_000 }) }),
+  valued('return'),
 );
 
-function run(ops: Array<{ kind: 'receive' | 'issue'; qtyMilli: number; valuePaise?: number; fallbackPaise?: number }>) {
+function run(ops: Array<{ kind: 'receive' | 'issue' | 'return'; qtyMilli: number; valuePaise?: number; fallbackPaise?: number }>) {
   let s: StockState = EMPTY_STOCK;
   const records: StockMovementRecord[] = [];
   for (const o of ops) {
     if (o.kind === 'receive') {
       const r = receiveStock(s, o.qtyMilli, o.valuePaise!);
       records.push({ kind: 'receipt', qtyMilli: o.qtyMilli, valuePaise: r.receiptDeltaPaise, unitCostPaise: 0 });
+      if (r.correctionPaise !== 0) records.push({ kind: 'correction', qtyMilli: 0, valuePaise: r.correctionPaise, unitCostPaise: 0 });
+      s = r.state;
+    } else if (o.kind === 'return') {
+      const r = returnToSupplier(s, o.qtyMilli, o.valuePaise!);
+      records.push({ kind: 'return', qtyMilli: -o.qtyMilli, valuePaise: r.returnDeltaPaise, unitCostPaise: r.unitCostPaise });
       if (r.correctionPaise !== 0) records.push({ kind: 'correction', qtyMilli: 0, valuePaise: r.correctionPaise, unitCostPaise: 0 });
       s = r.state;
     } else {
@@ -73,6 +125,7 @@ function run(ops: Array<{ kind: 'receive' | 'issue'; qtyMilli: number; valuePais
       s = r.state;
     }
     if (s.qtyMilli === 0) expect(s.valuePaise).toBe(0);
+    if (s.qtyMilli > 0) expect(s.valuePaise).toBeGreaterThanOrEqual(0);
   }
   return { state: s, records };
 }

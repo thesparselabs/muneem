@@ -43,7 +43,10 @@ export class BusinessService {
       setMeta(db, META_KEYS.activeTerminalId, '');
       return b;
     });
-    this.d.session.patch({ organizationId, businessId: business.id, branchId: null, terminalId: null, user: { ...s.user, roles: ['owner'] } });
+    this.d.session.patch({
+      organizationId, businessId: business.id, branchId: null, terminalId: null, user: { ...s.user, roles: ['owner'] },
+      permissions: ROLE_PRESETS.owner!.map((g) => g.permission),
+    });
     return business;
   }
 

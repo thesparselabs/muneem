@@ -27,6 +27,7 @@ export const ReceiptDoc = z.object({
   taxSummary: z.array(z.object({ rateBp: Int, taxablePaise: Int, cgstPaise: Int, sgstPaise: Int, igstPaise: Int })),
   tenders: z.array(z.object({ method: z.string(), amountPaise: Int, reference: z.string().optional() })),
   changePaise: Int,
+  credit: z.object({ amountPaise: Int, dueDate: z.string(), balancePaise: Int }).optional(),
   declaration: z.string().optional(),
   footer: z.array(z.string()),
 });

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type RefObject } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import type { CompleteSaleResult, Customer, ProductHit, QuoteContext, RegisterReport, TenderLine } from '@muneem/contracts';
+import type { CompleteSaleResult, Customer, ProductHit, QuoteContext, RegisterReport, SaleQuote, TenderLine } from '@muneem/contracts';
 import { newUlid } from '@muneem/domain';
 import { api, errorMessage, isClientError } from '../../api.js';
 import { formatPaise, formatRateBp, parseOptional, scaledToText } from '../../lib/money.js';
@@ -26,6 +26,7 @@ export default function PosScreen() {
   const [cart, setCart] = useState<Cart>(emptyCart);
   const [context, setContext] = useState<QuoteContext | null>(null);
   const [payTotal, setPayTotal] = useState<number | null>(null);
+  const [payCredit, setPayCredit] = useState<SaleQuote['credit'] | null>(null);
   const [modal, setModal] = useState<Modal>(null);
   const [message, setMessage] = useState<{ kind: 'ok' | 'error'; text: string } | null>(null);
   const [busy, setBusy] = useState(false);
@@ -68,6 +69,7 @@ export default function PosScreen() {
       const blocked = q.warnings.filter((w) => w.blocking);
       if (blocked.length > 0) { setMessage({ kind: 'error', text: `Not enough stock: ${blocked.map((w) => w.message).join('; ')}` }); return; }
       setPayTotal(q.totals.totalPaise);
+      setPayCredit(q.credit ?? null);
       pendingCommand.current = commandFor(pendingCommand.current, JSON.stringify(toDraft(cart)), newUlid);
       setModal('payment');
     } catch (e) { setMessage({ kind: 'error', text: errorMessage(e) }); }
@@ -190,7 +192,7 @@ export default function PosScreen() {
         <DiscountDialog title="Line discount" current={cart.lines.find((l) => l.key === modal.lineDiscount)?.lineDiscount ?? { kind: 'amount', value: 0 }}
           onClose={() => setModal(null)} onApply={(d) => { setModal(null); update(setLineDiscount(cart, modal.lineDiscount, d)); }} />
       )}
-      {modal === 'payment' && payTotal !== null && <PaymentDialog totalPaise={payTotal} busy={busy} warning={nearDuplicate} onClose={() => setModal(null)} onPay={(t) => void complete(t)} />}
+      {modal === 'payment' && payTotal !== null && <PaymentDialog totalPaise={payTotal} credit={payCredit} busy={busy} warning={nearDuplicate} onClose={() => setModal(null)} onPay={(t) => void complete(t)} />}
       {modal === 'held' && <HeldBillsDialog cartInUse={cart.lines.length > 0} onClose={() => setModal(null)} onRetrieve={(id, holdCurrent) => void retrieve(id, holdCurrent)} />}
       {modal === 'cash' && <CashMovementDialog onClose={() => setModal(null)} />}
       {modal === 'x' && <XReportDialog onClose={() => setModal(null)} />}

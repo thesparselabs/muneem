@@ -176,7 +176,7 @@ export class AuthService {
       branchId: branchId || null,
       terminalId: terminalId || null,
       deviceId: this.d.device.localDeviceId(),
-      mode, permVer: m?.snapshot.permVer ?? permVer, offlineDaysRemaining,
+      mode, permVer: m?.snapshot.permVer ?? permVer, offlineDaysRemaining, permissions: m?.snapshot.grants.map((g) => g.permission) ?? [],
     };
   }
 

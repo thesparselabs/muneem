@@ -55,6 +55,17 @@ docs/             this folder (reality, with reasons)
 - replay(movements) = projection, for every (product, warehouse); Σ movement values = Σ stock levels (valuation
   sub-ledger); a stock level never has value without quantity; movements are append-only
 - After repeated SIGKILLs mid-billing: one movement per sale line and no stock drift
+- Σ party ledger entries = open charges − unallocated settlements, per party (domain property and `reconcilePartiesDb`);
+  a settlement never allocates more than it holds and a document is never settled past its amount (triggers + CHECKs);
+  an allocation only joins live documents of one party; a debit note never returns more than was bought on a line
+- A purchase's total = taxable + taxes + charges + round-off (|round-off| ≤ ₹1); a line's landed value = taxable +
+  its charges + tax that cannot be claimed (CHECK); party entries, purchases, debit notes, payments, allocations and
+  expenses are append-only apart from status and allocation totals
+- A supplier return leaves at its landed cost and replay = projection still holds; an issue that leaves stock on hand
+  never takes more than the stock is worth (ADR-0027)
+- After repeated SIGKILLs mid-billing: one ledger entry per credit sale and the party ledgers reconcile
+- `purchases.create` (200 lines) p95 < 1 s; a payment settling 500 bills < 250 ms; reconciliation of 10,000 documents
+  < 2 s
 
 ## Catalog (Stage 2)
 
@@ -97,10 +108,32 @@ docs/             this folder (reality, with reasons)
 - **Below zero**: issues use the last known cost and are marked provisional; the next receipt re-costs them with a
   value-only `cost_correction` movement.
 - **Writers**: sales (a cost step before the append-only lines and a stock step after them, ADR-0019), opening stock,
-  adjustments and stock takes (adjustment documents, ADR-0021). Purchases join in Stage 5.
+  adjustments and stock takes (adjustment documents, ADR-0021), purchases at landed cost and supplier returns at
+  their own cost (Stage 5, ADR-0023/0024).
 - **Policy** (ADR-0020): `inventory.negativeStock` block / warn / allow, with a per-product override; quotes carry stock
   warnings; a negative sale is audited.
 - **Integrity**: Diagnostics and a 6-hourly timer replay the movements against the cache and rebuild any drift.
+
+## Parties and purchases (Stage 5)
+
+- **Sub-ledger** (ADR-0022): `party_ledger_entry` is append-only and written only by `postPartyEntry`, in the same
+  transaction as its document. Positive means the party owes the business. Documents are charges (credit sales,
+  purchases, credit expenses, openings) or settlements (payments, debit notes, write-offs, opening advances).
+  `PARTY_DOCUMENTS_SQL` reads them all in one shape, and `reconcilePartiesDb` checks entries against them.
+  Diagnostics and the 6-hourly timer run it and report a mismatch; they never heal it.
+- **Allocation** (ADR-0025): settlements are applied to charges in `allocation` rows, oldest due date first or as
+  chosen. Triggers keep `allocated_paise`/`settled_paise` on both documents, and allocations end only by being
+  voided.
+- **Purchases** (ADR-0023/0024/0028): priced through the GST engine with the supplier's state; ITC only when both
+  sides are regular. Freight is landed by taxable value, stock is received at landed cost, and the bill total is
+  checked to ±₹1. Debit notes return goods at their own cost in cumulative shares. Cancel reverses a wrong entry.
+  Numbers are per terminal with a kind letter.
+- **Payments and expenses** (ADR-0025/0029): receipts in, supplier payments out; cash through an open drawer moves
+  the register's expected cash. Paying a supplier needs `suppliers.view`. Expenses use seeded categories mapped to
+  LLD expense accounts.
+- **Credit at the POS** (ADR-0026): the `credit` tender, the limit checked inside the sale (no limit = ₹0) with an
+  audited override, and a `party` step in the sale commit.
+- **Screens**: the session carries permissions so menus hide what a user cannot do; main stays authoritative.
 
 ## Identity and trust
 
@@ -113,7 +146,8 @@ docs/             this folder (reality, with reasons)
 
 ## What is not built yet
 
-Purchases, payments, accounting, reports and the sync worker. In inventory: transfers, multiple warehouses per branch,
-batch/serial tracking and the GL tie-out (Stage 6). In billing: sale cancel, returns/credit
-notes, credit sales and manager PIN override (ADR-0013); USB/Windows printers and non-ASCII receipt text. Product
-variants, weighed barcodes and label printing are deferred (ADR-0008). See `build-stages.md`.
+Accounting (Stage 6, which posts everything Stages 4–5 store and ties the sub-ledgers to 1400, 1300 and 2100), reports
+and the sync worker. In inventory: transfers, multiple warehouses per branch, batch/serial tracking. In billing: sale
+cancel, returns/credit notes and manager PIN override; USB/Windows printers and non-ASCII receipt text. In purchases
+and payments: purchase orders and GRN, debit-note cancellation, refunding a customer's advance, payment reminders,
+TDS/TCS. Product variants, weighed barcodes and label printing are deferred (ADR-0008). See `build-stages.md`.

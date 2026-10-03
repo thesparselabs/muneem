@@ -9,9 +9,10 @@ import { recordChange, syncColumns } from './catalogWrite.js';
 type CustomerRow = {
   id: string; business_id: string; name: string; phone: string | null; email: string | null; gstin: string | null;
   state_code: string | null; address_line1: string | null; city: string | null; pin_code: string | null; version: number;
+  credit_days: number; credit_limit_paise: number | null;
 };
 const toCustomer = (r: CustomerRow): Customer => ({
-  id: r.id, businessId: r.business_id, name: r.name, version: r.version,
+  id: r.id, businessId: r.business_id, name: r.name, version: r.version, creditDays: r.credit_days, creditLimitPaise: r.credit_limit_paise,
   ...(r.phone !== null && { phone: r.phone }),
   ...(r.email !== null && { email: r.email }),
   ...(r.gstin !== null && { gstin: r.gstin }),
@@ -30,7 +31,7 @@ function columns(input: CustomerInput) {
   return {
     name: input.name, name_norm: normalizeName(input.name), phone: input.phone ?? null, email: input.email ?? null,
     gstin: input.gstin ?? null, state_code: fromGstin ?? input.stateCode ?? null, address_line1: input.addressLine1 ?? null,
-    city: input.city ?? null, pin_code: input.pinCode ?? null,
+    city: input.city ?? null, pin_code: input.pinCode ?? null, credit_days: input.creditDays ?? null,
   };
 }
 
@@ -41,12 +42,11 @@ export function getCustomer(db: Db, id: string): Customer | null {
 
 export function searchCustomers(db: Db, businessId: string, query: string, limit: number): Customer[] {
   const q = query.trim();
-  if (!q) return [];
   const norm = normalizeName(q);
   return (stmt(db, `SELECT * FROM customer WHERE business_id = @businessId AND deleted_at IS NULL
-      AND ((name_norm >= @norm AND name_norm < @normEnd) OR phone LIKE @phone OR gstin = @gstin)
+      AND (@q = '' OR (name_norm >= @norm AND name_norm < @normEnd) OR phone LIKE @phone OR gstin = @gstin)
     ORDER BY name_norm, id LIMIT @limit`).all({
-    businessId, norm, normEnd: norm + '\uffff', phone: `${q.replace(/[%_]/gu, '')}%`, gstin: q.toUpperCase(), limit,
+    businessId, q, norm, normEnd: norm + '\uffff', phone: `${q.replace(/[%_]/gu, '')}%`, gstin: q.toUpperCase(), limit,
   }) as CustomerRow[]).map(toCustomer);
 }
 
@@ -56,9 +56,9 @@ export function createCustomer(db: Db, businessId: string, input: CustomerInput,
     const id = newUlid();
     const s = syncColumns(actor);
     stmt(db, `INSERT INTO customer (id, business_id, name, name_norm, phone, email, gstin, state_code, address_line1, city, pin_code,
-        created_at, updated_at, created_by, device_id)
+        credit_days, created_at, updated_at, created_by, device_id)
       VALUES (@id, @business_id, @name, @name_norm, @phone, @email, @gstin, @state_code, @address_line1, @city, @pin_code,
-        @t, @t, @created_by, @device_id)`).run({ id, business_id: businessId, ...c, ...s });
+        COALESCE(@credit_days, 0), @t, @t, @created_by, @device_id)`).run({ id, business_id: businessId, ...c, ...s });
     const customer = getCustomer(db, id)!;
     recordChange(db, businessId, actor, { action: 'customer.create', entityType: 'customer', entityId: id, operationType: 'create', after: customer });
     return customer;
@@ -72,10 +72,27 @@ export function updateCustomer(db: Db, id: string, expectedVersion: number, inpu
     if (!before) throw new Error('NOT_FOUND');
     if (before.version !== expectedVersion) throw new Error('VERSION_CONFLICT');
     stmt(db, `UPDATE customer SET name=@name, name_norm=@name_norm, phone=@phone, email=@email, gstin=@gstin, state_code=@state_code,
-        address_line1=@address_line1, city=@city, pin_code=@pin_code, updated_at=@t, version=version+1, sync_state='pending'
+        address_line1=@address_line1, city=@city, pin_code=@pin_code, credit_days=COALESCE(@credit_days, credit_days), updated_at=@t, version=version+1, sync_state='pending'
       WHERE id=@id AND version=@v`).run({ id, v: expectedVersion, t: nowIso(), ...c });
     const after = getCustomer(db, id)!;
     recordChange(db, before.businessId, actor, { action: 'customer.update', entityType: 'customer', entityId: id, operationType: 'update', before, after });
+    return after;
+  });
+}
+
+// ADR-0026: the limit is a control value, changed only through this path and audited on its own.
+export function setCustomerCreditLimit(db: Db, id: string, expectedVersion: number, limitPaise: number | null, actor: Actor): Customer {
+  return withTransaction(db, () => {
+    const before = getCustomer(db, id);
+    if (!before) throw new Error('NOT_FOUND');
+    if (before.version !== expectedVersion) throw new Error('VERSION_CONFLICT');
+    stmt(db, `UPDATE customer SET credit_limit_paise=@limit, updated_at=@t, version=version+1, sync_state='pending' WHERE id=@id AND version=@v`)
+      .run({ id, v: expectedVersion, limit: limitPaise, t: nowIso() });
+    const after = getCustomer(db, id)!;
+    recordChange(db, before.businessId, actor, {
+      action: 'customer.credit_limit', entityType: 'customer_credit_limit', entityId: id, operationType: 'update',
+      before: { creditLimitPaise: before.creditLimitPaise }, after: { creditLimitPaise: after.creditLimitPaise, version: after.version },
+    });
     return after;
   });
 }

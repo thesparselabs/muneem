@@ -13,9 +13,11 @@ export const CustomerInput = z.object({
   addressLine1: z.string().trim().max(200).optional(),
   city: z.string().trim().max(80).optional(),
   pinCode: z.string().regex(/^\d{6}$/).optional(),
+  creditDays: z.number().int().min(0).max(365).optional(),
 });
 export type CustomerInput = z.infer<typeof CustomerInput>;
-export const Customer = CustomerInput.extend({ id: Ulid, businessId: Ulid, version: Version });
+// NULL limit = no credit allowed (ADR-0026).
+export const Customer = CustomerInput.extend({ id: Ulid, businessId: Ulid, version: Version, creditDays: z.number().int(), creditLimitPaise: Paise.nullable() });
 export type Customer = z.infer<typeof Customer>;
 export const CustomerSearchInput = z.object({ query: z.string().max(64), limit: z.number().int().min(1).max(50).default(20) });
 

@@ -5,6 +5,16 @@ import { useUi } from './store.js';
 import Login from './routes/Login.js';
 import SwitchUser from './routes/SwitchUser.js';
 import Setup from './routes/Setup.js';
+import Parties from './routes/parties/Parties.js';
+import PartyPage from './routes/parties/PartyPage.js';
+import Outstanding from './routes/parties/Outstanding.js';
+import Payments from './routes/payments/Payments.js';
+import NewPayment from './routes/payments/NewPayment.js';
+import PaymentPage from './routes/payments/PaymentPage.js';
+import Purchases from './routes/purchases/Purchases.js';
+import NewPurchase from './routes/purchases/NewPurchase.js';
+import PurchasePage from './routes/purchases/PurchasePage.js';
+import Expenses from './routes/expenses/Expenses.js';
 import Shell from './routes/Shell.js';
 import Home from './routes/Home.js';
 import Diagnostics from './routes/Diagnostics.js';
@@ -58,6 +68,16 @@ export default function App() {
         <Route path="/inventory/adjust" element={<AdjustStock />} />
         <Route path="/inventory/stock-take" element={<StockTake />} />
         <Route path="/inventory/opening" element={<OpeningStock />} />
+        <Route path="/parties" element={<Parties />} />
+        <Route path="/parties/outstanding" element={<Outstanding />} />
+        <Route path="/parties/:kind/:id" element={<PartyPage />} />
+        <Route path="/purchases" element={<Purchases />} />
+        <Route path="/purchases/new" element={<NewPurchase />} />
+        <Route path="/purchases/:id" element={<PurchasePage />} />
+        <Route path="/expenses" element={<Expenses />} />
+        <Route path="/payments" element={<Payments />} />
+        <Route path="/payments/new" element={<NewPayment />} />
+        <Route path="/payments/:id" element={<PaymentPage />} />
         <Route path="/settings/printer" element={<PrinterSettings />} />
         <Route path="/diagnostics" element={<Diagnostics />} />
       </Route>

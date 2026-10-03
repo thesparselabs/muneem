@@ -82,6 +82,11 @@ export function layoutReceipt(doc: ReceiptDoc, width: number): PrintLine[] {
     if (tn.reference) left(`  Ref: ${tn.reference}`);
   }
   if (doc.changePaise > 0) pair('Change', amount(doc.changePaise), true);
+  if (doc.credit) {
+    pair('On credit', amount(doc.credit.amountPaise), true);
+    left(`  Due: ${doc.credit.dueDate}`);
+    pair('Balance now', amount(doc.credit.balancePaise));
+  }
   if (doc.declaration) center(doc.declaration);
   doc.footer.forEach((f) => center(f));
   return out;

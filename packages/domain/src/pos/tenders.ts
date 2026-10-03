@@ -1,4 +1,4 @@
-export type TenderMethod = 'cash' | 'upi' | 'card' | 'other';
+export type TenderMethod = 'cash' | 'upi' | 'card' | 'other' | 'credit';
 export interface TenderInput { method: TenderMethod; amountPaise: number }
 export interface SettledTender extends TenderInput { changePaise: number }
 
@@ -22,3 +22,6 @@ export function settleTenders(totalPaise: number, tenders: readonly TenderInput[
   }).reverse();
   return { ok: true, paidPaise, changePaise: paidPaise - totalPaise, tenders: settled };
 }
+
+// ADR-0026: no limit set counts as ₹0, so "no limit" never means "unlimited"; an advance (negative balance) adds room.
+export const creditAvailable = (balancePaise: number, limitPaise: number | null): number => (limitPaise ?? 0) - balancePaise;

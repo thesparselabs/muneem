@@ -9,6 +9,8 @@ export interface ReceiptContext {
   cashier: string;
   footer: string[];
   copyNo: number;
+  // A sale partly on credit: what was put on credit, when it is due, and the customer's balance after this bill.
+  credit?: { amountPaise: number; dueDate: string; balancePaise: number };
 }
 
 export function qtyText(qtyMilli: number, uomCode: string): string {
@@ -71,6 +73,7 @@ export function buildReceiptDoc(sale: Sale, c: ReceiptContext): ReceiptDoc {
     taxSummary: taxSummary(sale),
     tenders: sale.tenders.map((tn) => ({ method: tn.method.toUpperCase(), amountPaise: tn.amountPaise, ...(tn.reference && { reference: tn.reference }) })),
     changePaise: sale.changePaise,
+    ...(c.credit && { credit: c.credit }),
     ...(c.business.taxScheme === 'composition' && { declaration: COMPOSITION_DECLARATION }),
     footer: c.footer,
   };

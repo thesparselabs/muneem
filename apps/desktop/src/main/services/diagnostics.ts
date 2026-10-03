@@ -4,8 +4,7 @@ import { newUlid } from '@muneem/domain';
 import { AppError, type Health } from '@muneem/contracts';
 import {
   backupDatabase, dbSizeBytes, foreignKeyCheck, getMeta, META_KEYS, outboxDepth, quickCheck, setMeta, verifyAuditChain,
-  currentSchemaVersion, replayKeys, rewriteLevels, stockKeys, type Db, type StockDrift,
-} from '@muneem/db-sqlite';
+  currentSchemaVersion, reconcilePartiesDb, replayKeys, rewriteLevels, stockKeys, type Db, type StockDrift } from '@muneem/db-sqlite';
 import { DEVICE_AUDIT_SCOPE } from '../ipc/gateway.js';
 
 const STOCK_CHECK_BATCH = 200;
@@ -67,6 +66,16 @@ export class DiagnosticsService {
     return 'healed';
   }
 
+  // ADR-0022: party entries are the record, not a cache, so a mismatch is reported for review and never rewritten.
+  checkParties(): 'ok' | 'mismatch' | 'not_run' {
+    const businessId = this.d.session.get()?.businessId;
+    if (!businessId) return 'not_run';
+    const r = reconcilePartiesDb(this.d.db(), businessId);
+    if (r.mismatches.length === 0 && r.faults.length === 0) return 'ok';
+    this.d.loggers.app.error({ code: 'PARTY_LEDGER_MISMATCH', mismatches: r.mismatches, faults: r.faults }, 'party ledger does not match its documents');
+    return 'mismatch';
+  }
+
   async integrityCheck() {
     const db = this.d.db();
     const qc = quickCheck(db);
@@ -79,7 +88,9 @@ export class DiagnosticsService {
     if (!qc.ok) this.d.loggers.app.error({ detail }, 'DB_CORRUPT detected by integrity check');
     const stock = await this.checkStock();
     if (stock === 'healed') detail.push('stock levels disagreed with their movements and were rebuilt');
-    return { quickCheck: qc.ok ? 'ok' : 'failed', foreignKeys: fk.ok ? 'ok' : 'failed', auditChain: broken.length ? 'broken' : 'ok', stock, detail } as const;
+    const parties = this.checkParties();
+    if (parties === 'mismatch') detail.push('a party ledger does not match its documents; see the app log (PARTY_LEDGER_MISMATCH)');
+    return { quickCheck: qc.ok ? 'ok' : 'failed', foreignKeys: fk.ok ? 'ok' : 'failed', auditChain: broken.length ? 'broken' : 'ok', stock, parties, detail } as const;
   }
 
   async backupNow(kind: 'manual' | 'scheduled' = 'manual') {

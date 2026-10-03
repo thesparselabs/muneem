@@ -5,6 +5,250 @@ All notable changes, newest first. Each entry records **what** changed and **why
 
 ## [Unreleased]
 
+### Fixed — Stage 5
+- **Cheap items were over-costed when sold** (ADR-0027, amends ADR-0018). An issue was costed at the average rounded
+  to whole paise per unit: 1,000 units bought for ₹15 were costed at 2 paise each, so selling 999 booked ₹19.98 and
+  left the last unit worth −₹4.98. An issue that leaves stock on hand now takes its share of the value, so COGS is
+  right to the paisa and stock on hand never has a negative value. Found by the value-≥-0 property added in 5a,
+  which had passed only by luck of the random seed.
+- **The costing property draws realistic unit costs** (up to ₹1 lakh per base unit). A 30,000-run soak found that
+  absurd ones (₹1.8 crore per unit) overflow the money kernel. The kernel refuses them with `OVERFLOW` by design,
+  so the property no longer passes or fails on the seed.
+
+### Fixed — Stage 5 review (5h)
+- **Editing a customer no longer wipes their saved details** (#1). The Parties form sent only name, phone, GSTIN and
+  credit days, and the update replaced the whole record, so email, address, city, PIN and a set state were erased.
+  The form now carries and shows every field.
+- **A new owner sees the Stage 5 screens straight after setup** (#2). Setup now gives the session the owner preset's
+  permissions; before, they stayed empty until the next login.
+- **Importing a supplier file with more than 20 lines works** (#3). The screen looked up each line's product at once
+  and hit the 20-a-second limit. The import preview now returns the matched products itself.
+- **The series list no longer breaks after the first purchase or expense** (#11, found while checking #9). The series
+  contract allowed only 1–4 character prefixes and no `expense` type, so `DE01P`/`DE01E` failed output validation.
+  Creating a series still takes a 1–4 character prefix.
+- **New Purchase rows show their own figures** (#4). The quote leaves out rows with problems, and the screen read its
+  lines by position, so every row after a bad one showed the next row's taxable and landed cost. Quote lines now carry
+  `draftLineNo`.
+- **A full return leaves nothing owed** (#6). The debit note that completes the return of every line now takes back
+  the bill's round-off; before, up to ₹1 stayed open on the supplier.
+- **Reverse-charge purchases are refused** (#7, ADR-0023 amended). The flag was saved but GST was still added to the
+  bill and the supplier's balance. No screen sends it.
+- **A sale series given pad width 5 no longer stops billing** (#9). The number format was chosen by pad width; it is
+  now chosen by document type.
+- **Outstanding and ageing "as of" a past date are right** (#5, ADR-0025 amended).
+  - **The bug:** a past date subtracted payments made, and counted cancellations done, after that date.
+  - **The fix:** migration `0009_allocation_dates` dates every allocation (`allocated_on`, never earlier than the
+    document it settles) and every void (`voided_on`). The report counts only documents dated by the date and not
+    cancelled by it, and only the allocations made and not voided by it.
+  - **Proof:** tests check that on every date the net equals the statement's balance, including a payment cancelled
+    later and a backdated payment that predates its bill. Today's numbers are unchanged.
+- **Statements, open items and payments read one party's documents, not the shop's** (#10).
+  - **The cause:** each statement page and each `payments.get` joined against every document of every party and built
+    a temporary index each time.
+  - **The fix:** the shared document query filters every branch by business and party (and runs only the branches for
+    that party type). Document numbers are looked up only for the rows shown. Migration `0010_party_indexes` indexes
+    the party columns that lacked one.
+  - **Result:** at 22,500 documents a statement page takes 2.5 ms, open items 3.2 ms and `payments.get` 3.1 ms (before:
+    13 ms per page at 3,000 purchases).
+- **Whole-business ageing is fast again** (5i #1).
+  - **The problem:** the 5h as-of query picked allocation columns with a `CASE`, which defeated both indexes, and it
+    evaluated every document. Supplier ageing for the Home card took 9.5 s on 22,500 documents.
+  - **The fix:** charges and settlements now use separate indexed lookups, and a request for today reads the
+    documents' current totals directly (a test proves this equals the as-of formula). At 42,500 documents and 12,500
+    allocations, today takes 75 ms and a past date 84 ms.
+  - **The test gap:** the 5h speed test had timed only single-party queries; the new one times the whole business.
+- **Old allocations are re-dated correctly** (5i #2).
+  - **The problem:** migration 0009 had filled them with the UTC day each row was written, so ageing between a
+    backdated payment and its entry showed the bill open.
+  - **The fix:** `0011_allocation_dates_backfill` re-dates only those rows. One made with its payment takes the later
+    of the payment's and the bill's dates; one made later takes that day, never before the bill; a void takes its
+    cancellation's date. 0009 is not edited.
+- **A hand-made series can always number its documents** (5i #3). `settings.createSeries` took any 1–4 characters, so
+  a purchase series `DE01` failed on every bill, `DE01P` was refused, and `DE01D` was accepted for purchases. Series
+  creation now requires 1–4 characters for sale documents, and the terminal prefix plus the type's own letter for
+  the others.
+- **Documented, not changed** (#8): a purchase's `fy` is the supplier bill's year, while its number uses the year it
+  was entered. Stage 6 decides the posting period.
+
+### Added — Stage 5 purchases
+- **Stage 5 plan (`docs/plans/stage-5-purchases.md`).** Decided with the user: the party sub-ledger is proved now and
+  the GL tie-out to AR 1300 / AP 2100 waits for Stage 6; purchase invoices receive stock directly (no PO or GRN);
+  credit sales over the limit are refused unless the user holds the override grant; opening balances, landed cost,
+  write-off and purchase-line import are in scope. Build stages now show Stage 4 merged (PR #5) and Stage 5 in
+  progress, because the Stage 4 row still said it was awaiting review.
+- **Party, purchase and landed-cost engines** (`@muneem/domain`): `allocateOldestFirst` / `allocateAsChosen` (oldest
+  due date first, never over the payment or an item), `reconcileParties` (Σ ledger entries = open charges − unallocated
+  settlements, per party; names over-allocations, cross-party and dead-document allocations), `landedValues` and
+  `billRoundOff`. A 500-run property test proves the reconciliation over any sequence of charges, payments, later
+  allocations and cancellations — the Stage 5 exit criterion at the domain level.
+- **Supplier returns leave at what was paid** (`returnToSupplier`, ADR-0024), not the moving average, so a debit note
+  reverses exactly what the purchase booked; any leftover value is a `cost_correction`. Replay = projection covers it.
+- **Migration `0006_parties`:** suppliers, purchases with lines and charges, debit notes, payments, allocations,
+  opening balances, write-offs, expenses and the append-only party ledger; customer credit limit and days. Triggers
+  keep allocation totals on both documents and refuse over-allocation, cross-party allocation, and returning more
+  than was bought, so those mistakes cannot be stored.
+- **ADRs 0022–0026** and LLD notes where Stage 5 differs: `payment_allocation` generalised to `allocation`, purchase
+  returns at landed cost (not §4.1's average), a 5470 Bad Debts account, `purchases.receive` dropped (no GRN),
+  `expenses.update` replaced by cancel and re-create.
+- **5b details written into the plan before building:** how an opening balance is corrected (cancel and re-enter),
+  ageing from the due date, ledger entries syncing inside their document, permissions, and the 5b tests. Settling
+  them first kept the build from guessing.
+- **Suppliers** (`suppliers.search/get/create/update`): GST details are checked together, so a GSTIN from another
+  state or a registered supplier without one is refused with the field named. Search with an empty query lists all
+  suppliers for the coming supplier list. Audited and queued for sync like customers.
+- **Customer credit terms:** `creditDays` on the customer (kept when an edit leaves it out), and
+  `customers.setCreditLimit` on its own path with `customers.approve`, audited and queued as
+  `customer_credit_limit`, so a limit can't change as a side effect of a profile edit (ADR-0026).
+- **Opening balances** (`customers.setOpening`, `suppliers.setOpening`): one live opening per party, on the party's
+  usual side unless told otherwise. Re-entering one cancels the old in the same transaction, and is refused while
+  payments are allocated to it.
+- **Party ledger:** `postPartyEntry` is the only writer. It refuses a zero amount and a cancel that does not reverse
+  its post, and a repeat of the same entry is a no-op.
+  - **Statement:** `customers.getLedger` / `suppliers.getLedger` list entries in date order with a running balance,
+    paged, with opening and closing balances for a date range (FR-039).
+  - **Outstanding:** `customers.getOutstanding` / `suppliers.getOutstanding` age open items by days past due
+    (0–30 / 31–60 / 61–90 / 90+) and show advances apart.
+  - **Shared query:** credit sales, purchases, expenses, payments, debit notes and write-offs are all read through one
+    query (`PARTY_DOCUMENTS_SQL`), so later parts only write documents.
+- **`reconcilePartiesDb`** runs the Stage 5 exit check against the database. Every 5b test ends reconciled, and a
+  planted entry is named.
+- **5c details written into the plan before building** (numbering, ITC rules, freight on returns, cancel limits,
+  `purchases.quote`, import that only fills the form), reviewed by the user first.
+- **Purchase invoices** (`purchases.quote/create/get/list`):
+  - **Tax:** the bill's rate and units go through the same GST engine as sales, with the supplier's state against the
+    branch's, so intra/inter and the tax-split CHECKs hold. A line may carry the GST rate the bill charged without
+    changing the product.
+  - **ITC:** claimable only when both supplier and business are on the regular scheme; a line can be marked
+    ineligible, and its tax becomes stock cost.
+  - **Freight and charges** are spread by taxable value into each line's landed cost, and stock is received at that
+    cost, which also re-costs anything sold before the bill was entered.
+  - **Bill total:** within ±₹1 of the computed total it is kept as round-off; beyond, it is refused with the field
+    named. `purchases.quote` shows the difference before saving.
+  - **Due date:** the bill date plus the supplier's credit days, unless entered.
+  - **Refused:** a supplier invoice number already used in the year (in any letter case, naming the purchase), a
+    future bill date, and bad lines (with the line named). A repeated command id returns the first purchase.
+  - **Atomic:** a failure part-way leaves nothing.
+- **Debit notes** (`purchases.return`, ADR-0024):
+  - **Amounts:** each line's amounts are its cumulative share of the purchase line, so returns always add up to the
+    line exactly.
+  - **Stock:** goods leave at their own landed cost (`returnToSupplier`, through a new `postMovement` path that replay
+    understands).
+  - **Freight:** the freight share is refunded only if the user says so.
+  - **Settlement:** the note settles its purchase first, and any excess is credit from the supplier.
+  - **Refused:** returning more than is left (`RETURN_QTY_EXCEEDED`, line named); goods already sold when the
+    negative-stock policy is `block`.
+- **Cancelling a purchase** (`purchases.cancel`) takes the goods back out at landed cost and reverses the ledger
+  entry. It is refused while the purchase is paid or has a debit note.
+- **Purchase-line import** (`purchases.importLinesPreview`) turns a supplier's CSV/XLSX into form lines. It matches
+  SKU or barcode, unit, rate, GST % and discount %, and names bad rows. Nothing is saved until `purchases.create`.
+- **Numbers** (ADR-0028): `T1P/2627/00001` for purchases and `T1D/2627/00001` for debit notes, per terminal.
+  Debit notes are GST documents and must stay within 16 characters.
+- **Migration `0007_purchase_commands`:** a command id on purchases and debit notes, unique and frozen. `0006` was
+  not edited, because a database that already ran it would never see the change.
+- **The negative-stock rule** moved into one helper shared by sales and purchase returns.
+- **Every purchase test ends** with the party sub-ledger reconciled and `replay = projection`.
+- **5d details written into the plan before building** (who may pay, cash and the drawer, GST on expenses, numbers,
+  migration 0008), reviewed by the user first.
+- **Payments** (`payments.create/get/list/openItems/allocate/cancel`):
+  - **Numbering:** customer receipts are `T1R/…` and supplier payments `T1Y/…`.
+  - **Settling:** a payment settles the oldest due item first, or exactly the items chosen, and anything over that
+    is an advance. Allocating more than an item owes or the payment holds is refused, and so is choosing a document
+    of the wrong type.
+  - **Later allocation:** `payments.allocate` applies an advance, a debit note's excess or an opening advance to
+    bills that arrive later.
+  - **Cancelling** voids the payment's allocations, giving the amounts back to the bills, and reverses the ledger.
+  - **Repeats:** a repeated command id returns the first payment.
+- **Cash and the drawer** (ADR-0029): with a register open, a cash receipt is a `cash_in` and a cash payment to a
+  supplier is a `cash_out`, so expected cash stays right. Cancelling reverses it while that register is still open.
+- **Who may pay** (ADR-0029): paying also needs the right to see the party, so a cashier can take a customer's
+  payment but not pay suppliers.
+- **Write-offs** (`payments.writeOff`, `payments.approve`) clear the chosen customer items at once, for Stage 6 to post
+  to 5470 Bad Debts.
+- **Expenses** (`expenses.listCategories/create/get/list/cancel`):
+  - **Categories:** eight are seeded on first use, mapped to the LLD expense accounts.
+  - **Numbering:** `T1E/…`.
+  - **GST** is worked out by the GST engine when there's a rate. It needs the vendor's GSTIN, and input tax credit
+    is claimed only by a regular business.
+  - **On credit,** an expense is a charge on the supplier's ledger, due after the supplier's credit days, and a
+    supplier payment settles it.
+  - **Cash** with a register open leaves the drawer.
+  - **Cancelling** is refused once something is allocated to it.
+- **Migration `0008_payment_commands`:** a unique, frozen command id on payments, write-offs and expenses.
+- **Every 5d test ends** with the party sub-ledger reconciled.
+- **5e details written into the plan before building** (no limit = ₹0, the limit checked at the commit, the
+  payment-dialog change), reviewed by the user first.
+- **Credit sales at the POS** (ADR-0026, amended):
+  - **The tender:** `credit` is a tender, allowed only with a customer on the bill, on one line, and never more than
+    the bill.
+  - **What the sale stores:** what was paid now, the credit portion and a due date (sale date + the customer's credit
+    days).
+  - **The ledger:** the credit goes on the customer's ledger in a new `party` step inside the sale, which sales
+    without credit skip. Later receipts settle it.
+  - **The limit** is checked inside the sale's transaction against the customer's ledger balance, so an advance adds
+    room. A customer with no limit set counts as ₹0, so "no limit" can't mean unlimited.
+  - **Over the limit:** a cashier is refused with `CREDIT_LIMIT_EXCEEDED`, naming the balance, the limit and the
+    shortfall, and nothing is written. A user with `customers.approve` goes through, with a `credit.limit_override`
+    audit row.
+  - **What the quote shows:** the customer's balance, limit and available credit. The payment dialog shows the credit
+    row only when a customer is on the bill.
+  - **The receipt** prints "On credit", the due date and "Balance now". The Z report lists credit by tender, and
+    expected cash ignores it.
+- **The kill -9 suite now mixes in credit sales** and checks one ledger entry per credit sale, no orphan entries and a
+  clean party reconciliation after the kills (20 in CI; 200 kills / 435 sales PASS locally). Credit sales complete with
+  p95 14 ms (cash sales 12 ms; budget 250 ms).
+- **The over-tender message now names credit** alongside card, UPI and other.
+- **5f details written into the plan before building,** reviewed by the user first.
+- **The screens know the user's permissions** (`Session.permissions`) and use them only to hide menus and buttons
+  (5f details). Main still checks every call.
+- **Parties screens (5f-1):**
+  - **Lists:** customers and suppliers with search and balances. Customer search with an empty query now lists
+    everyone, as supplier search does, so the list can show all parties.
+  - **Forms:** add and edit; the supplier's state follows its GSTIN.
+  - **Party page:** statement with a date range and running balance, ageing and unapplied credit, with actions for
+    payment, applying credit, opening balance, credit limit (managers) and write-off (`payments.approve`).
+  - **Outstanding report:** receivables and payables by ageing bucket.
+- **Payments screens (5f-1):**
+  - **List and page:** a filtered list, and a payment page with its allocations and a cancel.
+  - **New payment:** an allocation grid whose "oldest due first" preview uses the same domain function as the server.
+    "Choose" shows the advance left and names over-allocation before saving. One command id per form makes a retry
+    safe.
+- **Home cards:** what customers owe (and the part over 30 days) and what is owed to suppliers (and the part
+  overdue).
+  - **Change from the 5f details:** the card shows *overdue*, not "due within 7 days", because the ageing buckets do
+    not separate the next 7 days.
+- **Speed tests:** they get an explicit 60 s test timeout. Under a fully parallel run the credit test took 7 s in
+  total and hit the 5 s default, while its p95 stayed far inside the 250 ms budget, which is unchanged.
+- **Helpers:** party forms and the allocation grid have node tests. The screens are checked by typecheck and build,
+  not clicked through.
+- **Purchase screens (5f-2):**
+  - **List:** filtered, showing what is still owed.
+  - **New purchase:** supplier picker; lines in any of the product's units with rate, inclusive toggle, discount, GST
+    rate and ITC tick; bill discount and charges; a CSV/XLSX import that fills the grid and lists bad rows.
+  - **Live quote:** shows tax, ITC, landed cost per unit and whether the typed bill total fits. Save stays off until
+    it does.
+  - **Purchase page:** landed costs and returned quantities, a return-goods dialog that issues a debit note (with the
+    "supplier refunds freight" tick), and cancel for a wrong entry.
+- **Expense screens (5f-2):** a list with cancel, and a form whose GST box appears only once a supplier or vendor
+  GSTIN is known.
+  - **Cancel reason:** asked in a dialog, because Electron does not support `window.prompt`.
+- **Menus:** Purchases and Expenses join the menu, each shown only to users who may view them.
+- **Helpers:** purchase and expense form helpers have node tests.
+- **Manual checklist:** added to the plan, because the screens have not been clicked through yet.
+- **5g details written into the plan before building,** reviewed by the user first.
+- **Parties golden flow, offline:** supplier opening → purchase with freight → credit sale → receipt leaving an advance
+  → debit note → cash supplier payment, oldest first → cash expense → Z report. It checks both ledgers, outstanding,
+  valuation, the drawer to the paisa, reconciliation, replay, and that every document's sync row carries its ledger
+  entry.
+- **The integrity check reports party ledgers** (`parties: ok | mismatch | not_run`), and the 6-hourly timer runs it.
+  A mismatch is logged as `PARTY_LEDGER_MISMATCH` and never rewritten, because entries are the record, not a cache.
+  The Diagnostics screen now shows the stock and party results too.
+- **Speed tests for Stage 5:**
+  - a 200-line purchase: p95 62 ms;
+  - a payment settling 500 bills: 62 ms;
+  - reconciliation over 12,500 documents: 0.1–0.2 s.
+- **Stage 5 is done, awaiting review:** build-stages, architecture (a Parties and purchases section, new invariants,
+  "not built yet") and the plan's "As built" list are updated.
+
 ### Added — Stage 4 inventory
 - **Stage 4 plan (`docs/plans/stage-4-inventory.md`) and ADRs 0018–0021.** Decided with the user: no back-fill (stock
   starts from an opening count); the inventory sub-ledger is proved now and the GL tie-out to account 1400 waits for

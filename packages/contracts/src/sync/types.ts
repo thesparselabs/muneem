@@ -19,7 +19,17 @@ export type OutboxEntityType =
   | 'cash_movement'
   | 'sale'
   | 'warehouse'
-  | 'stock_adjustment';
+  | 'stock_adjustment'
+  | 'supplier'
+  | 'party_opening'
+  | 'customer_credit_limit'
+  | 'purchase'
+  | 'debit_note'
+  | 'payment'
+  | 'write_off'
+  | 'expense'
+  | 'allocation'
+  | 'expense_category';
 export type OutboxOperationType = 'create' | 'update' | 'cancel' | 'void';
 export type OutboxStatus = 'pending' | 'in_flight' | 'sent' | 'failed' | 'dead' | 'superseded';
 export type OutboxErrorClass = 'transient' | 'permanent' | 'dependency';

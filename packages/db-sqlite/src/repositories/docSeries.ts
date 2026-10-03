@@ -1,10 +1,13 @@
-import { DomainError, formatInvoiceNumber, newUlid } from '@muneem/domain';
+import { DOC_KIND_LETTER, DomainError, formatDocNumber, formatInvoiceNumber, INVOICE_PREFIX, newUlid, type DocKind } from '@muneem/domain';
 import { AppError } from '@muneem/contracts';
 import { appendAudit } from '../audit.js';
 import type { Db } from '../open.js';
 import { appendOutbox } from '../outbox.js';
 import { nowIso, withTransaction } from '../uow.js';
 import type { Actor } from './business.js';
+
+// Sale documents use the invoice format (ADR-0014); everything else carries a kind letter (ADR-0028). Chosen by type, never by width.
+const INVOICE_DOC_TYPES = new Set(['tax_invoice', 'bill_of_supply', 'credit_note', 'delivery_challan']);
 
 export interface DocSeriesRow { id: string; businessId: string; branchId: string | null; terminalId: string | null; docType: string; fy: string; prefix: string; padWidth: number; nextSeq: number }
 type Raw = { id: string; business_id: string; branch_id: string | null; terminal_id: string | null; doc_type: string; fy: string; prefix: string; pad_width: number; next_seq: number };
@@ -13,7 +16,17 @@ const map = (r: Raw): DocSeriesRow => ({ id: r.id, businessId: r.business_id, br
 export function listDocSeries(db: Db, businessId: string): DocSeriesRow[] {
   return (db.prepare('SELECT * FROM doc_series WHERE business_id = ? ORDER BY doc_type, fy, branch_id, terminal_id').all(businessId) as Raw[]).map(map);
 }
+// A series whose prefix its number format would refuse could never number anything (5i #3).
+function prefixProblem(docType: string, prefix: string): string | null {
+  if (INVOICE_DOC_TYPES.has(docType)) return INVOICE_PREFIX.test(prefix) ? null : '1–4 capital letters or digits';
+  const letter = DOC_KIND_LETTER[docType as DocKind];
+  if (!letter) return `no number format for ${docType}`;
+  return prefix.endsWith(letter) && INVOICE_PREFIX.test(prefix.slice(0, -1)) ? null : `the terminal prefix (1–4 letters or digits) followed by ${letter}`;
+}
+
 export function createDocSeries(db: Db, businessId: string, s: Omit<DocSeriesRow, 'id' | 'businessId' | 'nextSeq'>, actor: Actor): DocSeriesRow {
+  const problem = prefixProblem(s.docType, s.prefix);
+  if (problem) throw new AppError('VALIDATION_FAILED', 'This prefix cannot number these documents', { prefix: problem });
   return withTransaction(db, () => {
     const id = newUlid();
     const t = nowIso();
@@ -36,7 +49,7 @@ export function allocateDocNumber(db: Db, seriesId: string): { seq: number; numb
   if (!s) throw new Error('NOT_FOUND');
   let number: string;
   try {
-    number = formatInvoiceNumber(s.prefix, s.fy, s.next_seq);
+    number = INVOICE_DOC_TYPES.has(s.doc_type) ? formatInvoiceNumber(s.prefix, s.fy, s.next_seq) : formatDocNumber(s.prefix, s.fy, s.next_seq);
   } catch (e) {
     if (e instanceof DomainError) throw new AppError('INVALID_STATE', e.message);
     throw e;
