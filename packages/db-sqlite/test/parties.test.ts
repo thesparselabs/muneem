@@ -98,8 +98,8 @@ describe('opening balances', () => {
       INSERT INTO doc_series (id, business_id, branch_id, doc_type, fy, prefix, created_at, updated_at, created_by, device_id) VALUES ('pay', '${businessId}', 'br', 'payment', '2026-27', 'PY', ${t});
       INSERT INTO payment (id, business_id, branch_id, direction, party_type, party_id, series_id, doc_number, doc_seq, payment_date, fy, method, amount_paise, created_at, updated_at, created_by, device_id)
         VALUES ('p1', '${businessId}', 'br', 'out', 'supplier', '${supplier}', 'pay', 'PY1', 1, '2026-10-03', '2026-27', 'cash', 400, ${t});
-      INSERT INTO allocation (id, business_id, party_type, party_id, source_type, source_id, target_type, target_id, amount_paise, allocated_at, created_at, updated_at, created_by, device_id)
-        VALUES ('a1', '${businessId}', 'supplier', '${supplier}', 'payment', 'p1', 'opening', '${o.id}', 400, 'a', ${t});
+      INSERT INTO allocation (id, business_id, party_type, party_id, source_type, source_id, target_type, target_id, amount_paise, allocated_at, allocated_on, created_at, updated_at, created_by, device_id)
+        VALUES ('a1', '${businessId}', 'supplier', '${supplier}', 'payment', 'p1', 'opening', '${o.id}', 400, 'a', '2026-10-03', ${t});
     `);
     withTransaction(db, () => postPartyEntry(db, { businessId, partyType: 'supplier', partyId: supplier, refType: 'payment', refId: 'p1', kind: 'post', amountPaise: 400, docDate: '2026-10-03' }, ACTOR));
     expect(() => setPartyOpening(db, businessId, 'supplier', supplier, { side: 'payable', amountPaise: 2000, asOfDate: '2026-04-01' }, ACTOR)).toThrow(/allocated/);

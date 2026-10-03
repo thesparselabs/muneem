@@ -24,7 +24,7 @@ export class WriteOffService {
       const writeOffId = newUlid();
       insertWriteOff(db, { id: writeOffId, businessId, customerId: input.customerId, docDate, amountPaise, reason: input.reason, commandId: input.commandId }, actor);
       const party = { partyType: 'customer' as const, partyId: input.customerId };
-      const allocations = this.allocator.apply(party, { type: 'write_off', id: writeOffId, openPaise: amountPaise }, input.items);
+      const allocations = this.allocator.apply(party, { type: 'write_off', id: writeOffId, openPaise: amountPaise, on: docDate }, input.items);
       if (allocations.reduce((s, a) => s + a.amountPaise, 0) !== amountPaise) throw new AppError('INVALID_STATE', 'The write-off must clear exactly the chosen amounts');
       const entry = postPartyEntry(db, { businessId, ...party, refType: 'write_off', refId: writeOffId, kind: 'post', amountPaise: -amountPaise, docDate }, actor);
       recordChange(db, businessId, actor, {

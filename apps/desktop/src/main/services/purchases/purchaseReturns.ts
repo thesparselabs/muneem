@@ -114,7 +114,7 @@ export class PurchaseReturnService {
     if (allocated > 0) {
       insertAllocation(db, {
         businessId: p.businessId, partyType: 'supplier', partyId: p.supplierId, sourceType: 'debit_note', sourceId: id,
-        targetType: 'purchase', targetId: p.id, amountPaise: allocated,
+        targetType: 'purchase', targetId: p.id, amountPaise: allocated, on: docDate,
       }, actor);
     }
     recordChange(db, p.businessId, actor, {

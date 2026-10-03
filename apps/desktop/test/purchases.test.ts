@@ -192,8 +192,8 @@ describe('debit notes', () => {
     const branch = db.prepare('SELECT branch_id FROM purchase').pluck().get() as string;
     db.exec(`INSERT INTO payment (id, business_id, branch_id, direction, party_type, party_id, series_id, doc_number, doc_seq, payment_date, fy, method, amount_paise, created_at, updated_at, created_by, device_id)
       VALUES ('py1', '${businessId}', '${branch}', 'out', 'supplier', '${local.id}', 'pay', 'PY1', 1, '2026-10-03', '2026-27', 'bank', 150_000, 'a', 'a', 'u', 'd')`);
-    db.exec(`INSERT INTO allocation (id, business_id, party_type, party_id, source_type, source_id, target_type, target_id, amount_paise, allocated_at, created_at, updated_at, created_by, device_id)
-      VALUES ('al1', '${businessId}', 'supplier', '${local.id}', 'payment', 'py1', 'purchase', '${p.id}', 150_000, 'a', 'a', 'a', 'u', 'd')`);
+    db.exec(`INSERT INTO allocation (id, business_id, party_type, party_id, source_type, source_id, target_type, target_id, amount_paise, allocated_at, allocated_on, created_at, updated_at, created_by, device_id)
+      VALUES ('al1', '${businessId}', 'supplier', '${local.id}', 'payment', 'py1', 'purchase', '${p.id}', 150_000, 'a', '2026-10-03', 'a', 'a', 'u', 'd')`);
     db.prepare(`INSERT INTO party_ledger_entry (id, business_id, party_type, party_id, ref_type, ref_id, entry_kind, amount_paise, doc_date, occurred_at, created_at, updated_at, created_by, device_id)
       VALUES ('e1', ?, 'supplier', ?, 'payment', 'py1', 'post', 150000, '2026-10-03', 'a', 'a', 'a', 'u', 'd')`).run(businessId, local.id);
     const note = await ret(p, [{ line: 0, qty: 10_000 }]);

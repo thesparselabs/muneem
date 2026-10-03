@@ -52,7 +52,7 @@ export class PaymentService {
       const credit = openItems(db, { businessId: this.ctx.businessId(), partyType: input.partyType, partyId: input.partyId })
         .find((r) => r.role === 'settlement' && r.type === input.creditType && r.id === input.creditId);
       if (!credit) throw new AppError('INVALID_STATE', 'This credit has nothing left to allocate');
-      const applied = this.allocator.apply(input, { type: input.creditType as AllocationSource, id: credit.id, openPaise: credit.openPaise }, input.allocation);
+      const applied = this.allocator.apply(input, { type: input.creditType as AllocationSource, id: credit.id, openPaise: credit.openPaise, on: this.ctx.today() }, input.allocation);
       if (applied.length === 0) throw new AppError('INVALID_STATE', 'Nothing is open to allocate this credit to');
       recordChange(db, this.ctx.businessId(), this.ctx.actor(), {
         action: 'allocation.create', entityType: 'allocation', entityId: applied[0]!.id, operationType: 'create',
@@ -71,7 +71,7 @@ export class PaymentService {
       if (p.status !== 'posted') throw new AppError('INVALID_STATE', `${p.docNumber} is already cancelled`);
       requireParty(this.ctx, p.partyType, p.partyId);
       const actor = this.ctx.actor();
-      for (const a of p.allocations.filter((x) => !x.voided)) voidAllocation(db, a.id, actor);
+      for (const a of p.allocations.filter((x) => !x.voided)) voidAllocation(db, a.id, this.ctx.today(), actor);
       markPaymentCancelled(db, id, reason, actor);
       const entry = postPartyEntry(db, {
         businessId: this.ctx.businessId(), partyType: p.partyType, partyId: p.partyId, refType: 'payment', refId: id, kind: 'cancel',
@@ -113,7 +113,7 @@ export class PaymentService {
       businessId: till.businessId, partyType: input.partyType, partyId: input.partyId, refType: 'payment', refId: id, kind: 'post',
       amountPaise: paymentEntry(input.partyType, input.amountPaise), docDate: paymentDate,
     }, actor);
-    const allocations = this.allocator.apply(input, { type: 'payment', id, openPaise: input.amountPaise }, input.allocation);
+    const allocations = this.allocator.apply(input, { type: 'payment', id, openPaise: input.amountPaise, on: paymentDate }, input.allocation);
     this.drawer.record(sessionId, {
       kind: input.partyType === 'customer' ? 'cash_in' : 'cash_out', amountPaise: input.amountPaise,
       reason: `${number.number} ${partyName}`, refType: 'payment', refId: id,

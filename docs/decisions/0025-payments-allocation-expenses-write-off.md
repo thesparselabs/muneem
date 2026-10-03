@@ -28,6 +28,14 @@ append-only. The chart of accounts has no bad-debt account.
   and GSTIN, optional GST with an ITC flag, and a method. On credit it needs a supplier and a due date and is a
   charge on that supplier. `expenses.update` becomes cancel and re-create.
 
+*Amended before merge (5h, 2026-10-04):*
+- **Dates on allocations:** each allocation records `allocated_on` and, when voided, `voided_on` (migration 0009).
+  - **`allocated_on`** is the settling document's date when made with it, else the day it is made, but never earlier
+    than the document it settles. So a backdated payment cannot settle a bill before the bill exists.
+- **How "as of D" works:** outstanding and ageing count documents dated by D and not cancelled by D, and only the
+  allocations made by D and not voided by D. So a past date is not changed by later payments, and the net always
+  equals the statement balance on D.
+
 ## Consequences
 - The two LLD §17 allocation invariants (Σ allocations ≤ payment, and ≤ document) are enforced by the database.
 - Allocation has no Go port yet; it gets one with shared fixtures before the cloud verifies payments (Stage 7).

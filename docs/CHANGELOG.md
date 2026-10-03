@@ -35,6 +35,13 @@ All notable changes, newest first. Each entry records **what** changed and **why
   bill and the supplier's balance. No screen sends it.
 - **A sale series given pad width 5 no longer stops billing** (#9). The number format was chosen by pad width; it is
   now chosen by document type.
+- **Outstanding and ageing "as of" a past date are right** (#5, ADR-0025 amended).
+  - **The bug:** a past date subtracted payments made, and counted cancellations done, after that date.
+  - **The fix:** migration `0009_allocation_dates` dates every allocation (`allocated_on`, never earlier than the
+    document it settles) and every void (`voided_on`). The report counts only documents dated by the date and not
+    cancelled by it, and only the allocations made and not voided by it.
+  - **Proof:** tests check that on every date the net equals the statement's balance, including a payment cancelled
+    later and a backdated payment that predates its bill. Today's numbers are unchanged.
 - **Documented, not changed** (#8): a purchase's `fy` is the supplier bill's year, while its number uses the year it
   was entered. Stage 6 decides the posting period.
 

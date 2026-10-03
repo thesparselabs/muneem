@@ -173,3 +173,27 @@ describe('expenses', () => {
     expect((await api.data<RegisterReport>('pos.xReport')).expectedCashPaise).toBe(50_000);
   });
 });
+
+describe('outstanding as of a past date (5h #5)', () => {
+  const asOf = (date: string) => app.customerLedger.outstanding({ asOf: date }).totals;
+  const ledgerOn = (date: string) => app.customerLedger.ledger({ partyId: ravi.id, to: date, limit: 100 }).closingBalancePaise;
+
+  it('leaves out payments made, and cancellations done, after the date', () => {
+    opening('customer', ravi.id, 100_000, '2026-08-01');
+    const p = pay({ partyType: 'customer', partyId: ravi.id, amountPaise: 60_000, paymentDate: '2026-09-15' });
+    expect(asOf('2026-09-01')).toMatchObject({ netPaise: 100_000, advancePaise: 0 });
+    expect(asOf('2026-09-20')).toMatchObject({ netPaise: 40_000 });
+    app.payments.cancel(p.id, 'bounced');
+    expect(asOf('2026-09-20')).toMatchObject({ netPaise: 40_000 });                     // the cancel happened later
+    expect(asOf(new Date().toLocaleDateString('en-CA'))).toMatchObject({ netPaise: 100_000 });
+    for (const d of ['2026-07-31', '2026-08-01', '2026-09-15', '2026-09-20']) expect(asOf(d).netPaise).toBe(ledgerOn(d));
+  });
+
+  it('a backdated payment never settles a bill before the bill exists', () => {
+    opening('customer', ravi.id, 50_000, '2026-09-10');
+    pay({ partyType: 'customer', partyId: ravi.id, amountPaise: 20_000, paymentDate: '2026-09-01' });
+    expect(asOf('2026-09-05')).toMatchObject({ advancePaise: 20_000, netPaise: -20_000 });
+    expect(asOf('2026-09-12')).toMatchObject({ advancePaise: 0, netPaise: 30_000 });
+    for (const d of ['2026-09-05', '2026-09-12']) expect(asOf(d).netPaise).toBe(ledgerOn(d));
+  });
+});

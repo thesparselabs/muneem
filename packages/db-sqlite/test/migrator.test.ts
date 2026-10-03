@@ -254,8 +254,8 @@ describe('0006_parties', () => {
         branch_id, direction, party_type, party_id, series_id, doc_number, doc_seq, payment_date, fy, method, amount_paise, created_at, updated_at, created_by, device_id)
       VALUES ('${id}', 'b', 'br', '${direction}', ${party}, 'pay', '${id}', ${seq}, '2026-10-03', '2026-27', 'cash', ${amount}, ${t})`);
     const allocate = (id: string, source: string, target: string, amount: number, party = "'supplier', 's1'") => db.exec(`INSERT INTO allocation (id,
-        business_id, party_type, party_id, source_type, source_id, target_type, target_id, amount_paise, allocated_at, created_at, updated_at, created_by, device_id)
-      VALUES ('${id}', 'b', ${party}, ${source}, ${target}, ${amount}, 'a', ${t})`);
+        business_id, party_type, party_id, source_type, source_id, target_type, target_id, amount_paise, allocated_at, allocated_on, created_at, updated_at, created_by, device_id)
+      VALUES ('${id}', 'b', ${party}, ${source}, ${target}, ${amount}, 'a', '2026-10-03', ${t})`);
     const col = (table: string, column: string, id: string) => db.prepare(`SELECT ${column} FROM ${table} WHERE id = ?`).pluck().get(id);
     return { db, purchase, item, payment, allocate, col };
   }
@@ -314,7 +314,7 @@ describe('0006_parties', () => {
     expect(() => allocate('a2', "'payment', 'pay1'", "'purchase', 'p1'", 301)).toThrow(/CHECK/);
     payment('pay2', 2, 100);
     expect(() => allocate('a3', "'payment', 'pay2'", "'purchase', 'p1'", 300)).toThrow(/CHECK/);
-    db.exec("UPDATE allocation SET voided_at = 'now' WHERE id = 'a1'");
+    db.exec("UPDATE allocation SET voided_at = 'now', voided_on = '2026-10-04' WHERE id = 'a1'");
     expect([col('payment', 'allocated_paise', 'pay1'), col('purchase', 'settled_paise', 'p1')]).toEqual([0, 0]);
     expect(() => db.exec("UPDATE allocation SET voided_at = 'again' WHERE id = 'a1'")).toThrow(/append-only/);
     expect(() => db.exec("UPDATE allocation SET amount_paise = 1 WHERE id = 'a1'")).toThrow(/append-only/);
@@ -447,5 +447,26 @@ describe('document number format (5h #9)', () => {
     `);
     expect(withTransaction(db, () => allocateDocNumber(db, 's')).number).toBe('T1/2627/000001');
     expect(withTransaction(db, () => allocateDocNumber(db, 'p')).number).toBe('T1P/2627/00001');
+  });
+});
+
+describe('0009_allocation_dates', () => {
+  it('needs a business date on every allocation and on every void, and never changes the first', async () => {
+    const db = await freshDb();
+    const t = "'a', 'a', 'u', 'd'";
+    db.exec(`
+      INSERT INTO organization (id, name, created_at, updated_at) VALUES ('o', 'O', 'a', 'a');
+      INSERT INTO business (id, organization_id, name, business_type, state_code, tax_scheme, created_at, updated_at, created_by, device_id) VALUES ('b', 'o', 'S', 'retail', '07', 'regular', ${t});
+      INSERT INTO customer (id, business_id, name, name_norm, created_at, updated_at, created_by, device_id) VALUES ('c', 'b', 'C', 'c', ${t});
+      INSERT INTO party_opening (id, business_id, party_type, party_id, side, amount_paise, as_of_date, created_at, updated_at, created_by, device_id) VALUES ('o1', 'b', 'customer', 'c', 'receivable', 500, '2026-04-01', ${t});
+      INSERT INTO write_off (id, business_id, customer_id, doc_date, amount_paise, reason, created_at, updated_at, created_by, device_id) VALUES ('w', 'b', 'c', '2026-10-01', 500, 'x', ${t});
+    `);
+    const insert = (on: string | null) => () => db.prepare(`INSERT INTO allocation (id, business_id, party_type, party_id, source_type, source_id, target_type, target_id,
+        amount_paise, allocated_at, allocated_on, created_at, updated_at, created_by, device_id) VALUES ('a1', 'b', 'customer', 'c', 'write_off', 'w', 'opening', 'o1', 100, 'a', ?, 'a', 'a', 'u', 'd')`).run(on);
+    expect(insert(null)).toThrow(/allocated_on/);
+    insert('2026-10-01')();
+    expect(() => db.exec("UPDATE allocation SET allocated_on = '2026-01-01'")).toThrow(/append-only/);
+    expect(() => db.exec("UPDATE allocation SET voided_at = 'now'")).toThrow(/voided_on/);
+    expect(db.prepare("UPDATE allocation SET voided_at = 'now', voided_on = '2026-10-02'").run().changes).toBe(1);
   });
 });
