@@ -11,6 +11,20 @@ All notable changes, newest first. Each entry records **what** changed and **why
   credit sales over the limit are refused unless the user holds the override grant; opening balances, landed cost,
   write-off and purchase-line import are in scope. Build stages now show Stage 4 merged (PR #5) and Stage 5 in
   progress, because the Stage 4 row still said it was awaiting review.
+- **Party, purchase and landed-cost engines** (`@muneem/domain`): `allocateOldestFirst` / `allocateAsChosen` (oldest
+  due date first, never over the payment or an item), `reconcileParties` (Σ ledger entries = open charges − unallocated
+  settlements, per party; names over-allocations, cross-party and dead-document allocations), `landedValues` and
+  `billRoundOff`. A 500-run property test proves the reconciliation over any sequence of charges, payments, later
+  allocations and cancellations — the Stage 5 exit criterion at the domain level.
+- **Supplier returns leave at what was paid** (`returnToSupplier`, ADR-0024), not the moving average, so a debit note
+  reverses exactly what the purchase booked; any leftover value is a `cost_correction`. Replay = projection covers it.
+- **Migration `0006_parties`:** suppliers, purchases with lines and charges, debit notes, payments, allocations,
+  opening balances, write-offs, expenses and the append-only party ledger; customer credit limit and days. Triggers
+  keep allocation totals on both documents and refuse over-allocation, cross-party allocation, and returning more
+  than was bought, so those mistakes cannot be stored.
+- **ADRs 0022–0026** and LLD notes where Stage 5 differs: `payment_allocation` generalised to `allocation`, purchase
+  returns at landed cost (not §4.1's average), a 5470 Bad Debts account, `purchases.receive` dropped (no GRN),
+  `expenses.update` replaced by cancel and re-create.
 
 ### Added — Stage 4 inventory
 - **Stage 4 plan (`docs/plans/stage-4-inventory.md`) and ADRs 0018–0021.** Decided with the user: no back-fill (stock

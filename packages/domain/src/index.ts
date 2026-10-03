@@ -7,3 +7,5 @@ export * from './gst/computeInvoice.js';
 export * from './catalog/index.js';
 export * from './pos/index.js';
 export * from './inventory/index.js';
+export * from './parties/index.js';
+export * from './purchases/index.js';

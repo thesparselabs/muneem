@@ -214,3 +214,180 @@ describe('0005_inventory', () => {
     expect(() => db.prepare("INSERT INTO stock_level (business_id, warehouse_id, product_id, qty_milli, value_paise) VALUES ('b', 'w', 'p', 0, 5)").run()).toThrow(/CHECK/);
   });
 });
+
+describe('0006_parties', () => {
+  const t = "'2026-10-03T00:00:00.000Z', '2026-10-03T00:00:00.000Z', 'u', 'd'";
+  async function parties() {
+    const db = await freshDb();
+    db.exec(`
+      INSERT INTO organization (id, name, created_at, updated_at) VALUES ('o', 'O', 'a', 'a');
+      INSERT INTO business (id, organization_id, name, business_type, state_code, tax_scheme, created_at, updated_at, created_by, device_id) VALUES ('b', 'o', 'S', 'retail', '07', 'regular', ${t});
+      INSERT INTO branch (id, business_id, code, name, state_code, created_at, updated_at, created_by, device_id) VALUES ('br', 'b', 'DEL1', 'D', '07', ${t});
+      INSERT INTO warehouse (id, business_id, branch_id, code, name, is_default, created_at, updated_at, created_by, device_id) VALUES ('w', 'b', 'br', 'MAIN', 'Main', 1, ${t});
+      INSERT INTO uom (id, business_id, code, name, created_at, updated_at, created_by, device_id) VALUES ('pcs', 'b', 'PCS', 'Pieces', ${t});
+      INSERT INTO product (id, business_id, name, name_norm, base_uom_id, created_at, updated_at, created_by, device_id) VALUES ('p', 'b', 'Soap', 'soap', 'pcs', ${t});
+      INSERT INTO supplier (id, business_id, name, name_norm, gstin, state_code, created_at, updated_at, created_by, device_id) VALUES ('s1', 'b', 'Acme', 'acme', '07AAAAA0000A1Z5', '07', ${t});
+      INSERT INTO supplier (id, business_id, name, name_norm, state_code, tax_scheme, created_at, updated_at, created_by, device_id) VALUES ('s2', 'b', 'Local', 'local', '07', 'unregistered', ${t});
+      INSERT INTO customer (id, business_id, name, name_norm, created_at, updated_at, created_by, device_id) VALUES ('c1', 'b', 'Ravi', 'ravi', ${t});
+      INSERT INTO doc_series (id, business_id, branch_id, doc_type, fy, prefix, created_at, updated_at, created_by, device_id) VALUES ('ps', 'b', 'br', 'purchase', '2026-27', 'PU', ${t});
+      INSERT INTO doc_series (id, business_id, branch_id, doc_type, fy, prefix, created_at, updated_at, created_by, device_id) VALUES ('pay', 'b', 'br', 'payment', '2026-27', 'PY', ${t});
+      INSERT INTO doc_series (id, business_id, branch_id, doc_type, fy, prefix, created_at, updated_at, created_by, device_id) VALUES ('dn', 'b', 'br', 'debit_note', '2026-27', 'DN', ${t});
+    `);
+    const purchase = (id: string, seq: number, over: Partial<Record<string, string | number>> = {}) => {
+      const row: Record<string, string | number> = {
+        id, supplier_id: 's1', supplier_invoice_no: `INV-${seq}`, doc_seq: seq, supply_type: 'intra', supplier_tax_scheme: 'regular',
+        taxable_paise: 10_000, cgst_paise: 900, sgst_paise: 900, igst_paise: 0, charges_paise: 500, round_off_paise: -0, total_paise: 12_300, itc_paise: 1800, ...over,
+      };
+      db.prepare(`INSERT INTO purchase (id, business_id, branch_id, warehouse_id, supplier_id, supplier_snapshot_json, supplier_invoice_no, supplier_invoice_date,
+          series_id, doc_number, doc_seq, doc_date, fy, place_of_supply_state, supply_type, supplier_tax_scheme, gross_paise, taxable_paise,
+          cgst_paise, sgst_paise, igst_paise, charges_paise, round_off_paise, total_paise, itc_paise, due_date, created_at, updated_at, created_by, device_id)
+        VALUES (@id, 'b', 'br', 'w', @supplier_id, '{}', @supplier_invoice_no, '2026-10-01', 'ps', @id, @doc_seq, '2026-10-03', '2026-27', '07', @supply_type,
+          @supplier_tax_scheme, @taxable_paise, @taxable_paise, @cgst_paise, @sgst_paise, @igst_paise, @charges_paise, @round_off_paise, @total_paise, @itc_paise,
+          '2026-11-02', ${t})`).run(row);
+    };
+    const item = (id: string, purchaseId: string, baseQty: number, over = '') => db.exec(`INSERT INTO purchase_item (id, purchase_id, business_id, line_no,
+        product_id, product_name, uom_id, uom_code, qty_milli, base_qty_milli, unit_price_paise, price_is_inclusive, gross_paise, taxable_paise,
+        tax_treatment, gst_rate_bp, cgst_paise, sgst_paise, total_paise, itc_eligible, charges_paise, landed_value_paise, unit_cost_paise)
+      VALUES ('${id}', '${purchaseId}', 'b', 1, 'p', 'Soap', 'pcs', 'PCS', ${baseQty}, ${baseQty}, 1000, 0, 10000, 10000, 'taxable', 1800, 900, 900, 11800,
+        ${over || '1, 500, 10500'}, 1050)`);
+    const payment = (id: string, seq: number, amount: number, party = "'supplier', 's1'", direction = 'out') => db.exec(`INSERT INTO payment (id, business_id,
+        branch_id, direction, party_type, party_id, series_id, doc_number, doc_seq, payment_date, fy, method, amount_paise, created_at, updated_at, created_by, device_id)
+      VALUES ('${id}', 'b', 'br', '${direction}', ${party}, 'pay', '${id}', ${seq}, '2026-10-03', '2026-27', 'cash', ${amount}, ${t})`);
+    const allocate = (id: string, source: string, target: string, amount: number, party = "'supplier', 's1'") => db.exec(`INSERT INTO allocation (id,
+        business_id, party_type, party_id, source_type, source_id, target_type, target_id, amount_paise, allocated_at, created_at, updated_at, created_by, device_id)
+      VALUES ('${id}', 'b', ${party}, ${source}, ${target}, ${amount}, 'a', ${t})`);
+    const col = (table: string, column: string, id: string) => db.prepare(`SELECT ${column} FROM ${table} WHERE id = ?`).pluck().get(id);
+    return { db, purchase, item, payment, allocate, col };
+  }
+
+  it('makes a wrong purchase total, tax split or landed value impossible to store', async () => {
+    const { purchase, item } = await parties();
+    expect(() => purchase('p1', 1, { total_paise: 12_299 })).toThrow(/CHECK/);
+    expect(() => purchase('p1', 1, { supply_type: 'inter' })).toThrow(/CHECK/);
+    expect(() => purchase('p1', 1, { itc_paise: 1801 })).toThrow(/CHECK/);
+    expect(() => purchase('p1', 1, { round_off_paise: 101, total_paise: 12_401 })).toThrow(/CHECK/);
+    expect(() => purchase('p1', 1, { supplier_id: 's2', supplier_tax_scheme: 'unregistered' })).toThrow(/CHECK/);
+    purchase('p1', 1);
+    expect(() => item('i1', 'p1', 10_000, '0, 500, 10500')).toThrow(/CHECK/);
+    expect(() => item('i1', 'p1', 10_000, '0, 500, 12300')).not.toThrow();
+  });
+
+  it('refuses the same supplier invoice twice in a year, in any case, until the first is cancelled', async () => {
+    const { db, purchase } = await parties();
+    purchase('p1', 1, { supplier_invoice_no: 'inv-9' });
+    expect(() => purchase('p2', 2, { supplier_invoice_no: 'INV-9' })).toThrow(/UNIQUE/);
+    db.exec("UPDATE purchase SET status = 'cancelled' WHERE id = 'p1'");
+    expect(() => purchase('p2', 2, { supplier_invoice_no: 'INV-9' })).not.toThrow();
+  });
+
+  it('keeps purchase amounts frozen while status and settlement can move', async () => {
+    const { db, purchase } = await parties();
+    purchase('p1', 1);
+    expect(() => db.exec("UPDATE purchase SET total_paise = 1 WHERE id = 'p1'")).toThrow(/append-only/);
+    expect(() => db.exec("DELETE FROM purchase WHERE id = 'p1'")).toThrow(/append-only/);
+    expect(db.prepare("UPDATE purchase SET sync_state = 'synced' WHERE id = 'p1'").run().changes).toBe(1);
+  });
+
+  it('never returns more than was bought on a line', async () => {
+    const { db, purchase, item } = await parties();
+    purchase('p1', 1);
+    item('i1', 'p1', 10_000);
+    const note = (id: string, seq: number) => db.exec(`INSERT INTO debit_note (id, business_id, branch_id, warehouse_id, purchase_id, supplier_id, series_id,
+        doc_number, doc_seq, doc_date, fy, reason, supply_type, taxable_paise, cgst_paise, sgst_paise, total_paise, created_at, updated_at, created_by, device_id)
+      VALUES ('${id}', 'b', 'br', 'w', 'p1', 's1', 'dn', '${id}', ${seq}, '2026-10-03', '2026-27', 'damaged', 'intra', 6000, 540, 540, 7080, ${t})`);
+    const line = (id: string, noteId: string, qty: number) => () => db.exec(`INSERT INTO debit_note_item (id, debit_note_id, business_id, line_no,
+        purchase_item_id, product_id, qty_milli, base_qty_milli, taxable_paise, cgst_paise, sgst_paise, total_paise, landed_value_paise)
+      VALUES ('${id}', '${noteId}', 'b', 1, 'i1', 'p', ${qty}, ${qty}, 6000, 540, 540, 7080, 6300)`);
+    note('d1', 1);
+    line('l1', 'd1', 6000)();
+    note('d2', 2);
+    expect(line('l2', 'd2', 4001)).toThrow(/RETURN_QTY_EXCEEDED/);
+    expect(line('l2', 'd2', 4000)).not.toThrow();
+  });
+
+  it('keeps allocation totals on both documents and refuses over-allocation on either side', async () => {
+    const { db, purchase, payment, allocate, col } = await parties();
+    purchase('p1', 1);
+    payment('pay1', 1, 20_000);
+    allocate('a1', "'payment', 'pay1'", "'purchase', 'p1'", 12_000);
+    expect([col('payment', 'allocated_paise', 'pay1'), col('purchase', 'settled_paise', 'p1')]).toEqual([12_000, 12_000]);
+    expect(() => allocate('a2', "'payment', 'pay1'", "'purchase', 'p1'", 301)).toThrow(/CHECK/);
+    payment('pay2', 2, 100);
+    expect(() => allocate('a3', "'payment', 'pay2'", "'purchase', 'p1'", 300)).toThrow(/CHECK/);
+    db.exec("UPDATE allocation SET voided_at = 'now' WHERE id = 'a1'");
+    expect([col('payment', 'allocated_paise', 'pay1'), col('purchase', 'settled_paise', 'p1')]).toEqual([0, 0]);
+    expect(() => db.exec("UPDATE allocation SET voided_at = 'again' WHERE id = 'a1'")).toThrow(/append-only/);
+    expect(() => db.exec("UPDATE allocation SET amount_paise = 1 WHERE id = 'a1'")).toThrow(/append-only/);
+    expect(() => db.exec("DELETE FROM allocation WHERE id = 'a1'")).toThrow(/append-only/);
+  });
+
+  it('allocates only between live documents of the same party', async () => {
+    const { db, purchase, payment, allocate } = await parties();
+    purchase('p1', 1);
+    payment('pay1', 1, 5000);
+    payment('rc1', 2, 5000, "'customer', 'c1'", 'in');
+    expect(() => allocate('a1', "'payment', 'rc1'", "'purchase', 'p1'", 100)).toThrow(/belong to its party/);
+    expect(() => allocate('a1', "'payment', 'rc1'", "'purchase', 'p1'", 100, "'customer', 'c1'")).toThrow(/belong to its party/);
+    expect(() => allocate('a1', "'payment', 'nope'", "'purchase', 'p1'", 100)).toThrow(/belong to its party/);
+    db.exec("UPDATE purchase SET status = 'cancelled' WHERE id = 'p1'");
+    expect(() => allocate('a1', "'payment', 'pay1'", "'purchase', 'p1'", 100)).toThrow(/belong to its party/);
+  });
+
+  it('lets an opening balance settle or be settled only on its own side', async () => {
+    const { db, purchase, allocate, col } = await parties();
+    const opening = (id: string, side: string) => db.exec(`INSERT INTO party_opening (id, business_id, party_type, party_id, side, amount_paise, as_of_date,
+        created_at, updated_at, created_by, device_id) VALUES ('${id}', 'b', 'supplier', 's1', '${side}', 1000, '2026-04-01', ${t})`);
+    opening('o1', 'receivable');
+    purchase('p1', 1);
+    allocate('a1', "'opening', 'o1'", "'purchase', 'p1'", 1000);
+    expect(col('party_opening', 'allocated_paise', 'o1')).toBe(1000);
+    db.exec("UPDATE party_opening SET status = 'cancelled', allocated_paise = 0 WHERE id = 'o1'");
+    opening('o2', 'payable');
+    expect(() => allocate('a2', "'opening', 'o2'", "'purchase', 'p1'", 100)).toThrow(/belong to its party/);
+  });
+
+  it('a payment runs in its party\'s direction', async () => {
+    const { payment } = await parties();
+    expect(() => payment('x', 1, 100, "'customer', 'c1'", 'out')).toThrow(/CHECK/);
+    expect(() => payment('x', 1, 100, "'supplier', 's1'", 'in')).toThrow(/CHECK/);
+  });
+
+  it('keeps the party ledger append-only and one entry per document and kind', async () => {
+    const { db } = await parties();
+    const entry = db.prepare(`INSERT INTO party_ledger_entry (id, business_id, party_type, party_id, ref_type, ref_id, entry_kind, amount_paise, doc_date,
+        occurred_at, created_at, updated_at, created_by, device_id) VALUES (?, 'b', 'supplier', 's1', 'purchase', 'p1', ?, ?, '2026-10-03', 'a', 'a', 'a', 'u', 'd')`);
+    entry.run('e1', 'post', -12_300);
+    expect(() => entry.run('e2', 'post', -12_300)).toThrow(/UNIQUE/);
+    expect(() => entry.run('e3', 'cancel', 0)).toThrow(/CHECK/);
+    entry.run('e4', 'cancel', 12_300);
+    expect(() => db.exec("UPDATE party_ledger_entry SET amount_paise = 1 WHERE id = 'e1'")).toThrow(/append-only/);
+    expect(() => db.exec("DELETE FROM party_ledger_entry WHERE id = 'e1'")).toThrow(/append-only/);
+  });
+
+  it('a supplier is registered with a GSTIN from its own state, or unregistered without one', async () => {
+    const { db } = await parties();
+    const supplier = (gstin: string | null, scheme: string) => () => db.prepare(`INSERT INTO supplier (id, business_id, name, name_norm, gstin, state_code,
+        tax_scheme, created_at, updated_at, created_by, device_id) VALUES (?, 'b', 'X', 'x', ?, '07', ?, 'a', 'a', 'u', 'd')`).run(`s-${scheme}-${gstin}`, gstin, scheme);
+    expect(supplier(null, 'regular')).toThrow(/CHECK/);
+    expect(supplier('27AAAAA0000A1Z5', 'regular')).toThrow(/CHECK/);
+    expect(supplier('07BBBBB0000B1Z5', 'unregistered')).toThrow(/CHECK/);
+    expect(supplier('07BBBBB0000B1Z5', 'composition')).not.toThrow();
+  });
+
+  it('settles no more of a sale than was sold on credit', async () => {
+    const { db } = await parties();
+    db.exec(`
+      INSERT INTO terminal (id, business_id, branch_id, code, name, created_at, updated_at, created_by, device_id) VALUES ('tm', 'b', 'br', 'T01', 'A', ${t});
+      INSERT INTO doc_series (id, business_id, branch_id, terminal_id, doc_type, fy, prefix, created_at, updated_at, created_by, device_id) VALUES ('ss', 'b', 'br', 'tm', 'tax_invoice', '2026-27', 'T1', ${t});
+      INSERT INTO pos_session (id, business_id, branch_id, terminal_id, session_no, opened_by, opened_at, opening_cash_paise, created_at, updated_at, created_by, device_id)
+        VALUES ('se', 'b', 'br', 'tm', 1, 'u', 'a', 0, ${t});
+      INSERT INTO sale (id, business_id, branch_id, terminal_id, session_id, command_id, doc_type, series_id, doc_number, doc_seq, doc_date, fy, customer_id,
+          customer_snapshot_json, place_of_supply_state, supply_type, gstr1_bucket, tax_scheme, gross_paise, taxable_paise, total_paise, paid_paise, credit_paise,
+          created_at, updated_at, created_by, device_id)
+        VALUES ('sa', 'b', 'br', 'tm', 'se', 'c', 'tax_invoice', 'ss', 'T1/1', 1, '2026-10-03', '2026-27', 'c1', '{}', '07', 'intra', 'b2cs', 'regular',
+          1000, 1000, 1000, 400, 600, ${t});
+    `);
+    expect(() => db.exec("UPDATE sale SET settled_paise = 601 WHERE id = 'sa'")).toThrow(/over-allocated/);
+    expect(db.prepare("UPDATE sale SET settled_paise = 600 WHERE id = 'sa'").run().changes).toBe(1);
+  });
+});

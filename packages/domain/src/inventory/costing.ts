@@ -55,8 +55,30 @@ export function receiveStock(s: StockState, qtyMilli: number, receiptValuePaise:
   };
 }
 
-// Receipts carry their value, issues their (negative) quantity and the unit cost used, corrections only a value.
-export interface StockMovementRecord { kind: 'receipt' | 'issue' | 'correction'; qtyMilli: number; valuePaise: number; unitCostPaise: number }
+export interface SupplierReturnResult { state: StockState; returnDeltaPaise: number; correctionPaise: number; unitCostPaise: number; provisional: boolean }
+
+// ADR-0024: goods go back at what they were bought for; whatever that leaves out of line with the remaining quantity is a correction.
+export function returnToSupplier(s: StockState, qtyMilli: number, returnValuePaise: number): SupplierReturnResult {
+  assertQty(qtyMilli);
+  if (!Number.isSafeInteger(returnValuePaise) || returnValuePaise < 0) throw new DomainError('INVALID_INPUT', `return value must be ≥ 0, got ${returnValuePaise}`);
+  const qty = s.qtyMilli - qtyMilli;
+  const unitCostPaise = divRound(returnValuePaise * MILLI, qtyMilli);
+  const left = s.valuePaise - returnValuePaise;
+  let value = left;
+  if (qty === 0) value = 0;
+  else if (qty > 0) value = Math.max(0, left);
+  else if (s.qtyMilli > 0) value = divRound(qty * unitCostPaise, MILLI);
+  return {
+    state: { qtyMilli: qty, valuePaise: value, lastUnitCostPaise: s.lastUnitCostPaise },
+    returnDeltaPaise: -returnValuePaise,
+    correctionPaise: value - left,
+    unitCostPaise,
+    provisional: qty < 0,
+  };
+}
+
+// Receipts carry their value, issues and supplier returns their (negative) quantity and the unit cost used, corrections only a value.
+export interface StockMovementRecord { kind: 'receipt' | 'issue' | 'return' | 'correction'; qtyMilli: number; valuePaise: number; unitCostPaise: number }
 
 // replay(movements) = projection: re-run the engine over the stored movements and point at any delta it disagrees with.
 export function replayMovements(records: readonly StockMovementRecord[]): { state: StockState; mismatches: number[] } {
@@ -75,6 +97,13 @@ export function replayMovements(records: readonly StockMovementRecord[]): { stat
     if (m.kind === 'receipt') {
       const r = receiveStock(s, m.qtyMilli, m.valuePaise);
       s = { ...r.state, valuePaise: s.valuePaise + r.receiptDeltaPaise };
+      if (r.correctionPaise !== 0) expectedCorrection = r.correctionPaise;
+      return;
+    }
+    if (m.kind === 'return') {
+      const r = returnToSupplier(s, -m.qtyMilli, -m.valuePaise);
+      if (r.unitCostPaise !== m.unitCostPaise) mismatches.push(i);
+      s = { ...r.state, valuePaise: s.valuePaise + r.returnDeltaPaise };
       if (r.correctionPaise !== 0) expectedCorrection = r.correctionPaise;
       return;
     }

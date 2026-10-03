@@ -26,3 +26,8 @@ Template: Context → Decision → Consequences → Status.
 | [0019](0019-stock-step-in-the-sale-commit.md) | Where stock happens in the sale commit (supersedes ADR-0013's placement) |
 | [0020](0020-negative-stock-policy.md) | Negative stock policy |
 | [0021](0021-warehouses-opening-adjustments-stock-take.md) | Warehouses, opening stock, adjustments and stock take |
+| [0022](0022-party-sub-ledger.md) | The party sub-ledger |
+| [0023](0023-purchase-invoice-and-landed-cost.md) | Purchase invoice and landed cost |
+| [0024](0024-supplier-returns-and-cancellation.md) | Supplier returns and cancelling a purchase |
+| [0025](0025-payments-allocation-expenses-write-off.md) | Payments, allocation, advances, write-offs and expenses |
+| [0026](0026-customer-credit-at-the-pos.md) | Customer credit at the POS |

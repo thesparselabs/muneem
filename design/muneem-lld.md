@@ -387,6 +387,8 @@ CREATE INDEX ix_alloc_target ON payment_allocation(business_id, target_type, tar
 
 Unallocated remainder sits as an advance (`allocated_paise < amount_paise`) and shows on the party ledger as an on-account credit. Auto-allocation default: oldest due date first, user-overridable (FR-055/056 clarification).
 
+*As built (Stage 5, ADR-0022–0025):* `payment_allocation` is generalised to **`allocation`**: the source is a payment, debit note, write-off or opening balance, the target a credit sale, purchase, credit expense or opening balance. Triggers keep `allocated_paise` on the source and `settled_paise` on the target, and CHECKs on both make over-allocation impossible to store; allocations are append-only and end only by `voided_at`. Customers pay in and suppliers are paid out (a CHECK); `account_id` is nullable until Stage 6. New tables: `supplier`, `purchase` / `purchase_item` / `purchase_charge`, `debit_note` / `debit_note_item`, `party_opening`, `write_off`, `expense_category`, `expense`, and the append-only **`party_ledger_entry`** (signed, positive = the party owes the business), which is the sub-ledger Stage 6 ties to 1300 / 2100. `customer` gains `credit_limit_paise` (NULL = no credit) and `credit_days`; `sale` gains `due_date` and `settled_paise`. Purchase lines store `landed_value_paise` = taxable + apportioned charges + tax that cannot be claimed, enforced by a CHECK.
+
 ### 2.6 POS session, series, operational tables
 
 ```sql
@@ -581,6 +583,8 @@ ISSUE (sale, purchase_return, negative adjustment, transfer_out):
 
 **Batch/serial items** bypass the average: cost comes from the batch layer (`batch.unit_cost_paise`), and issue selection defaults to **FEFO** (earliest expiry first) for batch-tracked goods, with manual override.
 
+*As built (Stage 5, ADR-0024):* a purchase return is **not** an issue at average cost. It leaves at the original purchase line's landed unit cost (`returnToSupplier`), matching the posting matrix's exact reversal; any value that leaves the level out of line with its quantity is a `cost_correction` movement.
+
 ### 4.2 Projection integrity
 
 `stock_level` is a cache. Two guarantees:
@@ -646,7 +650,7 @@ Inter-state swaps the two `Output CGST/SGST` lines for `Output IGST`. Compositio
 **Purchase return:** reverse, `Dr AP / Cr Inventory + Cr Input tax`.
 **Customer receipt:** `Dr Cash/Bank · Cr AR` (+ `Cr 2400 Advances` for the unallocated remainder).
 **Supplier payment:** `Dr AP · Cr Cash/Bank`.
-**Expense:** `Dr expense · Dr Input tax (if eligible) · Cr Cash/Bank/AP`.
+**Expense:** `Dr expense · Dr Input tax (if eligible) · Cr Cash/Bank/AP`. *Write-off (Stage 5, ADR-0025):* `Dr 5470 Bad Debts · Cr 1300 AR` — 5470 is added to the §5.1 seed in Stage 6.
 **Stock adjustment:** negative → `Dr 5200 Shrinkage · Cr 1400 Inventory` at current cost; positive → `Dr 1400 · Cr 4400 Inventory Gain`.
 **Transfer, same GSTIN:** **no journal entry** — Inventory is a single account with a warehouse dimension on the movement. (A different-GSTIN branch transfer is a taxable supply and is out of MVP — guard-railed per the FR-010 clarification.)
 **Card/UPI settlement:** `Dr Bank · Dr 5460 Bank Charges · Cr 1250 Clearing`, reconciled when the acquirer credits.
@@ -875,14 +879,14 @@ catalog.*     listUoms, createUom, listCategories, createCategory, updateCategor
 pricing.*     listLists, createList, getItems, setItems
 inventory.*   getStock, getMovements, valuation, listLowStock, setOpeningStock, adjust, stockTake, importOpeningPreview,
               importOpeningCommit, listWarehouses, rebuildProjections   (transfer: deferred with multi-warehouse)
-customers.*   search, get, create, update, getLedger, getOutstanding
-suppliers.*   search, get, create, update, getLedger
+customers.*   search, get, create, update, getLedger, getOutstanding, setCreditLimit, setOpening
+suppliers.*   search, get, create, update, getLedger, setOpening
 pos.*         openRegister, closeRegister, getSession, xReport, zReport, cashMovement,
               holdBill, listHeldBills, retrieveBill, discardBill
 sales.*       quote, complete, get, list, getReceipt, cancel, returnAgainst   (cancel/returnAgainst: later stages)
-purchases.*   create, receive, get, list, return, cancel
-payments.*    create, allocate, get, list, cancel
-expenses.*    create, get, list, update
+purchases.*   create, get, list, return, cancel, importLinesPreview   (receive: dropped, no GRN — ADR-0023)
+payments.*    create, allocate, get, list, cancel, openItems, writeOff
+expenses.*    create, get, list, cancel, listCategories   (update → cancel + re-create — ADR-0025)
 accounting.*  getTrialBalance, getLedger, postManualJournal, getPeriods, lockPeriod
 reports.*     run(reportId, params), export(reportId, params, format), listDefinitions
 gst.*         getSummary, getGstr1Buckets, getHsnSummary, exportGstr1
