@@ -1,4 +1,4 @@
-import { foreignKeyCheck, openDatabase, quickCheck, replayCheck, verifyAuditChain, type Db } from '@muneem/db-sqlite';
+import { foreignKeyCheck, openDatabase, quickCheck, reconcilePartiesDb, replayCheck, verifyAuditChain, type Db } from '@muneem/db-sqlite';
 
 const n = (db: Db, sql: string): number => db.prepare(sql).pluck().get() as number;
 
@@ -27,6 +27,11 @@ export function checkSalesConsistency(file: string) {
       salesWithWrongMovements: n(db, `SELECT COUNT(*) FROM sale s WHERE (SELECT COUNT(*) FROM sale_item i WHERE i.sale_id = s.id)
         <> (SELECT COUNT(*) FROM stock_movement m WHERE m.ref_type = 'sale' AND m.ref_id = s.id)`),
       orphanSaleMovements: n(db, "SELECT COUNT(*) FROM stock_movement m WHERE m.ref_type = 'sale' AND NOT EXISTS (SELECT 1 FROM sale s WHERE s.id = m.ref_id)"),
+      creditSalesWithWrongEntries: n(db, `SELECT COUNT(*) FROM sale s WHERE s.credit_paise > 0 AND (SELECT COUNT(*) FROM party_ledger_entry e
+        WHERE e.ref_type = 'sale' AND e.ref_id = s.id AND e.amount_paise = s.credit_paise) <> 1`),
+      orphanSaleEntries: n(db, "SELECT COUNT(*) FROM party_ledger_entry e WHERE e.ref_type = 'sale' AND NOT EXISTS (SELECT 1 FROM sale s WHERE s.id = e.ref_id)"),
+      partyMismatches: (db.prepare('SELECT DISTINCT business_id FROM sale').pluck().all() as string[])
+        .reduce((sum, b) => { const r = reconcilePartiesDb(db, b); return sum + r.mismatches.length + r.faults.length; }, 0),
       stockDrift: (db.prepare('SELECT DISTINCT business_id FROM sale').pluck().all() as string[]).reduce((sum, b) => sum + replayCheck(db, b).length, 0),
       brokenAuditChains: (db.prepare('SELECT DISTINCT business_id, device_id FROM audit_log').all() as { business_id: string; device_id: string }[])
         .filter((c) => !verifyAuditChain(db, c.business_id, c.device_id).ok).length,

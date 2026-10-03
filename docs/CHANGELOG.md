@@ -120,6 +120,28 @@ All notable changes, newest first. Each entry records **what** changed and **why
   - **Cancelling** is refused once something is allocated to it.
 - **Migration `0008_payment_commands`:** a unique, frozen command id on payments, write-offs and expenses.
 - **Every 5d test ends** with the party sub-ledger reconciled.
+- **5e details written into the plan before building** (no limit = ₹0, the limit checked at the commit, the
+  payment-dialog change), reviewed by the user first.
+- **Credit sales at the POS** (ADR-0026, amended):
+  - **The tender:** `credit` is a tender, allowed only with a customer on the bill, on one line, and never more than
+    the bill.
+  - **What the sale stores:** what was paid now, the credit portion and a due date (sale date + the customer's credit
+    days).
+  - **The ledger:** the credit goes on the customer's ledger in a new `party` step inside the sale, which sales
+    without credit skip. Later receipts settle it.
+  - **The limit** is checked inside the sale's transaction against the customer's ledger balance, so an advance adds
+    room. A customer with no limit set counts as ₹0, so "no limit" can't mean unlimited.
+  - **Over the limit:** a cashier is refused with `CREDIT_LIMIT_EXCEEDED`, naming the balance, the limit and the
+    shortfall, and nothing is written. A user with `customers.approve` goes through, with a `credit.limit_override`
+    audit row.
+  - **What the quote shows:** the customer's balance, limit and available credit. The payment dialog shows the credit
+    row only when a customer is on the bill.
+  - **The receipt** prints "On credit", the due date and "Balance now". The Z report lists credit by tender, and
+    expected cash ignores it.
+- **The kill -9 suite now mixes in credit sales** and checks one ledger entry per credit sale, no orphan entries and a
+  clean party reconciliation after the kills (20 in CI; 200 kills / 435 sales PASS locally). Credit sales complete with
+  p95 14 ms (cash sales 12 ms; budget 250 ms).
+- **The over-tender message now names credit** alongside card, UPI and other.
 
 ### Added — Stage 4 inventory
 - **Stage 4 plan (`docs/plans/stage-4-inventory.md`) and ADRs 0018–0021.** Decided with the user: no back-fill (stock

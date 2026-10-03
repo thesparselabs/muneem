@@ -2,10 +2,10 @@ import {
   AppError, type Branch, type Business, type Customer, type Product, type QuoteContext, type QuoteLine, type SaleDraft, type SaleQuote, type SaleTotals,
 } from '@muneem/contracts';
 import {
-  computeInvoice, DomainError, effectiveDiscountBp, isUtWithoutLegislature, resolvePrice, toBaseQty, type GstInvoiceResult, type GstLineInput,
+  computeInvoice, creditAvailable, DomainError, effectiveDiscountBp, isUtWithoutLegislature, resolvePrice, toBaseQty, type GstInvoiceResult, type GstLineInput,
 } from '@muneem/domain';
 import {
-  defaultWarehouseId, getBranch, getBusiness, getCustomer, getDefaultPriceList, getPriceItemsByProduct, getProduct, listUoms, stockState,
+  defaultWarehouseId, getBranch, partyBalance, getBusiness, getCustomer, getDefaultPriceList, getPriceItemsByProduct, getProduct, listUoms, stockState,
   toPriceItem,
 } from '@muneem/db-sqlite';
 import { qtyText } from '../print/receiptDoc.js';
@@ -59,7 +59,10 @@ export class SalePricing {
       discountBp: effectiveDiscountBp(preDiscount, gst.lineDiscountPaise + gst.billDiscountPaise),
     };
     return {
-      quote: { lines, totals, issues, warnings: this.stockWarnings(priced, branch.id), context }, business, branch, customer,
+      quote: {
+        lines, totals, issues, warnings: this.stockWarnings(priced, branch.id), context, ...(customer && { credit: this.creditOf(customer) }),
+      },
+      business, branch, customer,
       priceListId: getDefaultPriceList(db, till.businessId)?.id ?? null,
       placeOfSupplyReason: draft.placeOfSupplyOverride?.reason ?? null,
     };
@@ -80,6 +83,11 @@ export class SalePricing {
       const message = stock > 0 ? `${product.name}: only ${qtyText(stock, baseUomCode)} in stock` : `${product.name}: no stock recorded`;
       return [{ lineNo: draftLineNo, productId: product.id, message, stockMilli: stock, blocking: rule === 'block' }];
     });
+  }
+
+  private creditOf(customer: Customer): NonNullable<SaleQuote['credit']> {
+    const balancePaise = partyBalance(this.ctx.db(), { businessId: this.ctx.businessId(), partyType: 'customer', partyId: customer.id });
+    return { balancePaise, limitPaise: customer.creditLimitPaise, availablePaise: Math.max(0, creditAvailable(balancePaise, customer.creditLimitPaise)) };
   }
 
   private customer(id: string): Customer {

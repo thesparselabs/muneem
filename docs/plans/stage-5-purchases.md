@@ -356,6 +356,59 @@ append-only.
    sale's transaction (a new commit step after `document`, ADR-0019's order otherwise unchanged). Receipts print the
    credit portion and new outstanding. Kill -9 suite adds credit sales and checks reconciliation after the kills.
 
+5e details (drafted 2026-10-04, for review before building):
+
+- **The `credit` tender.**
+  - **Contracts and domain:** `TENDER_METHODS` and the domain `TenderMethod` gain `credit` (the `sale_tender` CHECK
+    already allows it).
+  - **Rules:** at most one credit line per bill, and only with a customer on the bill; otherwise
+    `VALIDATION_FAILED` on `tenders`.
+  - **Settlement:** `settleTenders` treats credit like any non-cash tender, so it can never exceed the bill, and
+    change still comes only from cash.
+  - **What is stored:** the sale stores `paid_paise` = what was paid now (tenders − credit), `credit_paise` = the
+    credit line, and `due_date` = sale date + the customer's credit days. The table's CHECK
+    `paid − change + credit = total` already holds them together. The credit tender row is kept as well, so the Z
+    report's by-tender list shows credit sales, and expected cash is untouched.
+- **The credit limit** (ADR-0026, user decision 2026-10-03).
+  - **Checked at the commit,** where the tenders are known: the customer's ledger balance plus this bill's credit
+    portion must not exceed `credit_limit_paise`.
+  - **No limit set** (`NULL`) counts as a limit of ₹0, so any credit needs the override. That keeps "no limit" from
+    ever meaning "unlimited", and still lets a manager give a regular customer credit before a limit is set.
+  - **Over the limit:** `CREDIT_LIMIT_EXCEEDED`, naming the balance, the limit and the shortfall, unless the user
+    holds `customers.approve`. Then the sale goes through and a `credit.limit_override` audit row (balance, limit,
+    credit given, approver) is written in the sale's transaction.
+  - **Manager PIN override** stays deferred, so a cashier must ask a manager to log in or bill it.
+- **What the quote shows.** The quote has no tenders, so it cannot refuse. It returns, when a customer is on the
+  bill, `credit: { balancePaise, limitPaise | null, availablePaise }` so the payment screen can warn before the
+  cashier tries. This differs from ADR-0026's "a `credit_limit` issue in the quote"; an amendment note goes in the
+  ADR.
+- **The sale commit** gains one step, `party`, after `stock`: number → cost → document → stock → **party** →
+  receipt → record. It writes the customer ledger entry (+credit, due date) through `postPartyEntry`. The sale's
+  outbox aggregate carries the entry with the movements. Sales without credit skip it, so their path is unchanged.
+- **Receipt.** `ReceiptDoc` gains an optional `credit` block: amount on credit, due date, and the customer's balance
+  after this bill. It prints under the tenders as "On credit ₹X — due DD-MM-YYYY" and "Balance now ₹Y". Reprints
+  stay byte-identical, because the doc is stored at sale time (FR-100).
+- **Payment dialog.** The credit row appears only when a customer is on the bill. It shows the available credit
+  from the quote and keeps the server's refusal message. This is the only renderer change in 5e; the rest of the
+  screens are 5f.
+- **Crash and speed.** The kill -9 suite mixes in credit sales and checks, after the kills, that every credit sale
+  has exactly one ledger entry and `reconcilePartiesDb` is clean. The perf test keeps `sales.complete` p95
+  < 250 ms with a credit sale.
+- **Tests:**
+  - **Split payment:** a sale partly on credit stores paid, credit and due date, writes one entry, and the
+    customer's statement and outstanding show it.
+  - **Refusals:** credit without a customer; two credit lines; credit over the bill.
+  - **Limit:** over the limit, a cashier is refused with the numbers and nothing is written. A manager goes through
+    with an override audit row. A customer with no limit needs the override for any credit. An advance on account
+    counts toward the room.
+  - **Paying it off:** a later receipt (5d) settles the credit sale oldest-first.
+  - **Z report:** shows the credit tender and expected cash ignores it.
+  - **Receipt:** prints the credit block.
+  - **Repeats:** a repeated command returns the first sale with no second entry.
+  - **Always:** every test ends with `reconcilePartiesDb` clean.
+- **Not in 5e:** cancelling or returning a credit sale (sale cancel and credit notes stay deferred from Stage 3),
+  manager PIN override, payment reminders, and interest on overdue amounts.
+
 **5f — Screens**
 10. `/suppliers` (list, edit, ledger); `/purchases` (list, new invoice with charges, ITC flags, bill-total check and
     import from file; return against an invoice); `/payments` (receive / pay with the allocation grid, advances,

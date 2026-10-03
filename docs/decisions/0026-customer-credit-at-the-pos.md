@@ -19,5 +19,14 @@ control value, and LLD §17 names `CREDIT_LIMIT_EXCEEDED`.
   (ADR-0019's order is otherwise unchanged), with due date = sale date + the customer's credit days.
 - Payment reminders (FR-040) wait for consent capture and message templates (Stage 8).
 
+*Amended before merge (5e, 2026-10-04):*
+- **Where the limit is enforced.** The quote cannot refuse, because it has no tenders. It returns the customer's
+  `credit` (balance, limit, available) for the payment screen, and the commit enforces the limit.
+- **No limit set** counts as a ₹0 limit, so any credit for such a customer needs the override. It never means
+  unlimited.
+- **The balance is the customer's ledger balance,** so an advance on account adds room.
+- **Where the entry is written.** The ledger entry is written by a `party` step after `stock`, which sales without
+  credit skip.
+
 ## Consequences
 - Cashiers (no `customers.approve`) cannot exceed a limit; managers and owners can, on the record.

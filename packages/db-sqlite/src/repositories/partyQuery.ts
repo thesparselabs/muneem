@@ -87,3 +87,7 @@ export function partyOutstanding(db: Db, businessId: string, partyType: PartyTyp
   }
   return { asOf, rows: [...byParty.values()], totals };
 }
+
+export const partyBalance = (db: Db, p: PartyRef): number =>
+  stmt(db, `SELECT COALESCE(SUM(amount_paise), 0) FROM party_ledger_entry WHERE business_id = @businessId AND party_type = @partyType
+    AND party_id = @partyId`).pluck().get(p) as number;

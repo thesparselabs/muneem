@@ -25,7 +25,7 @@
   deferred, and so are batch and serial tracking (ADR-0021).
 - Replay orders movements by local insertion order; Stage 7 must define the order for movements pulled from other
   devices.
-- Not in Stage 3: sale cancel, returns/credit notes, credit tender, manager PIN override, USB/Windows spooler printing,
+- Not in Stage 3: sale cancel, returns/credit notes, credit tender (added in Stage 5e), manager PIN override, USB/Windows spooler printing,
   ₹ and Indic text on receipts (prints "Rs" / "?"), and a Playwright run of the Electron UI. The POS screens are
   covered by typecheck, build and unit tests of their logic, not by clicking through the running app.
 - The scanner is picked up when focus is on the page or the search box, not inside other fields (quantity, dialogs).

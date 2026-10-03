@@ -88,10 +88,12 @@ export const SaleQuote = z.object({
   // Lines that would take stock below zero; blocking ones stop the sale under the 'block' policy (ADR-0020).
   warnings: z.array(z.object({ lineNo: Int, productId: Ulid, message: z.string(), stockMilli: Int, blocking: z.boolean() })),
   context: QuoteContext,
+  // With a customer on the bill: their ledger balance, limit (null = none set, counted as ₹0) and the credit still available (ADR-0026).
+  credit: z.object({ balancePaise: Int, limitPaise: Int.nullable(), availablePaise: Int }).optional(),
 });
 export type SaleQuote = z.infer<typeof SaleQuote>;
 
-export const TENDER_METHODS = ['cash', 'upi', 'card', 'other'] as const;
+export const TENDER_METHODS = ['cash', 'upi', 'card', 'other', 'credit'] as const;
 export const TenderLine = z.object({
   method: z.enum(TENDER_METHODS),
   amountPaise: Paise.refine((v) => v > 0, 'must be more than zero'),
@@ -141,6 +143,8 @@ export const Sale = z.object({
   totals: SaleTotals,
   paidPaise: Int,
   changePaise: Int,
+  creditPaise: Int,
+  dueDate: BusinessDate.optional(),
   lines: z.array(QuoteLine),
   tenders: z.array(SaleTender),
   createdAt: IsoDateTime,
