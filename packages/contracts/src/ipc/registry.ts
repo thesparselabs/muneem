@@ -11,6 +11,10 @@ import {
 import {
   CashMovementInput, CloseRegisterInput, Customer, CustomerInput, CustomerSearchInput, OpenRegisterInput, RegisterReport, RegisterSession,
 } from './pos.js';
+import {
+  LedgerInput, LedgerPage, OpeningBalanceInput, Outstanding, OutstandingInput, PartyOpening, SetCreditLimitInput, Supplier, SupplierInput,
+  SupplierSearchInput,
+} from './parties.js';
 import { CompleteSaleInput, CompleteSaleResult, HeldBill, HoldBillInput, Sale, SaleDraft, SaleListInput, SalePage, SaleQuote } from './sales.js';
 import { PrintJobSummary, PrinterConfig, ReceiptDoc } from './print.js';
 import { SETTING_KEYS } from './settings.js';
@@ -116,6 +120,18 @@ export const contract = {
   'customers.get': spec({ input: z.object({ id: Ulid }), output: Customer, permission: 'customers.view', rateLimit: { perSec: 20 } }),
   'customers.create': spec({ input: CustomerInput, output: Customer, permission: 'customers.create', rateLimit: { perSec: 5 }, audit: true }),
   'customers.update': spec({ input: CustomerInput.extend({ id: Ulid, version: z.number().int() }), output: Customer, permission: 'customers.edit', rateLimit: { perSec: 5 }, audit: true }),
+  'customers.setCreditLimit': spec({ input: SetCreditLimitInput, output: Customer, permission: 'customers.approve', rateLimit: { perSec: 2 }, audit: true }),
+  'customers.setOpening': spec({ input: OpeningBalanceInput, output: PartyOpening, permission: 'customers.edit', rateLimit: { perSec: 2 }, audit: true }),
+  'customers.getLedger': spec({ input: LedgerInput, output: LedgerPage, permission: 'customers.view', rateLimit: { perSec: 10 } }),
+  'customers.getOutstanding': spec({ input: OutstandingInput, output: Outstanding, permission: 'customers.view', rateLimit: { perSec: 2 } }),
+
+  'suppliers.search': spec({ input: SupplierSearchInput, output: z.array(Supplier), permission: 'suppliers.view', rateLimit: { perSec: 20 } }),
+  'suppliers.get': spec({ input: z.object({ id: Ulid }), output: Supplier, permission: 'suppliers.view', rateLimit: { perSec: 20 } }),
+  'suppliers.create': spec({ input: SupplierInput, output: Supplier, permission: 'suppliers.create', rateLimit: { perSec: 5 }, audit: true }),
+  'suppliers.update': spec({ input: SupplierInput.extend({ id: Ulid, version: z.number().int() }), output: Supplier, permission: 'suppliers.edit', rateLimit: { perSec: 5 }, audit: true }),
+  'suppliers.setOpening': spec({ input: OpeningBalanceInput, output: PartyOpening, permission: 'suppliers.edit', rateLimit: { perSec: 2 }, audit: true }),
+  'suppliers.getLedger': spec({ input: LedgerInput, output: LedgerPage, permission: 'suppliers.view', rateLimit: { perSec: 10 } }),
+  'suppliers.getOutstanding': spec({ input: OutstandingInput, output: Outstanding, permission: 'suppliers.view', rateLimit: { perSec: 2 } }),
   'pos.getSession': spec({ input: Empty, output: RegisterSession.nullable(), permission: 'pos.view', rateLimit: { perSec: 20 } }),
   'pos.openRegister': spec({ input: OpenRegisterInput, output: RegisterSession, permission: 'pos.create', rateLimit: { perSec: 1 }, audit: true }),
   'pos.cashMovement': spec({ input: CashMovementInput, output: Ok, permission: 'pos.create', rateLimit: { perSec: 2 }, audit: true }),

@@ -25,6 +25,28 @@ All notable changes, newest first. Each entry records **what** changed and **why
 - **ADRs 0022–0026** and LLD notes where Stage 5 differs: `payment_allocation` generalised to `allocation`, purchase
   returns at landed cost (not §4.1's average), a 5470 Bad Debts account, `purchases.receive` dropped (no GRN),
   `expenses.update` replaced by cancel and re-create.
+- **5b details written into the plan before building:** how an opening balance is corrected (cancel and re-enter),
+  ageing from the due date, ledger entries syncing inside their document, permissions, and the 5b tests. Settling
+  them first kept the build from guessing.
+- **Suppliers** (`suppliers.search/get/create/update`): GST details are checked together, so a GSTIN from another
+  state or a registered supplier without one is refused with the field named. Search with an empty query lists all
+  suppliers for the coming supplier list. Audited and queued for sync like customers.
+- **Customer credit terms:** `creditDays` on the customer (kept when an edit leaves it out), and
+  `customers.setCreditLimit` on its own path with `customers.approve`, audited and queued as
+  `customer_credit_limit`, so a limit can't change as a side effect of a profile edit (ADR-0026).
+- **Opening balances** (`customers.setOpening`, `suppliers.setOpening`): one live opening per party, on the party's
+  usual side unless told otherwise. Re-entering one cancels the old in the same transaction, and is refused while
+  payments are allocated to it.
+- **Party ledger:** `postPartyEntry` is the only writer. It refuses a zero amount and a cancel that does not reverse
+  its post, and a repeat of the same entry is a no-op.
+  - **Statement:** `customers.getLedger` / `suppliers.getLedger` list entries in date order with a running balance,
+    paged, with opening and closing balances for a date range (FR-039).
+  - **Outstanding:** `customers.getOutstanding` / `suppliers.getOutstanding` age open items by days past due
+    (0–30 / 31–60 / 61–90 / 90+) and show advances apart.
+  - **Shared query:** credit sales, purchases, expenses, payments, debit notes and write-offs are all read through one
+    query (`PARTY_DOCUMENTS_SQL`), so later parts only write documents.
+- **`reconcilePartiesDb`** runs the Stage 5 exit check against the database. Every 5b test ends reconciled, and a
+  planted entry is named.
 
 ### Added — Stage 4 inventory
 - **Stage 4 plan (`docs/plans/stage-4-inventory.md`) and ADRs 0018–0021.** Decided with the user: no back-fill (stock

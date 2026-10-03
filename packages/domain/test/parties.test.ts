@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import fc from 'fast-check';
 import {
-  allocateAsChosen, allocateOldestFirst, chargeSign, reconcileParties, type OpenItem, type PartyAllocation, type PartyDocument, type PartyEntry,
+  ageingBucket, allocateAsChosen, allocateOldestFirst, chargeSign, daysPastDue, reconcileParties, type OpenItem, type PartyAllocation, type PartyDocument, type PartyEntry,
   type PartyType,
 } from '../src/index.js';
 
@@ -147,5 +147,21 @@ describe('party sub-ledger reconciliation (Stage 5 exit criterion, ADR-0022)', (
     const dead = simulate([{ kind: 'charge', party: 0, amount: 1000 }, { kind: 'settle', party: 0, amount: 400 }]);
     dead.charges[0]!.live = false;
     expect(reconcileParties(dead).faults).toContainEqual({ kind: 'dead_document', sourceId: 'settle1', targetId: 'charge0' });
+  });
+});
+
+describe('ageing (5b)', () => {
+  it('ages from the due date, with each boundary in the lower bucket', () => {
+    const asOf = '2026-12-31';
+    expect(ageingBucket('2027-01-01', asOf)).toBe('notDue');
+    expect(ageingBucket('2026-12-31', asOf)).toBe('days0to30');
+    expect(ageingBucket('2026-12-01', asOf)).toBe('days0to30');
+    expect(ageingBucket('2026-11-30', asOf)).toBe('days31to60');
+    expect(ageingBucket('2026-11-01', asOf)).toBe('days31to60');
+    expect(ageingBucket('2026-10-31', asOf)).toBe('days61to90');
+    expect(ageingBucket('2026-10-02', asOf)).toBe('days61to90');
+    expect(ageingBucket('2026-10-01', asOf)).toBe('over90');
+    expect(daysPastDue('2026-02-28', '2026-03-01')).toBe(1);
+    expect(() => ageingBucket('31/12/2026', asOf)).toThrow(/business date/);
   });
 });

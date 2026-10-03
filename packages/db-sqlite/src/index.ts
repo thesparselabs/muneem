@@ -31,3 +31,7 @@ export * from './repositories/printJob.js';
 export * from './repositories/heldBill.js';
 export * from './repositories/inventory.js';
 export * from './repositories/stockQuery.js';
+export * from './repositories/supplier.js';
+export * from './repositories/partyLedger.js';
+export * from './repositories/partyOpening.js';
+export * from './repositories/partyQuery.js';

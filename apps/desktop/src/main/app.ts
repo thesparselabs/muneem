@@ -20,6 +20,8 @@ import { PrinterConfigStore } from './services/print/printerConfig.js';
 import { PreviewStore } from './services/import/previewStore.js';
 import { PricingService } from './services/pricing.js';
 import { CustomerService } from './services/pos/customers.js';
+import { PartyLedgerService } from './services/parties/partyLedger.js';
+import { SupplierService } from './services/parties/suppliers.js';
 import { InventoryService } from './services/inventory/inventoryService.js';
 import { OpeningImportService } from './services/inventory/openingImport.js';
 import { HeldBillService } from './services/pos/heldBills.js';
@@ -78,6 +80,9 @@ export function createApp(cfg: AppConfig) {
   const pricing = new PricingService(catalogCtx, invalidateSearch);
   const posCtx = new PosContext(catalogCtx, session, rbac);
   const customers = new CustomerService(posCtx);
+  const suppliers = new SupplierService(posCtx);
+  const customerLedger = new PartyLedgerService(posCtx, 'customer', (id) => customers.get(id));
+  const supplierLedger = new PartyLedgerService(posCtx, 'supplier', (id) => suppliers.get(id));
   const register = new RegisterService(posCtx);
   const heldBills = new HeldBillService(posCtx, register);
   const inventory = new InventoryService(posCtx);
@@ -142,6 +147,17 @@ export function createApp(cfg: AppConfig) {
     'customers.get': (i) => customers.get(i.id),
     'customers.create': (i) => customers.create(i),
     'customers.update': (i) => customers.update(i),
+    'customers.setCreditLimit': (i) => customers.setCreditLimit(i),
+    'customers.setOpening': (i) => customerLedger.setOpening(i),
+    'customers.getLedger': (i) => customerLedger.ledger(i),
+    'customers.getOutstanding': (i) => customerLedger.outstanding(i),
+    'suppliers.search': (i) => suppliers.search(i.query, i.limit),
+    'suppliers.get': (i) => suppliers.get(i.id),
+    'suppliers.create': (i) => suppliers.create(i),
+    'suppliers.update': (i) => suppliers.update(i),
+    'suppliers.setOpening': (i) => supplierLedger.setOpening(i),
+    'suppliers.getLedger': (i) => supplierLedger.ledger(i),
+    'suppliers.getOutstanding': (i) => supplierLedger.outstanding(i),
     'pos.getSession': () => register.current(),
     'pos.openRegister': (i) => register.open(i.openingCashPaise),
     'pos.cashMovement': (i) => { register.cashMovement(i); return { ok: true as const }; },
@@ -190,6 +206,6 @@ export function createApp(cfg: AppConfig) {
     connectivity: () => connectivity.snapshot(), isTrustedSender: cfg.isTrustedSender ?? (() => true), ...(cfg.now && { now: cfg.now }),
   });
 
-  return { events, session, rbac, cloud, connectivity, device, auth, business, settings, products, catalog, pricing, productImport, customers, register, sales, printQueue, inventory, openingImport, diagnostics, gateway, handlers, syncStatus };
+  return { events, session, rbac, cloud, connectivity, device, auth, business, settings, products, catalog, pricing, productImport, customers, suppliers, customerLedger, supplierLedger, register, sales, printQueue, inventory, openingImport, diagnostics, gateway, handlers, syncStatus };
 }
 export type App = ReturnType<typeof createApp>;

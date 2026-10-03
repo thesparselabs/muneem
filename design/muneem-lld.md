@@ -880,7 +880,7 @@ pricing.*     listLists, createList, getItems, setItems
 inventory.*   getStock, getMovements, valuation, listLowStock, setOpeningStock, adjust, stockTake, importOpeningPreview,
               importOpeningCommit, listWarehouses, rebuildProjections   (transfer: deferred with multi-warehouse)
 customers.*   search, get, create, update, getLedger, getOutstanding, setCreditLimit, setOpening
-suppliers.*   search, get, create, update, getLedger, setOpening
+suppliers.*   search, get, create, update, getLedger, getOutstanding, setOpening
 pos.*         openRegister, closeRegister, getSession, xReport, zReport, cashMovement,
               holdBill, listHeldBills, retrieveBill, discardBill
 sales.*       quote, complete, get, list, getReceipt, cancel, returnAgainst   (cancel/returnAgainst: later stages)

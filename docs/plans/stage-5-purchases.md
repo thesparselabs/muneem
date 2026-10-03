@@ -95,6 +95,63 @@ append-only.
    version of the property), ledger statement with running balance (FR-039), outstanding with ageing buckets
    (0–30/31–60/61–90/90+).
 
+5b details (settled 2026-10-03, before starting the part):
+
+- **Suppliers.** `SupplierInput` mirrors `CustomerInput`, plus `stateCode` (required — it decides intra/inter),
+  `taxScheme` (default `regular`) and `creditDays`. Name, GSTIN and state are checked as for customers, and the GSTIN
+  must start with the state code. Create and update follow `createCustomer` / `updateCustomer`: `recordChange` writes
+  the audit row and queues the sync row in the same transaction, and update uses optimistic `version`. A supplier is
+  never deleted in Stage 5 (purchases point at it); deactivation waits for a need.
+- **Customer credit.** `CustomerInput` gains `creditDays`; `customers.update` may change it. The credit limit is
+  **not** part of `customers.update`: `customers.setCreditLimit({ id, version, limitPaise | null })` needs
+  `customers.approve`, writes a `customer.credit_limit` audit row with before/after, and is cloud-wins at sync
+  (LLD §9). `null` = no credit.
+- **Opening balances.** `customers.setOpening` / `suppliers.setOpening` take `{ partyId, side, amountPaise, asOfDate }`.
+  - **One live opening per party** (the partial unique index). The default side is `receivable` for a customer and
+    `payable` for a supplier; the other side is an advance.
+  - **To correct one, cancel and re-enter.** `setOpening` on a party that already has one cancels the old one (status,
+    `cancelled_at/by`, a `cancel` ledger entry) and posts the new one in the same transaction. It is refused while
+    anything is allocated to or from the old one.
+  - **Charge or settlement.** An opening in the business's favour (customer receivable, supplier receivable) is
+    positive on the ledger. The default side is a charge, open to payments. The other side is a settlement, which 5d
+    can allocate.
+  - **Date.** `asOfDate` is both the document date and the due date, so an opening ages from when it was owed.
+  - **Permission:** `customers.edit` / `suppliers.edit`.
+- **`postPartyEntry`.** `postPartyEntry(db, { businessId, partyType, partyId, refType, refId, kind: 'post' | 'cancel',
+  amountPaise, docDate, dueDate }, actor)` is the only `INSERT` into `party_ledger_entry`, called inside the caller's
+  transaction. It refuses a zero amount, and a `cancel` without a matching `post` of the opposite sign. It is
+  idempotent per `(ref, kind)` through the unique index. It queues no sync row of its own: the entry travels in its
+  document's aggregate (as stock movements do in the sale's), so the opening's outbox payload carries its entry.
+- **Reading the ledger** (`repositories/partyLedger.ts`):
+  - **`openItems(party)`:** the live charges with outstanding > 0 (`sale` credit, `purchase`, credit `expense`,
+    opening) and the live settlements with unallocated > 0, each as `{ type, id, docNumber, docDate, dueDate,
+    amountPaise, openPaise }`. In 5b only openings exist; the others are added by the parts that create them.
+  - **`partyStatement(party, from, to)`:** opening balance before `from`, then every entry in `(doc_date, id)` order
+    with its document number and a running balance, then the closing balance. Keyset-paged like
+    `inventory.getMovements`.
+  - **`outstanding(partyType, asOf)`:** per party, the open charges bucketed by days past **due date** (not yet due /
+    0–30 / 31–60 / 61–90 / 90+), less unallocated settlements shown as "advance", plus the totals.
+  - **`reconcilePartiesDb(businessId)`:** loads entries, documents and live allocations and runs the domain
+    `reconcileParties`. It is the DB-level exit check.
+- **IPC.**
+  - **Suppliers:** `suppliers.search / get / create / update / getLedger / setOpening`.
+  - **Customers:** `customers.getLedger / getOutstanding / setCreditLimit / setOpening`.
+  - **Suppliers' outstanding:** `suppliers.getOutstanding`, added for symmetry with customers.
+  - **Permissions:** view `*.view`, create `*.create`, update `*.edit`, openings `*.edit`, credit limit
+    `customers.approve`.
+  - **Money:** every amount crosses IPC as integer paise and every date as a business date (`YYYY-MM-DD`).
+- **Sync entity types.** `OutboxEntityType` gains `supplier`, `party_opening` and `customer_credit_limit`, with the
+  rest of Stage 5's (`purchase`, `debit_note`, `payment`, `allocation`, `write_off`, `expense`) added by their parts.
+- **Tests.**
+  - **Supplier repository:** create, update, version conflict, GSTIN/state rule.
+  - **Credit limit:** permission refused for a cashier; audit row; `null` round-trips.
+  - **Openings:** post, replace, refused while allocated, ledger entries signed correctly for all four party/side
+    pairs.
+  - **`postPartyEntry`:** guards and idempotency.
+  - **Reports:** statement running balance and paging; ageing buckets either side of each boundary.
+  - **Reconciliation:** `reconcilePartiesDb` clean after every test above, and it names a hand-tampered entry.
+- **Not in 5b:** screens (5f), payments and allocation (5d), and cloud supplier endpoints (Stage 7).
+
 **5c — Purchases and returns**
 6. `PurchaseService.create`: tax through the GST engine, total check, ITC, landed cost, one `purchase` movement per
    line, supplier ledger entry, audit, outbox aggregate (purchase + lines + movements + entry). Tests: stock rises at
