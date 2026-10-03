@@ -483,6 +483,26 @@ append-only.
 - **Not in 5f:** printing a payment receipt or debit note, report exports (Stage 8), custom expense categories, a
   Playwright suite, and POS changes beyond 5e's credit row.
 
+5f manual checklist (run `pnpm --filter @muneem/desktop dev`; not yet done — the screens are checked by typecheck,
+build and helper tests only):
+
+1. **Menus:** as owner, Purchases, Parties, Payments and Expenses are in the menu. Switch to a cashier: only Parties
+   (customers) and Payments show, and the Suppliers tab is hidden.
+2. **New supplier:** add one with a GSTIN; the state fills from it. Give it 30 credit days and a ₹1,000 opening
+   balance.
+3. **New purchase:**
+   - two lines, one in boxes, with ₹100 freight;
+   - type a bill total ₹2 off: Save stays disabled with "Off by…";
+   - correct it, save, and see the purchase page's landed costs.
+4. **Import lines:** a CSV with one bad row fills the good lines and lists the bad one.
+5. **Return goods:** return part of a line, and see the debit note settle the purchase and the supplier's statement.
+6. **Pay the supplier:** auto shows oldest first. Switch to Choose, over-type an item, see the error, then save.
+7. **Credit:** give a customer a credit limit, sell partly on credit at the POS, and check the receipt lines and that
+   the customer's page shows the sale.
+8. **Expense:** add one with a vendor GSTIN (the GST box appears), on cash with the register open. The X report's
+   expected cash drops by the amount.
+9. **Home:** check both cards and the outstanding report totals.
+
 **5g — Close-out**
 11. Golden flow extended: supplier opening → purchase with freight → sale partly on credit → receipt allocated →
     debit note → supplier payment → reconciliation and stock valuation checked. Integrity check and the 6-hourly

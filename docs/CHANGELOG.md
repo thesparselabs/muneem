@@ -165,6 +165,20 @@ All notable changes, newest first. Each entry records **what** changed and **why
   total and hit the 5 s default, while its p95 stayed far inside the 250 ms budget, which is unchanged.
 - **Helpers:** party forms and the allocation grid have node tests. The screens are checked by typecheck and build,
   not clicked through.
+- **Purchase screens (5f-2):**
+  - **List:** filtered, showing what is still owed.
+  - **New purchase:** supplier picker; lines in any of the product's units with rate, inclusive toggle, discount, GST
+    rate and ITC tick; bill discount and charges; a CSV/XLSX import that fills the grid and lists bad rows.
+  - **Live quote:** shows tax, ITC, landed cost per unit and whether the typed bill total fits. Save stays off until
+    it does.
+  - **Purchase page:** landed costs and returned quantities, a return-goods dialog that issues a debit note (with the
+    "supplier refunds freight" tick), and cancel for a wrong entry.
+- **Expense screens (5f-2):** a list with cancel, and a form whose GST box appears only once a supplier or vendor
+  GSTIN is known.
+  - **Cancel reason:** asked in a dialog, because Electron does not support `window.prompt`.
+- **Menus:** Purchases and Expenses join the menu, each shown only to users who may view them.
+- **Helpers:** purchase and expense form helpers have node tests.
+- **Manual checklist:** added to the plan, because the screens have not been clicked through yet.
 
 ### Added — Stage 4 inventory
 - **Stage 4 plan (`docs/plans/stage-4-inventory.md`) and ADRs 0018–0021.** Decided with the user: no back-fill (stock

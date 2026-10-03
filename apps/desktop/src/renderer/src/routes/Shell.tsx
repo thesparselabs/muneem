@@ -12,9 +12,10 @@ const NAV: { to: string; label: string; enabled: boolean; stage?: string; need?:
   { to: '/pos', label: 'POS · Billing', enabled: true },
   { to: '/products', label: 'Products', enabled: true },
   { to: '/inventory', label: 'Inventory', enabled: true },
-  { to: '/purchases', label: 'Purchases', enabled: false, stage: 'Stage 5f', need: 'purchases.view' },
+  { to: '/purchases', label: 'Purchases', enabled: true, need: 'purchases.view' },
   { to: '/parties', label: 'Parties', enabled: true, need: 'customers.view' },
   { to: '/payments', label: 'Payments', enabled: true, need: 'payments.view' },
+  { to: '/expenses', label: 'Expenses', enabled: true, need: 'expenses.view' },
   { to: '/reports', label: 'Reports', enabled: false, stage: 'Stage 8' },
   { to: '/diagnostics', label: 'Diagnostics', enabled: true },
 ];
