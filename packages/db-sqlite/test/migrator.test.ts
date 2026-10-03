@@ -433,3 +433,19 @@ describe('0008_payment_commands', () => {
     expect(() => db.exec("UPDATE payment SET command_id = 'x' WHERE id = 'p1'")).toThrow(/append-only/);
   });
 });
+
+describe('document number format (5h #9)', () => {
+  it('formats by document type, so a sale series given width 5 still issues invoice numbers', async () => {
+    const { allocateDocNumber, withTransaction } = await import('../src/index.js');
+    const db = await freshDb();
+    const t = "'a', 'a', 'u', 'd'";
+    db.exec(`
+      INSERT INTO organization (id, name, created_at, updated_at) VALUES ('o', 'O', 'a', 'a');
+      INSERT INTO business (id, organization_id, name, business_type, state_code, tax_scheme, created_at, updated_at, created_by, device_id) VALUES ('b', 'o', 'S', 'retail', '07', 'regular', ${t});
+      INSERT INTO doc_series (id, business_id, doc_type, fy, prefix, pad_width, created_at, updated_at, created_by, device_id) VALUES ('s', 'b', 'tax_invoice', '2026-27', 'T1', 5, ${t});
+      INSERT INTO doc_series (id, business_id, doc_type, fy, prefix, pad_width, created_at, updated_at, created_by, device_id) VALUES ('p', 'b', 'purchase', '2026-27', 'T1P', 6, ${t});
+    `);
+    expect(withTransaction(db, () => allocateDocNumber(db, 's')).number).toBe('T1/2627/000001');
+    expect(withTransaction(db, () => allocateDocNumber(db, 'p')).number).toBe('T1P/2627/00001');
+  });
+});

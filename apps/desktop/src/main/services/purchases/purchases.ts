@@ -37,6 +37,8 @@ export class PurchaseService {
     const fields: Record<string, string> = Object.fromEntries(priced.quote.issues.map((i) => [`lines.${i.lineNo - 1}`, i.message]));
     const today = this.ctx.today();
     if (input.supplierInvoiceDate > today) fields.supplierInvoiceDate = 'the bill date cannot be after today';
+    // Reverse charge keeps the tax out of the bill and the supplier's balance; that needs Stage 6, so it is refused for now.
+    if (input.isReverseCharge) fields.isReverseCharge = 'reverse-charge purchases are not supported yet';
     if (input.dueDate && input.dueDate < input.supplierInvoiceDate) fields.dueDate = 'the due date cannot be before the bill date';
     const existing = postedPurchaseByInvoice(this.ctx.db(), this.ctx.businessId(), input.supplierId, financialYearOf(input.supplierInvoiceDate), input.supplierInvoiceNo);
     if (existing) fields.supplierInvoiceNo = `already recorded as ${existing.docNumber}`;

@@ -6,6 +6,9 @@ import { appendOutbox } from '../outbox.js';
 import { nowIso, withTransaction } from '../uow.js';
 import type { Actor } from './business.js';
 
+// Sale documents use the invoice format (ADR-0014); everything else carries a kind letter (ADR-0028). Chosen by type, never by width.
+const INVOICE_DOC_TYPES = new Set(['tax_invoice', 'bill_of_supply', 'credit_note', 'delivery_challan']);
+
 export interface DocSeriesRow { id: string; businessId: string; branchId: string | null; terminalId: string | null; docType: string; fy: string; prefix: string; padWidth: number; nextSeq: number }
 type Raw = { id: string; business_id: string; branch_id: string | null; terminal_id: string | null; doc_type: string; fy: string; prefix: string; pad_width: number; next_seq: number };
 const map = (r: Raw): DocSeriesRow => ({ id: r.id, businessId: r.business_id, branchId: r.branch_id, terminalId: r.terminal_id, docType: r.doc_type, fy: r.fy, prefix: r.prefix, padWidth: r.pad_width, nextSeq: r.next_seq });
@@ -36,7 +39,7 @@ export function allocateDocNumber(db: Db, seriesId: string): { seq: number; numb
   if (!s) throw new Error('NOT_FOUND');
   let number: string;
   try {
-    number = s.pad_width === 5 ? formatDocNumber(s.prefix, s.fy, s.next_seq) : formatInvoiceNumber(s.prefix, s.fy, s.next_seq);
+    number = INVOICE_DOC_TYPES.has(s.doc_type) ? formatInvoiceNumber(s.prefix, s.fy, s.next_seq) : formatDocNumber(s.prefix, s.fy, s.next_seq);
   } catch (e) {
     if (e instanceof DomainError) throw new AppError('INVALID_STATE', e.message);
     throw e;

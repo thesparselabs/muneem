@@ -273,3 +273,39 @@ describe('5h-1 fixes', () => {
       .toMatchObject({ ok: false, error: { code: 'VALIDATION_FAILED' } });
   });
 });
+
+describe('5h-2 fixes', () => {
+  it('quote lines say which form row they came from, so a bad row does not shift the others (#4)', async () => {
+    const q = await api.data<PurchaseQuote>('purchases.quote', bill({ lines: [
+      { productId: rice, uomId: box, qtyMilli: 1000, unitPricePaise: 100 },              // rice has no BOX unit: left out
+      { productId: soap, uomId: pcs, qtyMilli: 10_000, unitPricePaise: 10_000 },
+    ] }));
+    expect(q.issues).toEqual([{ lineNo: 1, message: expect.stringContaining('BOX') }]);
+    expect(q.lines).toEqual([expect.objectContaining({ draftLineNo: 2, productId: soap, taxablePaise: 100_000 })]);
+  });
+
+  it('a full return takes back the round-off too, leaving nothing owed (#6)', async () => {
+    const p = await create({ billTotalPaise: 154_200 });                                // ₹0.50 below the lines: round-off −50
+    expect(p.totals.roundOffPaise).toBe(-50);
+    const note = app.purchaseReturns.returnGoods(ReturnPurchaseInput.parse({
+      purchaseId: p.id, reason: 'wrong goods', refundCharges: true, commandId: newUlid(),
+      lines: p.lines.map((l) => ({ purchaseItemId: l.id, qtyMilli: l.qtyMilli })),
+    }));
+    expect(note).toMatchObject({ roundOffPaise: -50, totalPaise: 154_200 });
+    expect(app.purchases.get(p.id).settledPaise).toBe(154_200);
+    clean();
+  });
+
+  it('a partial return carries no round-off', async () => {
+    const p = await create({ billTotalPaise: 154_200 });
+    const note = app.purchaseReturns.returnGoods(ReturnPurchaseInput.parse({
+      purchaseId: p.id, reason: 'x', commandId: newUlid(), lines: [{ purchaseItemId: p.lines[0]!.id, qtyMilli: 1000 }],
+    }));
+    expect(note.roundOffPaise).toBe(0);
+  });
+
+  it('refuses a reverse-charge purchase until it is supported (#7)', async () => {
+    expect(await api.call('purchases.create', { ...bill({ isReverseCharge: true }), commandId: newUlid() }))
+      .toMatchObject({ ok: false, error: { code: 'VALIDATION_FAILED', fields: { isReverseCharge: expect.stringContaining('not supported') } } });
+  });
+});

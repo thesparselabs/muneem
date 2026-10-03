@@ -78,7 +78,11 @@ export class PurchaseReturnService {
     this.guardStock(p.warehouseId, outgoing);
     const sum = (f: (l: (typeof lines)[number]) => number) => lines.reduce((s, l) => s + f(l), 0);
     const chargesPaise = input.refundCharges ? sum((l) => l.share.chargesPaise) : 0;
-    const totalPaise = sum((l) => l.share.taxablePaise + l.tax) + chargesPaise;
+    // The note that completes the return of every line also takes back the bill's round-off, so nothing is left owed.
+    const thisNote = new Map(lines.map((l) => [l.item.id, l.qtyMilli]));
+    const completes = p.lines.every((l) => (returned.get(l.id)?.qtyMilli ?? 0) + (thisNote.get(l.id) ?? 0) === l.qtyMilli);
+    const roundOffPaise = completes ? p.totals.roundOffPaise : 0;
+    const totalPaise = sum((l) => l.share.taxablePaise + l.tax) + chargesPaise + roundOffPaise;
     if (totalPaise <= 0) throw new AppError('VALIDATION_FAILED', 'Nothing of value is being returned', { lines: 'the returned goods are worth ₹0' });
 
     const actor = this.ctx.actor();
@@ -93,7 +97,7 @@ export class PurchaseReturnService {
       id, businessId: p.businessId, branchId: p.branchId, warehouseId: p.warehouseId, purchaseId: p.id, supplierId: p.supplierId, seriesId,
       docNumber: number.number, docSeq: number.seq, docDate, fy, commandId: input.commandId, reason: input.reason, supplyType: p.totals.supplyType,
       taxablePaise: sum((l) => l.share.taxablePaise), cgstPaise: sum((l) => l.share.cgstPaise), sgstPaise: sum((l) => l.share.sgstPaise),
-      igstPaise: sum((l) => l.share.igstPaise), cessPaise: sum((l) => l.share.cessPaise), chargesPaise, totalPaise, itcReversedPaise: sum((l) => l.itc),
+      igstPaise: sum((l) => l.share.igstPaise), cessPaise: sum((l) => l.share.cessPaise), chargesPaise, roundOffPaise, totalPaise, itcReversedPaise: sum((l) => l.itc),
       lines: lines.map((l, i) => ({
         id: outgoing[i]!.refLineId, purchaseItemId: l.item.id, productId: l.item.productId, qtyMilli: l.qtyMilli, baseQtyMilli: l.share.baseQtyMilli,
         taxablePaise: l.share.taxablePaise, cgstPaise: l.share.cgstPaise, sgstPaise: l.share.sgstPaise, igstPaise: l.share.igstPaise,

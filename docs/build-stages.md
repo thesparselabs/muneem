@@ -20,6 +20,9 @@
   Debts** account), expenses (category account, input tax, cash/bank/AP) and opening balances. It must then tie
   Σ customer balances to 1300 and Σ supplier balances to 2100 (ADR-0022), and post cash moved through the drawer for
   payments and expenses to 1100.
+- Stage 6 must decide the posting period of a purchase whose bill is dated in one FY and entered in the next:
+  `purchase.fy` is the bill's FY and its number uses the entry FY (ADR-0023 amendment). Reverse-charge purchases are
+  refused until Stage 6 can book the tax as output and input.
 - Stage 7 needs supplier, purchase, debit-note, payment, allocation, write-off and expense endpoints. It also needs a
   Go port of `allocateOldestFirst` with shared fixtures before the cloud verifies payments (ADR-0001), and must keep
   the credit limit cloud-wins (LLD §9).

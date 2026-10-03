@@ -28,6 +28,15 @@ are valued at landed cost excluding ITC-eligible tax.
 - Reverse charge is a stored flag only; no self-invoice in Stage 5.
 - `purchases.receive` is dropped from the IPC surface: there is no GRN.
 
+*Amended before merge (5h, 2026-10-04):*
+- **Reverse charge** is refused (`isReverseCharge: true` → `VALIDATION_FAILED`), not stored as a flag. Saving the flag
+  while still adding the tax to the bill total and the supplier's balance gave wrong numbers. Doing it properly keeps
+  the tax out of both and books it as output and input tax, which needs a schema change and Stage 6 postings.
+- **Two years on a purchase.** `purchase.fy` is the **supplier bill's** financial year: it drives the
+  duplicate-invoice rule and, in Stage 6, the ITC period. The internal number uses the year the bill is **entered**,
+  like every document number. Near 31 March they can differ (a 30 March bill entered on 2 April). Which period such a
+  bill is posted to is a Stage 6 decision.
+
 ## Consequences
 - Purchase lines carry everything Stage 6 needs: inventory value, eligible input tax, round-off and the AP amount.
 - PO/GRN can be added later as documents that feed a purchase; nothing here assumes they don't exist.

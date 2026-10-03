@@ -46,6 +46,8 @@ export type CreatePurchaseInput = z.infer<typeof CreatePurchaseInput>;
 
 export const PurchaseQuoteLine = QuoteLine.extend({
   itcEligible: z.boolean(), chargesPaise: Int, landedValuePaise: Int, unitCostPaise: Int,
+  // In a quote: the form row (1-based) this line came from, since rows with problems are left out.
+  draftLineNo: Int.optional(),
 });
 export type PurchaseQuoteLine = z.infer<typeof PurchaseQuoteLine>;
 
@@ -114,7 +116,7 @@ export type ReturnPurchaseInput = z.infer<typeof ReturnPurchaseInput>;
 export const DebitNote = z.object({
   id: Ulid, docNumber: z.string(), docDate: BusinessDate, purchaseId: Ulid, supplierId: Ulid, reason: z.string(),
   supplyType: z.enum(['intra', 'inter']),
-  taxablePaise: Int, cgstPaise: Int, sgstPaise: Int, igstPaise: Int, cessPaise: Int, chargesPaise: Int, totalPaise: Int,
+  taxablePaise: Int, cgstPaise: Int, sgstPaise: Int, igstPaise: Int, cessPaise: Int, chargesPaise: Int, roundOffPaise: Int, totalPaise: Int,
   itcReversedPaise: Int, allocatedPaise: Int,
   lines: z.array(z.object({
     purchaseItemId: Ulid, productId: Ulid, qtyMilli: Int, baseQtyMilli: Int, taxablePaise: Int,

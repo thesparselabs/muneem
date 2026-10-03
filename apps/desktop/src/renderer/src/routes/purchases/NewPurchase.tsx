@@ -49,6 +49,7 @@ export default function NewPurchase() {
     } catch (err) { setError(errorMessage(err)); }
   }
   const q = quote.data;
+  const quoted = new Map(q?.lines.map((l) => [l.draftLineNo, l]) ?? []);
   return (
     <form onSubmit={submit} className="max-w-7xl space-y-4">
       <div className="flex items-center justify-between"><h1 className="text-2xl font-semibold">New purchase</h1><Link to="/purchases" className="btn-secondary">Cancel</Link></div>
@@ -72,7 +73,7 @@ export default function NewPurchase() {
           </tr></thead>
           <tbody>
             {form.lines.map((l, i) => {
-              const ql = q?.lines[i];
+              const ql = quoted.get(i + 1);
               return (
                 <tr key={`${l.productId}-${i}`} className="border-t">
                   <td className="p-2">{l.name}</td>

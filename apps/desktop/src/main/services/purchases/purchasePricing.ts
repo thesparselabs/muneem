@@ -11,7 +11,7 @@ import type { PosContext } from '../pos/posContext.js';
 
 export interface PricedPurchase { quote: PurchaseQuote; supplier: Supplier; business: Business; branch: Branch }
 
-interface PricedLine { product: Product; gst: GstLineInput; itcEligible: boolean; line: Pick<PurchaseQuoteLine, 'productId' | 'name' | 'hsnCode' | 'uomId' | 'uomCode' | 'qtyMilli' | 'baseQtyMilli' | 'unitPricePaise' | 'priceIsInclusive' | 'gstRateBp' | 'cessRateBp' | 'cessPerUnitPaise' | 'taxTreatment' | 'lineDiscount'> }
+interface PricedLine { draftLineNo: number; product: Product; gst: GstLineInput; itcEligible: boolean; line: Pick<PurchaseQuoteLine, 'productId' | 'name' | 'hsnCode' | 'uomId' | 'uomCode' | 'qtyMilli' | 'baseQtyMilli' | 'unitPricePaise' | 'priceIsInclusive' | 'gstRateBp' | 'cessRateBp' | 'cessPerUnitPaise' | 'taxTreatment' | 'lineDiscount'> }
 
 const NO_B2CL = Number.MAX_SAFE_INTEGER;
 const taxOf = (l: { cgstPaise: number; sgstPaise: number; igstPaise: number; cessPaise: number }): number => l.cgstPaise + l.sgstPaise + l.igstPaise + l.cessPaise;
@@ -34,10 +34,10 @@ export class PurchasePricing {
     const gst = this.compute(supplier, branch, draft, priced);
     const charges = draft.charges.reduce((s, c) => s + c.amountPaise, 0);
     const landed = landedValues(gst.lines.map((l, i) => ({ taxablePaise: l.taxablePaise, taxPaise: taxOf(l), itcEligible: priced[i]!.itcEligible })), charges);
-    const lines = priced.map(({ line, itcEligible }, i): PurchaseQuoteLine => {
+    const lines = priced.map(({ line, itcEligible, draftLineNo }, i): PurchaseQuoteLine => {
       const g = gst.lines[i]!;
       return {
-        ...line, lineNo: i + 1, itcEligible, grossPaise: g.grossPaise, lineDiscountPaise: g.lineDiscountPaise,
+        ...line, lineNo: i + 1, draftLineNo, itcEligible, grossPaise: g.grossPaise, lineDiscountPaise: g.lineDiscountPaise,
         apportionedBillDiscountPaise: g.apportionedBillDiscountPaise, taxablePaise: g.taxablePaise, cgstPaise: g.cgstPaise, sgstPaise: g.sgstPaise,
         igstPaise: g.igstPaise, cessPaise: g.cessPaise, totalPaise: g.totalPaise, chargesPaise: landed[i]!.chargesPaise,
         landedValuePaise: landed[i]!.landedValuePaise, unitCostPaise: divRound(landed[i]!.landedValuePaise * 1000, line.baseQtyMilli),
@@ -82,7 +82,7 @@ export class PurchasePricing {
       if (baseQtyMilli <= 0) return issue(`Too small: ${qtyText(l.qtyMilli, uomCodes.get(l.uomId) ?? '')} of ${p.name} is less than 0.001 ${uomCodes.get(p.baseUomId) ?? ''}`);
       const gstRateBp = l.gstRateBp ?? p.gstRateBp;
       return [{
-        product: p, itcEligible: itcAllowed && (l.itcEligible ?? true),
+        draftLineNo: i + 1, product: p, itcEligible: itcAllowed && (l.itcEligible ?? true),
         gst: {
           qtyMilli: l.qtyMilli, unitPricePaise: l.unitPricePaise, priceIsInclusive: l.priceIsInclusive, lineDiscount: l.lineDiscount,
           gstRateBp, cessRateBp: p.cessRateBp, cessPerUnitPaise: p.cessPerUnitPaise, taxTreatment: p.taxTreatment,

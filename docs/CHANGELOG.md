@@ -26,6 +26,17 @@ All notable changes, newest first. Each entry records **what** changed and **why
 - **The series list no longer breaks after the first purchase or expense** (#11, found while checking #9). The series
   contract allowed only 1–4 character prefixes and no `expense` type, so `DE01P`/`DE01E` failed output validation.
   Creating a series still takes a 1–4 character prefix.
+- **New Purchase rows show their own figures** (#4). The quote leaves out rows with problems, and the screen read its
+  lines by position, so every row after a bad one showed the next row's taxable and landed cost. Quote lines now carry
+  `draftLineNo`.
+- **A full return leaves nothing owed** (#6). The debit note that completes the return of every line now takes back
+  the bill's round-off; before, up to ₹1 stayed open on the supplier.
+- **Reverse-charge purchases are refused** (#7, ADR-0023 amended). The flag was saved but GST was still added to the
+  bill and the supplier's balance. No screen sends it.
+- **A sale series given pad width 5 no longer stops billing** (#9). The number format was chosen by pad width; it is
+  now chosen by document type.
+- **Documented, not changed** (#8): a purchase's `fy` is the supplier bill's year, while its number uses the year it
+  was entered. Stage 6 decides the posting period.
 
 ### Added — Stage 5 purchases
 - **Stage 5 plan (`docs/plans/stage-5-purchases.md`).** Decided with the user: the party sub-ledger is proved now and
