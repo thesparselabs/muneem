@@ -391,3 +391,26 @@ describe('0006_parties', () => {
     expect(db.prepare("UPDATE sale SET settled_paise = 600 WHERE id = 'sa'").run().changes).toBe(1);
   });
 });
+
+describe('0007_purchase_commands', () => {
+  it('lets a command id be used once per business and never changed', async () => {
+    const db = await freshDb();
+    const t = "'a', 'a', 'u', 'd'";
+    db.exec(`
+      INSERT INTO organization (id, name, created_at, updated_at) VALUES ('o', 'O', 'a', 'a');
+      INSERT INTO business (id, organization_id, name, business_type, state_code, tax_scheme, created_at, updated_at, created_by, device_id) VALUES ('b', 'o', 'S', 'retail', '07', 'regular', ${t});
+      INSERT INTO branch (id, business_id, code, name, state_code, created_at, updated_at, created_by, device_id) VALUES ('br', 'b', 'DEL1', 'D', '07', ${t});
+      INSERT INTO warehouse (id, business_id, branch_id, code, name, created_at, updated_at, created_by, device_id) VALUES ('w', 'b', 'br', 'MAIN', 'Main', ${t});
+      INSERT INTO supplier (id, business_id, name, name_norm, state_code, tax_scheme, created_at, updated_at, created_by, device_id) VALUES ('s', 'b', 'S', 's', '07', 'unregistered', ${t});
+      INSERT INTO doc_series (id, business_id, doc_type, fy, prefix, created_at, updated_at, created_by, device_id) VALUES ('ps', 'b', 'purchase', '2026-27', 'T1P', ${t});
+    `);
+    const insert = (id: string, seq: number, command: string) => () => db.exec(`INSERT INTO purchase (id, business_id, branch_id, warehouse_id, supplier_id,
+        supplier_snapshot_json, supplier_invoice_no, supplier_invoice_date, series_id, doc_number, doc_seq, doc_date, fy, place_of_supply_state, supply_type,
+        supplier_tax_scheme, gross_paise, taxable_paise, total_paise, due_date, command_id, created_at, updated_at, created_by, device_id)
+      VALUES ('${id}', 'b', 'br', 'w', 's', '{}', '${id}', '2026-10-01', 'ps', '${id}', ${seq}, '2026-10-03', '2026-27', '07', 'intra', 'unregistered',
+        100, 100, 100, '2026-10-03', '${command}', ${t})`);
+    insert('p1', 1, 'c1')();
+    expect(insert('p2', 2, 'c1')).toThrow(/UNIQUE/);
+    expect(() => db.exec("UPDATE purchase SET command_id = 'c9' WHERE id = 'p1'")).toThrow(/append-only/);
+  });
+});

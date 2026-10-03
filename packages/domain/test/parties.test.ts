@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import fc from 'fast-check';
 import {
-  ageingBucket, allocateAsChosen, allocateOldestFirst, chargeSign, daysPastDue, reconcileParties, type OpenItem, type PartyAllocation, type PartyDocument, type PartyEntry,
+  addDays, ageingBucket, allocateAsChosen, allocateOldestFirst, chargeSign, daysPastDue, reconcileParties, type OpenItem, type PartyAllocation, type PartyDocument, type PartyEntry,
   type PartyType,
 } from '../src/index.js';
 
@@ -163,5 +163,13 @@ describe('ageing (5b)', () => {
     expect(ageingBucket('2026-10-01', asOf)).toBe('over90');
     expect(daysPastDue('2026-02-28', '2026-03-01')).toBe(1);
     expect(() => ageingBucket('31/12/2026', asOf)).toThrow(/business date/);
+  });
+});
+
+describe('addDays', () => {
+  it('crosses month and year ends', () => {
+    expect(addDays('2026-12-15', 30)).toBe('2027-01-14');
+    expect(addDays('2028-02-28', 1)).toBe('2028-02-29');
+    expect(addDays('2026-10-03', 0)).toBe('2026-10-03');
   });
 });

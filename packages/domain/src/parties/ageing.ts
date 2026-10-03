@@ -21,3 +21,8 @@ export function ageingBucket(dueDate: string, asOf: string): AgeingBucket {
   if (days <= 90) return 'days61to90';
   return 'over90';
 }
+
+export function addDays(date: string, days: number): string {
+  if (!Number.isSafeInteger(days)) throw new DomainError('INVALID_INPUT', `whole days expected, got ${days}`);
+  return new Date((utcDay(date) + days) * DAY_MS).toISOString().slice(0, 10);
+}

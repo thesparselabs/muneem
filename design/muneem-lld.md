@@ -703,7 +703,7 @@ async function allocate(tx, { businessId, docType, branchId, terminalId, docDate
 
 Rules: allocation happens **inside** the document's transaction, so a rollback returns the number; `ux_sale_doc` makes a duplicate physically impossible; the number is never rewritten by sync; a gap detected during a nightly check raises an integrity alert (a gap means a crash between allocation and commit — which cannot happen with a single transaction, so a gap is a real signal).
 
-Example series (as built, ADR-0014 — CGST Rule 46(b) caps numbers at 16 characters): `DE01/2627/000123` (sale, terminal prefix `DE01`). Credit notes and receipts will need their own short prefixes when they arrive. GSTR-1 "Documents Issued" reports from–to per series directly off `doc_series` + `MIN/MAX(doc_seq)`.
+Example series (as built, ADR-0014 — CGST Rule 46(b) caps numbers at 16 characters): `DE01/2627/000123` (sale, terminal prefix `DE01`). Credit notes and receipts will need their own short prefixes when they arrive. *As built (Stage 5, ADR-0028):* other documents put a kind letter after the terminal prefix and use 5 digits — `T1P/2627/00001` purchase, `T1D/2627/00001` debit note (R, Y, E for receipts, payments, expenses). GSTR-1 "Documents Issued" reports from–to per series directly off `doc_series` + `MIN/MAX(doc_seq)`.
 
 ---
 
@@ -884,7 +884,7 @@ suppliers.*   search, get, create, update, getLedger, getOutstanding, setOpening
 pos.*         openRegister, closeRegister, getSession, xReport, zReport, cashMovement,
               holdBill, listHeldBills, retrieveBill, discardBill
 sales.*       quote, complete, get, list, getReceipt, cancel, returnAgainst   (cancel/returnAgainst: later stages)
-purchases.*   create, get, list, return, cancel, importLinesPreview   (receive: dropped, no GRN — ADR-0023)
+purchases.*   quote, create, get, list, return, cancel, importLinesPreview   (receive: dropped, no GRN — ADR-0023)
 payments.*    create, allocate, get, list, cancel, openItems, writeOff
 expenses.*    create, get, list, cancel, listCategories   (update → cancel + re-create — ADR-0025)
 accounting.*  getTrialBalance, getLedger, postManualJournal, getPeriods, lockPeriod

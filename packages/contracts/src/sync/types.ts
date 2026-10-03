@@ -22,7 +22,9 @@ export type OutboxEntityType =
   | 'stock_adjustment'
   | 'supplier'
   | 'party_opening'
-  | 'customer_credit_limit';
+  | 'customer_credit_limit'
+  | 'purchase'
+  | 'debit_note';
 export type OutboxOperationType = 'create' | 'update' | 'cancel' | 'void';
 export type OutboxStatus = 'pending' | 'in_flight' | 'sent' | 'failed' | 'dead' | 'superseded';
 export type OutboxErrorClass = 'transient' | 'permanent' | 'dependency';

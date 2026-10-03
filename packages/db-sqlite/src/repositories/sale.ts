@@ -8,11 +8,12 @@ import { createDocSeries } from './docSeries.js';
 
 export interface SeriesKey { businessId: string; branchId: string; terminalId: string; docType: string; fy: string }
 
-export function findOrCreateSeries(db: Db, key: SeriesKey, prefix: string, actor: Actor): string {
+// Pad width 6 is a sale invoice (ADR-0014); 5 is any other document, numbered with a kind letter (ADR-0028).
+export function findOrCreateSeries(db: Db, key: SeriesKey, prefix: string, actor: Actor, padWidth = 6): string {
   const id = stmt(db, 'SELECT id FROM doc_series WHERE business_id = ? AND doc_type = ? AND fy = ? AND branch_id = ? AND terminal_id = ?')
     .pluck().get(key.businessId, key.docType, key.fy, key.branchId, key.terminalId) as string | undefined;
   if (id) return id;
-  return createDocSeries(db, key.businessId, { branchId: key.branchId, terminalId: key.terminalId, docType: key.docType, fy: key.fy, prefix, padWidth: 6 }, actor).id;
+  return createDocSeries(db, key.businessId, { branchId: key.branchId, terminalId: key.terminalId, docType: key.docType, fy: key.fy, prefix, padWidth }, actor).id;
 }
 
 export function saleIdByCommand(db: Db, businessId: string, commandId: string): string | null {

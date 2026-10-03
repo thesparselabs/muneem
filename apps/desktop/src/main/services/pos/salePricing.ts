@@ -10,7 +10,8 @@ import {
 } from '@muneem/db-sqlite';
 import { qtyText } from '../print/receiptDoc.js';
 import type { PosContext } from './posContext.js';
-import { INVENTORY_SETTINGS, POS_SETTINGS } from './register.js';
+import { negativeStockRule } from '../inventory/negativeStock.js';
+import { POS_SETTINGS } from './register.js';
 
 const B2CL_THRESHOLD_PAISE = 10_000_000;
 
@@ -69,13 +70,12 @@ export class SalePricing {
     const db = this.ctx.db();
     const businessId = this.ctx.businessId();
     const warehouseId = defaultWarehouseId(db, branchId);
-    const policy = this.ctx.setting(INVENTORY_SETTINGS.negativeStock, 'warn');
     const remaining = new Map<string, number>();
     return priced.flatMap(({ draftLineNo, product, baseUomCode, line }) => {
       const stock = remaining.get(product.id) ?? (warehouseId ? stockState(db, businessId, warehouseId, product.id).qtyMilli : 0);
       remaining.set(product.id, stock - line.baseQtyMilli);
       if (stock - line.baseQtyMilli >= 0) return [];
-      const rule = product.allowNegativeStock === true ? 'allow' : product.allowNegativeStock === false ? 'block' : policy;
+      const rule = negativeStockRule(this.ctx, product);
       if (rule === 'allow') return [];
       const message = stock > 0 ? `${product.name}: only ${qtyText(stock, baseUomCode)} in stock` : `${product.name}: no stock recorded`;
       return [{ lineNo: draftLineNo, productId: product.id, message, stockMilli: stock, blocking: rule === 'block' }];

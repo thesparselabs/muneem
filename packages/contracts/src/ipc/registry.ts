@@ -15,6 +15,10 @@ import {
   LedgerInput, LedgerPage, OpeningBalanceInput, Outstanding, OutstandingInput, PartyOpening, SetCreditLimitInput, Supplier, SupplierInput,
   SupplierSearchInput,
 } from './parties.js';
+import {
+  CancelPurchaseInput, CreatePurchaseInput, DebitNote, Purchase, PurchaseDraft, PurchaseImportPreview, PurchaseImportPreviewInput, PurchaseListInput,
+  PurchasePage, PurchaseQuote, ReturnPurchaseInput,
+} from './purchases.js';
 import { CompleteSaleInput, CompleteSaleResult, HeldBill, HoldBillInput, Sale, SaleDraft, SaleListInput, SalePage, SaleQuote } from './sales.js';
 import { PrintJobSummary, PrinterConfig, ReceiptDoc } from './print.js';
 import { SETTING_KEYS } from './settings.js';
@@ -168,6 +172,14 @@ export const contract = {
   'inventory.stockTake': spec({ input: StockTakeInput, output: AdjustmentResult, permission: 'inventory.adjust', rateLimit: { perSec: 1 }, audit: true }),
   'inventory.importOpeningPreview': spec({ input: OpeningImportPreviewInput, output: OpeningImportPreview, permission: 'inventory.create', rateLimit: { perSec: 2 }, audit: true }),
   'inventory.importOpeningCommit': spec({ input: OpeningImportCommitInput, output: AdjustmentResult, permission: 'inventory.create', rateLimit: { perSec: 1 }, audit: true, idempotent: 'commandId' }),
+
+  'purchases.quote': spec({ input: PurchaseDraft, output: PurchaseQuote, permission: 'purchases.create', rateLimit: { perSec: 10 } }),
+  'purchases.create': spec({ input: CreatePurchaseInput, output: Purchase, permission: 'purchases.create', rateLimit: { perSec: 2 }, audit: true, idempotent: 'commandId' }),
+  'purchases.get': spec({ input: z.object({ id: Ulid }), output: Purchase, permission: 'purchases.view', rateLimit: { perSec: 20 } }),
+  'purchases.list': spec({ input: PurchaseListInput, output: PurchasePage, permission: 'purchases.view', rateLimit: { perSec: 10 } }),
+  'purchases.return': spec({ input: ReturnPurchaseInput, output: DebitNote, permission: 'purchases.create', rateLimit: { perSec: 2 }, audit: true, idempotent: 'commandId' }),
+  'purchases.cancel': spec({ input: CancelPurchaseInput, output: Purchase, permission: 'purchases.cancel', rateLimit: { perSec: 1 }, audit: true }),
+  'purchases.importLinesPreview': spec({ input: PurchaseImportPreviewInput, output: PurchaseImportPreview, permission: 'purchases.create', rateLimit: { perSec: 2 }, audit: true }),
 
   'sync.getStatus': spec({ input: Empty, output: SyncStatus, permission: null, rateLimit: { perSec: 10 } }),
 

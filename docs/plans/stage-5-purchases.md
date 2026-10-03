@@ -160,6 +160,117 @@ append-only.
 7. Debit notes and cancel (ADR-0024); purchase-line import preview (SKU/barcode, qty, unit, rate, GST rate, discount)
    that fills the form — the commit is always `purchases.create`.
 
+5c details (settled 2026-10-03, before starting the part):
+
+- **What the user enters.** `PurchaseDraft`:
+  - **Header:** `supplierId`, `supplierInvoiceNo`, `supplierInvoiceDate`, optional `dueDate`, `isReverseCharge`,
+    `note`.
+  - **Lines:** `productId`, `uomId`, `qtyMilli`, `unitPricePaise`, `priceIsInclusive` (default false, since supplier
+    bills are usually exclusive), `lineDiscount`, optional `gstRateBp`, optional `itcEligible`.
+  - **Bill-level:** `billDiscount`, `charges[]` (kind, description, amount) and `billTotalPaise`, the grand total
+    printed on the supplier's bill.
+  - **Rates and units:** the rate is the bill's, never the price list's. A line may be in any unit the product has
+    a conversion for, as at the POS.
+- **Tax.** One `PurchasePricing` builds the GST engine input for both `purchases.quote` and `purchases.create`, so the
+  form and the saved document can never disagree (as `SalePricing` does).
+  - **Engine inputs:**
+    - `supplierStateCode` = the supplier's state, place of supply = the branch's state;
+    - `taxScheme` = the supplier's scheme, so composition and unregistered suppliers produce no tax;
+    - document type = tax invoice or bill of supply by that scheme;
+    - `roundToRupee` = false, because rounding is the bill total's job.
+  - **GST rate:** defaults to the product's; a line may override it, because the bill is what was charged. The
+    override is stored on the line, and the product is not changed.
+  - **Tax treatment** comes from the product.
+- **Input tax credit.** Eligible by default. It is never eligible when the supplier is composition or unregistered, or
+  when the **business** is not on the regular scheme: composition dealers cannot claim ITC, so all their purchase
+  tax is cost. A line can be marked ineligible (blocked credits, s.17(5)). The header's `itc_paise` is the eligible
+  tax.
+- **Bill total.** `billRoundOff(computed, billTotalPaise)`. Within ±₹1 the difference is the round-off; beyond it,
+  `VALIDATION_FAILED` on `billTotalPaise` with the computed total in the message.
+- **Landed cost.** `landedValues` over the lines with the charges. Each line stores `charges_paise`,
+  `landed_value_paise` and `unit_cost_paise` = `divRound(landed × 1000, base qty)`. The product's purchase price is
+  **not** updated: the stock level's last unit cost already serves as the fallback, and catalog edits stay explicit.
+- **Dates.**
+  - **Document date:** today's business date.
+  - **Supplier invoice date:** may be earlier, never later than today. It decides the FY for the duplicate check and,
+    in Stage 6, the ITC period.
+  - **Due date:** `dueDate` if given, else the supplier invoice date + the supplier's credit days.
+- **Numbering (ADR-0028).** Purchases and debit notes are numbered per terminal and FY, as sales are (ADR-0014), so
+  devices never collide offline. Debit notes are GST documents (Rule 53) and share the 16-character cap. With a
+  4-character terminal prefix there is no room for a fourth separator, so the kind letter joins the prefix and the
+  sequence is 5 digits: `T1P/2627/00001` for a purchase, `T1D/2627/00001` for a debit note (99,999 per terminal per
+  FY). A domain `formatDocNumber(prefix, kindLetter, fy, seq)` sits beside `formatInvoiceNumber`.
+- **Repeat safety.** `purchases.create` and `purchases.return` carry a client-minted `commandId`, like
+  `sales.complete`. Migration **`0007_purchase_commands`** adds `command_id` with a unique index to `purchase` and
+  `debit_note`. `0006` is not edited, because a database that already ran it would never see the change.
+- **What `purchases.create` writes, in one transaction:**
+  1. header, lines, charges;
+  2. one `purchase` movement per line through `postMovement`, at its landed value;
+  3. the supplier ledger entry (−total, due date);
+  4. audit;
+  5. one outbox aggregate carrying the movements and the entry.
+
+  Refused before anything is written:
+  - a duplicate supplier invoice (same supplier, same FY, ignoring case) → `VALIDATION_FAILED` on
+    `supplierInvoiceNo`, naming the existing purchase;
+  - an inactive or unknown product, a unit the product does not have, or a quantity below 0.001 base units →
+    per-line field errors.
+- **Debit notes** (`purchases.return`, ADR-0024). Input: `purchaseId`, `lines[{ purchaseItemId, qtyMilli }]` in the
+  line's unit, `reason`, optional `refundCharges` (default false), `commandId`.
+  - **Amounts:** each returned line's taxable, tax and landed value are its share of the original line
+    (`divRound(x × q, line qty)`). The return that brings a line to its full quantity takes the exact remainder, so
+    all returns of a line add up to the line.
+  - **What the supplier owes back:** taxable + tax, plus the line's share of the charges only when `refundCharges` is
+    set. The rest of the landed value (the charges' share) is a loss on the return, which Stage 6 posts. It is not
+    stored separately; it is landed value − taxable − ineligible tax − refunded charges.
+  - **Tax:** the same supply type as the purchase. `itc_reversed_paise` is the eligible part of the returned tax.
+  - **Stock:** one `purchase_return` movement per line through a new `postMovement` path. It carries
+    `returnValuePaise` and calls `returnToSupplier`; replay maps `purchase_return` to the engine's `return` kind.
+  - **Party:** a supplier ledger entry (+total), then automatic allocation to its purchase up to what the purchase
+    still owes. The rest is an unallocated credit from the supplier.
+  - **Refusals:** the trigger already refuses returning more than was bought (`RETURN_QTY_EXCEEDED`). The service
+    checks first so the error names the line.
+- **Cancel** (`purchases.cancel`, reason required, `purchases.cancel` permission). Refused while anything is
+  allocated to the purchase or while it has a debit note; the debit notes are corrected first, and debit-note
+  cancellation is out of 5c. Otherwise:
+  - status → `cancelled`;
+  - every line's quantity leaves at its landed value through the same return path (`ref_type` `purchase_return`,
+    `ref_id` = purchase, `ref_line_id` = line);
+  - a `cancel` ledger entry reverses the purchase's entry;
+  - audit and outbox `cancel`.
+- **Stock below zero on a return or cancel** follows the negative-stock policy (ADR-0020). `block` refuses with
+  `STOCK_INSUFFICIENT`; `warn` and `allow` go ahead, and a below-zero result writes a `stock.negative` audit row,
+  as a sale does.
+- **Import of purchase lines** (`purchases.importLinesPreview`). It reuses `tableReader`, `columnMapping` and
+  `PreviewStore`, like the opening-stock import.
+  - **Columns:** SKU or barcode (required), qty (required), unit code (optional, default base unit), rate
+    (required), GST % (optional), discount % (optional).
+  - **Output:** ready-made `PurchaseDraft` lines plus per-row errors. There is no commit: the user reviews the lines
+    in the form, and saving is always `purchases.create`.
+- **IPC.**
+  - **Purchases:** `purchases.quote / create / get / list / return / cancel / importLinesPreview`.
+  - **List filters:** supplier, date range, status; keyset-paged.
+  - **Permissions:** view `purchases.view`; quote, create, return and import `purchases.create`; cancel
+    `purchases.cancel`.
+  - **Sync entity types:** `purchase` and `debit_note` added.
+- **Tests.**
+  - **Stock and cost:** stock rises at landed cost, charges spread by taxable value, and a sale costed provisionally
+    is corrected.
+  - **Tax:** inter-state gives IGST; a composition supplier gives no tax and full cost; a composition *business*
+    capitalises tax; an ineligible line goes into cost.
+  - **Bill total:** accepted within ±₹1 and refused beyond, with the field named.
+  - **Duplicates and repeats:** a duplicate supplier invoice is refused (and accepted after cancel); a repeated
+    `commandId` returns the first purchase.
+  - **Debit notes:** proportional amounts and exact remainders over several returns; auto-allocation and the
+    excess left as credit; stock leaves at landed cost, not the average; over-return refused with the line named.
+  - **Cancel:** refused while paid or returned; otherwise stock and ledger are reversed.
+  - **Negative stock:** a return under `block` is refused.
+  - **Failure:** a failure part-way leaves no row behind.
+  - **Import preview:** matching by SKU and barcode, unknown units, bad numbers.
+  - **Always:** every test ends with `reconcilePartiesDb` clean and `replayCheck` empty.
+- **Not in 5c:** screens (5f), purchase orders and GRN, debit-note cancellation, updating the product's purchase or
+  selling price from a bill, and TDS/TCS.
+
 **5d — Payments, allocation, write-off, expenses**
 8. `PaymentService`: receipts and supplier payments, auto/manual allocation, advances, later allocation, cancel
    (voids allocations, reverses the entry). Write-off. `ExpenseService` with the cash-drawer link and credit

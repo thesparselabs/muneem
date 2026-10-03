@@ -57,6 +57,41 @@ All notable changes, newest first. Each entry records **what** changed and **why
     query (`PARTY_DOCUMENTS_SQL`), so later parts only write documents.
 - **`reconcilePartiesDb`** runs the Stage 5 exit check against the database. Every 5b test ends reconciled, and a
   planted entry is named.
+- **5c details written into the plan before building** (numbering, ITC rules, freight on returns, cancel limits,
+  `purchases.quote`, import that only fills the form), reviewed by the user first.
+- **Purchase invoices** (`purchases.quote/create/get/list`):
+  - **Tax:** the bill's rate and units go through the same GST engine as sales, with the supplier's state against the
+    branch's, so intra/inter and the tax-split CHECKs hold. A line may carry the GST rate the bill charged without
+    changing the product.
+  - **ITC:** claimable only when both supplier and business are on the regular scheme; a line can be marked
+    ineligible, and its tax becomes stock cost.
+  - **Freight and charges** are spread by taxable value into each line's landed cost, and stock is received at that
+    cost, which also re-costs anything sold before the bill was entered.
+  - **Bill total:** within ±₹1 of the computed total it is kept as round-off; beyond, it is refused with the field
+    named. `purchases.quote` shows the difference before saving.
+  - **Due date:** the bill date plus the supplier's credit days, unless entered.
+  - **Refused:** a supplier invoice number already used in the year (in any letter case, naming the purchase), a
+    future bill date, and bad lines (with the line named). A repeated command id returns the first purchase.
+  - **Atomic:** a failure part-way leaves nothing.
+- **Debit notes** (`purchases.return`, ADR-0024):
+  - **Amounts:** each line's amounts are its cumulative share of the purchase line, so returns always add up to the
+    line exactly.
+  - **Stock:** goods leave at their own landed cost (`returnToSupplier`, through a new `postMovement` path that replay
+    understands).
+  - **Freight:** the freight share is refunded only if the user says so.
+  - **Settlement:** the note settles its purchase first, and any excess is credit from the supplier.
+  - **Refused:** returning more than is left (`RETURN_QTY_EXCEEDED`, line named); goods already sold when the
+    negative-stock policy is `block`.
+- **Cancelling a purchase** (`purchases.cancel`) takes the goods back out at landed cost and reverses the ledger
+  entry. It is refused while the purchase is paid or has a debit note.
+- **Purchase-line import** (`purchases.importLinesPreview`) turns a supplier's CSV/XLSX into form lines. It matches
+  SKU or barcode, unit, rate, GST % and discount %, and names bad rows. Nothing is saved until `purchases.create`.
+- **Numbers** (ADR-0028): `T1P/2627/00001` for purchases and `T1D/2627/00001` for debit notes, per terminal.
+  Debit notes are GST documents and must stay within 16 characters.
+- **Migration `0007_purchase_commands`:** a command id on purchases and debit notes, unique and frozen. `0006` was
+  not edited, because a database that already ran it would never see the change.
+- **The negative-stock rule** moved into one helper shared by sales and purchase returns.
+- **Every purchase test ends** with the party sub-ledger reconciled and `replay = projection`.
 
 ### Added — Stage 4 inventory
 - **Stage 4 plan (`docs/plans/stage-4-inventory.md`) and ADRs 0018–0021.** Decided with the user: no back-fill (stock

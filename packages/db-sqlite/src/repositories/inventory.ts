@@ -1,5 +1,5 @@
 import {
-  EMPTY_STOCK, averageCostPaise, issueStock, newUlid, receiveStock, replayMovements, type StockMovementRecord, type StockState,
+  EMPTY_STOCK, averageCostPaise, issueStock, newUlid, receiveStock, replayMovements, returnToSupplier, type StockMovementRecord, type StockState,
 } from '@muneem/domain';
 import type { Db } from '../open.js';
 import { stmt } from '../statements.js';
@@ -64,6 +64,7 @@ export interface MovementInput {
   businessId: string; warehouseId: string; productId: string; type: Exclude<MovementType, 'cost_correction'>;
   qtyMilli: number;            // signed, base units: positive receives, negative issues
   receiptValuePaise?: number;  // receipts only
+  returnValuePaise?: number;   // purchase returns only: what the goods were bought for (ADR-0024)
   refType: RefType; refId: string; refLineId?: string | null; reasonCode?: ReasonCode | null; note?: string | null;
 }
 
@@ -103,6 +104,16 @@ export function postMovement(db: Db, input: MovementInput, actor: Actor): Posted
       });
     }
     after = r.state;
+  } else if (input.type === 'purchase_return') {
+    const r = returnToSupplier(before, -input.qtyMilli, input.returnValuePaise ?? 0);
+    posted.push({ ...base, id: newUlid(), valuePaise: r.returnDeltaPaise, unitCostPaise: r.unitCostPaise, provisional: r.provisional });
+    if (r.correctionPaise !== 0) {
+      posted.push({
+        id: newUlid(), productId: input.productId, type: 'cost_correction', qtyMilli: 0, valuePaise: r.correctionPaise, unitCostPaise: 0,
+        provisional: false, refType: 'correction', refId: posted[0]!.id, refLineId: null, reasonCode: null,
+      });
+    }
+    after = r.state;
   } else {
     const r = issueStock(before, -input.qtyMilli, productFallbackCost(db, input.productId));
     posted.push({ ...base, id: newUlid(), valuePaise: r.valueDeltaPaise, unitCostPaise: r.unitCostPaise, provisional: r.provisional });
@@ -126,7 +137,7 @@ export function planIssues(db: Db, businessId: string, warehouseId: string, line
 
 type MovementRow = { id: string; movement_type: MovementType; signed_qty_milli: number; value_paise: number; unit_cost_paise: number };
 const kindOf = (r: MovementRow): StockMovementRecord['kind'] =>
-  r.movement_type === 'cost_correction' ? 'correction' : r.signed_qty_milli > 0 ? 'receipt' : 'issue';
+  r.movement_type === 'cost_correction' ? 'correction' : r.signed_qty_milli > 0 ? 'receipt' : r.movement_type === 'purchase_return' ? 'return' : 'issue';
 
 function movementRecords(db: Db, businessId: string, warehouseId: string, productId: string): MovementRow[] {
   return stmt(db, `SELECT id, movement_type, signed_qty_milli, value_paise, unit_cost_paise FROM stock_movement

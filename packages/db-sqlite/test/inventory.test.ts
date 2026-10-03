@@ -47,6 +47,18 @@ describe('stock ledger', () => {
     expect(replayCheck(db, businessId)).toEqual([]);
   });
 
+  it('sends goods back to the supplier at their own cost, booking any leftover value as a correction, and replays it', async () => {
+    const { db, businessId, warehouseId, productId } = await store();
+    const post = (input: Parameters<typeof postMovement>[1]) => withTransaction(db, () => postMovement(db, input, ACTOR));
+    post({ businessId, warehouseId, productId, type: 'purchase', qtyMilli: 10_000, receiptValuePaise: 100_000, refType: 'purchase', refId: 'p1', refLineId: 'l1' });
+    post({ businessId, warehouseId, productId, type: 'purchase', qtyMilli: 10_000, receiptValuePaise: 140_000, refType: 'purchase', refId: 'p2', refLineId: 'l1' });
+    post({ businessId, warehouseId, productId, type: 'sale', qtyMilli: -10_000, refType: 'sale', refId: 's1', refLineId: 'l1' });
+    const back = post({ businessId, warehouseId, productId, type: 'purchase_return', qtyMilli: -10_000, returnValuePaise: 140_000, refType: 'purchase_return', refId: 'd1', refLineId: 'l1' });
+    expect(back.map((m) => [m.type, m.qtyMilli, m.valuePaise])).toEqual([['purchase_return', -10_000, -140_000], ['cost_correction', 0, 20_000]]);
+    expect(stockState(db, businessId, warehouseId, productId)).toMatchObject({ qtyMilli: 0, valuePaise: 0 });
+    expect(replayCheck(db, businessId)).toEqual([]);
+  });
+
   it('plans issues without writing, chaining lines of the same product', async () => {
     const { db, businessId, warehouseId, productId } = await store();
     withTransaction(db, () => postMovement(db, { businessId, warehouseId, productId, type: 'opening', qtyMilli: 3000, receiptValuePaise: 30_000, refType: 'opening', refId: 'o1' }, ACTOR));

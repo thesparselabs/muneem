@@ -35,3 +35,6 @@ export * from './repositories/supplier.js';
 export * from './repositories/partyLedger.js';
 export * from './repositories/partyOpening.js';
 export * from './repositories/partyQuery.js';
+export * from './repositories/purchase.js';
+export * from './repositories/debitNote.js';
+export * from './repositories/allocation.js';

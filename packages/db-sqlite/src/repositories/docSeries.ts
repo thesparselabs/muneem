@@ -1,4 +1,4 @@
-import { DomainError, formatInvoiceNumber, newUlid } from '@muneem/domain';
+import { DomainError, formatDocNumber, formatInvoiceNumber, newUlid } from '@muneem/domain';
 import { AppError } from '@muneem/contracts';
 import { appendAudit } from '../audit.js';
 import type { Db } from '../open.js';
@@ -36,7 +36,7 @@ export function allocateDocNumber(db: Db, seriesId: string): { seq: number; numb
   if (!s) throw new Error('NOT_FOUND');
   let number: string;
   try {
-    number = formatInvoiceNumber(s.prefix, s.fy, s.next_seq);
+    number = s.pad_width === 5 ? formatDocNumber(s.prefix, s.fy, s.next_seq) : formatInvoiceNumber(s.prefix, s.fy, s.next_seq);
   } catch (e) {
     if (e instanceof DomainError) throw new AppError('INVALID_STATE', e.message);
     throw e;
