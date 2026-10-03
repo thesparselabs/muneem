@@ -38,3 +38,6 @@ export * from './repositories/partyQuery.js';
 export * from './repositories/purchase.js';
 export * from './repositories/debitNote.js';
 export * from './repositories/allocation.js';
+export * from './repositories/payment.js';
+export * from './repositories/writeOff.js';
+export * from './repositories/expense.js';

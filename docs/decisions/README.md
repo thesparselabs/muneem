@@ -33,3 +33,4 @@ Template: Context → Decision → Consequences → Status.
 | [0026](0026-customer-credit-at-the-pos.md) | Customer credit at the POS |
 | [0027](0027-issue-cost-by-share-of-value.md) | An issue takes its share of the value, not a rounded average (amends ADR-0018) |
 | [0028](0028-document-numbers-with-kind-letter.md) | Numbers for purchases, debit notes and other documents |
+| [0029](0029-payments-drawer-and-who-may-pay.md) | Cash payments and the drawer, and who may pay suppliers |

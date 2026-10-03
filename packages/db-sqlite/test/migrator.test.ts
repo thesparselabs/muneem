@@ -414,3 +414,22 @@ describe('0007_purchase_commands', () => {
     expect(() => db.exec("UPDATE purchase SET command_id = 'c9' WHERE id = 'p1'")).toThrow(/append-only/);
   });
 });
+
+describe('0008_payment_commands', () => {
+  it('lets a payment command id be used once per business and never changed', async () => {
+    const db = await freshDb();
+    const t = "'a', 'a', 'u', 'd'";
+    db.exec(`
+      INSERT INTO organization (id, name, created_at, updated_at) VALUES ('o', 'O', 'a', 'a');
+      INSERT INTO business (id, organization_id, name, business_type, state_code, tax_scheme, created_at, updated_at, created_by, device_id) VALUES ('b', 'o', 'S', 'retail', '07', 'regular', ${t});
+      INSERT INTO branch (id, business_id, code, name, state_code, created_at, updated_at, created_by, device_id) VALUES ('br', 'b', 'DEL1', 'D', '07', ${t});
+      INSERT INTO doc_series (id, business_id, doc_type, fy, prefix, created_at, updated_at, created_by, device_id) VALUES ('rs', 'b', 'receipt', '2026-27', 'T1R', ${t});
+    `);
+    const insert = (id: string, seq: number) => () => db.exec(`INSERT INTO payment (id, business_id, branch_id, direction, party_type, party_id, series_id,
+        doc_number, doc_seq, payment_date, fy, method, amount_paise, command_id, created_at, updated_at, created_by, device_id)
+      VALUES ('${id}', 'b', 'br', 'in', 'customer', 'c', 'rs', '${id}', ${seq}, '2026-10-03', '2026-27', 'cash', 100, 'cmd', ${t})`);
+    insert('p1', 1)();
+    expect(insert('p2', 2)).toThrow(/UNIQUE/);
+    expect(() => db.exec("UPDATE payment SET command_id = 'x' WHERE id = 'p1'")).toThrow(/append-only/);
+  });
+});

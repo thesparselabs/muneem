@@ -276,6 +276,81 @@ append-only.
    (voids allocations, reverses the entry). Write-off. `ExpenseService` with the cash-drawer link and credit
    expenses.
 
+5d details (drafted 2026-10-03, for review before building):
+
+- **Payments** (`payments.create`). Input:
+  - `partyType`, `partyId`, `amountPaise`, `paymentDate` (default today, never later), `method` (cash / upi / card /
+    bank / cheque / other), `reference`, `note`;
+  - `allocation` — either `'auto'` (default) or a chosen list `[{ type, id, amountPaise }]`;
+  - `commandId`.
+
+  A customer pays in (a receipt, numbered `T1R/2627/00001`); the business pays a supplier out (`T1Y/…`), as the
+  table's CHECK already requires. Refunding an advance comes later.
+  - **Allocation:** in the payment's transaction, `allocateOldestFirst` over the party's open charges, or
+    `allocateAsChosen` for the user's choice. What is left is an advance and shows as one in outstanding.
+  - **What is written:** a ledger entry (customer −amount, supplier +amount, dated the payment date) and one outbox
+    aggregate (payment + allocations + entry).
+  - **Who may:** receiving needs `payments.create` and `customers.view`. Paying a supplier needs `payments.create`
+    and `suppliers.view`, so a cashier (who has no `suppliers.view`) can take a customer's payment but cannot pay
+    suppliers.
+- **Cash and the drawer.** The register's expected cash only counts `cash_in`, `cash_out` and `safe_drop`, so a cash
+  payment on a terminal with an open register writes one of those, with `ref_type`/`ref_id` pointing at the document:
+  a customer's cash receipt is `cash_in`, a cash payment to a supplier or a cash expense is `cash_out`. With no
+  register open, the cash is taken to be outside the drawer and no movement is written. No change to the X/Z
+  arithmetic.
+- **Later allocation** (`payments.allocate`, `payments.create`). It applies a party's unallocated credit to its open
+  charges, `auto` or chosen. The credit may be a payment, debit note or opening advance. Each new allocation is an
+  `allocation` aggregate in the outbox.
+- **Open items** (`payments.openItems`, `payments.view`): `{ charges, credits }` for one party, from the 5b
+  `openItems` query, so the allocation grid shows exactly what can be settled.
+- **Cancelling a payment** (`payments.cancel`, `payments.cancel` permission, reason required):
+  - voids its live allocations (the triggers give the amounts back to both documents);
+  - sets the status to `cancelled`;
+  - writes a `cancel` ledger entry;
+  - for cash, writes the opposite drawer movement if the register it came from is still open; otherwise none, and
+    the audit row says so.
+- **Write-off** (`payments.writeOff`, `payments.approve`). Input: `customerId`, chosen open charges with amounts,
+  `reason`, `commandId`. It is fully allocated at once, writes a ledger entry (−amount) and is audited. It has no
+  number (internal document). Stage 6 posts it to 5470 Bad Debts.
+- **Expense categories:** seeded on first use per business, each mapped to an LLD §5.1 account:
+  - Rent 5400, Salaries 5410, Electricity 5420, Transport 5430, Internet 5440, Repairs 5450, Bank charges 5460,
+    Other 5900.
+  - Read with `expenses.listCategories`. Adding categories comes later.
+- **Expenses** (`expenses.create`, numbered `T1E/…`). Input:
+  - `categoryId`, `expenseDate` (never later than today), `description`, `method` (the payment methods plus
+    `credit`), and an optional `supplierId` or free-text vendor name and GSTIN;
+  - `amountPaise` with `amountIsInclusive`, an optional `gstRateBp`, and `commandId`.
+  - **Tax:** when a GST rate is given, the bill must carry a GSTIN (the supplier's or the vendor's). The single line
+    goes through the GST engine with the vendor's state against the branch's. With no rate, the whole amount is the
+    expense.
+  - **ITC:** eligible only when the business is regular and a GSTIN is present; `itcEligible` can turn it off.
+  - **On credit:** needs a supplier. The due date is the expense date plus the supplier's credit days, and the
+    expense is a charge on that supplier's ledger.
+  - **Cash with a register open:** writes a `cash_out`.
+- **Cancelling an expense** (`expenses.cancel`, `expenses.cancel`): refused while anything is allocated to it.
+  Otherwise it reverses the ledger entry (credit expenses) and the drawer movement (cash, register still open).
+  `expenses.update` stays replaced by cancel and re-create.
+- **Repeat safety:** migration `0008_payment_commands` adds a unique, frozen `command_id` to `payment`, `write_off`
+  and `expense`.
+- **Lists:** `payments.list` (party, direction, dates, status) and `expenses.list` (category, dates, status),
+  keyset-paged, plus `payments.get` and `expenses.get`.
+- **Sync entity types:** `payment`, `write_off`, `expense` and `allocation`.
+- **Tests:**
+  - **Receipts:** settle the oldest due first and leave the rest as an advance. A chosen allocation is honoured, and
+    one over the item or the payment is refused.
+  - **Later allocation:** an advance applied to a later credit sale or purchase.
+  - **Cancel:** gives the amounts back to both documents and reverses the ledger.
+  - **Drawer:** a cash receipt and a cash supplier payment move the register's expected cash; with no register, no
+    movement.
+  - **Permissions:** a cashier can receive but not pay a supplier, and cannot write off.
+  - **Write-off:** clears the chosen items.
+  - **Expenses:** a cash expense with GST and ITC; a credit expense on the supplier's ledger, paid later by a supplier
+    payment; refused GST without a GSTIN; cancel refused while paid.
+  - **Repeats:** a repeated command returns the first document.
+  - **Always:** every test ends with `reconcilePartiesDb` clean.
+- **Not in 5d:** screens (5f), printing a payment receipt, refunding a customer's advance, custom expense
+  categories, cheque clearing and bank reconciliation, and TDS.
+
 **5e — Credit at the POS**
 9. `credit` tender, quote outstanding and limit issue, commit refusal / audited override, customer ledger entry in the
    sale's transaction (a new commit step after `document`, ADR-0019's order otherwise unchanged). Receipts print the

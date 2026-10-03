@@ -9,6 +9,7 @@ export * from './ipc/settings.js';
 export * from './ipc/inventory.js';
 export * from './ipc/parties.js';
 export * from './ipc/purchases.js';
+export * from './ipc/payments.js';
 export * from './ipc/registry.js';
 export * from './sync/types.js';
 export * from './http/index.js';

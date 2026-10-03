@@ -128,3 +128,23 @@ export function closeSession(db: Db, sessionId: string, input: CloseInput, actor
     return z;
   });
 }
+
+export interface DocumentCash { kind: 'cash_in' | 'cash_out'; amountPaise: number; reason: string; refType: 'payment' | 'expense'; refId: string }
+
+// Cash that a payment or expense moves through an open drawer; it travels in its document's sync payload (5d details).
+export function insertDocumentCashMovement(db: Db, sessionId: string, m: DocumentCash, actor: Actor): string {
+  const session = sessionRow(db, sessionId);
+  if (!session || session.status !== 'open') throw new AppError('REGISTER_NOT_OPEN', 'The register is not open');
+  const id = newUlid();
+  const s = syncColumns(actor);
+  stmt(db, `INSERT INTO cash_movement (id, business_id, session_id, kind, amount_paise, reason, ref_type, ref_id, created_at, updated_at, created_by, device_id)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(id, session.business_id, sessionId, m.kind, m.amountPaise, m.reason, m.refType, m.refId, s.t, s.t, s.created_by, s.device_id);
+  return id;
+}
+
+export function documentCashMovements(db: Db, refType: 'payment' | 'expense', refId: string): { sessionId: string; kind: string; amountPaise: number }[] {
+  return stmt(db, 'SELECT session_id AS sessionId, kind, amount_paise AS amountPaise FROM cash_movement WHERE ref_type = ? AND ref_id = ? ORDER BY rowid')
+    .all(refType, refId) as { sessionId: string; kind: string; amountPaise: number }[];
+}
+
+export const isSessionOpen = (db: Db, sessionId: string): boolean => sessionRow(db, sessionId)?.status === 'open';

@@ -23,6 +23,11 @@ import { CustomerService } from './services/pos/customers.js';
 import { PartyLedgerService } from './services/parties/partyLedger.js';
 import { SupplierService } from './services/parties/suppliers.js';
 import { PurchaseImportService } from './services/purchases/purchaseImport.js';
+import { Drawer } from './services/payments/drawer.js';
+import { PaymentService } from './services/payments/paymentService.js';
+import { SettlementAllocator } from './services/payments/settlementAllocator.js';
+import { WriteOffService } from './services/payments/writeOffs.js';
+import { ExpenseService } from './services/expenses/expenseService.js';
 import { PurchasePricing } from './services/purchases/purchasePricing.js';
 import { PurchaseReturnService } from './services/purchases/purchaseReturns.js';
 import { PurchaseService } from './services/purchases/purchases.js';
@@ -90,6 +95,11 @@ export function createApp(cfg: AppConfig) {
   const purchases = new PurchaseService(posCtx, new PurchasePricing(posCtx));
   const purchaseReturns = new PurchaseReturnService(posCtx);
   const purchaseImport = new PurchaseImportService(posCtx, new PreviewStore(cfg.now ?? (() => Date.now())));
+  const allocator = new SettlementAllocator(posCtx);
+  const drawer = new Drawer(posCtx);
+  const payments = new PaymentService(posCtx, allocator, drawer);
+  const writeOffs = new WriteOffService(posCtx, allocator);
+  const expenses = new ExpenseService(posCtx, drawer);
   const register = new RegisterService(posCtx);
   const heldBills = new HeldBillService(posCtx, register);
   const inventory = new InventoryService(posCtx);
@@ -172,6 +182,18 @@ export function createApp(cfg: AppConfig) {
     'purchases.return': (i) => purchaseReturns.returnGoods(i),
     'purchases.cancel': (i) => purchaseReturns.cancel(i.id, i.reason),
     'purchases.importLinesPreview': (i) => purchaseImport.preview(i),
+    'payments.create': (i) => payments.create(i),
+    'payments.get': (i) => payments.get(i.id),
+    'payments.list': (i) => payments.list(i),
+    'payments.openItems': (i) => payments.openItems(i.partyType, i.partyId),
+    'payments.allocate': (i) => payments.allocate(i),
+    'payments.cancel': (i) => payments.cancel(i.id, i.reason),
+    'payments.writeOff': (i) => writeOffs.create(i),
+    'expenses.listCategories': () => expenses.categories(),
+    'expenses.create': (i) => expenses.create(i),
+    'expenses.get': (i) => expenses.get(i.id),
+    'expenses.list': (i) => expenses.list(i),
+    'expenses.cancel': (i) => expenses.cancel(i.id, i.reason),
     'pos.getSession': () => register.current(),
     'pos.openRegister': (i) => register.open(i.openingCashPaise),
     'pos.cashMovement': (i) => { register.cashMovement(i); return { ok: true as const }; },
@@ -220,6 +242,6 @@ export function createApp(cfg: AppConfig) {
     connectivity: () => connectivity.snapshot(), isTrustedSender: cfg.isTrustedSender ?? (() => true), ...(cfg.now && { now: cfg.now }),
   });
 
-  return { events, session, rbac, cloud, connectivity, device, auth, business, settings, products, catalog, pricing, productImport, customers, suppliers, customerLedger, supplierLedger, purchases, purchaseReturns, purchaseImport, register, sales, printQueue, inventory, openingImport, diagnostics, gateway, handlers, syncStatus };
+  return { events, session, rbac, cloud, connectivity, device, auth, business, settings, products, catalog, pricing, productImport, customers, suppliers, customerLedger, supplierLedger, purchases, purchaseReturns, purchaseImport, payments, writeOffs, expenses, register, sales, printQueue, inventory, openingImport, diagnostics, gateway, handlers, syncStatus };
 }
 export type App = ReturnType<typeof createApp>;

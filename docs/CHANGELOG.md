@@ -92,6 +92,34 @@ All notable changes, newest first. Each entry records **what** changed and **why
   not edited, because a database that already ran it would never see the change.
 - **The negative-stock rule** moved into one helper shared by sales and purchase returns.
 - **Every purchase test ends** with the party sub-ledger reconciled and `replay = projection`.
+- **5d details written into the plan before building** (who may pay, cash and the drawer, GST on expenses, numbers,
+  migration 0008), reviewed by the user first.
+- **Payments** (`payments.create/get/list/openItems/allocate/cancel`):
+  - **Numbering:** customer receipts are `T1R/…` and supplier payments `T1Y/…`.
+  - **Settling:** a payment settles the oldest due item first, or exactly the items chosen, and anything over that
+    is an advance. Allocating more than an item owes or the payment holds is refused, and so is choosing a document
+    of the wrong type.
+  - **Later allocation:** `payments.allocate` applies an advance, a debit note's excess or an opening advance to
+    bills that arrive later.
+  - **Cancelling** voids the payment's allocations, giving the amounts back to the bills, and reverses the ledger.
+  - **Repeats:** a repeated command id returns the first payment.
+- **Cash and the drawer** (ADR-0029): with a register open, a cash receipt is a `cash_in` and a cash payment to a
+  supplier is a `cash_out`, so expected cash stays right. Cancelling reverses it while that register is still open.
+- **Who may pay** (ADR-0029): paying also needs the right to see the party, so a cashier can take a customer's
+  payment but not pay suppliers.
+- **Write-offs** (`payments.writeOff`, `payments.approve`) clear the chosen customer items at once, for Stage 6 to post
+  to 5470 Bad Debts.
+- **Expenses** (`expenses.listCategories/create/get/list/cancel`):
+  - **Categories:** eight are seeded on first use, mapped to the LLD expense accounts.
+  - **Numbering:** `T1E/…`.
+  - **GST** is worked out by the GST engine when there's a rate. It needs the vendor's GSTIN, and input tax credit
+    is claimed only by a regular business.
+  - **On credit,** an expense is a charge on the supplier's ledger, due after the supplier's credit days, and a
+    supplier payment settles it.
+  - **Cash** with a register open leaves the drawer.
+  - **Cancelling** is refused once something is allocated to it.
+- **Migration `0008_payment_commands`:** a unique, frozen command id on payments, write-offs and expenses.
+- **Every 5d test ends** with the party sub-ledger reconciled.
 
 ### Added — Stage 4 inventory
 - **Stage 4 plan (`docs/plans/stage-4-inventory.md`) and ADRs 0018–0021.** Decided with the user: no back-fill (stock
