@@ -583,7 +583,7 @@ ISSUE (sale, purchase_return, negative adjustment, transfer_out):
 
 **Batch/serial items** bypass the average: cost comes from the batch layer (`batch.unit_cost_paise`), and issue selection defaults to **FEFO** (earliest expiry first) for batch-tracked goods, with manual override.
 
-*As built (Stage 5, ADR-0024):* a purchase return is **not** an issue at average cost. It leaves at the original purchase line's landed unit cost (`returnToSupplier`), matching the posting matrix's exact reversal; any value that leaves the level out of line with its quantity is a `cost_correction` movement.
+*As built (Stage 5, ADR-0024):* a purchase return is **not** an issue at average cost. It leaves at the original purchase line's landed unit cost (`returnToSupplier`), matching the posting matrix's exact reversal; any value that leaves the level out of line with its quantity is a `cost_correction` movement. *Stage 5 fix (ADR-0027):* an issue that leaves stock on hand takes its share of the value, `divRound(value × q, qty)`, instead of `q × unit_cost` with the unit cost rounded to the paisa, which over-costed cheap items and could leave a negative value on positive stock.
 
 ### 4.2 Projection integrity
 

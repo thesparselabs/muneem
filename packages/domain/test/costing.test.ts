@@ -47,6 +47,15 @@ describe('moving average costing (LLD §4.1)', () => {
     expect(covered.state).toMatchObject({ qtyMilli: 6000, valuePaise: 18_000 });
   });
 
+  it('costs a cheap item by its share of the value, never below what is on hand (ADR-0027)', () => {
+    const s = receiveStock(EMPTY_STOCK, 1_000_000, 1500).state;   // 1000 units for ₹15: 1.5 paise each
+    const r = issueStock(s, 999_000, 0);
+    expect(r.valueDeltaPaise).toBe(-1499);                          // 999 × 1.5 = 1498.5, rounded
+    expect(r.state).toMatchObject({ qtyMilli: 1000, valuePaise: 1 });
+    const tiny = issueStock(receiveStock(EMPTY_STOCK, 2501, 2).state, 2500, 0);
+    expect(tiny.state).toMatchObject({ qtyMilli: 1, valuePaise: 0 });
+  });
+
   it('falls back to the given cost when there has never been a receipt', () => {
     expect(issueStock(EMPTY_STOCK, 1000, 4500)).toMatchObject({ unitCostPaise: 4500, provisional: true, valueDeltaPaise: -4500 });
   });
@@ -86,10 +95,13 @@ describe('return to supplier (ADR-0024)', () => {
   });
 });
 
+// Unit costs up to ₹1 lakh per base unit; past that the money kernel refuses the intermediate values with OVERFLOW.
+const valued = <K extends 'receive' | 'return'>(kind: K) => fc.record({ qtyMilli: fc.integer({ min: 1, max: 50_000 }), unitCostPaise: fc.integer({ min: 0, max: 10_000_000 }) })
+  .map(({ qtyMilli, unitCostPaise }) => ({ kind, qtyMilli, valuePaise: Math.floor((qtyMilli * unitCostPaise) / 1000) }));
 const op = fc.oneof(
-  fc.record({ kind: fc.constant('receive' as const), qtyMilli: fc.integer({ min: 1, max: 50_000 }), valuePaise: fc.integer({ min: 0, max: 5_000_000 }) }),
+  valued('receive'),
   fc.record({ kind: fc.constant('issue' as const), qtyMilli: fc.integer({ min: 1, max: 50_000 }), fallbackPaise: fc.integer({ min: 0, max: 50_000 }) }),
-  fc.record({ kind: fc.constant('return' as const), qtyMilli: fc.integer({ min: 1, max: 50_000 }), valuePaise: fc.integer({ min: 0, max: 5_000_000 }) }),
+  valued('return'),
 );
 
 function run(ops: Array<{ kind: 'receive' | 'issue' | 'return'; qtyMilli: number; valuePaise?: number; fallbackPaise?: number }>) {

@@ -16,13 +16,14 @@ function assertQty(qtyMilli: number): void {
 export interface IssueResult { state: StockState; valueDeltaPaise: number; unitCostPaise: number; provisional: boolean }
 
 // LLD §4.1 ISSUE, except below zero: units already sold short keep their cost; only this sale's units are added at the provisional cost.
+// ADR-0027: a part of the stock leaves with its share of the value, not at a per-unit average rounded to the paisa.
 export function issueStock(s: StockState, qtyMilli: number, fallbackUnitCostPaise: number): IssueResult {
   assertQty(qtyMilli);
   const unitCostPaise = s.qtyMilli > 0 ? divRound(s.valuePaise * MILLI, s.qtyMilli) : s.lastUnitCostPaise || Math.max(0, fallbackUnitCostPaise);
   const qty = s.qtyMilli - qtyMilli;
   let value: number;
   if (qty === 0) value = 0;
-  else if (qty > 0) value = s.valuePaise - divRound(qtyMilli * unitCostPaise, MILLI);
+  else if (qty > 0) value = s.valuePaise - divRound(s.valuePaise * qtyMilli, s.qtyMilli);
   else if (s.qtyMilli > 0) value = divRound(qty * unitCostPaise, MILLI);
   else value = s.valuePaise - divRound(qtyMilli * unitCostPaise, MILLI);
   return {

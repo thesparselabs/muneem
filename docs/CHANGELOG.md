@@ -5,6 +5,16 @@ All notable changes, newest first. Each entry records **what** changed and **why
 
 ## [Unreleased]
 
+### Fixed — Stage 5
+- **Cheap items were over-costed when sold** (ADR-0027, amends ADR-0018). An issue was costed at the average rounded
+  to whole paise per unit: 1,000 units bought for ₹15 were costed at 2 paise each, so selling 999 booked ₹19.98 and
+  left the last unit worth −₹4.98. An issue that leaves stock on hand now takes its share of the value, so COGS is
+  right to the paisa and stock on hand never has a negative value. Found by the value-≥-0 property added in 5a,
+  which had passed only by luck of the random seed.
+- **The costing property draws realistic unit costs** (up to ₹1 lakh per base unit). A 30,000-run soak found that
+  absurd ones (₹1.8 crore per unit) overflow the money kernel. The kernel refuses them with `OVERFLOW` by design,
+  so the property no longer passes or fails on the seed.
+
 ### Added — Stage 5 purchases
 - **Stage 5 plan (`docs/plans/stage-5-purchases.md`).** Decided with the user: the party sub-ledger is proved now and
   the GL tie-out to AR 1300 / AP 2100 waits for Stage 6; purchase invoices receive stock directly (no PO or GRN);
