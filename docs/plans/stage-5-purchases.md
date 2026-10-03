@@ -510,6 +510,66 @@ build and helper tests only):
     open items within budget; `sales.complete` p95 still < 250 ms with the credit step. Docs: build-stages Stage 5 →
     Done with numbers, architecture (Parties section + invariants), LLD §10.2 surface, CHANGELOG, plan "as built".
 
+5g details (drafted 2026-10-04, for review before building):
+
+- **Golden flow, parties** (`apps/desktop/test/goldenFlow.test.ts`, offline like the Stage 3 one). It runs through
+  IPC with the network down:
+  1. supplier with a payable opening;
+  2. purchase with freight (stock received at landed cost);
+  3. register opened;
+  4. sale partly on credit to a customer with a limit;
+  5. receipt that settles the credit sale and leaves an advance;
+  6. debit note for part of the purchase;
+  7. supplier payment, oldest first: the opening, then the purchase;
+  8. cash expense;
+  9. Z report.
+
+  It checks:
+  - the party ledgers through both statements and outstanding;
+  - `reconcilePartiesDb` clean and `replayCheck` empty;
+  - valuation balanced;
+  - expected cash = opening + cash sales + cash receipt − cash payment − expense;
+  - every document's outbox row carries its ledger entry.
+- **Integrity check.**
+  - **What it adds:** `diagnostics.integrityCheck` gains `parties: 'ok' | 'mismatch' | 'not_run'` and runs
+    `reconcilePartiesDb`. The 6-hourly timer runs it too.
+  - **No auto-heal:** unlike stock levels, party entries are not a cache — they are the record — so a mismatch is
+    logged as `PARTY_LEDGER_MISMATCH` with the parties, documents and faults, and reported in `detail`.
+  - **Diagnostics screen:** shows the new line.
+  - **Tests:** a planted bad entry makes the check report `mismatch` and log it, and a clean database reports `ok`.
+- **Speed** (`test/perf/parties.perf.test.ts`, alongside the sales perf test):
+  - `purchases.create` with 200 lines: p95 over 20 bills < 1 s;
+  - `payments.create` auto-allocating over 500 open items: p95 < 250 ms;
+  - `reconcilePartiesDb` with 10,000 documents and their entries: < 2 s, so the 6-hourly run never stalls the till.
+
+  The numbers measured go into build-stages.
+- **No new crash child.** Purchases, payments and expenses are single transactions, and the "a failure part-way leaves
+  nothing" tests already cover them. The sale is the only multi-step commit that touches printing and the drawer, and
+  the kill -9 suite already mixes in credit sales. If you want a kill -9 child for purchases and payments too, it is
+  a small addition.
+- **Docs close-out:**
+  - **`docs/build-stages.md`:** Stage 5 → Done with the evidence (domain property runs, DB reconciliation in every
+    party test and after the kills, golden flow, timings). Carried-forward notes for Stages 6, 7 and 8, and the
+    deferred list.
+  - **`docs/architecture.md`:** a **Parties and purchases (Stage 5)** section (sub-ledger, allocation, purchases and
+    landed cost, debit notes, credit sales, the drawer rule), the new invariants, and "What is not built yet"
+    rewritten.
+  - **This plan:** an "As built" section listing every change from the plan:
+    - `allocation` generalised;
+    - the costing fix (ADR-0027);
+    - numbering (ADR-0028);
+    - migrations 0007/0008;
+    - the credit-limit split;
+    - session permissions;
+    - the payables card;
+    - the perf timeout;
+    - the screens not yet clicked through.
+  - **CHANGELOG:** the 5g lines.
+- **Then review, before any push.** As with Stages 3 and 4, a review pass of the whole stage diff follows. Fixes land as
+  5h commits, after which the branch is ready for you to push and open the PR. The manual UI checklist (5f) is yours
+  to run before or during that review.
+- **Not in 5g:** the GL tie-out to 1300/2100 (Stage 6), sync endpoints (Stage 7), and payment reminders (Stage 8).
+
 ## Verification
 
 - `pnpm turbo run gen build typecheck lint test`, `pnpm schema-lint`, Go job green.
@@ -528,3 +588,29 @@ build and helper tests only):
   supplier and purchase sync endpoints.
 - Stage 8: payment reminders with consent capture; payables and receivables reports and exports.
 - Deferred: purchase orders, GRN and three-way matching; reverse-charge self-invoice; TDS/TCS.
+
+## As built (2026-10-04)
+
+- **`allocation` replaces LLD's `payment_allocation`.** Debit notes, write-offs and opening advances settle documents
+  too. Triggers keep both documents' totals and refuse over-allocation, cross-party allocation and allocation to
+  cancelled documents (ADR-0025).
+- **Cancelling a purchase issues no debit note.** It reverses stock at landed cost and the ledger entry, and is
+  refused while the purchase is paid or returned. Returned quantities are summed from debit-note lines, not stored.
+- **Costing fix found on the way (ADR-0027):** an issue that leaves stock on hand takes its share of the value. The
+  rounded per-unit average over-costed cheap items and could leave negative value on positive stock. The costing
+  property now draws unit costs up to ₹1 lakh per base unit.
+- **Numbers** carry a kind letter after the terminal prefix with 5 digits (ADR-0028). Migrations `0007` and `0008`
+  add command ids, because `0006` could not be edited once run.
+- **The open-items query covers every document type from 5b,** so later parts only wrote documents.
+- **Customer search with an empty query lists everyone,** as supplier search does.
+- **Credit limit (ADR-0026, amended):** enforced in the sale commit, with the quote only reporting the room. No limit
+  set counts as ₹0. The balance is the ledger balance, so advances add room.
+- **Paying a supplier also needs `suppliers.view`.** Cash through an open drawer moves expected cash (ADR-0029).
+- **The session carries permissions** for the screens; main stays authoritative.
+- **Home payables card** shows overdue amounts, not "due within 7 days" (the buckets cannot split the next 7 days).
+- **Speed tests** have an explicit 60 s test timeout. Their p95 budgets are unchanged.
+- **No crash child for purchases or payments.** They are single transactions with "failure leaves nothing" tests, and
+  the sale crash suite mixes in credit sales.
+- **The integrity check reports party mismatches** (`PARTY_LEDGER_MISMATCH`) and never rewrites entries.
+- **Screens are not clicked through.** They are checked by typecheck, build and helper tests; the 5f manual checklist
+  is for the user.

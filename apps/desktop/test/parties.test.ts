@@ -76,3 +76,15 @@ describe('opening balances, statements and outstanding', () => {
     expect(await api.call('customers.setOpening', { partyId: c.id, amountPaise: 1, asOfDate: '2026-04-01' })).toMatchObject({ ok: false, error: { code: 'PERMISSION_DENIED' } });
   });
 });
+
+describe('party ledger integrity check (5g)', () => {
+  it('reports ok on a clean ledger and names a mismatch without rewriting anything', async () => {
+    const c = await api.data<Customer>('customers.create', { name: 'Ravi' });
+    app.customerLedger.setOpening({ partyId: c.id, amountPaise: 1000, asOfDate: '2026-04-01' });
+    expect(await api.data('diagnostics.integrityCheck')).toMatchObject({ parties: 'ok' });
+    db.prepare(`INSERT INTO party_ledger_entry (id, business_id, party_type, party_id, ref_type, ref_id, entry_kind, amount_paise, doc_date, occurred_at,
+        created_at, updated_at, created_by, device_id) VALUES ('X1', ?, 'customer', ?, 'sale', 'ghost', 'post', 50, '2026-10-04', 'a', 'a', 'a', 'u', 'd')`).run(businessId, c.id);
+    expect(app.diagnostics.checkParties()).toBe('mismatch');
+    expect(db.prepare("SELECT COUNT(*) FROM party_ledger_entry WHERE id = 'X1'").pluck().get()).toBe(1);
+  });
+});

@@ -179,6 +179,20 @@ All notable changes, newest first. Each entry records **what** changed and **why
 - **Menus:** Purchases and Expenses join the menu, each shown only to users who may view them.
 - **Helpers:** purchase and expense form helpers have node tests.
 - **Manual checklist:** added to the plan, because the screens have not been clicked through yet.
+- **5g details written into the plan before building,** reviewed by the user first.
+- **Parties golden flow, offline:** supplier opening → purchase with freight → credit sale → receipt leaving an advance
+  → debit note → cash supplier payment, oldest first → cash expense → Z report. It checks both ledgers, outstanding,
+  valuation, the drawer to the paisa, reconciliation, replay, and that every document's sync row carries its ledger
+  entry.
+- **The integrity check reports party ledgers** (`parties: ok | mismatch | not_run`), and the 6-hourly timer runs it.
+  A mismatch is logged as `PARTY_LEDGER_MISMATCH` and never rewritten, because entries are the record, not a cache.
+  The Diagnostics screen now shows the stock and party results too.
+- **Speed tests for Stage 5:**
+  - a 200-line purchase: p95 62 ms;
+  - a payment settling 500 bills: 62 ms;
+  - reconciliation over 12,500 documents: 0.1–0.2 s.
+- **Stage 5 is done, awaiting review:** build-stages, architecture (a Parties and purchases section, new invariants,
+  "not built yet") and the plan's "As built" list are updated.
 
 ### Added — Stage 4 inventory
 - **Stage 4 plan (`docs/plans/stage-4-inventory.md`) and ADRs 0018–0021.** Decided with the user: no back-fill (stock
