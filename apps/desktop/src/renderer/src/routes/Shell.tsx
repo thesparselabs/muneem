@@ -3,13 +3,18 @@ import { useQuery } from '@tanstack/react-query';
 import { api } from '../api.js';
 import { useUi } from '../store.js';
 import SyncBadge from '../components/SyncBadge.js';
+import type { Permission } from '@muneem/contracts';
+import { can } from '../lib/permissions.js';
 
-const NAV = [
+// `need` hides an item from users who could not use it; main still checks every call (5f details).
+const NAV: { to: string; label: string; enabled: boolean; stage?: string; need?: Permission }[] = [
   { to: '/', label: 'Home', enabled: true },
   { to: '/pos', label: 'POS · Billing', enabled: true },
   { to: '/products', label: 'Products', enabled: true },
   { to: '/inventory', label: 'Inventory', enabled: true },
-  { to: '/purchases', label: 'Purchases', enabled: false, stage: 'Stage 5' },
+  { to: '/purchases', label: 'Purchases', enabled: false, stage: 'Stage 5f', need: 'purchases.view' },
+  { to: '/parties', label: 'Parties', enabled: true, need: 'customers.view' },
+  { to: '/payments', label: 'Payments', enabled: true, need: 'payments.view' },
   { to: '/reports', label: 'Reports', enabled: false, stage: 'Stage 8' },
   { to: '/diagnostics', label: 'Diagnostics', enabled: true },
 ];
@@ -38,7 +43,7 @@ export default function Shell() {
       </header>
       <nav className="border-r bg-white py-3" aria-label="Main">
         <ul>
-          {NAV.map((n) => (
+          {NAV.filter((n) => !n.need || can(session, n.need)).map((n) => (
             <li key={n.to}>
               {n.enabled ? (
                 <NavLink to={n.to} end={n.to === '/'} className={({ isActive }) => `block px-5 py-2 text-sm ${isActive ? 'bg-blue-50 text-blue-800 font-medium' : 'hover:bg-slate-50'}`}>{n.label}</NavLink>

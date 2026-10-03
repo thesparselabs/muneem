@@ -35,6 +35,7 @@ beforeAll(async () => {
   app.register.open(0);
 }, 120_000);
 
+// The budget is the p95 below; the test timeout only stops a busy CI machine from failing the whole run.
 describe(`sales.complete at ${SKUS} SKUs (LLD §18)`, () => {
   it(`p95 of ${SALES} ${LINES}-line sales is under 250 ms`, () => {
     const samples: number[] = [];
@@ -48,7 +49,7 @@ describe(`sales.complete at ${SKUS} SKUs (LLD §18)`, () => {
     }
     console.info(`sales.complete p95 = ${p95(samples).toFixed(2)} ms`);
     expect(p95(samples)).toBeLessThan(250);
-  });
+  }, 60_000);
 
   it(`p95 of ${SALES} ${LINES}-line credit sales is under 250 ms (ADR-0026)`, () => {
     const samples: number[] = [];
@@ -62,5 +63,5 @@ describe(`sales.complete at ${SKUS} SKUs (LLD §18)`, () => {
     }
     console.info(`credit sales.complete p95 = ${p95(samples).toFixed(2)} ms`);
     expect(p95(samples)).toBeLessThan(250);
-  });
+  }, 60_000);
 });

@@ -22,6 +22,8 @@ export const Session = z.object({
   mode: z.enum(['online', 'offline']),
   permVer: z.number().int(),
   offlineDaysRemaining: z.number().int().nullable(),
+  // For showing and hiding screens only; main checks every call itself (5f details).
+  permissions: z.array(z.string()),
 });
 export type Session = z.infer<typeof Session>;
 

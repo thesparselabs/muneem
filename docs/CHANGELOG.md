@@ -142,6 +142,29 @@ All notable changes, newest first. Each entry records **what** changed and **why
   clean party reconciliation after the kills (20 in CI; 200 kills / 435 sales PASS locally). Credit sales complete with
   p95 14 ms (cash sales 12 ms; budget 250 ms).
 - **The over-tender message now names credit** alongside card, UPI and other.
+- **5f details written into the plan before building,** reviewed by the user first.
+- **The screens know the user's permissions** (`Session.permissions`) and use them only to hide menus and buttons
+  (5f details). Main still checks every call.
+- **Parties screens (5f-1):**
+  - **Lists:** customers and suppliers with search and balances. Customer search with an empty query now lists
+    everyone, as supplier search does, so the list can show all parties.
+  - **Forms:** add and edit; the supplier's state follows its GSTIN.
+  - **Party page:** statement with a date range and running balance, ageing and unapplied credit, with actions for
+    payment, applying credit, opening balance, credit limit (managers) and write-off (`payments.approve`).
+  - **Outstanding report:** receivables and payables by ageing bucket.
+- **Payments screens (5f-1):**
+  - **List and page:** a filtered list, and a payment page with its allocations and a cancel.
+  - **New payment:** an allocation grid whose "oldest due first" preview uses the same domain function as the server.
+    "Choose" shows the advance left and names over-allocation before saving. One command id per form makes a retry
+    safe.
+- **Home cards:** what customers owe (and the part over 30 days) and what is owed to suppliers (and the part
+  overdue).
+  - **Change from the 5f details:** the card shows *overdue*, not "due within 7 days", because the ageing buckets do
+    not separate the next 7 days.
+- **Speed tests:** they get an explicit 60 s test timeout. Under a fully parallel run the credit test took 7 s in
+  total and hit the 5 s default, while its p95 stayed far inside the 250 ms budget, which is unchanged.
+- **Helpers:** party forms and the allocation grid have node tests. The screens are checked by typecheck and build,
+  not clicked through.
 
 ### Added — Stage 4 inventory
 - **Stage 4 plan (`docs/plans/stage-4-inventory.md`) and ADRs 0018–0021.** Decided with the user: no back-fill (stock

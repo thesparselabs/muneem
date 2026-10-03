@@ -415,6 +415,74 @@ append-only.
     write-off); `/expenses`; customer ledger and outstanding with ageing; POS credit tender and limit message; Home
     cards for receivables and payables due. Pure helpers (allocation grid, bill-total difference) with node tests.
 
+5f details (drafted 2026-10-04, for review before building):
+
+- **Navigation.** The disabled "Purchases (Stage 5)" item becomes four live items: **Purchases**, **Payments**,
+  **Expenses** and **Parties** (customers and suppliers).
+- **What the screens know about permissions.** The renderer cannot see permissions today; it relies on the server
+  refusing. For Stage 5 screens that would show a cashier menus that only fail, so the `Session` the renderer
+  receives gains `permissions: Permission[]` — the user's grants, without limits. It is used only to hide menu items
+  and buttons. Main stays authoritative and checks every call exactly as now.
+- **Parties** (`/parties`):
+  - **The list:** tabs for Customers and Suppliers, with search and each party's balance (from `getOutstanding`).
+  - **Forms:** add and edit a supplier (GST details, credit days) and a customer (credit days).
+  - **Party page** (`/parties/customer/:id`, `/parties/supplier/:id`):
+    - the statement, with a date range, running balance and paging;
+    - the party's ageing buckets and open items;
+    - actions: receive payment or pay, apply credit (`payments.allocate`), set opening balance, set credit limit
+      (only with `customers.approve`), write off (only with `payments.approve`).
+  - **Outstanding** (`/parties/outstanding`): receivables and payables by ageing bucket with totals, as of a chosen
+    date.
+- **Purchases** (`/purchases`):
+  - **The list:** supplier, date range and status filters.
+  - **New purchase:**
+    - **Header:** a supplier picker, invoice number and date, and the due date shown from the supplier's credit days
+      (editable).
+    - **Line grid:** product picker, unit, qty, rate, inclusive toggle, discount, GST rate (defaulted, editable) and
+      an ITC tick.
+    - **Bill level:** bill discount, charges, and the **bill total** box.
+    - **Live quote:** a debounced `purchases.quote` shows tax, landed cost per line and the bill-total difference
+      (green within ±₹1, red beyond), and Save is disabled until it fits.
+    - **Import from file:** fills the grid and lists bad rows.
+    - **Save:** uses one `commandId` per form, as the POS does, so a retry never books twice.
+  - **Purchase page:** lines with landed and unit cost, charges, debit notes, and settled vs owed.
+    - **Return goods:** a dialog with qty per line, reason and "supplier refunds freight".
+    - **Cancel:** reason required; the button is hidden while the purchase is paid or returned.
+- **Payments** (`/payments`):
+  - **The list:** filters.
+  - **New payment** (from the menu, or prefilled from a party page):
+    - party, amount, method, date and reference;
+    - the **allocation grid** of the party's open items, defaulting to **Auto**, which previews oldest-first
+      client-side with the same domain `allocateOldestFirst` the server uses;
+    - switching to **Choose** lets the user type amounts per item, with the running total, the remaining advance and
+      the over-allocation errors shown before saving.
+  - **Payment page:** its allocations, and cancel with a reason.
+- **Expenses** (`/expenses`):
+  - **The list:** category, date and status filters.
+  - **New expense:** category, date, method, amount and an inclusive toggle, an optional GST rate (shown only when a
+    supplier or vendor GSTIN is given), ITC tick, and supplier (required for credit) or free-text vendor.
+  - **Cancel:** with a reason.
+- **Home.** Two new cards, each shown only to users who may see it:
+  - **Receivables:** total owed, and how much is over 30 days.
+  - **Payables:** total, and how much is due within 7 days or overdue.
+
+  The "Inventory stage" note becomes a short "what's new in Stage 5" line.
+- **Pure helpers with node tests** (`lib/purchases`, `lib/payments`, `lib/parties`), keeping the screens thin:
+  - purchase form ↔ `PurchaseDraft`, with parse errors per field;
+  - the bill-difference label;
+  - the allocation-grid state (auto preview, manual edits, totals, advance, errors);
+  - expense form → `ExpenseInput`;
+  - ageing row formatting;
+  - credit-limit form (empty = no limit).
+- **How it is checked.** As in Stages 2–4: typecheck, build, and node tests of the helpers, plus the IPC tests
+  already behind every call. There is no Playwright run of the Electron UI; it stays a carried-forward note, and the
+  screens are not claimed as clicked through. A manual checklist goes in the plan for the user.
+- **Delivery.** Two commits rather than one, because the screen work is large:
+  - **5f-1:** session permissions, parties, payments and Home cards;
+  - **5f-2:** purchases and expenses.
+- **Not in 5f:** printing a payment receipt or debit note, report exports (Stage 8), custom expense categories, a
+  Playwright suite, and POS changes beyond 5e's credit row.
+
 **5g — Close-out**
 11. Golden flow extended: supplier opening → purchase with freight → sale partly on credit → receipt allocated →
     debit note → supplier payment → reconciliation and stock valuation checked. Integrity check and the 6-hourly
