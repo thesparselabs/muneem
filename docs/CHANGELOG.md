@@ -5,6 +5,13 @@ All notable changes, newest first. Each entry records **what** changed and **why
 
 ## [Unreleased]
 
+### Added — Stage 5 purchases
+- **Stage 5 plan (`docs/plans/stage-5-purchases.md`).** Decided with the user: the party sub-ledger is proved now and
+  the GL tie-out to AR 1300 / AP 2100 waits for Stage 6; purchase invoices receive stock directly (no PO or GRN);
+  credit sales over the limit are refused unless the user holds the override grant; opening balances, landed cost,
+  write-off and purchase-line import are in scope. Build stages now show Stage 4 merged (PR #5) and Stage 5 in
+  progress, because the Stage 4 row still said it was awaiting review.
+
 ### Added — Stage 4 inventory
 - **Stage 4 plan (`docs/plans/stage-4-inventory.md`) and ADRs 0018–0021.** Decided with the user: no back-fill (stock
   starts from an opening count); the inventory sub-ledger is proved now and the GL tie-out to account 1400 waits for
