@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  creditLimitText, customerFormToInput, emptySupplierForm, overdueOver30, parseCreditLimit, supplierFormToInput,
+  creditLimitText, customerFormToInput, customerToForm, emptySupplierForm, overdueOver30, parseCreditLimit, supplierFormToInput,
 } from '../../src/renderer/src/lib/parties/forms.js';
 import { summarise, toChoice, type GridItem } from '../../src/renderer/src/lib/payments/allocationGrid.js';
 
@@ -13,7 +13,17 @@ describe('supplier and customer forms', () => {
   });
 
   it('leaves credit days out of a customer edit when the box is empty', () => {
-    expect(customerFormToInput({ name: 'Ravi', phone: '', gstin: '', creditDays: '' })).toEqual({ ok: true, input: { name: 'Ravi' } });
+    expect(customerFormToInput({ ...customerToForm(), name: 'Ravi' })).toEqual({ ok: true, input: { name: 'Ravi' } });
+  });
+
+  it('an edit sends back every saved detail, so nothing is wiped (5h #1)', () => {
+    const saved = {
+      id: '01J000000000000000000CUST1', businessId: '01J00000000000000000000B01', version: 3, name: 'Ravi', phone: '9876500000', email: 'ravi@example.com',
+      stateCode: '29', addressLine1: '12 MG Road', city: 'Bengaluru', pinCode: '560001', creditDays: 15, creditLimitPaise: null,
+    };
+    expect(customerFormToInput({ ...customerToForm(saved), name: 'Ravi K' })).toEqual({ ok: true, input: {
+      name: 'Ravi K', phone: '9876500000', email: 'ravi@example.com', stateCode: '29', addressLine1: '12 MG Road', city: 'Bengaluru', pinCode: '560001', creditDays: 15,
+    } });
   });
 
   it('reads an empty credit limit as no limit set', () => {

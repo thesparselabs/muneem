@@ -28,11 +28,13 @@ export class PurchaseImportService {
     if (input.mapping) this.previews.update(Object.assign(session, { mapping: input.mapping }));
     const rows = this.plan(session);
     const bad = rows.filter((r) => Object.keys(r.errors).length > 0);
+    const lines = rows.flatMap((r) => (r.input && Object.keys(r.errors).length === 0 ? [r.input] : []));
+    const products = [...new Set(lines.map((l) => l.productId))].map((id) => getProduct(this.ctx.db(), id, this.ctx.today())!);
     return {
       importId: session.id, fileName: session.fileName, columns: session.table.columns, mapping: session.mapping,
       counts: { total: rows.length, ok: rows.length - bad.length, errors: bad.length },
       errors: bad.slice(0, 500).map((r) => ({ line: r.line, errors: r.errors })),
-      lines: rows.flatMap((r) => (r.input && Object.keys(r.errors).length === 0 ? [r.input] : [])),
+      lines, products,
     };
   }
 

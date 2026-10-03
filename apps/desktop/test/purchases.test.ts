@@ -254,3 +254,22 @@ describe('importing purchase lines', () => {
     expect(db.prepare('SELECT COUNT(*) FROM purchase').pluck().get()).toBe(0);
   });
 });
+
+describe('5h-1 fixes', () => {
+  it('imports a 30-line supplier file in one call, returning each product once (#3)', async () => {
+    const csv = ['SKU,Qty,Rate', ...Array.from({ length: 30 }, (_, i) => `${i % 2 ? 'LUX' : 'RICE'},${i + 1},10`)].join('\n');
+    const r = await api.data<PurchaseImportPreview>('purchases.importLinesPreview', { fileName: 'big.csv', contentBase64: Buffer.from(csv).toString('base64') });
+    expect(r.lines).toHaveLength(30);
+    expect(r.products.map((p) => p.id).sort()).toEqual([soap, rice].sort());
+  });
+
+  it('lists document series after a purchase and an expense (#11)', async () => {
+    await create();
+    const cat = (await api.data<{ id: string }[]>('expenses.listCategories'))[0]!.id;
+    await api.data('expenses.create', { categoryId: cat, method: 'bank', amountPaise: 1000, commandId: newUlid() });
+    const series = await api.data<{ docType: string; prefix: string }[]>('settings.listSeries');
+    expect(series.map((x) => [x.docType, x.prefix])).toEqual(expect.arrayContaining([['purchase', 'DE01P'], ['expense', 'DE01E']]));
+    expect(await api.call('settings.createSeries', { branchId: null, terminalId: null, docType: 'tax_invoice', fy: '2026-27', prefix: 'TOOLP', padWidth: 6 }))
+      .toMatchObject({ ok: false, error: { code: 'VALIDATION_FAILED' } });
+  });
+});

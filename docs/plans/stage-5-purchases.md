@@ -589,6 +589,98 @@ build and helper tests only):
 - Stage 8: payment reminders with consent capture; payables and receivables reports and exports.
 - Deferred: purchase orders, GRN and three-way matching; reverse-charge self-invoice; TDS/TCS.
 
+## 5h — review fixes (planned 2026-10-04)
+
+All ten review points were checked against the code (two by a probe on a 3,000-purchase database). Nine are worth
+fixing before the PR, one is documented instead, and the probe found one more bug (point 11).
+
+**5h-1 — data loss and access (worst for shops)**
+
+1. **Editing a customer wipes saved details** — confirmed.
+   - **Cause:** `CustomerForm` carries only name, phone, GSTIN and credit days, and `updateCustomer` writes every
+     field, so email, address, city, PIN and a manually set state become blank.
+   - **Fix:** the form carries all of the customer's fields, and the dialog shows email, address, city, PIN and state
+     (state only when there is no GSTIN).
+   - **Test:** a helper round-trip proves an edit keeps every field.
+2. **A new owner can't see the Stage 5 screens until they log in again** — confirmed.
+   - **Cause:** `business.create` patches the session with the owner role but leaves `permissions` as the empty list
+     from login.
+   - **Fix:** the patch also sets the owner preset's permissions.
+   - **Test:** right after setup, `auth.getSession` lists `purchases.view`.
+3. **Importing a supplier file with more than 20 lines fails** — confirmed. The screen calls `products.get` once per
+   line at the same moment, and the limit is 20 a second.
+   - **Fix:** `purchases.importLinesPreview` also returns the products it matched (each once), so the screen needs no
+     further calls.
+   - **Test:** a 30-line file through IPC.
+11. **The series list breaks after the first purchase** — found by the probe. `settings.listSeries` fails output
+    validation, because the `DocSeries` contract allows only 1–4 character prefixes (purchase series are `DE01P`) and
+    its doc types lack `expense`.
+    - **Fix:** the contract accepts a terminal prefix plus kind letter and the `expense` type.
+    - **Test:** listing series after a purchase and an expense.
+
+**5h-2 — wrong numbers and a fragile series rule**
+
+4. **New Purchase rows show another line's figures** — confirmed. The quote leaves out lines with problems, and the
+   screen reads `quote.lines[i]` by position.
+   - **Fix:** each quote line carries `draftLineNo`, and the screen matches by it.
+   - **Test:** a quote with a bad first line returns the second line as `draftLineNo` 2.
+6. **A full return leaves up to ₹1 owed** — confirmed. The debit note never carries the purchase's round-off.
+   (Cancel is blocked anyway once a debit note exists; the real harm is the stray balance.)
+   - **Fix:** the debit note that completes the return of every line takes the purchase's round-off (the column and
+     its ±₹1 CHECK already exist).
+   - **Test:** a full return with freight refunded leaves the purchase owing exactly ₹0. Without the refund it still
+     owes the freight, which is intended.
+7. **Reverse-charge purchases still add GST to the bill and the supplier's balance** — confirmed. Doing reverse
+   charge properly means the bill total and AP exclude the tax while the business books it both as output and as input
+   tax; that needs schema and Stage 6 work.
+   - **Fix:** refuse `isReverseCharge: true` with a clear message until then (no screen sends it), and amend ADR-0023,
+     whose "stored flag only" was wrong.
+   - **Test:** the refusal.
+9. **A sale series with pad width 5 makes every sale on that terminal fail** — confirmed. `allocateDocNumber` picks
+   the format by `pad_width`, and `settings.createSeries` accepts widths 3–10 for any type.
+   - **Fix:** pick the format by `doc_type` (sale types → invoice format, others → kind-letter format).
+   - **Test:** a pre-created width-5 sale series still bills.
+
+**5h-3 — ageing "as of" a past date**
+
+5. **A past date counts later payments and cancellations** — confirmed. `partyOutstanding` filters documents by date
+   but uses today's `settled_paise` / `allocated_paise` and today's status.
+   - **Migration `0009_allocation_dates`:** adds `allocated_on` and `voided_on` business dates to `allocation`.
+     - Set on new rows: an allocation made with its document takes the document's date; a later one takes the day it
+       is made; a void takes the day it is voided.
+     - Existing rows: backfilled from their timestamps.
+   - **As of a date D:** a document counts if its date ≤ D and it has no `cancel` ledger entry dated ≤ D. Its open
+     amount uses only allocations with `allocated_on ≤ D` and not voided by D. Today's report gives the same numbers
+     as now.
+   - **Tests:** as of a date before a payment, the bill is fully open; after it, settled; a payment cancelled later
+     still counts on the earlier date.
+   - **Alternative, if you'd rather keep 5h small:** hide the "as of" picker (today only) and do this in Stage 8 with
+     the reports.
+
+**5h-4 — statements on large shops**
+
+10. **Each statement page and each `payments.get` reads every document of every party** — confirmed, but small
+    today: 13 ms per statement page and 3 ms per `payments.get` at 3,000 purchases. The query plan materialises all
+    documents and builds a temporary index each time, so the cost grows with the shop's total documents, not the
+    party's.
+    - **Fix:** fetch document numbers only for the rows on the page, with indexed lookups per type, in
+      `partyStatement` and `allocationsOfSource`. `openItems` and `partyOutstanding` filter the union by party or type
+      inside it.
+    - **Test:** a perf test at 20,000 documents (statement page < 20 ms), and the existing tests prove the results are
+      unchanged.
+
+**Documented, not changed**
+
+8. **Purchase FY versus number FY near 31 March** — real, but intended.
+   - **Why both are right:** `purchase.fy` is the supplier bill's FY. It drives the duplicate-invoice rule and, in
+     Stage 6, the ITC period. The internal number, like every document number, uses the FY in which the bill is
+     entered.
+   - **The real decision** is which period a late-entered March bill is posted to, which belongs to Stage 6.
+   - **Action:** an ADR-0023 note and a build-stages carry-forward. Changing it now would pre-empt that decision.
+
+**Delivery:** four commits (5h-1 … 5h-4), each green with changelog lines. Every touched test still ends with the
+party ledgers reconciled.
+
 ## As built (2026-10-04)
 
 - **`allocation` replaces LLD's `payment_allocation`.** Debit notes, write-offs and opening advances settle documents

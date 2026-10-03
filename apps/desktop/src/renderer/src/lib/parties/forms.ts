@@ -32,14 +32,22 @@ export function supplierFormToInput(f: SupplierForm): Result<SupplierInput> {
   return parsed.success ? { ok: true, input: parsed.data } : { ok: false, errors: issues(parsed.error) };
 }
 
-export interface CustomerForm { name: string; phone: string; gstin: string; creditDays: string }
+// Every field the customer has, so an edit sends them all back: the update replaces the whole record.
+export interface CustomerForm {
+  name: string; phone: string; email: string; gstin: string; stateCode: string; addressLine1: string; city: string; pinCode: string; creditDays: string;
+}
 export const customerToForm = (c?: Customer): CustomerForm => ({
-  name: c?.name ?? '', phone: c?.phone ?? '', gstin: c?.gstin ?? '', creditDays: c ? String(c.creditDays) : '',
+  name: c?.name ?? '', phone: c?.phone ?? '', email: c?.email ?? '', gstin: c?.gstin ?? '', stateCode: c?.stateCode ?? '',
+  addressLine1: c?.addressLine1 ?? '', city: c?.city ?? '', pinCode: c?.pinCode ?? '', creditDays: c ? String(c.creditDays) : '',
 });
 export function customerFormToInput(f: CustomerForm): Result<CustomerInput> {
   const credit = days(f.creditDays);
   if (credit === null) return { ok: false, errors: { creditDays: 'whole days' } };
-  const parsed = CustomerInput.safeParse({ name: f.name, phone: opt(f.phone), gstin: opt(f.gstin)?.toUpperCase(), creditDays: credit });
+  const gstin = opt(f.gstin)?.toUpperCase();
+  const parsed = CustomerInput.safeParse({
+    name: f.name, phone: opt(f.phone), email: opt(f.email), gstin, stateCode: gstin ? gstin.slice(0, 2) : opt(f.stateCode),
+    addressLine1: opt(f.addressLine1), city: opt(f.city), pinCode: opt(f.pinCode), creditDays: credit,
+  });
   return parsed.success ? { ok: true, input: parsed.data } : { ok: false, errors: issues(parsed.error) };
 }
 

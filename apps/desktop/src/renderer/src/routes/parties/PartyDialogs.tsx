@@ -68,6 +68,13 @@ export function CustomerEditDialog({ customer, onDone, onClose }: { customer?: C
         <Field label="Name" htmlFor="cu-name"><input id="cu-name" className="input" value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} required /></Field>
         <Field label="Phone" htmlFor="cu-phone"><input id="cu-phone" className="input" inputMode="tel" value={f.phone} onChange={(e) => setF({ ...f, phone: e.target.value })} /></Field>
         <Field label="GSTIN" htmlFor="cu-gstin"><input id="cu-gstin" className="input uppercase" maxLength={15} value={f.gstin} onChange={(e) => setF({ ...f, gstin: e.target.value })} /></Field>
+        {!f.gstin.trim() && <Field label="State code" htmlFor="cu-state" hint="For the place of supply on their bills"><input id="cu-state" className="input" maxLength={2} value={f.stateCode} onChange={(e) => setF({ ...f, stateCode: e.target.value })} /></Field>}
+        <Field label="Email" htmlFor="cu-email"><input id="cu-email" className="input" type="email" value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} /></Field>
+        <Field label="Address" htmlFor="cu-addr"><input id="cu-addr" className="input" value={f.addressLine1} onChange={(e) => setF({ ...f, addressLine1: e.target.value })} /></Field>
+        <div className="grid grid-cols-2 gap-3">
+          <Field label="City" htmlFor="cu-city"><input id="cu-city" className="input" value={f.city} onChange={(e) => setF({ ...f, city: e.target.value })} /></Field>
+          <Field label="PIN code" htmlFor="cu-pin"><input id="cu-pin" className="input" inputMode="numeric" maxLength={6} value={f.pinCode} onChange={(e) => setF({ ...f, pinCode: e.target.value })} /></Field>
+        </div>
         <Field label="Credit days" htmlFor="cu-days"><input id="cu-days" className="input" inputMode="numeric" value={f.creditDays} onChange={(e) => setF({ ...f, creditDays: e.target.value })} /></Field>
         <Errors errors={errors} />
         <button type="submit" className="btn-primary">Save customer</button>

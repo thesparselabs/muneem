@@ -33,8 +33,8 @@ export default function NewPurchase() {
   async function importFile(file: File) {
     try {
       const r = await api.purchases.importLinesPreview({ fileName: file.name, contentBase64: await fileToBase64(file) });
-      const products = await Promise.all(r.lines.map((l) => api.products.get({ id: l.productId })));
-      setForm((f) => ({ ...f, lines: [...f.lines, ...r.lines.map((l, i) => lineFor(products[i]!, uoms.data ?? [], l))] }));
+      const products = new Map(r.products.map((p) => [p.id, p]));
+      setForm((f) => ({ ...f, lines: [...f.lines, ...r.lines.map((l) => lineFor(products.get(l.productId)!, uoms.data ?? [], l))] }));
       setImportErrors(r.errors.map((e) => `Row ${e.line}: ${Object.values(e.errors).join('; ')}`));
     } catch (e) { setError(errorMessage(e)); }
   }

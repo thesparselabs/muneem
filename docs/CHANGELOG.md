@@ -15,6 +15,18 @@ All notable changes, newest first. Each entry records **what** changed and **why
   absurd ones (₹1.8 crore per unit) overflow the money kernel. The kernel refuses them with `OVERFLOW` by design,
   so the property no longer passes or fails on the seed.
 
+### Fixed — Stage 5 review (5h)
+- **Editing a customer no longer wipes their saved details** (#1). The Parties form sent only name, phone, GSTIN and
+  credit days, and the update replaced the whole record, so email, address, city, PIN and a set state were erased.
+  The form now carries and shows every field.
+- **A new owner sees the Stage 5 screens straight after setup** (#2). Setup now gives the session the owner preset's
+  permissions; before, they stayed empty until the next login.
+- **Importing a supplier file with more than 20 lines works** (#3). The screen looked up each line's product at once
+  and hit the 20-a-second limit. The import preview now returns the matched products itself.
+- **The series list no longer breaks after the first purchase or expense** (#11, found while checking #9). The series
+  contract allowed only 1–4 character prefixes and no `expense` type, so `DE01P`/`DE01E` failed output validation.
+  Creating a series still takes a 1–4 character prefix.
+
 ### Added — Stage 5 purchases
 - **Stage 5 plan (`docs/plans/stage-5-purchases.md`).** Decided with the user: the party sub-ledger is proved now and
   the GL tie-out to AR 1300 / AP 2100 waits for Stage 6; purchase invoices receive stock directly (no PO or GRN);

@@ -88,3 +88,16 @@ describe('party ledger integrity check (5g)', () => {
     expect(db.prepare("SELECT COUNT(*) FROM party_ledger_entry WHERE id = 'X1'").pluck().get()).toBe(1);
   });
 });
+
+describe('5h-1 fixes', () => {
+  it('a new owner can see the Stage 5 screens straight after setup, without logging in again (#2)', async () => {
+    expect((await api.data<{ permissions: string[] }>('auth.getSession')).permissions).toEqual(expect.arrayContaining(['purchases.view', 'payments.view', 'suppliers.view']));
+  });
+
+  it('a customer update with every saved field keeps them all (#1)', async () => {
+    const c = await api.data<Customer>('customers.create', { name: 'Ravi', email: 'ravi@example.com', stateCode: '29', addressLine1: '12 MG Road', city: 'Bengaluru', pinCode: '560001' });
+    const fields = { email: c.email, stateCode: c.stateCode, addressLine1: c.addressLine1, city: c.city, pinCode: c.pinCode, creditDays: c.creditDays };
+    expect(await api.data<Customer>('customers.update', { ...fields, name: 'Ravi K', id: c.id, version: c.version }))
+      .toMatchObject({ name: 'Ravi K', email: 'ravi@example.com', stateCode: '29', addressLine1: '12 MG Road', city: 'Bengaluru', pinCode: '560001' });
+  });
+});

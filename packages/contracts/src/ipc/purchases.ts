@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { BusinessDate, IsoDateTime, StateCode, Ulid } from './schemas.js';
 import { DiscountInput, QuoteLine } from './sales.js';
+import { Product } from './catalog.js';
 
 const Paise = z.number().int().min(0).max(1_000_000_000_000);
 const Int = z.number().int();
@@ -137,5 +138,7 @@ export const PurchaseImportPreview = z.object({
   counts: z.object({ total: Int, ok: Int, errors: Int }),
   errors: z.array(z.object({ line: Int, errors: z.record(z.string(), z.string()) })),
   lines: z.array(PurchaseLineInput),
+  // The products the lines refer to, each once, so the form needs no lookup per line.
+  products: z.array(Product),
 });
 export type PurchaseImportPreview = z.infer<typeof PurchaseImportPreview>;
