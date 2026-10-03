@@ -97,7 +97,8 @@ export const contract = {
   'settings.set': spec({ input: z.object({ key: z.enum(SETTING_KEYS), value: z.unknown() }), output: Ok, permission: 'settings.manage', rateLimit: { perSec: 5 }, audit: true }),
   'settings.listSeries': spec({ input: Empty, output: z.array(DocSeries), permission: 'settings.view', rateLimit: { perSec: 10 } }),
   'settings.createSeries': spec({
-    input: DocSeries.omit({ id: true, businessId: true, nextSeq: true }).extend({ prefix: z.string().regex(/^[A-Z0-9]{1,4}$/, '1–4 capital letters or digits') }),
+    // The prefix's shape per document type is checked where series are created (5i #3).
+    input: DocSeries.omit({ id: true, businessId: true, nextSeq: true }),
     output: DocSeries, permission: 'settings.manage', rateLimit: { perSec: 2 }, audit: true,
   }),
 

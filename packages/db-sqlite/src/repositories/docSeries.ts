@@ -1,4 +1,4 @@
-import { DomainError, formatDocNumber, formatInvoiceNumber, newUlid } from '@muneem/domain';
+import { DOC_KIND_LETTER, DomainError, formatDocNumber, formatInvoiceNumber, INVOICE_PREFIX, newUlid, type DocKind } from '@muneem/domain';
 import { AppError } from '@muneem/contracts';
 import { appendAudit } from '../audit.js';
 import type { Db } from '../open.js';
@@ -16,7 +16,17 @@ const map = (r: Raw): DocSeriesRow => ({ id: r.id, businessId: r.business_id, br
 export function listDocSeries(db: Db, businessId: string): DocSeriesRow[] {
   return (db.prepare('SELECT * FROM doc_series WHERE business_id = ? ORDER BY doc_type, fy, branch_id, terminal_id').all(businessId) as Raw[]).map(map);
 }
+// A series whose prefix its number format would refuse could never number anything (5i #3).
+function prefixProblem(docType: string, prefix: string): string | null {
+  if (INVOICE_DOC_TYPES.has(docType)) return INVOICE_PREFIX.test(prefix) ? null : '1–4 capital letters or digits';
+  const letter = DOC_KIND_LETTER[docType as DocKind];
+  if (!letter) return `no number format for ${docType}`;
+  return prefix.endsWith(letter) && INVOICE_PREFIX.test(prefix.slice(0, -1)) ? null : `the terminal prefix (1–4 letters or digits) followed by ${letter}`;
+}
+
 export function createDocSeries(db: Db, businessId: string, s: Omit<DocSeriesRow, 'id' | 'businessId' | 'nextSeq'>, actor: Actor): DocSeriesRow {
+  const problem = prefixProblem(s.docType, s.prefix);
+  if (problem) throw new AppError('VALIDATION_FAILED', 'This prefix cannot number these documents', { prefix: problem });
   return withTransaction(db, () => {
     const id = newUlid();
     const t = nowIso();

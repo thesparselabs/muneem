@@ -21,6 +21,7 @@ export class PartyLedgerService {
 
   outstanding(input: OutstandingInput): Outstanding {
     if (input.partyId) this.requireParty(input.partyId);
-    return partyOutstanding(this.ctx.db(), this.ctx.businessId(), this.partyType, input.asOf ?? this.ctx.today(), input.partyId);
+    const today = this.ctx.today();
+    return partyOutstanding(this.ctx.db(), this.ctx.businessId(), this.partyType, input.asOf ?? today, input.partyId, today);
   }
 }

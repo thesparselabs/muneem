@@ -309,3 +309,16 @@ describe('5h-2 fixes', () => {
       .toMatchObject({ ok: false, error: { code: 'VALIDATION_FAILED', fields: { isReverseCharge: expect.stringContaining('not supported') } } });
   });
 });
+
+describe('series prefixes (5i #3)', () => {
+  const series = (docType: string, prefix: string) => api.call('settings.createSeries', { branchId: null, terminalId: null, docType, fy: '2027-28', prefix, padWidth: 5 });
+  it('take the terminal prefix plus their own letter for non-sale documents, and 1–4 characters for sale documents', async () => {
+    expect(await series('purchase', 'DE01')).toMatchObject({ ok: false, error: { code: 'VALIDATION_FAILED', fields: { prefix: expect.stringContaining('followed by P') } } });
+    await new Promise((r) => setTimeout(r, 510));
+    expect(await series('purchase', 'DE01D')).toMatchObject({ ok: false, error: { fields: { prefix: expect.stringContaining('followed by P') } } });
+    await new Promise((r) => setTimeout(r, 510));
+    expect(await series('tax_invoice', 'DE01P')).toMatchObject({ ok: false, error: { fields: { prefix: '1–4 capital letters or digits' } } });
+    await new Promise((r) => setTimeout(r, 510));
+    expect(await series('purchase', 'DE01P')).toMatchObject({ ok: true, data: { docType: 'purchase', prefix: 'DE01P' } });
+  });
+});

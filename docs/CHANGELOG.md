@@ -50,6 +50,23 @@ All notable changes, newest first. Each entry records **what** changed and **why
     the party columns that lacked one.
   - **Result:** at 22,500 documents a statement page takes 2.5 ms, open items 3.2 ms and `payments.get` 3.1 ms (before:
     13 ms per page at 3,000 purchases).
+- **Whole-business ageing is fast again** (5i #1).
+  - **The problem:** the 5h as-of query picked allocation columns with a `CASE`, which defeated both indexes, and it
+    evaluated every document. Supplier ageing for the Home card took 9.5 s on 22,500 documents.
+  - **The fix:** charges and settlements now use separate indexed lookups, and a request for today reads the
+    documents' current totals directly (a test proves this equals the as-of formula). At 42,500 documents and 12,500
+    allocations, today takes 75 ms and a past date 84 ms.
+  - **The test gap:** the 5h speed test had timed only single-party queries; the new one times the whole business.
+- **Old allocations are re-dated correctly** (5i #2).
+  - **The problem:** migration 0009 had filled them with the UTC day each row was written, so ageing between a
+    backdated payment and its entry showed the bill open.
+  - **The fix:** `0011_allocation_dates_backfill` re-dates only those rows. One made with its payment takes the later
+    of the payment's and the bill's dates; one made later takes that day, never before the bill; a void takes its
+    cancellation's date. 0009 is not edited.
+- **A hand-made series can always number its documents** (5i #3). `settings.createSeries` took any 1–4 characters, so
+  a purchase series `DE01` failed on every bill, `DE01P` was refused, and `DE01D` was accepted for purchases. Series
+  creation now requires 1–4 characters for sale documents, and the terminal prefix plus the type's own letter for
+  the others.
 - **Documented, not changed** (#8): a purchase's `fy` is the supplier bill's year, while its number uses the year it
   was entered. Stage 6 decides the posting period.
 

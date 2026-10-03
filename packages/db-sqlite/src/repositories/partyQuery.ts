@@ -67,20 +67,32 @@ const BUCKET_FIELD = {
 } as const;
 
 // Open charges aged by days past their due date; unallocated settlements are the party's advance.
-// Everything is taken as it stood on `asOf` (5h #5): documents dated by then and not cancelled by then, and only the
-// allocations made by then and not voided by then. For today this is the same as the documents' current totals.
-export function partyOutstanding(db: Db, businessId: string, partyType: PartyType, asOf: string, partyId?: string): Outstanding {
+// Everything is taken as it stood on `asOf` (5h #5): documents dated and not cancelled by then, allocations made and not
+// voided by then. From `today` on, that is exactly the documents' current totals, so that common case reads them
+// directly and skips settled documents (5i #1).
+export function partyOutstanding(
+  db: Db, businessId: string, partyType: PartyType, asOf: string, partyId?: string, today?: string,
+): Outstanding {
   const party = partyType === 'customer' ? 'customer' : 'supplier';
-  const rows = stmt(db, `SELECT * FROM (
+  const docs = partyDocumentsSql({ partyType, byParty: partyId !== undefined });
+  const params = { businessId, partyType, asOf, partyId: partyId ?? null };
+  const current = today !== undefined && asOf >= today;
+  const allocated = (side: 'target' | 'source') => `(SELECT COALESCE(SUM(a.amount_paise), 0) FROM allocation a
+      WHERE a.business_id = d.business_id AND a.${side}_type = d.type AND a.${side}_id = d.id
+        AND a.allocated_on <= @asOf AND (a.voided_on IS NULL OR a.voided_on > @asOf))`;
+  const rows = stmt(db, current
+    ? `SELECT d.role, d.party_id, d.due_date, d.amount_paise - d.used_paise AS open_paise, n.name
+        FROM (${docs}) d JOIN ${party} n ON n.id = d.party_id
+        WHERE d.live = 1 AND d.amount_paise > d.used_paise AND d.doc_date <= @asOf
+        ORDER BY n.name_norm, n.id`
+    : `SELECT role, party_id, due_date, open_paise, name FROM (
         SELECT d.role, d.party_id, d.due_date, n.name, n.name_norm, n.id AS nid,
-          d.amount_paise - COALESCE((SELECT SUM(a.amount_paise) FROM allocation a
-            WHERE a.business_id = d.business_id AND a.allocated_on <= @asOf AND (a.voided_on IS NULL OR a.voided_on > @asOf)
-              AND CASE d.role WHEN 'charge' THEN a.target_type = d.type AND a.target_id = d.id ELSE a.source_type = d.type AND a.source_id = d.id END), 0) AS open_paise
-        FROM (${partyDocumentsSql({ partyType, byParty: partyId !== undefined })}) d JOIN ${party} n ON n.id = d.party_id
+          d.amount_paise - CASE d.role WHEN 'charge' THEN ${allocated('target')} ELSE ${allocated('source')} END AS open_paise
+        FROM (${docs}) d JOIN ${party} n ON n.id = d.party_id
         WHERE d.doc_date <= @asOf
           AND NOT EXISTS (SELECT 1 FROM party_ledger_entry e WHERE e.business_id = d.business_id AND e.ref_type = d.type AND e.ref_id = d.id
             AND e.entry_kind = 'cancel' AND e.doc_date <= @asOf))
-      WHERE open_paise > 0 ORDER BY name_norm, nid`).all({ businessId, partyType, asOf, partyId: partyId ?? null }) as {
+      WHERE open_paise > 0 ORDER BY name_norm, nid`).all(params) as {
     role: PartyDocumentRole; party_id: string; due_date: string; open_paise: number; name: string;
   }[];
   const byParty = new Map<string, AgeingBuckets & { partyId: string; name: string }>();

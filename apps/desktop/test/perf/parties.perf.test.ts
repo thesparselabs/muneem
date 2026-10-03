@@ -1,7 +1,7 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 import { CreatePurchaseInput, PaymentInput, ProductInput, SupplierInput } from '@muneem/contracts';
 import { newUlid } from '@muneem/domain';
-import { createProduct, createSupplier, findUomByCode, getPayment, openItems, partyStatement, reconcilePartiesDb, withTransaction, type Db } from '@muneem/db-sqlite';
+import { createProduct, createSupplier, findUomByCode, getPayment, openItems, partyOutstanding, partyStatement, reconcilePartiesDb, withTransaction, type Db } from '@muneem/db-sqlite';
 import type { App } from '../../src/main/app.js';
 import { ownerAtTill, testApp } from '../helpers.js';
 
@@ -106,4 +106,41 @@ describe('parties and purchases at shop scale (5g)', () => {
     expect(open).toBeLessThan(20);
     expect(payment).toBeLessThan(20);
   }, 120_000);
+
+  it('whole-business ageing at 20,000+ documents: today under 200 ms, a past date under 1 s (5i #1)', () => {
+    const branchId = db.prepare('SELECT branch_id FROM purchase LIMIT 1').pluck().get() as string;
+    const seriesId = db.prepare("SELECT id FROM doc_series WHERE doc_type = 'payment' LIMIT 1").pluck().get() as string;
+    withTransaction(db, () => {
+      for (let i = 0; i < 10_000; i++) {
+        const supplier = newUlid();
+        const opening = newUlid();
+        const payment = newUlid();
+        db.prepare(`INSERT INTO supplier (id, business_id, name, name_norm, state_code, tax_scheme, created_at, updated_at, created_by, device_id)
+          VALUES (?, ?, ?, ?, '07', 'unregistered', 'a', 'a', 'u', 'd')`).run(supplier, businessId, `Vendor ${i}`, `vendor ${i}`);
+        db.prepare(`INSERT INTO party_opening (id, business_id, party_type, party_id, side, amount_paise, as_of_date, created_at, updated_at, created_by, device_id)
+          VALUES (?, ?, 'supplier', ?, 'payable', 1000, '2026-04-01', 'a', 'a', 'u', 'd')`).run(opening, businessId, supplier);
+        db.prepare(`INSERT INTO payment (id, business_id, branch_id, direction, party_type, party_id, series_id, doc_number, doc_seq, payment_date, fy, method,
+            amount_paise, created_at, updated_at, created_by, device_id) VALUES (?, ?, ?, 'out', 'supplier', ?, ?, ?, ?, '2026-06-01', '2026-27', 'bank', 600, 'a', 'a', 'u', 'd')`)
+          .run(payment, businessId, branchId, supplier, seriesId, `F${i}`, 100_000 + i);
+        db.prepare(`INSERT INTO allocation (id, business_id, party_type, party_id, source_type, source_id, target_type, target_id, amount_paise, allocated_at,
+            allocated_on, created_at, updated_at, created_by, device_id) VALUES (?, ?, 'supplier', ?, 'payment', ?, 'opening', ?, 600, 'a', '2026-06-01', 'a', 'a', 'u', 'd')`)
+          .run(newUlid(), businessId, supplier, payment, opening);
+      }
+    });
+    const counts = db.prepare(`SELECT (SELECT COUNT(*) FROM purchase) + (SELECT COUNT(*) FROM party_opening) + (SELECT COUNT(*) FROM payment) AS docs,
+      (SELECT COUNT(*) FROM allocation) AS allocations`).get() as { docs: number; allocations: number };
+    expect(counts.docs).toBeGreaterThanOrEqual(20_000);
+    const today = new Date().toLocaleDateString('en-CA');
+    let t0 = performance.now();
+    const now = app.supplierLedger.outstanding({});
+    const todayMs = performance.now() - t0;
+    t0 = performance.now();
+    const past = partyOutstanding(db, businessId, 'supplier', '2026-05-01');
+    const pastMs = performance.now() - t0;
+    console.info(`whole-business supplier ageing at ${counts.docs} documents, ${counts.allocations} allocations: today ${todayMs.toFixed(0)} ms, past date ${pastMs.toFixed(0)} ms`);
+    expect(partyOutstanding(db, businessId, 'supplier', today)).toEqual(now);           // the as-of formula on today = the fast path
+    expect(past.totals.netPaise).toBeGreaterThan(now.totals.netPaise);                   // before the June payments, more was owed
+    expect(todayMs).toBeLessThan(200);
+    expect(pastMs).toBeLessThan(1000);
+  }, 300_000);
 });

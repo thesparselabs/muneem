@@ -470,3 +470,36 @@ describe('0009_allocation_dates', () => {
     expect(db.prepare("UPDATE allocation SET voided_at = 'now', voided_on = '2026-10-02'").run().changes).toBe(1);
   });
 });
+
+describe('0011_allocation_dates_backfill', () => {
+  it('re-dates allocations written before 0009 by the settling documents, not the UTC day they were written', async () => {
+    const db = openDatabase(':memory:', { quickCheck: false });
+    await migrate(db, { migrations: MIGRATIONS.slice(0, 8) });
+    const t = "'2026-05-10T18:00:00.000Z', '2026-05-10T18:00:00.000Z', 'u', 'd'";
+    db.exec(`
+      INSERT INTO organization (id, name, created_at, updated_at) VALUES ('o', 'O', 'a', 'a');
+      INSERT INTO business (id, organization_id, name, business_type, state_code, tax_scheme, created_at, updated_at, created_by, device_id) VALUES ('b', 'o', 'S', 'retail', '07', 'regular', ${t});
+      INSERT INTO branch (id, business_id, code, name, state_code, created_at, updated_at, created_by, device_id) VALUES ('br', 'b', 'DEL1', 'D', '07', ${t});
+      INSERT INTO doc_series (id, business_id, doc_type, fy, prefix, created_at, updated_at, created_by, device_id) VALUES ('rs', 'b', 'receipt', '2026-27', 'T1R', ${t});
+      INSERT INTO customer (id, business_id, name, name_norm, created_at, updated_at, created_by, device_id) VALUES ('c', 'b', 'C', 'c', ${t});
+      INSERT INTO party_opening (id, business_id, party_type, party_id, side, amount_paise, as_of_date, created_at, updated_at, created_by, device_id)
+        VALUES ('o1', 'b', 'customer', 'c', 'receivable', 5000, '2026-03-20', '2026-03-20T10:00:00.000Z', '2026-03-20T10:00:00.000Z', 'u', 'd');
+      INSERT INTO payment (id, business_id, branch_id, direction, party_type, party_id, series_id, doc_number, doc_seq, payment_date, fy, method, amount_paise, created_at, updated_at, created_by, device_id)
+        VALUES ('p1', 'b', 'br', 'in', 'customer', 'c', 'rs', 'T1R/1', 1, '2026-04-01', '2026-27', 'cash', 3000, ${t});
+      INSERT INTO allocation (id, business_id, party_type, party_id, source_type, source_id, target_type, target_id, amount_paise, allocated_at, created_at, updated_at, created_by, device_id)
+        VALUES ('a1', 'b', 'customer', 'c', 'payment', 'p1', 'opening', 'o1', 2000, '2026-05-10T18:00:00.500Z', ${t});
+      INSERT INTO allocation (id, business_id, party_type, party_id, source_type, source_id, target_type, target_id, amount_paise, allocated_at, created_at, updated_at, created_by, device_id)
+        VALUES ('a2', 'b', 'customer', 'c', 'payment', 'p1', 'opening', 'o1', 1000, '2026-06-02T09:00:00.000Z', ${t});
+      UPDATE allocation SET voided_at = '2026-07-02T20:00:00.000Z' WHERE id = 'a2';
+      UPDATE payment SET status = 'posted' WHERE id = 'p1';
+      INSERT INTO party_ledger_entry (id, business_id, party_type, party_id, ref_type, ref_id, entry_kind, amount_paise, doc_date, occurred_at, created_at, updated_at, created_by, device_id)
+        VALUES ('e1', 'b', 'customer', 'c', 'payment', 'p1', 'cancel', 3000, '2026-07-03', 'a', 'a', 'a', 'u', 'd');
+    `);
+    await migrate(db);
+    expect(db.prepare('SELECT id, allocated_on, voided_on FROM allocation ORDER BY id').all()).toEqual([
+      { id: 'a1', allocated_on: '2026-04-01', voided_on: null },               // made with the payment: its date, not 10 May
+      { id: 'a2', allocated_on: '2026-06-02', voided_on: '2026-07-03' },       // made later: that day; void: the cancel's date
+    ]);
+    expect(() => db.exec("UPDATE allocation SET allocated_on = '2026-01-01'")).toThrow(/append-only/);
+  });
+});

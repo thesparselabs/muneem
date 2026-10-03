@@ -681,6 +681,45 @@ fixing before the PR, one is documented instead, and the probe found one more bu
 **Delivery:** four commits (5h-1 … 5h-4), each green with changelog lines. Every touched test still ends with the
 party ledgers reconciled.
 
+## 5i — second review (planned 2026-10-04)
+
+Three problems in the 5h fixes, all confirmed.
+
+1. **Whole-business ageing is very slow** (medium; worse than reported). A probe on the speed-test database (22,500
+   documents, 2,500 allocations) took **9.5 s** for the supplier ageing behind the Home payables card.
+   - **Causes:**
+     - the allocation lookup picks its columns with a `CASE`, so neither allocation index is used;
+     - every document is evaluated, settled or not;
+     - the 5h speed test timed only single-party queries.
+   - **Fix:**
+     - two indexed subqueries — charges by `(target_type, target_id)`, settlements by `(source_type, source_id)`;
+     - **today** (what Home and the Parties list ask for) takes the old fast path on the documents' current totals,
+       which the 5h tests show are equal to the as-of formula on today;
+     - only a past date runs the as-of computation.
+   - **Test:** a whole-business speed test at 20,000+ documents and allocations — today under 200 ms, a past date under
+     1 s.
+2. **Allocations from before 0009 got the day they were written, in UTC** (low). The 5h rule uses the settling
+   document's date, so ageing between a backdated payment and its entry shows the bill open and the payment as an
+   advance (the net stays right).
+   - **Migration `0011_allocation_dates_backfill`** (0009 is not edited) re-dates only the rows 0009 backfilled
+     (`allocated_on` = the UTC day of `allocated_at`):
+     - made with its document (within a minute of the document's creation) → the later of the settling document's
+       and the settled document's dates;
+     - otherwise → the later of the day it was made and the settled document's date;
+     - voids → the date of the source's `cancel` ledger entry where there is one.
+   - The migration lifts and restores the trigger that freezes `allocated_on`.
+   - **Test:** migrate a database to 0008, write allocations the old way, migrate on, and check the dates.
+3. **A series created by hand can fail to number anything** (low). Non-sale series need the terminal prefix plus their
+   own kind letter, but `settings.createSeries` takes any 1–4 characters (so `DE01` breaks numbering, and `DE01P` is
+   refused). It would also accept the wrong letter (`DE01D` for purchases).
+   - **Fix:** `createDocSeries` checks the shape with the domain rules: 1–4 characters for sale documents, and the
+     prefix + that type's letter for the others. Wrong shapes return `VALIDATION_FAILED` on `prefix`; the contract
+     takes either shape.
+   - **Tests:** `DE01` refused for a purchase, `DE01P` accepted, `DE01D` refused for a purchase, `DE01P` refused for an
+     invoice.
+
+**Delivery:** one commit (5i), green, with changelog lines.
+
 ## As built (2026-10-04)
 
 - **`allocation` replaces LLD's `payment_allocation`.** Debit notes, write-offs and opening advances settle documents
@@ -719,3 +758,7 @@ party ledgers reconciled.
   - party queries read one party (migration 0010).
 
   The year difference near 31 March (#8) is documented in ADR-0023 for Stage 6.
+- **Second review (5i):**
+  - whole-business ageing uses indexed lookups, with a fast path for today;
+  - migration 0011 re-dates allocations that 0009 backfilled;
+  - series prefixes are checked by document type where series are created.
