@@ -1050,6 +1050,8 @@ interface CustomerDisplay { show(lines: string[]): Promise<void>; }
 
 Adapters: `EscPosUsbAdapter`, `EscPosNetworkAdapter` (TCP 9100), `WindowsSpoolerAdapter` (raw bytes to a named printer), `PdfA4Adapter`, `KeyboardWedgeScanner`, `HidScanner`, `SerialScaleAdapter`, `SimulatorAdapter` (every interface has one — used in CI and demos).
 
+As built (ADR-0055): a USB printer is reached through its Windows driver, so there is no separate `EscPosUsbAdapter`; the spooler adapter sends RAW ESC/POS through a PowerShell `WritePrinter` helper or, in image mode, prints the receipt as a page through the driver. Lines the printer's code page cannot carry (Indic script, ₹) are sent as `GS v 0` raster lines.
+
 ### 13.2 Receipt rendering
 
 `PrintDoc` is a **structured, stored** representation (header, party block, line table, totals, tax summary, tender block, footer, QR), rendered by a width-aware layout engine into ESC/POS bytes. It is generated once at sale time and persisted in `print_job.payload_blob`, so a reprint two weeks later is byte-identical even if the product was renamed or the template changed (FR-100). Command set: `ESC @` init, `ESC ! n` font, `ESC a n` align, `GS ! n` size, `GS v 0` bitmap for the logo, `GS ( k` for the e-invoice QR, `GS V 66 0` cut, `DLE DC4 1 m t` or `ESC p 0 25 250` for the drawer kick.

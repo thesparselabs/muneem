@@ -108,7 +108,10 @@ docs/             this folder (reality, with reasons)
   commit (`DEL1/T01/2026-27/000001`).
 - **Registers** (ADR-0017): one open session per terminal; expected cash, X/Z reports, variance needing a manager.
 - **Printing** (ADR-0015): the print job is part of the sale; printing and the drawer run afterwards from a queue that
-  records every outcome and never throws. Printer settings are per device.
+  records every outcome and never throws. Printer settings are per device. Since 9d (ADR-0055) an installed Windows
+  printer takes RAW ESC/POS jobs through a PowerShell `WritePrinter` helper (name in the environment, bytes on stdin,
+  no shell) or, in image mode, a silent driver print of the receipt page; lines the code page cannot carry (Indic, ₹)
+  go as `GS v 0` raster lines drawn in a hidden page. Every transport is time-boxed and a failure only fails the job.
 - **Main-process services:** `PosContext` (till, settings, permissions) is shared by `CustomerService`,
   `RegisterService`, `SalePricing`, `SaleService`, `HeldBillService`; `PrintQueue` owns printing.
 
@@ -277,7 +280,7 @@ docs/             this folder (reality, with reasons)
 
 Attachments upload (FR-075), SMS/WhatsApp reminders, e-invoice and e-way bill, GST portal JSON and composition
 returns (GSTR-4/CMP-08), a cloud owner web UI and FR-103 retention. In inventory: transfers, multiple warehouses per
-branch, batch/serial tracking. In billing: manager PIN override; USB/Windows printers and non-ASCII receipt text
-(Stage 9). In purchases and payments: purchase orders and GRN, reverse charge, debit-note cancellation, refunding a
+branch, batch/serial tracking. In billing: manager PIN override (USB/Windows printers and non-ASCII receipt text
+landed in 9d). In purchases and payments: purchase orders and GRN, reverse charge, debit-note cancellation, refunding a
 customer's advance, TDS/TCS. Product variants, weighed barcodes and label printing are deferred (ADR-0008). Production
 deployment, monitoring, signed releases and the pilot are Stage 9. See `build-stages.md`.
