@@ -23,6 +23,25 @@ All notable changes, newest first. Each entry records **what** changed and **why
   - **Files:** the user picks where an export goes in a save dialog, and the screen never sees a path.
   - **First report:** the Trial Balance; 8e adds the rest.
   - **IPC:** `reports.listDefinitions`, `reports.run`, `reports.export`.
+- **GST returns from documents (8c, ADR-0044 as built).** Why: FR-047/FR-094; filed figures must always match the books.
+  - **What is built:** the GSTR-1 sections (B2B, B2CL, B2CS, CDNR/CDNUR, exports, nil/exempt per line), the HSN
+    summary with UQC, documents issued, GSTR-3B (3.1, 4, 5) and the ITC register.
+  - **Reconciliation:** each month's figures must equal that month's tax-account movements exactly. That check is now
+    part of the integrity checks.
+  - **CA review:** six statutory interpretations are listed in ADR-0044 for a CA to confirm before the pilot.
+- **GST set-off and payment documents (8c).** Why: tax is set off without manual journals on control accounts
+  (ADR-0035).
+  - **Set-off:** a `gst_setoff` per month (letter `S`) uses credit in the statutory order. IGST credit goes first (rule
+    88A), CGST and SGST are never crossed, and cess only against cess. The rest goes to 2300.
+  - **Payment:** a `gst_payment` (letter `G`) records a challan: Dr 2300 GST Payable, Cr Bank.
+  - **Sync:** both sync, and the Go cloud verifies the set-off order and the journal (Go port with shared vectors).
+  - **Migration 0017.**
+  - **Known gap:** two offline devices can both set off the same month. Both are kept, a review item is raised, and
+    there is no set-off cancel yet.
+- **GST exports and screens (8c).** GST → Returns, Set-off and Payments. Each GSTR-1 section exports as bare CSV/XLSX in
+  the GST offline tool's column order, through a `bare` option on report definitions.
+- **HSN is required on new products** of a GST-registered regular business, and a "Products missing HSN" report lists
+  older ones. The B2CL threshold is effective-dated. Why: returns need HSN, and thresholds change by notification.
 - **The audit chain is verified on the cloud (8g, ADR-0048 as built).** Why: FR-078 and LLD §16; a tampered audit trail
   must not go unnoticed.
   - **Upload:** each audit row is pushed as an `audit_entry` operation on a push-only stream, exactly as stored.
