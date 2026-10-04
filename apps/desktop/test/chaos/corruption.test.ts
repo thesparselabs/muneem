@@ -1,4 +1,4 @@
-import { closeSync, existsSync, openSync, readdirSync, rmSync, statSync, writeSync } from 'node:fs';
+import { closeSync, existsSync, openSync, readdirSync, rmSync, writeSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import type { RestoreResult } from '@muneem/contracts';
@@ -20,12 +20,13 @@ const LOGIN = { identifier: '9999999999', password: 'correct-horse' };
 const PAGE = 4096;
 
 // Garbage over a run of pages, as a torn write on cheap hardware leaves them; page 1 (the header and schema) only when asked.
-function corrupt(file: string, where: 'pages' | 'header'): void {
-  const pages = Math.floor(statSync(file).size / PAGE);
+// Damaged pages are a document table's own, found with dbstat before the file closes, so the audit log stays readable
+// for the carry-over however the schema grows.
+function corrupt(file: string, where: 'pages' | 'header', pages: readonly number[]): void {
   const fd = openSync(file, 'r+');
   try {
-    const junk = Buffer.alloc(PAGE * (where === 'header' ? 1 : 8), 0xa5);
-    writeSync(fd, junk, 0, junk.length, where === 'header' ? 0 : PAGE * Math.floor(pages / 2));
+    if (where === 'header') writeSync(fd, Buffer.alloc(PAGE, 0xa5), 0, PAGE, 0);
+    else for (const page of pages) writeSync(fd, Buffer.alloc(PAGE, 0xa5), 0, PAGE, PAGE * (page - 1));
   } finally {
     closeSync(fd);
   }
@@ -49,9 +50,10 @@ async function damagedDevice(server: ReferenceServer, opts: TestAppOptions, wher
   await syncUntilQuiet(a.app);
   const original = { books: books(a.db, businessId), installationId: a.app.device.installationId() };
   const file = join(a.dir, 'muneem.sqlite');
+  const pages = a.db.prepare("SELECT pageno FROM dbstat WHERE name = 'sale_item' ORDER BY pageno LIMIT 8").pluck().all() as number[];
   a.app.closeReadConnections();
   a.db.close();
-  corrupt(file, where);
+  corrupt(file, where, pages);
   return { businessId, memberships, secrets, dir: a.dir, file, original };
 }
 
