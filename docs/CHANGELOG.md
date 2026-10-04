@@ -59,6 +59,28 @@ All notable changes, newest first. Each entry records **what** changed and **why
   - **Storage:** MinIO is in docker-compose and in CI's `go` job. The image is `bitnamilegacy/minio`, because
     `minio/minio` left Docker Hub; it is frozen, for development and CI only.
   - **Migration 0003** lets a member read a snapshot row before a business scope is set.
+- **Sync reference server** (`packages/sync-reference`). It implements the protocol and the conflict matrix in
+  memory, passes every protocol fixture, and has a seeded fault injector that drives the sync tests. Why: ADR-0042.
+- **The device pushes (7d).** Why: Stage 7d, HLD §3.1.
+  - **The engine:** a sync engine in main claims, pushes and settles the outbox, with backoff, dead-letter after 12
+    attempts and recovery at start-up.
+  - **Transport:** HTTP, gzip and signing run in an Electron utility process; the retry timers stay in main.
+  - **When it runs:** a scheduler runs it at start-up, when the device comes back online, after each command, every
+    60 s, and on `sync.retry`.
+  - **Recovery:** a 401 refreshes the token once. A revoked device or one that needs an update shows as blocked.
+  - **Speed:** `sales.complete` p95 is 13.9 ms idle and 14.3 ms while pushing.
+- **The device pulls and applies (7e).** Why: Stage 7e, ADR-0040.
+  - **Pages:** each stream is applied a page at a time, together with its cursor, writing no outbox or audit rows.
+  - **Other terminals' documents** are filed with their stored values, through the new `postSyncedJournal` and the
+    same stock and party projections local writes use.
+  - **Natural keys:** units, accounts, periods and the default price list are matched through `sync_id_alias`.
+  - **Movement order:** every device replays stock movements in one order, (time, device, id).
+  - **Evidence:** a soak and both golden flows on device A reach device B, and the two agree on documents, stock,
+    party balances, the Trial Balance and prices.
+- **Payloads carry what filing needs.** Products gain their version and update time. Numbered documents gain their
+  series, number, command id and place. Payments and expenses carry their drawer movements, movements their device,
+  and allocations their date. The protocol fixtures are regenerated, plus a new one: a stale edit of a product's
+  prices loses to the cloud's prices. The Go server gained that rule too.
 
 ### Added — Stage 6 accounting
 - **Stage 6 plan (`docs/plans/stage-6-accounting.md`).** Decided with the user:

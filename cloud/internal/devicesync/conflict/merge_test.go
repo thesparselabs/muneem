@@ -106,3 +106,19 @@ func TestUnversionedWritesReplace(t *testing.T) {
 		t.Fatalf("got %+v", out)
 	}
 }
+
+func TestStalePriceItemsKeepTheCloudsPrices(t *testing.T) {
+	cur := &Current{Version: 3, Payload: Payload{"items": []any{map[string]any{"id": "A2", "pricePaise": 12500.0}}, "retired": []any{"A1"}}}
+	stale := Incoming{EntityType: "price_list_item", Payload: Payload{"items": []any{map[string]any{"id": "B2", "pricePaise": 9900.0}}, "retired": []any{"A1"}}}
+	out := Resolve(cur, stale)
+	if out.Version != 4 || len(out.Fields) != 1 || out.Fields[0].Rule != RuleCloudWins {
+		t.Fatalf("stale edit should keep the cloud's prices: %+v", out)
+	}
+	if items := out.Payload["items"].([]any); items[0].(map[string]any)["id"] != "A2" {
+		t.Fatalf("cloud items replaced: %v", items)
+	}
+	fresh := Incoming{EntityType: "price_list_item", Payload: Payload{"items": []any{map[string]any{"id": "B3"}}, "retired": []any{"A2"}}}
+	if out := Resolve(cur, fresh); len(out.Fields) != 0 || out.Payload["items"].([]any)[0].(map[string]any)["id"] != "B3" {
+		t.Fatalf("an edit of the current items should replace them: %+v", out)
+	}
+}

@@ -4,6 +4,8 @@ package conflict
 import (
 	"encoding/json"
 	"reflect"
+	"slices"
+	"sort"
 )
 
 type Payload = map[string]any
@@ -67,12 +69,45 @@ func Resolve(cur *Current, in Incoming) Outcome {
 	if in.Tombstone {
 		return replace(cur.Version, in)
 	}
+	if stalePrices(cur, in) {
+		return keepPrices(cur, in)
+	}
 	base := baseVersion(in.Payload)
 	if base == unversioned || cur.Version <= base {
 		return replace(cur.Version, in)
 	}
 	return merge(cur, in)
 }
+
+// A product's prices are replaced whole, naming the items replaced; replacing items the cloud no longer has is stale.
+func stalePrices(cur *Current, in Incoming) bool {
+	return in.EntityType == "price_list_item" && !sameIDs(itemIDs(cur.Payload["items"]), itemIDs(in.Payload["retired"]))
+}
+
+func keepPrices(cur *Current, in Incoming) Outcome {
+	version := cur.Version + 1
+	f := Field{Field: "items", Rule: RuleCloudWins, Winner: winnerCloud, Cloud: cur.Payload["items"], Device: in.Payload["items"]}
+	return Outcome{Payload: stamp(clone(cur.Payload), version), Version: version, Fields: []Field{f}}
+}
+
+func itemIDs(v any) []string {
+	list, _ := v.([]any)
+	ids := make([]string, 0, len(list))
+	for _, x := range list {
+		switch item := x.(type) {
+		case string:
+			ids = append(ids, item)
+		case map[string]any:
+			if id, ok := item["id"].(string); ok {
+				ids = append(ids, id)
+			}
+		}
+	}
+	sort.Strings(ids)
+	return ids
+}
+
+func sameIDs(a, b []string) bool { return slices.Equal(a, b) }
 
 func baseVersion(p Payload) int {
 	v, ok := p[versionKey].(float64)
