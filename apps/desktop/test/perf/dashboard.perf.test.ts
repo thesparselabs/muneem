@@ -90,3 +90,30 @@ describe('dashboard at 200k sales (LLD §18)', () => {
     console.info(`daily summary drift check at ${sales} sales: whole history ${(t1 - t0).toFixed(0)} ms, last 35 days ${(performance.now() - t1).toFixed(0)} ms`);
   }, 300_000);
 });
+
+describe('reports and exports at 200k sales (8j)', () => {
+  it('a year of each main report runs, and exports to CSV and XLSX, within generous ceilings', async () => {
+    const to = new Date().toLocaleDateString('en-CA');
+    const year = { from: addDays(to, -364), to };
+    const runs: [string, Record<string, string>][] = [
+      ['sales.byDay', year], ['sales.byProduct', year], ['sales.byPaymentMethod', year], ['parties.receivables', {}],
+      ['stock.valuation', {}], ['accounting.trialBalance', {}], ['accounting.profitAndLoss', year],
+    ];
+    const timings: string[] = [];
+    for (const [id, params] of runs) {
+      const t = performance.now();
+      const r = app.reports.run(id, params);
+      const ms = performance.now() - t;
+      timings.push(`${id} ${ms.toFixed(0)} ms (${r.rows.length} rows)`);
+      expect(ms, id).toBeLessThan(5_000);
+    }
+    for (const format of ['csv', 'xlsx'] as const) {
+      const t = performance.now();
+      const r = await app.reports.export('sales.byDay', year, format);
+      const ms = performance.now() - t;
+      timings.push(`export sales.byDay ${format} ${ms.toFixed(0)} ms (${(r.bytes / 1024).toFixed(0)} KiB)`);
+      expect(ms, format).toBeLessThan(10_000);
+    }
+    console.info(`reports at 200k sales: ${timings.join('; ')}`);
+  }, 300_000);
+});
