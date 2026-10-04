@@ -4,7 +4,7 @@ import { newUlid } from '@muneem/domain';
 import { AppError, type Health } from '@muneem/contracts';
 import {
   backupDatabase, dbSizeBytes, foreignKeyCheck, getMeta, META_KEYS, outboxDepth, quickCheck, setMeta, verifyAuditChain,
-  currentSchemaVersion, reconcilePartiesDb, replayKeys, rewriteLevels, stockKeys, type Db, type StockDrift } from '@muneem/db-sqlite';
+  currentSchemaVersion, journalsNotMatchingLines, rebuildAccountBalances, reconcilePartiesDb, replayKeys, tieOutFailures, unpostedDocuments, rewriteLevels, stockKeys, type Db, type StockDrift } from '@muneem/db-sqlite';
 import { DEVICE_AUDIT_SCOPE } from '../ipc/gateway.js';
 
 const STOCK_CHECK_BATCH = 200;
@@ -76,6 +76,21 @@ export class DiagnosticsService {
     return 'mismatch';
   }
 
+  // ADR-0034: a drifted balance cache is rebuilt; journals and documents are the record, so anything else is reported.
+  checkJournals(): 'ok' | 'healed' | 'mismatch' | 'not_run' {
+    const businessId = this.d.session.get()?.businessId;
+    if (!businessId) return 'not_run';
+    const db = this.d.db();
+    const healed = rebuildAccountBalances(db, businessId) > 0;
+    if (healed) this.d.loggers.app.error({ code: 'JOURNAL_BALANCE_DRIFT' }, 'account balances disagreed with the journal lines; rebuilt');
+    const tieOuts = tieOutFailures(db, businessId);
+    const unposted = unpostedDocuments(db, businessId);
+    const badJournals = journalsNotMatchingLines(db, businessId);
+    if (tieOuts.length === 0 && unposted.length === 0 && badJournals === 0) return healed ? 'healed' : 'ok';
+    this.d.loggers.app.error({ code: 'JOURNAL_MISMATCH', tieOuts, unposted: unposted.slice(0, 50), badJournals }, 'the books do not agree with their documents');
+    return 'mismatch';
+  }
+
   async integrityCheck() {
     const db = this.d.db();
     const qc = quickCheck(db);
@@ -90,7 +105,10 @@ export class DiagnosticsService {
     if (stock === 'healed') detail.push('stock levels disagreed with their movements and were rebuilt');
     const parties = this.checkParties();
     if (parties === 'mismatch') detail.push('a party ledger does not match its documents; see the app log (PARTY_LEDGER_MISMATCH)');
-    return { quickCheck: qc.ok ? 'ok' : 'failed', foreignKeys: fk.ok ? 'ok' : 'failed', auditChain: broken.length ? 'broken' : 'ok', stock, parties, detail } as const;
+    const journals = this.checkJournals();
+    if (journals === 'healed') detail.push('account balances disagreed with the journal lines and were rebuilt');
+    if (journals === 'mismatch') detail.push('the books do not agree with their documents; see the app log (JOURNAL_MISMATCH)');
+    return { quickCheck: qc.ok ? 'ok' : 'failed', foreignKeys: fk.ok ? 'ok' : 'failed', auditChain: broken.length ? 'broken' : 'ok', stock, parties, journals, detail } as const;
   }
 
   async backupNow(kind: 'manual' | 'scheduled' = 'manual') {

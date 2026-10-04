@@ -18,7 +18,7 @@ export function formatInvoiceNumber(prefix: string, fy: string, seq: number): st
 }
 
 // ADR-0028: other documents put a kind letter after the terminal prefix and use 5 digits, staying within 16 characters.
-export const DOC_KIND_LETTER = { purchase: 'P', debit_note: 'D', receipt: 'R', payment: 'Y', expense: 'E' } as const;
+export const DOC_KIND_LETTER = { purchase: 'P', debit_note: 'D', receipt: 'R', payment: 'Y', expense: 'E', journal: 'J' } as const;
 export type DocKind = keyof typeof DOC_KIND_LETTER;
 export const MAX_DOC_SEQ = 99_999;
 const DOC_PREFIX = /^[A-Z0-9]{1,4}[A-Z]$/u;

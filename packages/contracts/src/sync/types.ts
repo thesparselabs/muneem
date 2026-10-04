@@ -29,7 +29,10 @@ export type OutboxEntityType =
   | 'write_off'
   | 'expense'
   | 'allocation'
-  | 'expense_category';
+  | 'expense_category'
+  | 'account'
+  | 'journal_entry'
+  | 'accounting_period';
 export type OutboxOperationType = 'create' | 'update' | 'cancel' | 'void';
 export type OutboxStatus = 'pending' | 'in_flight' | 'sent' | 'failed' | 'dead' | 'superseded';
 export type OutboxErrorClass = 'transient' | 'permanent' | 'dependency';

@@ -2,9 +2,8 @@ import { AppError, ROLE_PRESETS, type Branch, type Business, type Contract, type
 import type { z } from 'zod';
 import { newUlid } from '@muneem/domain';
 import {
-  bindTerminal, createBranch, createBusiness, createTerminal, ensureCatalogDefaults, getBusiness, getMeta, grantLocalOwnership, listBranches, listTerminals,
-  META_KEYS, setMeta, updateBusiness, withTransaction, type Db,
-} from '@muneem/db-sqlite';
+  bindTerminal, createBranch, createBusiness, createTerminal, ensureCatalogDefaults, ensureChartOfAccounts, getBusiness, getMeta, grantLocalOwnership, listBranches, listTerminals,
+  META_KEYS, setMeta, updateBusiness, withTransaction, type Db } from '@muneem/db-sqlite';
 import type { SessionService } from './session.js';
 import type { DeviceService } from './device.js';
 
@@ -38,6 +37,7 @@ export class BusinessService {
       const b = createBusiness(db, { ...input, organizationId }, actor);
       grantLocalOwnership(db, s.user.id, b.id, organizationId, b.name, ROLE_PRESETS.owner!);
       ensureCatalogDefaults(db, b.id, actor);
+      ensureChartOfAccounts(db, b.id, actor);
       setMeta(db, META_KEYS.activeBusinessId, b.id);
       setMeta(db, META_KEYS.activeBranchId, '');
       setMeta(db, META_KEYS.activeTerminalId, '');

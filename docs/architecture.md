@@ -66,6 +66,11 @@ docs/             this folder (reality, with reasons)
 - After repeated SIGKILLs mid-billing: one ledger entry per credit sale and the party ledgers reconcile
 - `purchases.create` (200 lines) p95 < 1 s; a payment settling 500 bills < 250 ms; reconciliation of 10,000 documents
   < 2 s
+- Every journal balances (engine + CHECK) and equals its lines; a document has one journal and at most one reversal; no
+  group account is posted to; the balance cache equals the lines
+- The general ledger ties out: 1400 = stock valuation, 1300 = Σ customer balances, 2100 = Σ supplier balances, each tax
+  account = its documents — after every document test, the golden flows, the soak run and the kill -9 suite
+- On the soak dataset: the Trial Balance and Balance Sheet balance, and P&L = Δ equity
 
 ## Catalog (Stage 2)
 
@@ -135,6 +140,31 @@ docs/             this folder (reality, with reasons)
   audited override, and a `party` step in the sale commit.
 - **Screens**: the session carries permissions so menus hide what a user cannot do; main stays authoritative.
 
+## Accounting (Stage 6)
+
+- **Journals** (ADR-0030): every document posts its journal **in its own transaction**, built from the document as
+  stored by one builder per document type (`documentJournals.ts`), using posting rules written as data in
+  `@muneem/domain` (ADR-0032 is the as-built matrix, `docs/accounting/posting-matrix.md`).
+  - **The writer:** `postJournal` is the only writer of journals and the `account_balance` cache.
+  - **Database guards:** an unbalanced, two-sided, negative, group-account or second journal for a document cannot be
+    stored.
+  - **Cancels** post the mirror journal under the original's number, branch and terminal.
+  - **Numbering** (ADR-0037): a journal takes its document's number. One without a document number (write-off, party
+    opening, stock document, manual journal) takes a `J` number from the posting terminal's series and needs a terminal.
+- **Accounts** (ADR-0031): LLD §5.1 plus one input and one output account per tax head, seeded with the business. Rules
+  name accounts by role. Card/UPI takings wait in 1250 Clearing.
+- **Periods** (ADR-0033): calendar months, lockable once ended. A document dated into a locked month posts late into
+  the earliest open month, flagged and listed. Purchases post on the supplier's bill date.
+- **Tie-outs and integrity** (ADR-0034):
+  - **The tie-outs:** 1400 = stock valuation, 1300 = customer balances, 2100 = supplier balances, and each tax account
+    = its documents.
+  - **The backfill** posts anything saved before Stage 6. Each business gets it once per run, with the terminal and user
+    fixed when it starts, and each journal is queued for sync after its document.
+  - **Diagnostics and the 6-hourly timer** rebuild a drifted balance cache and report everything else.
+- **Manual journals** (ADR-0035) never touch AR, AP, Inventory or tax accounts, so the tie-outs hold by construction.
+- **Statements:** Trial Balance, P&L and Balance Sheet read the journal. Retained earnings are computed until Stage 8's
+  closing journal, and customer advances and supplier debits are presented apart.
+
 ## Identity and trust
 
 - Cloud is authoritative for users, roles and permissions; the device caches a **permission snapshot** and enforces
@@ -146,8 +176,9 @@ docs/             this folder (reality, with reasons)
 
 ## What is not built yet
 
-Accounting (Stage 6, which posts everything Stages 4–5 store and ties the sub-ledgers to 1400, 1300 and 2100), reports
-and the sync worker. In inventory: transfers, multiple warehouses per branch, batch/serial tracking. In billing: sale
-cancel, returns/credit notes and manager PIN override; USB/Windows printers and non-ASCII receipt text. In purchases
-and payments: purchase orders and GRN, debit-note cancellation, refunding a customer's advance, payment reminders,
-TDS/TCS. Product variants, weighed barcodes and label printing are deferred (ADR-0008). See `build-stages.md`.
+Reports and exports, and the sync worker. In accounting: the year-end closing and opening journals, and GST returns with
+set-off (Stage 8). In inventory: transfers, multiple warehouses per branch, batch/serial tracking. In billing: sale
+cancel, returns/credit notes and manager PIN override; USB/Windows printers and non-ASCII receipt text. In purchases and
+payments: purchase orders and GRN, reverse charge, debit-note cancellation, refunding a customer's advance, payment
+reminders, TDS/TCS. Product variants, weighed barcodes and label printing are deferred (ADR-0008). See
+`build-stages.md`.

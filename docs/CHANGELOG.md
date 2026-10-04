@@ -5,6 +5,192 @@ All notable changes, newest first. Each entry records **what** changed and **why
 
 ## [Unreleased]
 
+### Added — Stage 6 accounting
+- **Stage 6 plan (`docs/plans/stage-6-accounting.md`).** Decided with the user:
+  - **Journals:** written in each document's own transaction, with a one-time backfill for documents saved before
+    Stage 6.
+  - **Periods:** monthly periods with lock and late postings now; the year-end closing journals in Stage 8.
+  - **Soak data:** a seeded generator — about two weeks in CI and a year locally.
+  - **Reports:** the core statements, account ledger, day book, cash and bank books, and manual journals.
+
+  Build stages now show Stage 5 merged (PR #6) and Stage 6 in progress.
+- **6a details written into the plan before building,** reviewed by the user first.
+- **Posting engine** (`@muneem/domain/accounting`, ADR-0030):
+  - **The rules:** written as data, for every document Stages 3–5 store (sale, purchase, debit note, receipt,
+    supplier payment, write-off, expense, opening stock, adjustment and stock take, cost correction, party opening,
+    register variance, cash in/out).
+  - **`buildJournal`:** drops zero lines and moves signed amounts to the other side. It refuses an unbalanced journal
+    with `LEDGER_IMBALANCE` before anything is written.
+  - **Tests:** a 500-run property per rule (balanced, no negative or two-sided line, a reversal nets to zero), and
+    unit tests that pin each rule to the posting matrix.
+- **Chart of accounts** (ADR-0031): LLD §5.1 as data, with one input and one output account per tax head, 1199 Cash to
+  classify, 3400 Opening Balance Equity, 5110 Purchase-return Losses and 5470 Bad Debts. Rules name accounts by role,
+  so renaming an account keeps its postings. It is seeded per business on first use; system accounts cannot be
+  retyped or deleted.
+- **Migration `0012_accounting`:** accounts, periods, journals, journal lines and the `account_balance` cache. CHECKs
+  and triggers refuse the following:
+  - an unbalanced or empty journal;
+  - a line on both sides or below zero;
+  - a posting to a group account;
+  - a second journal for one document (a reversal is allowed once);
+  - a late posting dated before its document;
+  - any change to a journal.
+- **ADRs 0030–0034** (engine, accounts, posting matrix, dates and periods, tie-outs) and
+  **`docs/accounting/posting-matrix.md`**, the as-built matrix with worked examples for a CA to sign. It marks every
+  departure from LLD §5.2 (customer receipts wholly to 1300, freight kept on returns to 5110, manual cash to 1199,
+  openings against 3400).
+- **6b details written into the plan;** the user asked for 6b to be built straight after.
+- **Every document now posts its journal in its own transaction** (ADR-0030). This covers:
+  - sales (a new `journal` step after `party`);
+  - purchases, debit notes and purchase cancels;
+  - receipts, supplier payments and payment cancels;
+  - write-offs;
+  - expenses and expense cancels;
+  - opening stock, adjustments and stock takes;
+  - every cost correction;
+  - party openings (a replacement reverses the old one);
+  - register close (the variance);
+  - cash in/out.
+- **How journals are built and written:**
+  - **One builder per document,** reading the document as stored, so the 6c backfill will post exactly what live
+    posting does.
+  - **Cancels** post the mirror journal, dated on the day of the cancel.
+  - **Numbers:** documents without a number get a `J` number (ADR-0028 gains the kind).
+  - **Sync:** journals travel in their document's sync payload, or as a child row where the repository records the
+    document.
+- **The chart of accounts is seeded with the business,** alongside the catalog defaults. Seeding it on the first
+  posting would have put its 47 audit rows inside a sale. The setup test now counts the account rows separately, the
+  way it already counted units and the price list.
+- **`accountingTieOuts`** compares 1400 with the stock valuation, 1300 and 2100 with the party balances, each input
+  and output tax account with its documents, and the balance cache with the lines.
+  - **Document tests:** 15 cover each document type, pinning the journal's accounts and amounts to the posting
+    matrix, and every one ends with all tie-outs holding.
+  - **Crash suite:** it now checks one journal per sale, no orphan journals, journals equal to their lines, and the
+    tie-outs. 20 kills run in CI; 200 kills / 239 sales passed locally.
+- **The whole-business ageing speed test times the median of five calls.** A single call could land on a
+  garbage-collection pause of the test process: after 6b the bigger test database showed one-off 300–800 ms stalls,
+  while the query itself takes 50–110 ms. The budgets are unchanged.
+- **6c details written into the plan and built straight after,** as the user asked. *These 6c lines were left out of
+  the 6c commit by a scripting slip and were added with 6d.*
+- **Accounting periods** (ADR-0033): `accounting.getPeriods`, `lockPeriod` and `unlockPeriod` (`accounting.manage`,
+  audited).
+  - **Locking:** only a month that has ended can be locked, so there is always an open month after a locked one.
+  - **Unlocking:** needs a reason, which is kept on the period.
+- **Late postings:** a document dated into a locked month posts into the earliest open month after it, on that month's
+  first day. It is flagged `late_posting`, keeps its own date, writes a `journal.late_posting` audit row, and is listed
+  by `accounting.listLatePostings`. Nothing is refused or silently moved (LLD §5.4).
+- **Backfill** (ADR-0034): `unpostedDocuments` finds every document without a journal.
+  - **Cancelled before Stage 6:** these get their journal and then the reversal, dated the day they were cancelled.
+  - **Running it:** `accounting.postBacklog` posts them in batches of 200 through the same builders as live posting.
+    It runs once per app run, as soon as a session has a business and a terminal.
+  - **Tested:** documents saved with posting switched off — every kind, cancels included — are all posted, the
+    tie-outs hold, and a second run posts nothing.
+- **The integrity check reports journals** (`journals: ok | healed | mismatch | not_run`); the 6-hourly timer runs it
+  too.
+  - **Rebuilt:** a drifted balance cache (`JOURNAL_BALANCE_DRIFT`).
+  - **Reported and never rewritten** (`JOURNAL_MISMATCH`): a tie-out failing, a journal whose lines do not add up, or
+    a document without a journal.
+  - **Diagnostics screen:** now shows the journal line.
+- **6d details written into the plan and built straight after,** as the user asked.
+- **Statements** (`accounting.getTrialBalance/getProfitAndLoss/getBalanceSheet`, `reports.financial`, optional branch):
+  - **Trial Balance** as at a date, with `balanced`.
+  - **P&L** for a range: revenue (41xx/42xx), cost of sales (51xx) and gross profit, then other income and expenses to
+    net profit.
+  - **Balance Sheet** as at a date, with retained earnings from earlier years' profit and this year's profit shown
+    apart (no closing journals until Stage 8). Customers with credit balances are shown as *Advances from customers*
+    and suppliers with debit balances as *Advances to suppliers*; the books are unchanged (ADR-0032).
+  - **Tested:** after a month's trading the TB balances, the Balance Sheet balances, its "profit for the year" equals
+    the P&L, last year's rent shows as retained earnings, and a customer's overpayment is a liability.
+- **Books:**
+  - **Ledger** (`accounting.getLedger`): any account with opening balance, running balance and paging.
+  - **Cash and bank books** (`getCashBook`, `getBankBook`): the 1100 and bank ledgers.
+  - **Day book** (`getDayBook`): journals with their lines.
+- **Manual journals** (`accounting.postManualJournal`, `reverseJournal`, ADR-0035):
+  - **Posting:** balanced, numbered `T1J/…`, once per command.
+  - **Refused:** on AR, AP, Inventory and the tax accounts, which change only through documents so their tie-outs
+    always hold; on group accounts; and in a locked month (`PERIOD_LOCKED`).
+  - **Reversal:** a manual journal can be reversed once.
+- **Chart of accounts** (`accounting.listAccounts/createAccount/updateAccount`): accounts with balances, new accounts
+  under a group (code in the group's range, type from the group), and renaming any account.
+- **6e details written into the plan and built straight after,** as the user asked.
+- **Accounts screens** (menu item shown with `accounting.view`):
+  - **Chart of accounts:** grouped, with balances as of a date; add an account under a group; rename.
+  - **Account ledger:** links to purchases and payments.
+  - **Statements:** Trial Balance, P&L with gross and net profit, and a two-sided Balance Sheet, each with a balanced
+    badge and a branch filter.
+  - **Books:** cash, bank (choose the account) and day book, with late-posting and reversal badges and a "Reverse"
+    action on manual journals.
+  - **Manual journal form:** shows the running difference, never offers control or group accounts, and keeps Post
+    disabled until it balances.
+  - **Periods:** lock and unlock with a reason, the late-postings list, and buttons to post the backlog and rebuild
+    balances.
+- **Helpers and checking:** the journal form, statement layout and chart grouping have node tests. The screens are
+  checked by typecheck and build, with a manual checklist in the plan.
+- **6f details written into the plan;** at the user's request, 6f was built by three agents in parallel worktrees and
+  integrated by the lead.
+- **Soak generator and exit test (6f-A).** A seeded, deterministic generator drives the real services day by day through
+  a controllable clock. It covers:
+  - openings on both sides and opening stock;
+  - cash, UPI, split and credit sales, including audited limit overrides;
+  - purchases with freight, inter-state and ITC-ineligible lines;
+  - debit notes;
+  - receipts and supplier payments, auto and chosen, including advances;
+  - cash, bank and credit expenses with and without GST;
+  - adjustments and stock takes;
+  - register close with variance, and cash in/out;
+  - cancels, write-offs, card settlements and drawings;
+  - month-end locks with backdated late postings.
+
+  **The exit test** checks that the Trial Balance balances (today and at each month end) and the Balance Sheet
+  balances. Each year's P&L equals the Balance Sheet's profit for the year, and P&L over the run equals the change in
+  equity apart from the owner's own money. Every tie-out holds, the party ledgers reconcile, replay = projection, and
+  no document is without a journal. CI runs 14 days (840 sales, crossing a month lock and 1 April); `pnpm soak` runs a
+  year locally.
+- **The 365-day soak passes** (Stage 6 exit): 98,550 sales, 106,379 journals, 624,710 lines and 54 late postings in
+  23 minutes, with every check green. The full-check test now has 2 minutes on runs longer than a month. Its 6.8 s of
+  checks had overrun the 5 s default, so the first run reported a timeout, not a wrong figure.
+- **Statements read the balance cache for whole months** (6f-B, ADR-0036).
+  - **Before:** at a year of data (983,831 journal lines) the Balance Sheet took 5.1 s, the Trial Balance 1.8 s and a
+    ledger page about 1 s.
+  - **The change:** whole months now come from `account_balance` and only part-month edges from the lines. Ledgers
+    walk the journal by date through a new index (migration `0013_accounting_indexes`).
+  - **After:** the Trial Balance takes under 50 ms, the P&L under 200 ms, the Balance Sheet 160–490 ms, and ledger and
+    day-book pages under 10 ms.
+  - **Unchanged results:** proved on 120 random ranges and 60 paged ledgers against the old implementation.
+  - **Not covered:** branch-filtered whole-year statements are still line-based (1–5 s) with no budget yet.
+  - **Sales speed:** `sales.complete` p95 with the journal step is 12 ms.
+- **The golden flows check the books (6f-C).** Both end with the Trial Balance and Balance Sheet balanced, profit
+  agreeing, every tie-out holding, and the key account balances pinned. A wrong comment in the Stage 5 flow (it said
+  the bill was ₹735; it is ₹700 including GST) is corrected.
+- **Opening cash is documented.** Opening a register posts nothing, because the float comes from cash the business
+  already holds. The cash a shop starts with is recorded once by manual journal (Dr 1100, Cr 3400); until then 1100
+  can read below zero. Noted in the posting matrix after the golden flow showed it.
+
+### Fixed — Stage 6 review (6g)
+- **Cancels need no terminal again** (ADR-0037). Stage 6 had made cancelling a payment, expense or purchase need the
+  session's terminal, which Stage 5 did not. A reversal now takes the original journal's number, branch and terminal.
+  A journal without a document number (write-off, party opening) still needs a terminal for its `J` number and says
+  so. A business-level series was rejected because two offline devices would issue the same numbers.
+- **A business made before Stage 6 can open its books.** Its cash book threw and its chart page was empty until
+  something posted. The chart is now seeded when a session first has the business, and before the statement and chart
+  services read.
+- **Reversing a manual journal twice says "already reversed"** instead of showing a database UNIQUE error. The day book
+  row carries `reversedBy`, so Reverse is hidden even when the reversal is on another page.
+- **Backfilled journals reach the sync outbox,** each queued after its document's row. They had been written without
+  one, so the cloud would never have received them.
+- **The backlog keeps its terminal and user.** It read the session afresh each batch, so a business switch or logout
+  mid-run numbered journals with the wrong terminal. It now captures them when it starts and stops if the session
+  moves to another business. Each business opened in a run gets its own backlog, not only the first.
+- **Faster lookups.** Stock-document and cost-correction lookups now include `business_id`, so they use `ix_mov_ref`.
+  `queueJournal` filters by business and entity type, so it uses `ix_outbox_entity` instead of scanning the outbox.
+  Documents that post nothing (a register that closed exact, stock documents and corrections with no value) are left
+  out in SQL, so they are not rebuilt on every backlog and integrity run. A posting resolves its accounts with one
+  query and seeds the chart only on a miss. The tie-outs read every role balance in one grouped pass instead of eleven.
+  On the 365-day soak (same figures as 6f), the full integrity check went from 6.8 s to 5.9 s.
+- **One copy of shared rules.** The roles manual journals cannot touch (`MANUAL_JOURNAL_BLOCKED_ROLES`) and the date
+  helpers (`monthStart`, `monthEnd`, `nextMonthStart`, `dayBefore`, `fyStartOf`) live in `@muneem/domain`. They replace
+  the copies in db-sqlite, the renderer and the soak test, and the date helpers reuse the existing `addDays`.
+
 ### Fixed — Stage 5
 - **Cheap items were over-costed when sold** (ADR-0027, amends ADR-0018). An issue was costed at the average rounded
   to whole paise per unit: 1,000 units bought for ₹15 were costed at 2 paise each, so selling 999 booked ₹19.98 and

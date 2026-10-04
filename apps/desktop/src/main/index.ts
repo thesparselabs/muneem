@@ -66,11 +66,23 @@ async function boot(): Promise<void> {
   registerIpc(ipcMain, muneem.gateway);
   muneem.events.attach({ send: (ch, p) => mainWindow?.webContents.send(ch, p) });
   muneem.connectivity.start();
+  // ADR-0034: each business seeds its chart and posts its backlog once per run, when a session first has it.
+  muneem.events.attach({
+    send: (channel, payload) => {
+      if (channel !== 'session.changed' || !(payload as { businessId?: string | null } | null)?.businessId) return;
+      try {
+        void muneem?.backlog.startForSession()
+          ?.then((r) => { if (r.posted > 0 || r.remaining > 0) loggers.app.info(r, 'journal backlog posted'); })
+          .catch((e) => loggers.app.error({ err: String(e) }, 'journal backlog failed'));
+      } catch (e) { loggers.app.error({ err: String(e) }, 'chart of accounts seed failed'); }
+    },
+  });
   // Nightly-ish scheduled local backup (HLD §12): every 6 hours while running, first after 10 minutes.
   const backupTimer = setInterval(() => {
     void muneem?.diagnostics.backupNow('scheduled').catch((e) => loggers.app.error({ err: String(e) }, 'scheduled backup failed'));
     void muneem?.diagnostics.checkStock({ slice: true }).catch((e) => loggers.app.error({ err: String(e) }, 'scheduled stock check failed'));
     try { muneem?.diagnostics.checkParties(); } catch (e) { loggers.app.error({ err: String(e) }, 'scheduled party check failed'); }
+    try { muneem?.diagnostics.checkJournals(); } catch (e) { loggers.app.error({ err: String(e) }, 'scheduled journal check failed'); }
   }, 6 * 3600_000);
   backupTimer.unref();
   setTimeout(() => void muneem?.diagnostics.backupNow('scheduled').catch(() => undefined), 10 * 60_000).unref();

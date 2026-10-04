@@ -1,4 +1,5 @@
 import { DomainError } from './errors.js';
+import { addDays } from './parties/ageing.js';
 
 /**
  * Indian financial year: 1 April – 31 March. '2026-04-01' → '2026-27'; '2026-03-31' → '2025-26'.
@@ -21,3 +22,10 @@ export function fyBounds(fy: string): { start: string; end: string } {
   const y = Number(m[1]);
   return { start: `${y}-04-01`, end: `${y + 1}-03-31` };
 }
+
+// Calendar arithmetic on business dates 'YYYY-MM-DD', in UTC so no timezone can shift a day.
+export const dayBefore = (date: string): string => addDays(date, -1);
+export const monthStart = (date: string): string => `${date.slice(0, 7)}-01`;
+export const monthEnd = (date: string): string => new Date(Date.UTC(Number(date.slice(0, 4)), Number(date.slice(5, 7)), 0)).toISOString().slice(0, 10);
+export const nextMonthStart = (date: string): string => addDays(monthEnd(date), 1);
+export const fyStartOf = (date: string): string => fyBounds(financialYearOf(date)).start;

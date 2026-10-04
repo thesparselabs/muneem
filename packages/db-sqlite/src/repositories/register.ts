@@ -54,8 +54,8 @@ export function openSession(db: Db, till: Till, openingCashPaise: number, actor:
   });
 }
 
-export function addCashMovement(db: Db, sessionId: string, input: CashMovementInput, actor: Actor): void {
-  withTransaction(db, () => {
+export function addCashMovement(db: Db, sessionId: string, input: CashMovementInput, actor: Actor): string {
+  return withTransaction(db, () => {
     const session = sessionRow(db, sessionId);
     if (!session || session.status !== 'open') throw new AppError('REGISTER_NOT_OPEN', 'Open the register first');
     const id = newUlid();
@@ -65,6 +65,7 @@ export function addCashMovement(db: Db, sessionId: string, input: CashMovementIn
     recordChange(db, session.business_id, actor, {
       action: `register.${input.kind}`, entityType: 'cash_movement', entityId: id, operationType: 'create', after: { id, sessionId, ...input },
     });
+    return id;
   });
 }
 

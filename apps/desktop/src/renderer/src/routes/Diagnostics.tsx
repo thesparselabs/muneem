@@ -8,7 +8,7 @@ export default function Diagnostics() {
   const [log, setLog] = useState<'app' | 'sync'>('app');
   const logs = useQuery({ queryKey: ['logs', log], queryFn: () => api.diagnostics.getLogsTail({ log, lines: 200 }) });
   const [msg, setMsg] = useState<string | null>(null);
-  const integrity = useMutation({ mutationFn: () => api.diagnostics.integrityCheck({}), onSuccess: (r) => setMsg(`Integrity: quick_check ${r.quickCheck}, foreign keys ${r.foreignKeys}, audit chain ${r.auditChain}, stock ${r.stock}, party ledgers ${r.parties}${r.detail.length ? ' — ' + r.detail.join('; ') : ''}`), onError: (e) => setMsg(errorMessage(e)) });
+  const integrity = useMutation({ mutationFn: () => api.diagnostics.integrityCheck({}), onSuccess: (r) => setMsg(`Integrity: quick_check ${r.quickCheck}, foreign keys ${r.foreignKeys}, audit chain ${r.auditChain}, stock ${r.stock}, party ledgers ${r.parties}, journals ${r.journals}${r.detail.length ? ' — ' + r.detail.join('; ') : ''}`), onError: (e) => setMsg(errorMessage(e)) });
   const backup = useMutation({ mutationFn: () => api.diagnostics.backupNow({}), onSuccess: (r) => { setMsg(`Backup ${r.verified ? 'verified' : 'FAILED verification'} (${(r.bytes / 1024).toFixed(0)} KB)`); void qc.invalidateQueries({ queryKey: ['health'] }); }, onError: (e) => setMsg(errorMessage(e)) });
   const bundle = useMutation({ mutationFn: () => api.diagnostics.exportSupportBundle({}), onSuccess: (r) => setMsg(`Support bundle ready. Reference: ${r.handle}`), onError: (e) => setMsg(errorMessage(e)) });
   const h = health.data;

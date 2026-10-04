@@ -1,4 +1,4 @@
-import { foreignKeyCheck, openDatabase, quickCheck, reconcilePartiesDb, replayCheck, verifyAuditChain, type Db } from '@muneem/db-sqlite';
+import { foreignKeyCheck, openDatabase, quickCheck, reconcilePartiesDb, replayCheck, tieOutFailures, verifyAuditChain, type Db } from '@muneem/db-sqlite';
 
 const n = (db: Db, sql: string): number => db.prepare(sql).pluck().get() as number;
 
@@ -32,6 +32,11 @@ export function checkSalesConsistency(file: string) {
       orphanSaleEntries: n(db, "SELECT COUNT(*) FROM party_ledger_entry e WHERE e.ref_type = 'sale' AND NOT EXISTS (SELECT 1 FROM sale s WHERE s.id = e.ref_id)"),
       partyMismatches: (db.prepare('SELECT DISTINCT business_id FROM sale').pluck().all() as string[])
         .reduce((sum, b) => { const r = reconcilePartiesDb(db, b); return sum + r.mismatches.length + r.faults.length; }, 0),
+      salesWithWrongJournals: n(db, "SELECT COUNT(*) FROM sale s WHERE (SELECT COUNT(*) FROM journal_entry j WHERE j.source = 'sale' AND j.ref_id = s.id) <> 1"),
+      orphanSaleJournals: n(db, "SELECT COUNT(*) FROM journal_entry j WHERE j.source = 'sale' AND NOT EXISTS (SELECT 1 FROM sale s WHERE s.id = j.ref_id)"),
+      journalsWithWrongLines: n(db, `SELECT COUNT(*) FROM journal_entry j WHERE j.debit_total_paise <>
+        (SELECT COALESCE(SUM(debit_paise), 0) FROM journal_line l WHERE l.entry_id = j.id) OR j.credit_total_paise <> (SELECT COALESCE(SUM(credit_paise), 0) FROM journal_line l WHERE l.entry_id = j.id)`),
+      tieOutFailures: (db.prepare('SELECT DISTINCT business_id FROM sale').pluck().all() as string[]).reduce((sum, b) => sum + tieOutFailures(db, b).length, 0),
       stockDrift: (db.prepare('SELECT DISTINCT business_id FROM sale').pluck().all() as string[]).reduce((sum, b) => sum + replayCheck(db, b).length, 0),
       brokenAuditChains: (db.prepare('SELECT DISTINCT business_id, device_id FROM audit_log').all() as { business_id: string; device_id: string }[])
         .filter((c) => !verifyAuditChain(db, c.business_id, c.device_id).ok).length,

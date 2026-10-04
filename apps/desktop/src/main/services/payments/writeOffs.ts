@@ -1,6 +1,6 @@
 import { AppError, type WriteOff, type WriteOffInput } from '@muneem/contracts';
 import { newUlid } from '@muneem/domain';
-import { getWriteOff, insertWriteOff, postPartyEntry, recordChange, withTransaction, writeOffIdByCommand } from '@muneem/db-sqlite';
+import { getWriteOff, insertWriteOff, postDocumentJournal, postPartyEntry, recordChange, withTransaction, writeOffIdByCommand } from '@muneem/db-sqlite';
 import type { PosContext } from '../pos/posContext.js';
 import { requireParty } from './parties.js';
 import type { SettlementAllocator } from './settlementAllocator.js';
@@ -27,8 +27,9 @@ export class WriteOffService {
       const allocations = this.allocator.apply(party, { type: 'write_off', id: writeOffId, openPaise: amountPaise, on: docDate }, input.items);
       if (allocations.reduce((s, a) => s + a.amountPaise, 0) !== amountPaise) throw new AppError('INVALID_STATE', 'The write-off must clear exactly the chosen amounts');
       const entry = postPartyEntry(db, { businessId, ...party, refType: 'write_off', refId: writeOffId, kind: 'post', amountPaise: -amountPaise, docDate }, actor);
+      const journal = postDocumentJournal(db, 'write_off', writeOffId, this.ctx.till(), actor);
       recordChange(db, businessId, actor, {
-        action: 'write_off.create', entityType: 'write_off', entityId: writeOffId, operationType: 'create', after: { ...getWriteOff(db, writeOffId), entry, allocations },
+        action: 'write_off.create', entityType: 'write_off', entityId: writeOffId, operationType: 'create', after: { ...getWriteOff(db, writeOffId), entry, allocations, journal },
       });
       return writeOffId;
     });

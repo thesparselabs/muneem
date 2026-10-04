@@ -360,6 +360,15 @@ CREATE TABLE accounting_period (               -- FR-096
 
 `account_balance(business_id, account_id, fy, period_id, debit_paise, credit_paise)` is a maintained projection updated in the same transaction as the journal, so a trial balance is a single indexed scan rather than an aggregate over every line.
 
+*As built (Stage 6, ADR-0030–0034):*
+- **`account`** gains `role` (what posting rules name; one account per role), `is_group` (headers nothing posts to)
+  and sync columns. A system account can be renamed but not retyped or deleted.
+- **`journal_entry`** gains `doc_date`, `late_posting` and `terminal_id`.
+- **Sources** add `write_off`, `register_close` and `cash_movement`.
+- **`ux_je_ref`** is `(business, source, ref_id, COALESCE(is_reversal_of, ''))`, so a document has one journal and at
+  most one reversal.
+- **`accounting_period`** is `open` / `locked` only, with `unlock_reason`.
+
 ### 2.5 Payments
 
 ```sql
@@ -626,7 +635,22 @@ The cloud detects, per `(product, warehouse)`, whether the merged movement set e
              5450 Repairs · 5460 Bank Charges · 5900 Other Expenses
 ```
 
+*As built (Stage 6, ADR-0031):*
+- **Tax accounts:** input and output tax have one account per head: 1510/1520/1530/1540 and 2210/2220/2230/2240
+  (SGST and UTGST share).
+- **Added accounts:** 1199 Cash to classify, 3400 Opening Balance Equity, 5110 Purchase-return Losses, 5470 Bad Debts.
+- **Groups:** 1000–5000 are headers.
+- **The seed** is data in `@muneem/domain` (`CHART_OF_ACCOUNTS`).
+
 ### 5.2 Posting matrix (the single most review-worthy artifact — get a CA to sign it)
+
+*As built:* the full matrix, including the Stage 4–5 documents this section does not cover, is
+`docs/accounting/posting-matrix.md` (ADR-0032). In short:
+- **Customer receipts** post wholly to 1300; an advance is a credit balance, presented on the Balance Sheet, and 2400
+  is unused.
+- **Freight kept on returns** goes to 5110.
+- **Manual cash in/out** goes to 1199.
+- **Openings** go against 3400.
 
 **Cash/UPI sale, regular scheme, intra-state, perpetual inventory:**
 

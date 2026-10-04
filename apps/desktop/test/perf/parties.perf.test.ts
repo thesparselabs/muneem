@@ -131,13 +131,16 @@ describe('parties and purchases at shop scale (5g)', () => {
       (SELECT COUNT(*) FROM allocation) AS allocations`).get() as { docs: number; allocations: number };
     expect(counts.docs).toBeGreaterThanOrEqual(20_000);
     const today = new Date().toLocaleDateString('en-CA');
-    let t0 = performance.now();
+    // Median of five: one call can land on a garbage-collection pause of the test process, which is not the query's cost.
+    const median = (f: () => unknown) => {
+      const ms = Array.from({ length: 5 }, () => { const t = performance.now(); f(); return performance.now() - t; }).sort((a, b) => a - b);
+      return ms[2]!;
+    };
     const now = app.supplierLedger.outstanding({});
-    const todayMs = performance.now() - t0;
-    t0 = performance.now();
     const past = partyOutstanding(db, businessId, 'supplier', '2026-05-01');
-    const pastMs = performance.now() - t0;
-    console.info(`whole-business supplier ageing at ${counts.docs} documents, ${counts.allocations} allocations: today ${todayMs.toFixed(0)} ms, past date ${pastMs.toFixed(0)} ms`);
+    const todayMs = median(() => app.supplierLedger.outstanding({}));
+    const pastMs = median(() => partyOutstanding(db, businessId, 'supplier', '2026-05-01'));
+    console.info(`whole-business supplier ageing at ${counts.docs} documents, ${counts.allocations} allocations (median of 5): today ${todayMs.toFixed(0)} ms, past date ${pastMs.toFixed(0)} ms`);
     expect(partyOutstanding(db, businessId, 'supplier', today)).toEqual(now);           // the as-of formula on today = the fast path
     expect(past.totals.netPaise).toBeGreaterThan(now.totals.netPaise);                   // before the June payments, more was owed
     expect(todayMs).toBeLessThan(200);
