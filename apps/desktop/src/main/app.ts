@@ -30,6 +30,9 @@ import { WriteOffService } from './services/payments/writeOffs.js';
 import { ExpenseService } from './services/expenses/expenseService.js';
 import { JournalBacklog } from './services/accounting/backlog.js';
 import { PeriodService } from './services/accounting/periods.js';
+import { ChartService } from './services/accounting/chart.js';
+import { ManualJournalService } from './services/accounting/manualJournals.js';
+import { StatementService } from './services/accounting/statements.js';
 import { PurchasePricing } from './services/purchases/purchasePricing.js';
 import { PurchaseReturnService } from './services/purchases/purchaseReturns.js';
 import { PurchaseService } from './services/purchases/purchases.js';
@@ -104,6 +107,9 @@ export function createApp(cfg: AppConfig) {
   const expenses = new ExpenseService(posCtx, drawer);
   const periods = new PeriodService(posCtx);
   const backlog = new JournalBacklog(posCtx);
+  const statements = new StatementService(posCtx);
+  const chart = new ChartService(posCtx, statements);
+  const manualJournals = new ManualJournalService(posCtx);
   const register = new RegisterService(posCtx);
   const heldBills = new HeldBillService(posCtx, register);
   const inventory = new InventoryService(posCtx);
@@ -198,6 +204,18 @@ export function createApp(cfg: AppConfig) {
     'expenses.get': (i) => expenses.get(i.id),
     'expenses.list': (i) => expenses.list(i),
     'expenses.cancel': (i) => expenses.cancel(i.id, i.reason),
+    'accounting.listAccounts': (i) => statements.accounts(i.asOf),
+    'accounting.createAccount': (i) => chart.create(i),
+    'accounting.updateAccount': (i) => chart.rename(i.id, i.name),
+    'accounting.getTrialBalance': (i) => statements.trialBalance(i),
+    'accounting.getProfitAndLoss': (i) => statements.profitAndLoss(i),
+    'accounting.getBalanceSheet': (i) => statements.balanceSheet(i),
+    'accounting.getLedger': (i) => statements.ledger(i),
+    'accounting.getCashBook': (i) => statements.book('cash', i),
+    'accounting.getBankBook': (i) => statements.book('bank', i),
+    'accounting.getDayBook': (i) => statements.dayBook(i),
+    'accounting.postManualJournal': (i) => manualJournals.post(i),
+    'accounting.reverseJournal': (i) => manualJournals.reverse(i.id, i.reason, i.date),
     'accounting.getPeriods': () => periods.list(),
     'accounting.lockPeriod': (i) => periods.lock(i.periodStart),
     'accounting.unlockPeriod': (i) => periods.unlock(i.periodStart, i.reason),
@@ -252,6 +270,6 @@ export function createApp(cfg: AppConfig) {
     connectivity: () => connectivity.snapshot(), isTrustedSender: cfg.isTrustedSender ?? (() => true), ...(cfg.now && { now: cfg.now }),
   });
 
-  return { events, session, rbac, cloud, connectivity, device, auth, business, settings, products, catalog, pricing, productImport, customers, suppliers, customerLedger, supplierLedger, purchases, purchaseReturns, purchaseImport, payments, writeOffs, expenses, periods, backlog, register, sales, printQueue, inventory, openingImport, diagnostics, gateway, handlers, syncStatus };
+  return { events, session, rbac, cloud, connectivity, device, auth, business, settings, products, catalog, pricing, productImport, customers, suppliers, customerLedger, supplierLedger, purchases, purchaseReturns, purchaseImport, payments, writeOffs, expenses, periods, backlog, statements, chart, manualJournals, register, sales, printQueue, inventory, openingImport, diagnostics, gateway, handlers, syncStatus };
 }
 export type App = ReturnType<typeof createApp>;

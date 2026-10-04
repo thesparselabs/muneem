@@ -43,7 +43,7 @@ Delivery as before: branch `feat/stage-6-accounting`, parts 6a–6f as commits. 
 this plan and reviewed before it is built, and each commit is green with CHANGELOG lines. Nothing is pushed until the
 user reviews.
 
-## Design (ADRs 0030–0034, written in 6a)
+## Design (ADRs 0030–0034, written in 6a; ADR-0035 added in 6d)
 
 | ADR | Decision |
 |---|---|
@@ -289,6 +289,56 @@ suite checks that every sale has exactly one journal after the kills.
   with credit balances presented as advances.
 - **Books:** account ledger with running balance, day book, cash book and bank book; date range and branch.
 - **Journals and accounts:** manual journal and reversal; adding and editing non-system accounts.
+
+6d details (drafted 2026-10-04; built straight after, as asked):
+
+- **Statements** (`accounting.*`, read with `accounting.view` or `reports.financial`; every one takes an optional
+  `branchId`). All of them read journal lines by entry date.
+  - **`getTrialBalance({ asOf })`:** every account with a balance on that date, its net in the debit or credit column,
+    and totals with `balanced`.
+  - **`getProfitAndLoss({ from, to })`:** income and expense accounts with their movement in the range. *Revenue* is
+    the 41xx/42xx accounts and *cost of sales* the 51xx accounts, which gives gross profit; other income and expenses
+    then give net profit.
+  - **`getBalanceSheet({ asOf })`:** assets, liabilities and equity.
+    - **Retained earnings:** computed as all profit before the FY of `asOf` (ADR-0033), shown with this year's profit
+      as its own line.
+    - **Receivables and payables presentation** (ADR-0032): customers with credit balances appear as *Advances from
+      customers* (a liability) and suppliers with debit balances as *Advances to suppliers* (an asset). 1300 and 2100
+      are shown split by party sign. The books are not changed.
+    - It returns `balanced` (assets = liabilities + equity).
+- **Books:**
+  - **`getLedger({ accountId, from?, to?, limit, cursor })`:** opening balance, lines in date order with entry
+    number, source, document, narration, party and a running balance, then the closing balance. Keyset-paged.
+  - **`getCashBook` and `getBankBook`:** the same ledger for 1100 Cash and for 1200 Bank (or any bank account chosen).
+  - **`getDayBook({ from, to, limit, cursor })`:** journals by date, each with its lines.
+- **Manual journals (ADR-0035).**
+  - **Posting:** `postManualJournal({ date, narration, lines[{ accountId, debitPaise | creditPaise }], commandId })`
+    needs `accounting.create`. It is numbered `T1J/…`, idempotent by `commandId`, and must balance with no
+    two-sided line and no group account.
+  - **Accounts it may not touch:** **control accounts** — 1300 AR, 2100 AP, 1400 Inventory and every input/output tax
+    account. Those move only through documents (opening balances, write-offs, adjustments), so their tie-outs with the
+    sub-ledgers always hold. Cash, bank, clearing, 1199 Cash to classify, income, expense and equity accounts are
+    open, so a manual journal can reclassify cash, settle card/UPI clearing into the bank, or record owner's capital
+    and drawings.
+  - **Dates:** a date in a locked month is refused with `PERIOD_LOCKED`; late posting is for documents from devices,
+    not for typed journals.
+  - **Reversal:** `reverseJournal({ id, date?, reason })` reverses a manual journal once (documents reverse by being
+    cancelled).
+- **Chart of accounts:**
+  - **`listAccounts({ asOf? })`:** returns accounts with their balances.
+  - **`createAccount({ code, name, parentCode })`** (`accounting.manage`): a non-system account under a group. The
+    code is 4 digits in the group's range (1xxx under Assets, …), and the type comes from the group. Typical uses: a
+    second bank account, more expense heads.
+  - **`updateAccount({ id, version, name })`** renames any account, system ones included.
+  - **All audited and queued for sync.**
+- **Tests:**
+  - **Statements:** the TB balances after a mixed run of documents. P&L net profit equals the change in equity. The
+    Balance Sheet balances, with last FY's profit as retained earnings and a customer's advance shown as a liability.
+  - **Books:** the ledger's running balance, paging and opening balance for a range; the day book; the cash book.
+  - **Manual journals:** posted and reversed once; refused when unbalanced, on a control or group account, or dated
+    into a locked month. A repeated command posts once, and the tie-outs still hold afterwards.
+  - **Accounts:** created in range and used in a manual journal; out of range and duplicate codes refused; a system
+    account renamed.
 
 **6e — Screens.**
 - An Accounts menu with the chart of accounts, statements, ledgers and books, manual journal, and periods with late

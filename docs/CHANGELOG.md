@@ -70,6 +70,48 @@ All notable changes, newest first. Each entry records **what** changed and **why
 - **The whole-business ageing speed test times the median of five calls.** A single call could land on a
   garbage-collection pause of the test process: after 6b the bigger test database showed one-off 300–800 ms stalls,
   while the query itself takes 50–110 ms. The budgets are unchanged.
+- **6c details written into the plan and built straight after,** as the user asked. *These 6c lines were left out of
+  the 6c commit by a scripting slip and were added with 6d.*
+- **Accounting periods** (ADR-0033): `accounting.getPeriods`, `lockPeriod` and `unlockPeriod` (`accounting.manage`,
+  audited).
+  - **Locking:** only a month that has ended can be locked, so there is always an open month after a locked one.
+  - **Unlocking:** needs a reason, which is kept on the period.
+- **Late postings:** a document dated into a locked month posts into the earliest open month after it, on that month's
+  first day. It is flagged `late_posting`, keeps its own date, writes a `journal.late_posting` audit row, and is listed
+  by `accounting.listLatePostings`. Nothing is refused or silently moved (LLD §5.4).
+- **Backfill** (ADR-0034): `unpostedDocuments` finds every document without a journal.
+  - **Cancelled before Stage 6:** these get their journal and then the reversal, dated the day they were cancelled.
+  - **Running it:** `accounting.postBacklog` posts them in batches of 200 through the same builders as live posting.
+    It runs once per app run, as soon as a session has a business and a terminal.
+  - **Tested:** documents saved with posting switched off — every kind, cancels included — are all posted, the
+    tie-outs hold, and a second run posts nothing.
+- **The integrity check reports journals** (`journals: ok | healed | mismatch | not_run`); the 6-hourly timer runs it
+  too.
+  - **Rebuilt:** a drifted balance cache (`JOURNAL_BALANCE_DRIFT`).
+  - **Reported and never rewritten** (`JOURNAL_MISMATCH`): a tie-out failing, a journal whose lines do not add up, or
+    a document without a journal.
+  - **Diagnostics screen:** now shows the journal line.
+- **6d details written into the plan and built straight after,** as the user asked.
+- **Statements** (`accounting.getTrialBalance/getProfitAndLoss/getBalanceSheet`, `reports.financial`, optional branch):
+  - **Trial Balance** as at a date, with `balanced`.
+  - **P&L** for a range: revenue (41xx/42xx), cost of sales (51xx) and gross profit, then other income and expenses to
+    net profit.
+  - **Balance Sheet** as at a date, with retained earnings from earlier years' profit and this year's profit shown
+    apart (no closing journals until Stage 8). Customers with credit balances are shown as *Advances from customers*
+    and suppliers with debit balances as *Advances to suppliers*; the books are unchanged (ADR-0032).
+  - **Tested:** after a month's trading the TB balances, the Balance Sheet balances, its "profit for the year" equals
+    the P&L, last year's rent shows as retained earnings, and a customer's overpayment is a liability.
+- **Books:**
+  - **Ledger** (`accounting.getLedger`): any account with opening balance, running balance and paging.
+  - **Cash and bank books** (`getCashBook`, `getBankBook`): the 1100 and bank ledgers.
+  - **Day book** (`getDayBook`): journals with their lines.
+- **Manual journals** (`accounting.postManualJournal`, `reverseJournal`, ADR-0035):
+  - **Posting:** balanced, numbered `T1J/…`, once per command.
+  - **Refused:** on AR, AP, Inventory and the tax accounts, which change only through documents so their tie-outs
+    always hold; on group accounts; and in a locked month (`PERIOD_LOCKED`).
+  - **Reversal:** a manual journal can be reversed once.
+- **Chart of accounts** (`accounting.listAccounts/createAccount/updateAccount`): accounts with balances, new accounts
+  under a group (code in the group's range, type from the group), and renaming any account.
 
 ### Fixed — Stage 5
 - **Cheap items were over-costed when sold** (ADR-0027, amends ADR-0018). An issue was costed at the average rounded

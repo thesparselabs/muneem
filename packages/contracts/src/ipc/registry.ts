@@ -23,7 +23,10 @@ import {
   AllocateInput, AllocateResult, CancelDocumentInput, Expense, ExpenseCategory, ExpenseInput, ExpenseListInput, ExpensePage, OpenItems, PartyRefInput,
   Payment, PaymentInput, PaymentListInput, PaymentPage, WriteOff, WriteOffInput,
 } from './payments.js';
-import { BacklogResult, LatePosting, LockPeriodInput, Period, UnlockPeriodInput } from './accounting.js';
+import {
+  AccountLedgerInput, AccountLedgerPage, AccountView, AsOfInput, BacklogResult, BalanceSheet, CreateAccountInput, DayBookInput, DayBookPage, JournalView, LatePosting,
+  ListAccountsInput, LockPeriodInput, ManualJournalInput, Period, ProfitAndLoss, RangeInput, RenameAccountInput, ReverseJournalInput, TrialBalance, UnlockPeriodInput,
+} from './accounting.js';
 import { CompleteSaleInput, CompleteSaleResult, HeldBill, HoldBillInput, Sale, SaleDraft, SaleListInput, SalePage, SaleQuote } from './sales.js';
 import { PrintJobSummary, PrinterConfig, ReceiptDoc } from './print.js';
 import { SETTING_KEYS } from './settings.js';
@@ -201,6 +204,18 @@ export const contract = {
   'expenses.list': spec({ input: ExpenseListInput, output: ExpensePage, permission: 'expenses.view', rateLimit: { perSec: 10 } }),
   'expenses.cancel': spec({ input: CancelDocumentInput, output: Expense, permission: 'expenses.cancel', rateLimit: { perSec: 1 }, audit: true }),
 
+  'accounting.listAccounts': spec({ input: ListAccountsInput, output: z.array(AccountView), permission: 'accounting.view', rateLimit: { perSec: 5 } }),
+  'accounting.createAccount': spec({ input: CreateAccountInput, output: AccountView, permission: 'accounting.manage', rateLimit: { perSec: 2 }, audit: true }),
+  'accounting.updateAccount': spec({ input: RenameAccountInput, output: AccountView, permission: 'accounting.manage', rateLimit: { perSec: 2 }, audit: true }),
+  'accounting.getTrialBalance': spec({ input: AsOfInput, output: TrialBalance, permission: 'reports.financial', rateLimit: { perSec: 2 } }),
+  'accounting.getProfitAndLoss': spec({ input: RangeInput, output: ProfitAndLoss, permission: 'reports.financial', rateLimit: { perSec: 2 } }),
+  'accounting.getBalanceSheet': spec({ input: AsOfInput, output: BalanceSheet, permission: 'reports.financial', rateLimit: { perSec: 2 } }),
+  'accounting.getLedger': spec({ input: AccountLedgerInput, output: AccountLedgerPage, permission: 'accounting.view', rateLimit: { perSec: 10 } }),
+  'accounting.getCashBook': spec({ input: AccountLedgerInput, output: AccountLedgerPage, permission: 'accounting.view', rateLimit: { perSec: 10 } }),
+  'accounting.getBankBook': spec({ input: AccountLedgerInput, output: AccountLedgerPage, permission: 'accounting.view', rateLimit: { perSec: 10 } }),
+  'accounting.getDayBook': spec({ input: DayBookInput, output: DayBookPage, permission: 'accounting.view', rateLimit: { perSec: 10 } }),
+  'accounting.postManualJournal': spec({ input: ManualJournalInput, output: JournalView, permission: 'accounting.create', rateLimit: { perSec: 2 }, audit: true, idempotent: 'commandId' }),
+  'accounting.reverseJournal': spec({ input: ReverseJournalInput, output: JournalView, permission: 'accounting.create', rateLimit: { perSec: 1 }, audit: true }),
   'accounting.getPeriods': spec({ input: Empty, output: z.array(Period), permission: 'accounting.view', rateLimit: { perSec: 5 } }),
   'accounting.lockPeriod': spec({ input: LockPeriodInput, output: Period, permission: 'accounting.manage', rateLimit: { perSec: 1 }, audit: true }),
   'accounting.unlockPeriod': spec({ input: UnlockPeriodInput, output: Period, permission: 'accounting.manage', rateLimit: { perSec: 1 }, audit: true }),

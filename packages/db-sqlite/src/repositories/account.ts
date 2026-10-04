@@ -1,3 +1,4 @@
+import { AppError } from '@muneem/contracts';
 import { CHART_OF_ACCOUNTS, newUlid, normalSide, type AccountRole, type AccountType } from '@muneem/domain';
 import type { Db } from '../open.js';
 import { stmt } from '../statements.js';
@@ -52,4 +53,38 @@ export function accountIdsByRoleAndCode(db: Db, businessId: string): { byRole: M
     byRole: new Map(rows.flatMap((a) => (a.role ? [[a.role, a.id] as const] : []))),
     byCode: new Map(rows.map((a) => [a.code, a.id] as const)),
   };
+}
+
+// Users add accounts under a group: the code stays in the group's thousand and the type comes from the group (ADR-0031).
+export function createAccount(db: Db, businessId: string, input: { code: string; name: string; parentCode: string }, actor: Actor): AccountRow {
+  return withTransaction(db, () => {
+    const fields: Record<string, string> = {};
+    const group = listAccounts(db, businessId).find((a) => a.code === input.parentCode && a.isGroup);
+    if (!group) fields.parentCode = 'not a group of accounts';
+    if (!/^\d{4}$/u.test(input.code)) fields.code = '4 digits';
+    else if (group && input.code[0] !== group.code[0]) fields.code = `must start with ${group.code[0]} under ${group.name}`;
+    else if (listAccounts(db, businessId).some((a) => a.code === input.code)) fields.code = 'already used';
+    if (Object.keys(fields).length > 0) throw new AppError('VALIDATION_FAILED', 'This account cannot be added', fields);
+    const id = newUlid();
+    const s = syncColumns(actor);
+    stmt(db, `INSERT INTO account (id, business_id, code, name, type, parent_id, normal_side, created_at, updated_at, created_by, device_id)
+      VALUES (@id, @businessId, @code, @name, @type, @parentId, @side, @t, @t, @created_by, @device_id)`).run({
+      id, businessId, code: input.code, name: input.name, type: group!.type, parentId: group!.id, side: normalSide(group!.type), ...s,
+    });
+    const account = listAccounts(db, businessId).find((a) => a.id === id)!;
+    recordChange(db, businessId, actor, { action: 'account.create', entityType: 'account', entityId: id, operationType: 'create', after: account });
+    return account;
+  });
+}
+
+// Any account, system ones included, can be renamed; its role and postings stay.
+export function renameAccount(db: Db, businessId: string, id: string, name: string, actor: Actor): AccountRow {
+  return withTransaction(db, () => {
+    const before = listAccounts(db, businessId).find((a) => a.id === id);
+    if (!before) throw new Error('NOT_FOUND');
+    stmt(db, "UPDATE account SET name = ?, updated_at = ?, version = version + 1, sync_state = 'pending' WHERE id = ?").run(name, syncColumns(actor).t, id);
+    const after = listAccounts(db, businessId).find((a) => a.id === id)!;
+    recordChange(db, businessId, actor, { action: 'account.update', entityType: 'account', entityId: id, operationType: 'update', before, after });
+    return after;
+  });
 }

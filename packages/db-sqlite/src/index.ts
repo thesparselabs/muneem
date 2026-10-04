@@ -47,3 +47,4 @@ export * from './repositories/tieOuts.js';
 export * from './repositories/documentJournals.js';
 export * from './repositories/periods.js';
 export * from './repositories/journalBacklog.js';
+export * from './repositories/accountingStatements.js';
