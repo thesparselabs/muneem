@@ -178,6 +178,14 @@ jobs:
     needs: [node]
     runs-on: ubuntu-latest
     timeout-minutes: 120
+  scale:
+    # Stage 9f: every LLD §18 budget at 500k sales / 20k SKUs / 50k customers on the 4 GB profile (vitest.scale.config.ts).
+    # The ~16 GB dataset is built in the job (about 25 min on a 4-core runner) on the runner's larger /mnt disk; the
+    # suite then needs about 20 min, plus room for one copy and its pre-migration backup (about 50 GB in all).
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    needs: [node]
+    runs-on: ubuntu-latest
+    timeout-minutes: 150
     steps:
       - uses: actions/checkout@v7
       - uses: pnpm/action-setup@v6   # version comes from package.json packageManager
@@ -188,3 +196,7 @@ jobs:
       - run: pnpm chaos
       - run: pnpm --filter @muneem/desktop exec vitest run test/sync/scenario37.test.ts test/sync/simulation.test.ts --maxWorkers=1
         env: { MUNEEM_SIM_SEEDS: '200' }
+      - name: put the dataset on the large disk
+        run: sudo mkdir -p /mnt/muneem-tmp && sudo chown "$USER" /mnt/muneem-tmp && df -h /mnt
+      - run: pnpm scale
+        env: { TMPDIR: /mnt/muneem-tmp }
