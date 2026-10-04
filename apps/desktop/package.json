@@ -15,7 +15,8 @@
     "typecheck": "pnpm gen && tsc -p tsconfig.node.json --noEmit && tsc -p tsconfig.web.json --noEmit",
     "lint": "pnpm gen && eslint src test scripts",
     "test": "pnpm gen && vitest run",
-    "crash-loop": "tsx scripts/crash-loop.ts"
+    "crash-loop": "tsx scripts/crash-loop.ts",
+    "soak": "MUNEEM_SOAK_DAYS=365 vitest run test/soak"
   },
   "dependencies": {
     "@muneem/contracts": "workspace:*",
