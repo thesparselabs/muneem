@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 # Build from the repo root, since the API is generated from packages/contracts/openapi:
 #   docker build -f cloud/Dockerfile -t muneem-api .
-FROM golang:1.26-bookworm AS build
+FROM golang:1.26.8-bookworm AS build
 # On a shared machine, cap the compile: --build-arg GOFLAGS=-p=2
 ARG GOFLAGS=""
 ENV GOFLAGS=${GOFLAGS}

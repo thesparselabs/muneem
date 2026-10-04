@@ -12,6 +12,19 @@ All notable changes, newest first. Each entry records **what** changed and **why
   - **Before the pilot:** USB/Windows printing with ₹ and Indic text.
   - **Scale bar:** 500k transactions, 20k SKUs and 50k customers against the strict LLD §18 budgets.
   - **Monitoring:** self-hosted Prometheus, Loki and Grafana, with a self-hosted crash collector.
+- **Security scanning in CI (9k).** Why: what ships must have no known reachable vulnerability and no committed
+  secret.
+  - **The `security` job** runs `pnpm audit --prod` at moderate and above, `govulncheck`, and a gitleaks scan of the
+    whole history. Fixtures are allowlisted in `.gitleaks.toml`, and all nine findings were deliberate test or dev
+    values.
+- **Go toolchain pinned to 1.26.8 (9k).** `go.mod` said `go 1.26.0`, so CI and the release build compiled with a
+  toolchain that `govulncheck` found 21 reachable standard-library vulnerabilities in (crypto/x509, net/http, net/url
+  and others). It is now `toolchain go1.26.8`, with the Docker build image pinned to match: 0 reachable.
+- **`uuid` overridden to ^11.1.1 (9k).** `exceljs` pulled in a `uuid` with a missing bounds check (moderate). The
+  override is in `pnpm-workspace.yaml`, where pnpm 11 reads it, and the Excel import/export tests pass.
+- **Security checklist and pilot runbook (9k).** `docs/security/checklist.md` marks each item as built, an ops task, or
+  later. `docs/operations/pilot-runbook.md` covers what must be ready before day 1, shop criteria, onboarding, the
+  daily review, the proposed support SLA, known risks with mitigations, and the exit.
 - **Release pipeline (9e, ADR-0056).** Why: HLD §12/§13 ask for signed, staged and checkable updates.
   - **`release.yml`:** it builds the Windows NSIS installer, Azure-signed when the signing secrets are set. Without
     them, the build is unsigned, marked as a prerelease and published to dev only.
