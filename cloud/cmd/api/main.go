@@ -1,4 +1,5 @@
-// muneem-api: the Go/Echo cloud service (Stage 1 surface: identity, devices, business setup, health).
+// muneem-api: the Go/Echo cloud service. `muneem-api` serves; `migrate-up`, `migrate-down` and `rewrap` are one-shot
+// subcommands run as the database owner role (ADR-0051); `healthcheck` probes a running server's /v1/ready.
 package main
 
 import (
@@ -39,7 +40,11 @@ type handlers struct {
 	*backupHandler
 	*reportHandler
 	httpx.Health
+	httpx.Readiness
 }
+
+// shutdownTimeout bounds draining HTTP and snapshot builds; the container's stop grace period must exceed it.
+const shutdownTimeout = 25 * time.Second
 
 func main() {
 	level := slog.LevelInfo
@@ -47,23 +52,55 @@ func main() {
 		level = slog.LevelDebug
 	}
 	log := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: level}))
+	if len(os.Args) > 1 && os.Args[1] == "healthcheck" {
+		os.Exit(healthcheck())
+	}
 	dbURL := os.Getenv("DATABASE_URL")
-	secret := os.Getenv("JWT_SECRET")
-	if dbURL == "" || secret == "" {
-		log.Error("DATABASE_URL and JWT_SECRET are required")
+	if dbURL == "" {
+		log.Error("DATABASE_URL is required")
 		os.Exit(2)
 	}
 	if len(os.Args) > 1 {
-		switch os.Args[1] {
-		case "migrate-up":
-			must(log, store.Migrate(dbURL, false))
-			log.Info("migrations applied")
-			return
-		case "migrate-down":
-			must(log, store.Migrate(dbURL, true))
-			log.Info("migrations reverted")
-			return
-		}
+		runCommand(log, os.Args[1], dbURL)
+		return
+	}
+	serve(log, dbURL)
+}
+
+func runCommand(log *slog.Logger, cmd, dbURL string) {
+	switch cmd {
+	case "migrate-up":
+		must(log, store.Migrate(dbURL, false))
+		log.Info("migrations applied")
+	case "migrate-down":
+		must(log, store.Migrate(dbURL, true))
+		log.Info("migrations reverted")
+	case "rewrap":
+		rewrap(log, dbURL)
+	default:
+		log.Error("unknown command; expected migrate-up, migrate-down or rewrap", "command", cmd)
+		os.Exit(2)
+	}
+}
+
+// rewrap re-wraps every escrowed backup key under the active master key; run it before removing an old version.
+func rewrap(log *slog.Logger, dbURL string) {
+	ctx := context.Background()
+	wrapper, err := backups.MasterKeysFromEnv(os.Getenv("MUNEEM_BACKUP_MASTER_KEYS"), os.Getenv("MUNEEM_BACKUP_MASTER_KEY"))
+	must(log, err)
+	db, err := store.Open(ctx, dbURL)
+	must(log, err)
+	defer db.Close()
+	res, err := backups.Rewrap(ctx, db, wrapper, log)
+	log.Info("rewrap finished", "active", wrapper.Active(), "rewrapped", res.Rewrapped, "failed", res.Failed)
+	must(log, err)
+}
+
+func serve(log *slog.Logger, dbURL string) {
+	keys, err := auth.KeyringFromEnv(os.Getenv("JWT_SECRETS"), os.Getenv("JWT_SECRET"))
+	if err != nil {
+		log.Error("JWT keys", "error", err)
+		os.Exit(2)
 	}
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
@@ -74,13 +111,18 @@ func main() {
 	protocols, err := httpx.ProtocolsFromEnv(os.Getenv)
 	must(log, err)
 	log.Info("sync protocols", "min", protocols.Min, "current", protocols.Current)
-	signer := auth.NewSigner(secret)
+	log.Info("jwt keys", "active_kid", keys.ActiveID())
+	signer := auth.NewKeyringSigner(keys)
 	verifier := device.NewVerifier(db)
 	objects, err := newObjectStore(ctx, log)
 	must(log, err)
+	readiness := httpx.Readiness{Checks: []httpx.Check{{Name: "postgres", Pinger: db}}, Log: log}
 	var snapshots devicesync.Snapshots
+	var snapshotService *snapshot.Service
 	if objects != nil {
-		snapshots = snapshot.NewService(db, objects, log, snapshot.DefaultOptions)
+		snapshotService = snapshot.NewService(db, objects, log, snapshot.DefaultOptions)
+		snapshots = snapshotService
+		readiness.Checks = append(readiness.Checks, httpx.Check{Name: "object_store", Pinger: objects})
 	}
 	backupService, err := newBackups(db, objects, log)
 	must(log, err)
@@ -91,6 +133,7 @@ func main() {
 		syncHandler:     &devicesync.Handler{Ingest: &devicesync.Ingest{DB: db, Log: log}, Feed: &devicesync.Feed{DB: db}, Snapshots: snapshots, Protocols: protocols},
 		backupHandler:   &backups.Handler{Service: backupService},
 		reportHandler:   &reports.Handler{DB: db},
+		Readiness:       readiness,
 	}
 	e := httpx.New(httpx.Deps{Handlers: h, RequireAuth: signer.Require, DeviceVerifier: verifier.Middleware, Logger: log, Protocols: protocols})
 	port := os.Getenv("PORT")
@@ -105,9 +148,17 @@ func main() {
 		}
 	}()
 	<-ctx.Done()
-	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	log.Info("shutting down")
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
 	defer cancel()
-	_ = e.Shutdown(shutdownCtx)
+	if err := e.Shutdown(shutdownCtx); err != nil {
+		log.Warn("http shutdown", "error", err)
+	}
+	if snapshotService != nil {
+		if err := snapshotService.Shutdown(shutdownCtx); err != nil {
+			log.Warn("snapshot builds cancelled at shutdown", "error", err)
+		}
+	}
 }
 
 // newObjectStore connects MUNEEM_S3_*; without an endpoint hydration and cloud backups answer 503.
@@ -121,18 +172,38 @@ func newObjectStore(ctx context.Context, log *slog.Logger) (*objectstore.S3, err
 	return objectstore.NewS3(ctx, cfg)
 }
 
-// newBackups needs object storage and MUNEEM_BACKUP_MASTER_KEY; with neither the backup routes answer 503.
+// newBackups needs object storage and a master key (MUNEEM_BACKUP_MASTER_KEYS or the legacy MUNEEM_BACKUP_MASTER_KEY);
+// without either the backup routes answer 503.
 func newBackups(db *store.DB, objects *objectstore.S3, log *slog.Logger) (*backups.Service, error) {
-	master := os.Getenv("MUNEEM_BACKUP_MASTER_KEY")
-	if objects == nil || master == "" {
-		log.Warn("object storage or MUNEEM_BACKUP_MASTER_KEY not set: cloud backups are unavailable")
+	keys, legacy := os.Getenv("MUNEEM_BACKUP_MASTER_KEYS"), os.Getenv("MUNEEM_BACKUP_MASTER_KEY")
+	if objects == nil || (keys == "" && legacy == "") {
+		log.Warn("object storage or a backup master key not set: cloud backups are unavailable")
 		return nil, nil
 	}
-	wrapper, err := backups.NewWrapper(master)
+	wrapper, err := backups.MasterKeysFromEnv(keys, legacy)
 	if err != nil {
 		return nil, err
 	}
+	log.Info("backup master keys", "active", wrapper.Active())
 	return backups.NewService(db, objects, wrapper, log, backups.DefaultOptions), nil
+}
+
+// healthcheck probes this container's own /v1/ready, for the container runtime (the distroless image has no curl).
+func healthcheck() int {
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080"
+	}
+	client := http.Client{Timeout: 5 * time.Second}
+	resp, err := client.Get("http://127.0.0.1:" + port + "/v1/ready")
+	if err != nil {
+		return 1
+	}
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return 1
+	}
+	return 0
 }
 
 func must(log *slog.Logger, err error) {

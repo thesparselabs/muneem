@@ -18,13 +18,34 @@ DATABASE_URL='postgres://muneem_app:muneem_app@localhost:5433/muneem?sslmode=dis
 curl -i localhost:8080/v1/health
 ```
 
-Environment: `DATABASE_URL`, `JWT_SECRET` (required), `PORT` (8080), `LOG_LEVEL` (`info`|`debug`), and for hydration
-`MUNEEM_S3_ENDPOINT` (a URL; `http://` turns TLS off), `MUNEEM_S3_BUCKET` (created if missing), `MUNEEM_S3_ACCESS_KEY`,
-`MUNEEM_S3_SECRET_KEY`, `MUNEEM_S3_REGION`. Without an endpoint the bootstrap routes answer 503. Cloud backups (8f)
-also need `MUNEEM_BACKUP_MASTER_KEY` (base64 of 32 bytes; it wraps every escrowed backup key, so it belongs in a secret
-manager or KMS); without it or object storage the `/backups` routes answer 503. The Makefile defaults point at the
-docker-compose MinIO and a dev-only master key.
+**Environment:**
+- **Required:**
+  - `DATABASE_URL`;
+  - `JWT_SECRETS` (`kid:secret,...`; the first signs, each secret at least 32 bytes) or the legacy `JWT_SECRET`. With
+    both set, the legacy key only verifies tokens without a `kid` (ADR-0052).
+- **Optional:** `PORT` (8080) and `LOG_LEVEL` (`info`|`debug`).
+- **Hydration:**
+  - `MUNEEM_S3_ENDPOINT` (a URL; `http://` turns TLS off) and `MUNEEM_S3_BUCKET` (created if missing);
+  - `MUNEEM_S3_ACCESS_KEY`, `MUNEEM_S3_SECRET_KEY` and `MUNEEM_S3_REGION`.
+  - Without an endpoint, the bootstrap routes answer 503.
+- **Cloud backups (8f):** these also need a master key ring:
+  - `MUNEEM_BACKUP_MASTER_KEYS` (`version:base64,...`; the first wraps);
+  - the legacy `MUNEEM_BACKUP_MASTER_KEY`, which acts as `v1`.
+  - Without a key or object storage, the `/backups` routes answer 503.
+- **Dev defaults:** the Makefile points at the docker-compose MinIO and a dev-only master key.
+
 Logs are JSON via `log/slog`.
+
+**Subcommands:** they need only `DATABASE_URL`, which is the owner role in production.
+- `migrate-up`;
+- `migrate-down` (dev only);
+- `rewrap`, which re-wraps escrowed keys under the active master key;
+- `healthcheck`, which probes `/v1/ready` on `PORT`.
+
+`GET /v1/ready` checks Postgres and object storage (200 or 503), while `/v1/health` stays the liveness probe.
+
+**Production:** the image is `cloud/Dockerfile`, built from the repo root. The deploy kit is in `deploy/`, and the
+procedures are in `docs/operations/deploy.md` (ADR-0051).
 
 ## Request conventions
 

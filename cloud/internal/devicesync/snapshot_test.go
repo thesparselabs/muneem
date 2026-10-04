@@ -361,3 +361,44 @@ func TestABuildThatCannotUploadFails(t *testing.T) {
 		t.Fatal("the failure should be recorded with its reason")
 	}
 }
+
+// stuckStore never finishes an upload until its context ends.
+type stuckStore struct{ brokenStore }
+
+func (stuckStore) Put(ctx context.Context, _ string, _ io.Reader) error {
+	<-ctx.Done()
+	return ctx.Err()
+}
+
+func TestShutdownCancelsABuildPastTheDeadlineAndRecordsItFailed(t *testing.T) {
+	c, f, a := setup(t)
+	c.push(a, f.request(f.ops...))
+	svc := snapshot.NewService(c.db, stuckStore{}, slog.New(slog.NewTextHandler(io.Discard, nil)), snapshot.DefaultOptions)
+	caller := devicesync.Caller{UserID: a.user, DeviceID: a.id}
+	if _, err := svc.Request(context.Background(), caller, f.businessID); err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+	defer cancel()
+	if err := svc.Shutdown(ctx); !errors.Is(err, context.DeadlineExceeded) {
+		t.Fatalf("shutdown: %v", err)
+	}
+	if n := c.count(`SELECT COUNT(*)::int FROM snapshot WHERE status = 'failed'`); n != 1 {
+		t.Fatal("a build cut off by shutdown should be recorded as failed")
+	}
+}
+
+func TestShutdownWaitsForARunningBuild(t *testing.T) {
+	c, f, a := setup(t)
+	c.push(a, f.request(f.ops...))
+	caller := devicesync.Caller{UserID: a.user, DeviceID: a.id}
+	if _, err := c.snaps.Request(context.Background(), caller, f.businessID); err != nil {
+		t.Fatal(err)
+	}
+	if err := c.snaps.Shutdown(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	if n := c.count(`SELECT COUNT(*)::int FROM snapshot WHERE status = 'ready'`); n != 1 {
+		t.Fatal("shutdown should let the build finish")
+	}
+}

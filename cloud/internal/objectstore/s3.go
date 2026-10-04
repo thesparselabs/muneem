@@ -70,6 +70,15 @@ func (s *S3) ensureBucket(ctx context.Context, region string) error {
 	return s.client.MakeBucket(ctx, s.bucket, minio.MakeBucketOptions{Region: region})
 }
 
+// Ping is the readiness check: the bucket answers and exists.
+func (s *S3) Ping(ctx context.Context) error {
+	exists, err := s.client.BucketExists(ctx, s.bucket)
+	if err == nil && !exists {
+		err = errors.New("bucket " + s.bucket + " is missing")
+	}
+	return err
+}
+
 // Put streams body of unknown length as a multipart upload, buffering one part at a time.
 func (s *S3) Put(ctx context.Context, key string, body io.Reader) error {
 	_, err := s.client.PutObject(ctx, s.bucket, key, body, -1, minio.PutObjectOptions{ContentType: "application/gzip", PartSize: partSize})

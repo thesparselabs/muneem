@@ -256,7 +256,7 @@ func (s *Service) Escrow(ctx context.Context, c Caller, businessID, keyID string
 	if s.wrapper == nil {
 		return ErrUnconfigured
 	}
-	nonce, wrapped, err := s.wrapper.Wrap(businessID, keyID, key)
+	version, nonce, wrapped, err := s.wrapper.Wrap(businessID, keyID, key)
 	if err != nil {
 		return err
 	}
@@ -264,14 +264,14 @@ func (s *Service) Escrow(ctx context.Context, c Caller, businessID, keyID string
 		if err := devicesync.CanBootstrap(ctx, tx, c, businessID); err != nil {
 			return err
 		}
-		if err := insertKey(ctx, tx, businessID, keyID, c.DeviceID, nonce, wrapped); err != nil {
+		if err := insertKey(ctx, tx, businessID, keyID, c.DeviceID, version, nonce, wrapped); err != nil {
 			return err
 		}
 		stored, err := getKey(ctx, tx, businessID, &keyID)
 		if err != nil {
 			return err
 		}
-		have, err := s.wrapper.Unwrap(businessID, keyID, stored.Nonce, stored.Wrapped)
+		have, err := s.wrapper.Unwrap(stored.Version, businessID, keyID, stored.Nonce, stored.Wrapped)
 		if err != nil {
 			return err
 		}
@@ -306,7 +306,7 @@ func (s *Service) Key(ctx context.Context, c Caller, businessID string, keyID *s
 	if k == nil {
 		return "", nil, ErrKeyNotFound
 	}
-	key, err := s.wrapper.Unwrap(businessID, k.KeyID, k.Nonce, k.Wrapped)
+	key, err := s.wrapper.Unwrap(k.Version, businessID, k.KeyID, k.Nonce, k.Wrapped)
 	if err != nil {
 		return "", nil, err
 	}

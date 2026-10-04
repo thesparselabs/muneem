@@ -55,3 +55,5 @@ Template: Context → Decision → Consequences → Status.
 | [0048](0048-audit-chain-on-the-cloud.md) | Audit chain on the cloud |
 | [0049](0049-updates-and-protocol-support.md) | Updates and protocol support |
 | [0050](0050-notifications-and-consent.md) | Notifications and consent |
+| [0051](0051-production-topology.md) | Production topology |
+| [0052](0052-keys-and-rotation.md) | Keys and rotation |

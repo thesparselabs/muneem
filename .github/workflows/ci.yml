@@ -60,6 +60,32 @@ jobs:
       - run: go build ./...
       - run: go vet ./...
       - run: go test ./...     # loads packages/domain/fixtures — the cross-language contract
+  cloud-image:
+    # The production API image (cloud/Dockerfile, ADR-0051). Built on every run; pushed from main only when the
+    # registry is configured (vars.MUNEEM_IMAGE, vars.REGISTRY, secrets.REGISTRY_USERNAME / REGISTRY_PASSWORD).
+    if: github.event_name == 'pull_request' || github.event_name == 'push'
+    runs-on: ubuntu-latest
+    env:
+      PUSH: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && secrets.REGISTRY_PASSWORD != '' && vars.MUNEEM_IMAGE != '' }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: docker/setup-buildx-action@v3
+      - name: log in to the registry
+        if: env.PUSH == 'true'
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ vars.REGISTRY }}
+          username: ${{ secrets.REGISTRY_USERNAME }}
+          password: ${{ secrets.REGISTRY_PASSWORD }}
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: cloud/Dockerfile
+          build-args: VERSION=${{ github.sha }}
+          push: ${{ env.PUSH == 'true' }}
+          tags: ${{ env.PUSH == 'true' && format('{0}:{1},{0}:main', vars.MUNEEM_IMAGE, github.sha) || 'muneem-api:ci' }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
   e2e-cloud:
     # §37 and a smaller sync simulation: real desktop devices against the real Go API, Postgres and MinIO (ADR-0042, Stage 7h).
     if: github.event_name == 'pull_request' || github.event_name == 'push'

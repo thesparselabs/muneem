@@ -23,3 +23,5 @@ cloud/api/openapi.gen.go
 apps/desktop/native/
 apps/desktop/release/
 packages/db-sqlite/src/migrations.generated.ts
+/deploy/.env
+/deploy/state/

@@ -14,28 +14,36 @@ func (s *Service) start(id, businessID string) {
 	s.wg.Add(1)
 	go func() {
 		defer s.wg.Done()
-		s.slots <- struct{}{}
-		defer func() { <-s.slots }()
+		select {
+		case s.slots <- struct{}{}:
+			defer func() { <-s.slots }()
+		case <-s.base.Done():
+		}
 		s.build(id, businessID)
 	}()
 }
+
+const recordTimeout = 5 * time.Second
 
 func objectKey(businessID, id string) string {
 	return "snapshots/" + businessID + "/" + id + ".ndjson.gz"
 }
 
 func (s *Service) build(id, businessID string) {
-	ctx, cancel := context.WithTimeout(context.Background(), s.opt.BuildTimeout)
+	ctx, cancel := context.WithTimeout(s.base, s.opt.BuildTimeout)
 	defer cancel()
 	key := objectKey(businessID, id)
 	h, bytes, err := s.upload(ctx, businessID, key)
+	// The outcome is recorded even when the build was cancelled by shutdown.
+	recordCtx, cancelRecord := context.WithTimeout(context.WithoutCancel(ctx), recordTimeout)
+	defer cancelRecord()
 	finish := func(tx pgx.Tx) error {
 		if err != nil {
-			return markFailed(ctx, tx, id, err.Error())
+			return markFailed(recordCtx, tx, id, err.Error())
 		}
-		return markReady(ctx, tx, id, h, key, bytes, time.Now().Add(s.opt.Expiry))
+		return markReady(recordCtx, tx, id, h, key, bytes, time.Now().Add(s.opt.Expiry))
 	}
-	if txErr := s.db.WithTx(ctx, store.Scope{BusinessID: businessID}, finish); txErr != nil {
+	if txErr := s.db.WithTx(recordCtx, store.Scope{BusinessID: businessID}, finish); txErr != nil {
 		s.log.Error("snapshot status not recorded", "snapshot_id", id, "business_id", businessID, "error", txErr)
 	}
 	if err != nil {

@@ -20,7 +20,8 @@ packages/domain   Pure engines: money, GST, ids, financial year, catalog rules (
 packages/contracts IPC registry (zod), errors, permissions, OpenAPI HTTP contract → TS + Go types
 packages/db-sqlite Local DB: pragmas, migrator, schema, audit hash chain, outbox, repositories, sync apply path
 packages/sync-reference In-memory reference implementation of the sync protocol, for tests (ADR-0042)
-cloud/            Go + Echo API, Postgres with row-level security, Go port of the engines
+cloud/            Go + Echo API, Postgres with row-level security, Go port of the engines; cloud/Dockerfile = the image
+deploy/           Production kit for one VM: compose (api + Caddy), deploy.sh, roles.sql, S3 lifecycle (ADR-0051)
 scripts/          schema-lint, diff-fuzz, gen-preload
 design/           PRD, PRD review, HLD, LLD (intent)
 docs/             this folder (reality, with reasons)
@@ -256,6 +257,21 @@ docs/             this folder (reality, with reasons)
   `safeStorage`. Requests are signed (see ADR-0003).
 - Offline login verifies against an Argon2id hash computed on the device from the entered password; the server's hash
   is never sent down.
+- Server secrets are keyrings (ADR-0052):
+  - access tokens carry a `kid` from `JWT_SECRETS`;
+  - escrowed backup keys record the `master_key_version` that wrapped them, and `muneem-api rewrap` moves them to
+    the active one.
+
+## Production (Stage 9b)
+
+- **Topology (ADR-0051):** one VM runs the API container behind Caddy, with managed Postgres (point-in-time recovery)
+  and managed S3. The procedures are in `docs/operations/deploy.md`.
+- **Database roles:** the API runs as `muneem_app` (inside `muneem_api`, so RLS applies). Migrations, `roles.sql` and
+  `rewrap` run as the owner role, and the owner's credentials never reach the API container.
+- **Probes:** `/v1/health` is liveness (devices use it); `/v1/ready` pings Postgres and object storage, and gates
+  deploys.
+- **Shutdown:** SIGTERM drains HTTP, then snapshot builds, within 25 s.
+- **Per instance:** rate limits are per instance until they move to Redis.
 
 ## What is not built yet
 

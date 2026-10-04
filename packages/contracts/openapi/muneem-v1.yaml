@@ -35,6 +35,25 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Health'
+  /ready:
+    get:
+      operationId: getReady
+      summary: Readiness — Postgres and object storage answer (load balancers and deploys gate on it; /health is liveness)
+      security: []
+      tags: [system]
+      responses:
+        '200':
+          description: Ready to serve
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Readiness'
+        '503':
+          description: A dependency did not answer in time
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Readiness'
   /auth/register:
     post:
       operationId: register
@@ -658,6 +677,25 @@ components:
           type: string
         protocol:
           type: integer
+    Readiness:
+      type: object
+      required: [ready, checks]
+      properties:
+        ready:
+          type: boolean
+        checks:
+          type: array
+          items:
+            $ref: '#/components/schemas/ReadinessCheck'
+    ReadinessCheck:
+      type: object
+      required: [name, ok]
+      properties:
+        name:
+          type: string
+          description: postgres or object_store
+        ok:
+          type: boolean
     RegisterRequest:
       type: object
       required: [name, identifier, password]

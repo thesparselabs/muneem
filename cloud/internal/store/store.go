@@ -105,3 +105,6 @@ func IsUniqueViolation(err error) bool {
 	var pg *pgconn.PgError
 	return errors.As(err, &pg) && pg.Code == "23505"
 }
+
+// Ping is the readiness check: one round trip to Postgres.
+func (d *DB) Ping(ctx context.Context) error { return d.Pool.Ping(ctx) }

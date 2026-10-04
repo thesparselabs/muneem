@@ -1,0 +1,8 @@
+# Only the cloud image is built from this context (cloud/Dockerfile); send it the Go module and the OpenAPI document.
+*
+!cloud/
+!packages/contracts/openapi/
+cloud/bin/
+cloud/tmp/
+cloud/api/openapi.gen.go
+cloud/Dockerfile

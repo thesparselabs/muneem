@@ -35,5 +35,6 @@ migrate-down: gen
 	go run ./cmd/api migrate-down
 
 # Dev only: a login role that inherits muneem_api so RLS policies actually apply to the API connection.
+# Production uses deploy/roles.sql, with the password from the environment.
 db-roles:
 	psql "$(DATABASE_URL)" -v ON_ERROR_STOP=1 -c "DO \$$\$$ BEGIN IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='muneem_app') THEN CREATE ROLE muneem_app LOGIN PASSWORD 'muneem_app'; END IF; END \$$\$$;" -c "GRANT muneem_api TO muneem_app;"
