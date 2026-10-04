@@ -18,6 +18,8 @@ import { registerIpc } from './ipc/gateway.js';
 import { currentSchemaVersion, getMeta, restoreDatabaseFile, setMeta, type Db } from '@muneem/db-sqlite';
 import { rmSync } from 'node:fs';
 import { startSyncWorker } from './sync/syncWorker.js';
+import { WorkerReads } from './background/backgroundReads.js';
+import { markCleanExit, takeCleanExit } from './infra/cleanExit.js';
 import { ElectronPagePrinter, ElectronPrinterDirectory, ElectronRasteriser, HiddenPrintPage, receiptFontsDir } from './infra/printSurface.js';
 import { PowerShellRawJob } from './services/print/rawSpoolJob.js';
 import { WindowsSpooler } from './services/print/spooler.js';
@@ -30,6 +32,7 @@ const here = fileURLToPath(new URL('.', import.meta.url));
 const PRELOAD = join(here, '../preload/index.cjs');
 const RENDERER_INDEX = join(here, '../renderer/index.html');
 const SYNC_WORKER = join(here, 'sync-worker.js');
+const READ_WORKER = join(here, 'read-worker.js');
 const CSP = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; font-src 'self' data:; object-src 'none'; base-uri 'none'; frame-ancestors 'none'";
 // Vite's dev server injects an inline React Refresh preamble and talks to its HMR websocket; packaged builds never use this.
 const DEV_SERVER_CSP = CSP.replace("script-src 'self'", "script-src 'self' 'unsafe-inline'").replace("connect-src 'self'", "connect-src 'self' ws://localhost:*");
@@ -102,7 +105,7 @@ async function boot(): Promise<void> {
       encryptedPreMigrationBackups({ dir: paths.backups, secrets, appVersion: app.getVersion(), now: () => Date.now(), log: loggers.app }),
       plainPreMigrationBackups(paths.backups), loggers.app,
     );
-    ({ db } = await openAndMigrate(paths, loggers, nativeBindingPath(), { backups, appVersion: app.getVersion() }));
+    ({ db } = await openAndMigrate(paths, loggers, nativeBindingPath(), { backups, appVersion: app.getVersion(), quickCheck: !takeCleanExit(paths.file) }));
   } catch (e) {
     if (e instanceof MigrationFailedError) {
       // ADR-0049: this build cannot run the old schema; the data is back as it was and the previous version can open it.
@@ -139,6 +142,7 @@ async function boot(): Promise<void> {
   muneem = createApp({
     db: () => db!, dbFile: paths.file, receiptsDir: join(userData, 'receipts'), backupsDir: paths.backups, bundlesDir: join(userData, 'support-bundles'), secrets, loggers,
     hydrationDir: join(userData, 'hydration'),
+    backgroundReads: new WorkerReads(READ_WORKER, { dbFile: paths.file, nativeBinding: nativeBindingPath() }),
     saveFile: electronSaveFile(() => mainWindow), pdfRenderer: electronHtmlToPdf,
     ...printing(loggers),
     apiBaseUrl, appVersion: app.getVersion(), platform: process.platform, isDev,
@@ -206,6 +210,7 @@ async function boot(): Promise<void> {
   muneem.updates.service.start(UPDATE_CHECK_EVERY_MS, FIRST_UPDATE_CHECK_MS);
   muneem.notifications.runner.run(); // ADR-0050: device-wide checks at start-up; business ones follow when a session opens it
   setTimeout(scheduledBackup, 10 * 60_000).unref();
+  setTimeout(() => void muneem?.diagnostics.backgroundQuickCheck().catch((e) => loggers.app.error({ err: String(e) }, 'background quick_check failed')), 15 * 60_000).unref();
 }
 
 function createWindow(): void {
@@ -251,5 +256,9 @@ app.on('before-quit', () => {
   muneem?.connectivity.stop();
   muneem?.sync.stop();
   stopSyncWorker?.();
-  try { db?.close(); } catch { /* already closed */ }
+  muneem?.closeReadConnections();
+  try {
+    db?.close();
+    markCleanExit(dbPaths(app.getPath('userData')).file);
+  } catch { /* already closed */ }
 });

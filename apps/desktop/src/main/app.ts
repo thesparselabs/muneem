@@ -80,6 +80,7 @@ import { PdfWriter, type PdfRenderer } from './reports/exports/pdf.js';
 import { XlsxWriter } from './reports/exports/xlsx.js';
 import { ReportService, type SaveFile } from './reports/service.js';
 import { DashboardService } from './reports/dashboard.js';
+import { InlineReads, type BackgroundReads } from './background/backgroundReads.js';
 import { createUpdates } from './update/index.js';
 import { DEFAULT_UPDATE_BASE_URL } from './update/channels.js';
 import type { Updater } from './update/updater.js';
@@ -122,6 +123,14 @@ export interface AppConfig {
   crashDsn?: string | null;
   crashSend?: CrashSend;
   isDev?: boolean;
+  // ADR-0058: where reports and integrity checks run; by default on the read-only connection in this thread.
+  backgroundReads?: BackgroundReads;
+}
+
+// The main connection checked the file at start-up; a second quick_check here would read the whole database again.
+function openReadOnly(file: string, main: Db): Db {
+  const nativeBinding = nativeBindingOf(main);
+  return openDatabase(file, { readonly: true, quickCheck: false, ...(nativeBinding && { nativeBinding }) });
 }
 
 export function createApp(cfg: AppConfig) {
@@ -166,12 +175,12 @@ export function createApp(cfg: AppConfig) {
   const backlog = new JournalBacklog(posCtx);
   const statements = new StatementService(posCtx);
   let readDb: Db | null = null;
-  const closeReadConnections = () => { readDb?.close(); readDb = null; };
-  const openReadOnly = (): Db => { const nativeBinding = nativeBindingOf(cfg.db()); return openDatabase(cfg.dbFile, { readonly: true, ...(nativeBinding && { nativeBinding }) }); };
-  const reportDb = () => (cfg.dbFile === ':memory:' ? cfg.db() : (readDb ??= openReadOnly()));
+  const reportDb = () => (cfg.dbFile === ':memory:' ? cfg.db() : (readDb ??= openReadOnly(cfg.dbFile, cfg.db())));
+  const reads = cfg.backgroundReads ?? new InlineReads(reportDb);
+  const closeReadConnections = () => { readDb?.close(); readDb = null; void reads.close(); };
   const reports = new ReportService({
     catalogue: new ReportCatalogue(REPORTS),
-    readDb: reportDb,
+    reads,
     businessId: () => posCtx.businessId(), today: () => posCtx.today(), can: (p) => posCtx.can(p),
     business: () => { const b = business.get(); return { name: b?.name ?? '', gstin: b?.gstin ?? null }; },
     writers: [new CsvWriter(), new XlsxWriter(), ...(cfg.pdfRenderer ? [new PdfWriter(cfg.pdfRenderer)] : [])],
@@ -195,7 +204,7 @@ export function createApp(cfg: AppConfig) {
   const returns = new ReturnService(posCtx, () => session.require().user.name, (r) => printQueue.enqueue(r.printJobId));
   const productImport = new ImportService(catalogCtx, new PreviewStore(cfg.now ?? (() => Date.now())), invalidateSearch);
   const diagnostics = new DiagnosticsService({
-    db: cfg.db, dbFile: cfg.dbFile, bundlesDir: cfg.bundlesDir, loggers: cfg.loggers, session, device,
+    db: cfg.db, reads, dbFile: cfg.dbFile, bundlesDir: cfg.bundlesDir, loggers: cfg.loggers, session, device,
     appVersion: cfg.appVersion, secretStoreAvailable: cfg.secrets.encrypted, connectivity: () => connectivity.snapshot(),
   });
   const telemetry = createTelemetry({

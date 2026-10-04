@@ -20,7 +20,7 @@ beforeAll(async () => {
 
 afterAll(() => { vi.useRealTimers(); });
 
-const report = (id: string, params: Record<string, string> = {}): ReportResult => run.app.reports.run(id, params);
+const report = (id: string, params: Record<string, string> = {}): Promise<ReportResult> => run.app.reports.run(id, params);
 const range = () => ({ from: run.startDate, to: run.endDate });
 const total = (r: ReportResult, key: string) => r.totals![key] as number;
 const sql = (q: string, ...args: unknown[]) => run.db.prepare(q).pluck().get(...args) as number;
@@ -34,19 +34,19 @@ const plLine = (from: string, to: string, code: string) => {
 };
 
 describe('the 8e report catalogue on a seeded run (FR-054, PRD §25)', () => {
-  it('runs every report the owner can see, with totals', () => {
+  it('runs every report the owner can see, with totals', async () => {
     const defs = run.app.reports.list();
     expect(defs.length).toBeGreaterThanOrEqual(25);
     for (const d of defs) {
       if (d.params.some((p) => p.required)) continue;
-      const r = report(d.id, d.params.some((p) => p.key === 'from') ? range() : {});
+      const r = await report(d.id, d.params.some((p) => p.key === 'from') ? range() : {});
       expect(r.truncated, d.id).toBe(false);
     }
     expect(run.counts.creditNotes).toBeGreaterThan(0);
   });
 
-  it('sales by day nets credit notes on their own date and ties to the documents and to revenue', () => {
-    const r = report('sales.byDay', range());
+  it('sales by day nets credit notes on their own date and ties to the documents and to revenue', async () => {
+    const r = await report('sales.byDay', range());
     const sales = sql("SELECT SUM(total_paise) FROM sale WHERE status = 'posted' AND doc_date BETWEEN ? AND ?", run.startDate, run.endDate);
     const notes = sql("SELECT SUM(total_paise) FROM credit_note WHERE status = 'posted' AND doc_date BETWEEN ? AND ?", run.startDate, run.endDate);
     expect(total(r, 'salesPaise')).toBe(sales);
@@ -55,17 +55,17 @@ describe('the 8e report catalogue on a seeded run (FR-054, PRD §25)', () => {
     expect(total(r, 'netTaxablePaise')).toBe(plLine(run.startDate, run.endDate, '4100'));
     expect(r.rows.reduce((s, x) => s + (x.netSalesPaise as number), 0)).toBe(sales - notes);
 
-    const monthly = report('sales.monthly', range());
+    const monthly = await report('sales.monthly', range());
     expect(monthly.rows.length).toBe(2);
     expect(monthly.totals).toMatchObject({ netSalesPaise: sales - notes, bills: total(r, 'bills') });
-    expect(total(report('sales.byPaymentMethod', range()), 'netPaise')).toBe(sales - notes);
-    expect(total(report('sales.byProduct', range()), 'netTaxablePaise')).toBe(total(r, 'netTaxablePaise'));
-    expect(total(report('sales.byCategory', range()), 'netTaxablePaise')).toBe(total(r, 'netTaxablePaise'));
-    expect(total(report('sales.creditNotes', range()), 'totalPaise')).toBe(notes);
+    expect(total(await report('sales.byPaymentMethod', range()), 'netPaise')).toBe(sales - notes);
+    expect(total(await report('sales.byProduct', range()), 'netTaxablePaise')).toBe(total(r, 'netTaxablePaise'));
+    expect(total(await report('sales.byCategory', range()), 'netTaxablePaise')).toBe(total(r, 'netTaxablePaise'));
+    expect(total(await report('sales.creditNotes', range()), 'totalPaise')).toBe(notes);
   });
 
-  it("product profit is revenue less the cost the sales and returns carried, the P&L's gross profit before stock corrections", () => {
-    const p = report('sales.productProfit', range());
+  it("product profit is revenue less the cost the sales and returns carried, the P&L's gross profit before stock corrections", async () => {
+    const p = await report('sales.productProfit', range());
     expect(total(p, 'revenuePaise')).toBe(plLine(run.startDate, run.endDate, '4100'));
     const docCogs = sql(`SELECT SUM(l.debit_paise - l.credit_paise) FROM journal_line l JOIN journal_entry j ON j.id = l.entry_id JOIN account a ON a.id = l.account_id
       WHERE a.code = '5100' AND j.source IN ('sale', 'sale_return') AND j.entry_date BETWEEN ? AND ?`, run.startDate, run.endDate);
@@ -73,36 +73,36 @@ describe('the 8e report catalogue on a seeded run (FR-054, PRD §25)', () => {
     expect(total(p, 'profitPaise')).toBe(total(p, 'revenuePaise') - docCogs);
   });
 
-  it('receivables and payables as of today are the party outstanding; an earlier date reads the books as they stood', () => {
-    expect(report('parties.receivables').totals).toMatchObject(run.app.customerLedger.outstanding({}).totals);
-    expect(report('parties.payables').totals).toMatchObject(run.app.supplierLedger.outstanding({}).totals);
+  it('receivables and payables as of today are the party outstanding; an earlier date reads the books as they stood', async () => {
+    expect((await report('parties.receivables')).totals).toMatchObject(run.app.customerLedger.outstanding({}).totals);
+    expect((await report('parties.payables')).totals).toMatchObject(run.app.supplierLedger.outstanding({}).totals);
     const asOf = run.startDate;
-    expect(report('parties.receivables', { asOf }).totals).toMatchObject(run.app.customerLedger.outstanding({ asOf }).totals);
+    expect((await report('parties.receivables', { asOf })).totals).toMatchObject(run.app.customerLedger.outstanding({ asOf }).totals);
   });
 
-  it('stock valuation and stock movement close at account 1400; the cash report closes at 1100', () => {
-    expect(total(report('stock.valuation'), 'valuePaise')).toBe(tbNet('1400'));
-    expect(total(report('stock.movement', range()), 'closingValuePaise')).toBe(tbNet('1400'));
-    expect(report('money.cash', range()).totals!.closingPaise).toBe(tbNet('1100'));
-    expect(report('accounting.cashBook', range()).totals!.balancePaise).toBe(tbNet('1100'));
+  it('stock valuation and stock movement close at account 1400; the cash report closes at 1100', async () => {
+    expect(total(await report('stock.valuation'), 'valuePaise')).toBe(tbNet('1400'));
+    expect(total(await report('stock.movement', range()), 'closingValuePaise')).toBe(tbNet('1400'));
+    expect((await report('money.cash', range())).totals!.closingPaise).toBe(tbNet('1100'));
+    expect((await report('accounting.cashBook', range())).totals!.balancePaise).toBe(tbNet('1100'));
   });
 
-  it('the statements match the Stage 6 services', () => {
+  it('the statements match the Stage 6 services', async () => {
     const pl = run.app.statements.profitAndLoss(range());
-    expect(total(report('accounting.profitAndLoss', range()), 'amountPaise')).toBe(pl.netProfitPaise);
-    const bs = report('accounting.balanceSheet');
+    expect(total(await report('accounting.profitAndLoss', range()), 'amountPaise')).toBe(pl.netProfitPaise);
+    const bs = await report('accounting.balanceSheet');
     expect(bs.rows.find((r) => r.section === 'Total assets')!.amountPaise).toBe(total(bs, 'amountPaise'));
-    const day = report('accounting.dayBook', range());
+    const day = await report('accounting.dayBook', range());
     expect(total(day, 'debitPaise')).toBe(total(day, 'creditPaise'));
-    expect(report('accounting.ledger', { ...range(), accountCode: '1400' }).totals!.balancePaise).toBe(tbNet('1400'));
-    expect(() => report('accounting.ledger', { accountCode: '9999' })).toThrow(/No such account/);
-    const payments = report('money.payments', range());
+    expect((await report('accounting.ledger', { ...range(), accountCode: '1400' })).totals!.balancePaise).toBe(tbNet('1400'));
+    await expect(report('accounting.ledger', { accountCode: '9999' })).rejects.toThrow(/No such account/);
+    const payments = await report('money.payments', range());
     expect(total(payments, 'inPaise')).toBe(sql("SELECT SUM(amount_paise) FROM payment WHERE status = 'posted' AND direction = 'in' AND payment_date BETWEEN ? AND ?", run.startDate, run.endDate));
   });
 
-  it('a customer ledger opens and closes on the party statement', () => {
+  it('a customer ledger opens and closes on the party statement', async () => {
     const customerId = sql("SELECT party_id FROM party_ledger_entry WHERE party_type = 'customer' GROUP BY party_id ORDER BY COUNT(*) DESC LIMIT 1");
-    const r = report('parties.customerLedger', { partyId: String(customerId) });
+    const r = await report('parties.customerLedger', { partyId: String(customerId) });
     expect(r.totals!.balancePaise).toBe(sql("SELECT SUM(amount_paise) FROM party_ledger_entry WHERE party_type = 'customer' AND party_id = ?", customerId));
   });
 

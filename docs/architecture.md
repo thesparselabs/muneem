@@ -42,6 +42,8 @@ docs/             this folder (reality, with reasons)
 | Hardware / network | Never inside the commit path | (Stage 3+) design rule, HLD §8 |
 | Sync transport ↔ SQLite | The utility process does HTTP only; main alone writes, and a pulled change never writes an outbox or audit row | process split (HLD §3.1); round-trip no-echo test |
 | TS ↔ Go sync servers | Same answers to the same requests | shared protocol fixtures in both suites (ADR-0042) |
+| Billing thread ↔ history-wide reads | Reports and integrity checks read in a worker thread on its own read-only connection; main only heals | read worker (ADR-0058); `pnpm scale` sells within budget while the checks run at 500k |
+| Hot-path SQL ↔ table size | No scan of a growing table, no walk of a whole business's rows | `EXPLAIN QUERY PLAN` gate on the SQL the hot paths really run (`test/queryPlans`) |
 
 ## Invariants checked by tests
 
@@ -218,8 +220,8 @@ docs/             this folder (reality, with reasons)
 
 ## Reports, compliance, backup and update (Stage 8)
 
-- **Reports** (ADR-0046): a `ReportDefinition` catalogue of 25 business, statement and GST reports runs on a
-  read-only connection. CSV, XLSX and PDF writers share one document shape with the business header. The user picks
+- **Reports** (ADR-0046, ADR-0058): a `ReportDefinition` catalogue of 25 business, statement and GST reports runs in
+  the read worker on its own read-only connection. CSV, XLSX and PDF writers share one document shape with the business header. The user picks
   where an export goes, so the renderer never sees a path.
 - **Dashboard:** it reads daily summary tables that triggers keep current in the same transaction as each document,
   including pulled ones. Diagnostics checks for drift and heals it. The cloud keeps the same aggregates.

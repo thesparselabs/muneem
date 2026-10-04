@@ -60,19 +60,19 @@ function trade() {
 }
 
 describe('the offline dashboard and its daily summaries (FR-072, 8e)', () => {
-  it("today's figures are the sales by day report's, with the payment split, parties, purchases, expenses and top sellers", () => {
+  it("today's figures are the sales by day report's, with the payment split, parties, purchases, expenses and top sellers", async () => {
     trade();
     const d = app.dashboard.get();
     const today = d.today;
-    const byDay = app.reports.run('sales.byDay', { from: today, to: today });
+    const byDay = await app.reports.run('sales.byDay', { from: today, to: today });
     expect(d.sales).toMatchObject({
       saleCount: byDay.totals!.bills, salesPaise: byDay.totals!.salesPaise, returnCount: 2, returnsPaise: byDay.totals!.returnsPaise,
       netSalesPaise: byDay.totals!.netSalesPaise, netTaxablePaise: byDay.totals!.netTaxablePaise,
     });
     const pl = app.statements.profitAndLoss({ from: today, to: today });
     expect(d.sales.grossProfitPaise).toBe(pl.grossProfitPaise);
-    expect(app.reports.run('sales.productProfit', { from: today, to: today }).totals!.profitPaise).toBe(pl.grossProfitPaise);
-    const split = app.reports.run('sales.byPaymentMethod', { from: today, to: today });
+    expect((await app.reports.run('sales.productProfit', { from: today, to: today })).totals!.profitPaise).toBe(pl.grossProfitPaise);
+    const split = await app.reports.run('sales.byPaymentMethod', { from: today, to: today });
     expect(Object.fromEntries(d.todayTenders.map((t) => [t.method, t.amountPaise]))).toEqual(Object.fromEntries(split.rows.filter((r) => r.netPaise !== 0).map((r) => [r.method, r.netPaise])));
     expect(d.receivablePaise).toBe(app.customerLedger.outstanding({}).totals.netPaise);
     expect(d.payablePaise).toBe(app.supplierLedger.outstanding({}).totals.netPaise);
@@ -95,7 +95,7 @@ describe('the offline dashboard and its daily summaries (FR-072, 8e)', () => {
     expect(check.summaries).toBe('healed');
     expect(dailySummaryDrift(db, businessId)).toEqual([]);
     expect(app.dashboard.get()).toEqual(before);
-    expect(app.diagnostics.checkSummaries()).toBe('ok');
+    expect(await app.diagnostics.checkSummaries()).toBe('ok');
   });
 
   it('is behind reports.view: a cashier is refused', async () => {

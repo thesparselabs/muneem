@@ -118,12 +118,12 @@ describe('journal integrity (6c, ADR-0034)', () => {
   it('rebuilds a drifted balance cache, and reports what it must not rewrite', async () => {
     await app.register.open(0);
     app.inventory.setOpeningStock({ lines: [{ productId: soap, qtyMilli: 5000, unitCostPaise: 7000 }] });
-    expect(app.diagnostics.checkJournals()).toBe('ok');
+    expect(await app.diagnostics.checkJournals()).toBe('ok');
     db.exec('UPDATE account_balance SET debit_paise = debit_paise + 1 WHERE rowid = (SELECT MIN(rowid) FROM account_balance)');
-    expect(app.diagnostics.checkJournals()).toBe('healed');
-    expect(app.diagnostics.checkJournals()).toBe('ok');
+    expect(await app.diagnostics.checkJournals()).toBe('healed');
+    expect(await app.diagnostics.checkJournals()).toBe('ok');
     db.exec("UPDATE stock_level SET value_paise = value_paise + 100");
-    expect(app.diagnostics.checkJournals()).toBe('mismatch');
+    expect(await app.diagnostics.checkJournals()).toBe('mismatch');
     expect(db.prepare('SELECT COUNT(*) FROM journal_entry').pluck().get()).toBe(1);
   });
 });

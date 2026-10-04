@@ -22,6 +22,8 @@ export interface MigrateGuardOptions {
   migrations?: readonly Migration[];
   appVersion?: string;
   now?: () => number;
+  // ADR-0058: false after a clean exit; the read worker checks the file in the background instead.
+  quickCheck?: boolean;
 }
 
 // The upgrade failed and the database is back as it was; this build cannot run on that schema.
@@ -48,7 +50,7 @@ export function lostRows(before: Record<string, number>, after: Record<string, n
  */
 export async function openAndMigrate(paths: DbPaths, loggers: Loggers, nativeBinding?: string, opts: MigrateGuardOptions = {}): Promise<{ db: Db; schemaVersion: number }> {
   mkdirSync(paths.backups, { recursive: true });
-  const open = () => openDatabase(paths.file, nativeBinding ? { nativeBinding } : {});
+  const open = () => openDatabase(paths.file, { ...(nativeBinding && { nativeBinding }), quickCheck: opts.quickCheck ?? true });
   const db = open();
   const migrations = opts.migrations ?? MIGRATIONS;
   const from = currentSchemaVersion(db);

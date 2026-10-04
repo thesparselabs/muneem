@@ -1023,6 +1023,8 @@ startup → PRAGMA quick_check → backup DB → apply pending migrations in one
         → on failure: restore the pre-migration backup, log, offer support bundle
 ```
 
+*As built (Stage 9f, ADR-0058):* start-up runs `quick_check` only after an exit that did not close the database (a crash, a power cut, a restore swap); after a clean quit the read worker checks the file in the background, at most once a day. At 500k sales the file is about 16 GiB and a `quick_check` reads all of it (6–7 minutes on the test machine). The upgrade path above measured about 24 minutes at 500k (pre-migration backup about 9 minutes, then `quick_check`, the migration, `foreign_key_check` and row counts), far over the 40-second aim below; making it fast (a file-copy backup, a scoped foreign-key check) is open work.
+
 Rules: additive changes only whenever possible (new nullable column, new table, new index); a destructive change ships as two releases (write both, then stop reading the old); every migration has an up-test on a **fixture database seeded with realistic data**, not an empty one; migration runtime is measured against a 500k-transaction fixture in CI, because a 40-second migration on a shop's HDD at 9 a.m. is an outage.
 
 **Postgres:** `golang-migrate` numbered SQL files, expand/contract only — deploy adds nullable columns and backfills in batches, code moves, a later release drops. Migrations run as a gate before the new image receives traffic; long index builds use `CREATE INDEX CONCURRENTLY` outside the gate.
@@ -1192,6 +1194,8 @@ Rule: **integrity errors fail loudly and stop the operation; hardware and transp
 | Cold start to billable | < 3 s | lazy-load non-POS routes, defer sync/hardware discovery until after first paint, prepared-statement warmup on the POS queries only |
 
 All statements are prepared once and cached. `EXPLAIN QUERY PLAN` assertions in tests fail the build if a POS-path query degrades to a table scan — a regression here is silent and only shows up on a shop's 50,000-row product table.
+
+*As built (Stage 9f):* every budget above is measured nightly (`pnpm scale`) at NFR-021's ceiling — 500,000 sales over two years, 20,000 SKUs, 50,000 customers — through the IPC gateway, in one process with a 1.5 GB heap (the 4 GB-class profile). The `EXPLAIN QUERY PLAN` gate records the SQL the hot paths really run (barcode, search, customer search, quote, sale, open items, statements, dashboard, sync push and pull) and fails on a scan of a growing table or a walk of all of a business's rows. Integrity checks and reports run in a read worker (ADR-0058).
 
 ---
 

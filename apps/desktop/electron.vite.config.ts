@@ -10,8 +10,8 @@ export default defineConfig({
   main: {
     // Native + workspace deps stay external: better-sqlite3 / @node-rs/argon2 are loaded from node_modules at runtime.
     plugins: [externalizeDepsPlugin()],
-    // The sync utility process (7d) is a second entry, emitted beside index.js as sync-worker.js.
-    build: { sourcemap, rollupOptions: { input: { index: resolve(__dirname, 'src/main/index.ts'), 'sync-worker': resolve(__dirname, 'src/sync-worker/index.ts') }, output: { format: 'es' } } },
+    // The sync utility process (7d) and the read worker thread (ADR-0058) are further entries, emitted beside index.js.
+    build: { sourcemap, rollupOptions: { input: { index: resolve(__dirname, 'src/main/index.ts'), 'sync-worker': resolve(__dirname, 'src/sync-worker/index.ts'), 'read-worker': resolve(__dirname, 'src/read-worker/index.ts') }, output: { format: 'es' } } },
   },
   preload: {
     plugins: [externalizeDepsPlugin()],
