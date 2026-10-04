@@ -23,6 +23,36 @@ All notable changes, newest first. Each entry records **what** changed and **why
   - **Files:** the user picks where an export goes in a save dialog, and the screen never sees a path.
   - **First report:** the Trial Balance; 8e adds the rest.
   - **IPC:** `reports.listDefinitions`, `reports.run`, `reports.export`.
+- **Sale returns and cancellation as credit notes (8b, ADR-0043 as built).** Why: Stage 3 deferred them, and GSTR-1
+  needs credit notes.
+  - **Storage:** credit notes have their own tables and a `C` number series.
+  - **Pricing:** each line takes its share of the sale line's own tax and cost (golden vectors run in TS and Go). The
+    note that completes a bill takes back its round-off.
+  - **What a return writes:** stock comes back at the stored cost; what the customer still owes on the bill is settled
+    first, and the rest is refunded by cash, UPI or card, or credited to the account. The journal posts through
+    `SALE_RETURN_RULE`.
+  - **Sync:** credit notes sync, with Go verification.
+  - **Cancel** is a full credit note dated today (`sales.cancel`, managers). Returns need `sales.edit`, so cashiers
+    cannot make them by default.
+  - **Register report:** it counts credit notes, and cash refunds lower expected cash, so the drawer reconciles after
+    refunds.
+  - **Migration 0016** rebuilds `allocation` and `party_ledger_entry` to accept credit notes, because SQLite cannot
+    widen a CHECK.
+  - **Tie-out:** output tax is now sales tax minus credit-note tax.
+  - **Workloads:** the crash suite, soak and simulation all make returns.
+- **Encrypted backups with a cloud-escrowed key (8f, ADR-0047 as built).** Why: FR-071 and NFR-010/011; backups were
+  plain local copies with no retention.
+  - **Format:** each backup is a `.mbk` archive of the SQLite copy, AES-256-GCM in 1 MiB chunks with a
+    device-signed manifest. Tampering with any byte, the order of the chunks, the manifest or the key is refused before
+    restore.
+  - **Retention:** 7 daily, 4 weekly and 3 monthly backups locally.
+  - **Upload:** nightly and after a Z report, to object storage. The data key is escrowed with the cloud, wrapped under
+    `MUNEEM_BACKUP_MASTER_KEY`, and the cloud keeps the newest 30.
+  - **Restore:** from Diagnostics, or onto a new device ("Restore from cloud backup"). A device that restores its own
+    older backup pulls back what it synced since.
+  - **Cloud:** `/backups` endpoints, Go migration 0004, and `objectstore.PresignPut`, `Get` and `Delete`.
+  - **Permissions:** managers gain `diagnostics.manage`, and `diagnostics.backupNow` is replaced by `backups.*`.
+  - **Not encrypted:** pre-migration copies stay plain, because they are taken before the secret store opens.
 - **Restoring a database removes any leftover WAL first** instead of overwriting it with the backup's bytes. A test
   shows the old code was not actually corrupting: SQLite ignores a WAL with an invalid header. Deleting is the
   intended behaviour, and the test guards it.
