@@ -4,6 +4,8 @@
 #   deploy.sh rollback   return to the previously deployed tag (the schema stays migrated)
 #   deploy.sh rewrap     re-wrap escrowed backup keys under the active master key (ADR-0052)
 #   deploy.sh status     the deployed tags and containers
+#   deploy.sh grant-operator <email>    make an operator for the admin page, creating the account (ADR-0057)
+#   deploy.sh revoke-operator <email>   end an operator grant; open sessions stop at their next request
 set -euo pipefail
 
 here=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
@@ -43,7 +45,8 @@ migrate() {
 apply_roles() {
   log "roles.sql"
   DATABASE_URL=$(env_value MUNEEM_OWNER_DATABASE_URL) MUNEEM_APP_DB_PASSWORD=$(env_value MUNEEM_APP_DB_PASSWORD) \
-    docker run --rm -i -e DATABASE_URL -e MUNEEM_APP_DB_PASSWORD "$psql_image" \
+    MUNEEM_ADMIN_DB_PASSWORD=$(env_value MUNEEM_ADMIN_DB_PASSWORD) \
+    docker run --rm -i -e DATABASE_URL -e MUNEEM_APP_DB_PASSWORD -e MUNEEM_ADMIN_DB_PASSWORD "$psql_image" \
     sh -c 'psql "$DATABASE_URL" -X -f -' <"$here/roles.sql"
 }
 
@@ -107,6 +110,19 @@ rewrap() {
     docker run --rm -e DATABASE_URL -e MUNEEM_BACKUP_MASTER_KEYS -e MUNEEM_BACKUP_MASTER_KEY "$(image "$tag")" rewrap
 }
 
+# operator runs grant-operator / revoke-operator as the owner role; a new account's password is read without echo.
+operator() {
+  local cmd=$1 email=${2:?usage: deploy.sh $1 <email>} tag password=""
+  tag=$(current_tag)
+  [ -n "$tag" ] || die "nothing deployed yet"
+  if [ "$cmd" = grant-operator ]; then
+    read -rsp "password for $email if the account is new (12+ characters; Enter if it exists): " password
+    echo >&2
+  fi
+  printf '%s\n' "$password" | DATABASE_URL=$(env_value MUNEEM_OWNER_DATABASE_URL) \
+    docker run --rm -i -e DATABASE_URL "$(image "$tag")" "$cmd" "$email"
+}
+
 status() {
   echo "current:  $(current_tag)"
   echo "previous: $(previous_tag)"
@@ -119,5 +135,6 @@ case "${1:-}" in
   rollback) rollback ;;
   rewrap) rewrap ;;
   status) status ;;
-  *) sed -n '2,6p' "$0" >&2; exit 2 ;;
+  grant-operator | revoke-operator) operator "$1" "${2:-}" ;;
+  *) sed -n '2,8p' "$0" >&2; exit 2 ;;
 esac

@@ -92,6 +92,25 @@ func TestAKidCannotBeVerifiedWithAnotherKeysSecret(t *testing.T) {
 	}
 }
 
+func TestADerivedRingNeitherAcceptsNorMintsTheBaseRingsTokens(t *testing.T) {
+	for _, ring := range []struct{ secrets, legacy string }{{"k2:" + newSecret + ",k1:" + oldSecret, ""}, {"", "dev-secret"}} {
+		base, err := KeyringFromEnv(ring.secrets, ring.legacy)
+		if err != nil {
+			t.Fatal(err)
+		}
+		shop, op := NewKeyringSigner(base), NewKeyringSigner(base.Derive("operator"))
+		if _, err := op.Parse(issue(t, shop)); err == nil {
+			t.Fatal("a shop token must not verify under the derived ring")
+		}
+		if _, err := shop.Parse(issue(t, op)); err == nil {
+			t.Fatal("a derived token must not verify under the base ring")
+		}
+		if _, err := op.Parse(issue(t, op)); err != nil {
+			t.Fatal(err)
+		}
+	}
+}
+
 func TestKeyringFromEnvRefusesBadRings(t *testing.T) {
 	for _, bad := range []struct{ secrets, legacy string }{
 		{"", ""},

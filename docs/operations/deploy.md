@@ -9,8 +9,8 @@ managed S3-compatible storage. The deploy kit is in `deploy/`, and keys follow A
 | `deploy/docker-compose.prod.yml` | `api` and `caddy` only. Postgres and storage are external. |
 | `deploy/Caddyfile` | TLS, the reverse proxy, security headers and the 2 MiB body cap. |
 | `deploy/.env.example` | Every variable, with a comment. Copy it to `deploy/.env` (mode 600) on the VM. |
-| `deploy/deploy.sh` | `up <tag>`, `rollback`, `rewrap` and `status`. |
-| `deploy/roles.sql` | Creates the `muneem_app` login role and sets its password from the environment. |
+| `deploy/deploy.sh` | `up <tag>`, `rollback`, `rewrap`, `status`, `grant-operator <email>` and `revoke-operator <email>`. |
+| `deploy/roles.sql` | Creates the `muneem_app` login role, and `muneem_admin_app` for operator tooling when its password is set; it sets their passwords from the environment. |
 | `deploy/s3-lifecycle.json` | Bundles expire after 2 days, backups have a 60-day safety net, and stale multipart uploads are aborted. |
 | `deploy/monitoring/` | Prometheus, Loki, Grafana, alert rules, the crash collector and the log agent (section 8). |
 
@@ -214,3 +214,48 @@ volume for 30 days. The desktop does not upload them today (ADR-0053).
 **Upgrading the stack:** bump the image tags in the compose file, then `docker compose ... pull && up -d`. Dashboards
 and rules come from the files, so an edit is a file change plus `docker compose restart grafana`. Edits made in the UI
 are refused.
+## 8. Operator tooling (ADR-0057)
+
+The admin page (`/admin/`) and the operator API (`/v1/admin`) are served by the API container on a **second
+listener**, port 8081. The compose file publishes it on the VM's **loopback only** (`127.0.0.1:8081`), and Caddy never
+proxies it. Runbooks for using it are in `docs/runbooks/ops-*.md`.
+
+**Turn it on (once):**
+1. Set `MUNEEM_ADMIN_DB_PASSWORD` (`openssl rand -base64 32`) and
+   `MUNEEM_ADMIN_DATABASE_URL=postgres://muneem_admin_app:<that password>@<host>:5432/muneem?sslmode=require` in
+   `deploy/.env`.
+2. Run `./deploy.sh up <current tag>`. `roles.sql` creates `muneem_admin_app` inside `muneem_admin` (migration 0009),
+   and the API logs `admin listening`.
+3. Make yourself an operator: `./deploy.sh grant-operator you@sparselabs.in`. If the account is new, it asks for a
+   password (12+ characters, from the password manager). An existing account keeps its password.
+
+Without `MUNEEM_ADMIN_DATABASE_URL`, the API logs `operator tooling is off` and serves no admin listener.
+
+**Use it:**
+```sh
+ssh -N -L 8081:127.0.0.1:8081 <vm>          # leave running
+open http://localhost:8081/admin/           # sign in with the operator account
+```
+The session cookie is `Secure`. Browsers accept it on `http://localhost`, so always use `localhost`, not the VM's
+address. A session lasts 15 minutes, then you sign in again.
+
+**What it can do:**
+- list shops with device, dead-letter, review-item, chain-break and backup health;
+- revoke a device;
+- resend or dismiss a dead letter;
+- read review items, audit-chain breaks and backups.
+
+Every page view, action, sign-in and failed sign-in is an `admin.*` row in `audit_log`. Every action asks for a
+reason. To see what operators did:
+`SELECT occurred_at, user_id, action, entity_id, after_json FROM audit_log WHERE action LIKE 'admin.%' ORDER BY id DESC LIMIT 50`.
+
+**Remove an operator:** `./deploy.sh revoke-operator <email>`. Their open session stops at its next request.
+
+**Public mode** (`MUNEEM_ADMIN_PUBLIC=true`): Caddy then serves `/admin` and `/v1/admin` on the public domain. Keep it
+off:
+- it removes the SSH factor, and there is no TOTP yet;
+- Caddy's `Content-Security-Policy: default-src 'none'` strips the page's stylesheet. The page still works, unstyled.
+
+**Rotating its password:** change `MUNEEM_ADMIN_DB_PASSWORD` and `MUNEEM_ADMIN_DATABASE_URL` together, then run
+`./deploy.sh up <current tag>`, as for `muneem_app` (section 5). Operator tokens are signed with keys derived from
+`JWT_SECRETS`, so rotating the JWT keys rotates them too.

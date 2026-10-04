@@ -1,6 +1,6 @@
-// muneem-api: the Go/Echo cloud service. `muneem-api` serves; `migrate-up`, `migrate-down` and `rewrap` are one-shot
-// subcommands run as the database owner role (ADR-0051); `healthcheck` probes a running server's /v1/ready;
-// `crash-collector` serves the desktop crash ingest instead (ADR-0053).
+// muneem-api: the Go/Echo cloud service. `muneem-api` serves; `migrate-up`, `migrate-down`, `rewrap`,
+// `grant-operator` and `revoke-operator` are one-shot subcommands run as the database owner role (ADR-0051, ADR-0057);
+// `healthcheck` probes a running server's /v1/ready; `crash-collector` serves the desktop crash ingest instead (ADR-0053).
 package main
 
 import (
@@ -84,8 +84,10 @@ func runCommand(log *slog.Logger, cmd, dbURL string) {
 		log.Info("migrations reverted")
 	case "rewrap":
 		rewrap(log, dbURL)
+	case "grant-operator", "revoke-operator":
+		operatorCommand(log, cmd, dbURL, os.Args[2:])
 	default:
-		log.Error("unknown command; expected migrate-up, migrate-down or rewrap", "command", cmd)
+		log.Error("unknown command; expected migrate-up, migrate-down, rewrap, grant-operator or revoke-operator", "command", cmd)
 		os.Exit(2)
 	}
 }
@@ -151,6 +153,7 @@ func serve(log *slog.Logger, dbURL string) {
 		Readiness:       readiness,
 	}
 	e := httpx.New(httpx.Deps{Handlers: h, RequireAuth: signer.Require, DeviceVerifier: verifier.Middleware, Logger: log, Protocols: protocols, Requests: m})
+	adminServer := serveAdmin(ctx, log, e, adminDeps{keys: keys, app: db, ingest: h.syncHandler.Ingest, verifier: verifier})
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8080"
@@ -174,6 +177,11 @@ func serve(log *slog.Logger, dbURL string) {
 	}
 	if err := metricsServer.Shutdown(shutdownCtx); err != nil {
 		log.Warn("metrics shutdown", "error", err)
+	}
+	if adminServer != nil {
+		if err := adminServer.Shutdown(shutdownCtx); err != nil {
+			log.Warn("admin shutdown", "error", err)
+		}
 	}
 	if snapshotService != nil {
 		if err := snapshotService.Shutdown(shutdownCtx); err != nil {

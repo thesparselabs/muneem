@@ -90,6 +90,21 @@ func (s *Ingest) pushOne(ctx context.Context, c Caller, businessID string, op Op
 	return res, err
 }
 
+// Reapply runs a dead-lettered operation through ingest again, as its device, for an operator (ADR-0057). It is
+// idempotent like a push; a refusal is reported and not dead-lettered a second time.
+func (s *Ingest) Reapply(ctx context.Context, c Caller, businessID string, op Operation) (Result, error) {
+	var res Result
+	err := s.DB.WithTx(ctx, c.scope(businessID), func(tx pgx.Tx) error {
+		r, err := (&applier{ctx: ctx, tx: tx, caller: c, businessID: businessID, op: op}).run()
+		res = r
+		return err
+	})
+	if f, ok := asFailure(err); ok {
+		return rejected(op, f.Code, f.Detail), nil
+	}
+	return res, err
+}
+
 // reject keeps the operation whole in dead-letter; nothing it carried is stored (ADR-0038).
 func (s *Ingest) reject(ctx context.Context, c Caller, businessID string, op Operation, f *verify.Failure) (Result, error) {
 	err := s.DB.WithTx(ctx, c.scope(businessID), func(tx pgx.Tx) error {

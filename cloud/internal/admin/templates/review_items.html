@@ -1,0 +1,32 @@
+{{define "content"}}
+{{template "shopHeader" .Data}}
+{{$shop := .Data.Shop.BusinessId}}
+{{if eq .Data.Tab "chain-breaks"}}
+<h2>Audit-chain breaks</h2>
+<p class="muted">An audit row the cloud refused because it does not continue its device's chain. It is evidence: never edit it away.
+See <code>docs/runbooks/ops-audit-chain-break.md</code>.</p>
+{{else}}
+<h2>Review items</h2>
+<p class="muted">Merges, duplicate barcodes, deletions that won and late arrivals. Devices list and resolve them; the cloud keeps them.</p>
+{{end}}
+<table>
+  <thead>
+    <tr><th scope="col">When</th><th scope="col">Kind</th><th scope="col">Entity</th><th scope="col">Device</th><th scope="col">Operation</th><th scope="col">Detail</th></tr>
+  </thead>
+  <tbody>
+    {{range .Data.Body}}
+    <tr>
+      <td>{{when .CreatedAt}}</td>
+      <td>{{.Kind}}</td>
+      <td>{{.EntityType}}<br><code>{{.EntityId}}</code></td>
+      <td><code>{{.DeviceId}}</code></td>
+      <td><code>{{.OperationId}}</code></td>
+      <td><details><summary>Detail</summary><pre>{{pretty .Detail}}</pre></details></td>
+    </tr>
+    {{else}}
+    <tr><td colspan="6">None.</td></tr>
+    {{end}}
+  </tbody>
+</table>
+{{with .Data.Next}}<p><a href="/admin/shops/{{seg $shop}}/{{$.Data.Tab}}?cursor={{str .}}" rel="next">Next page</a></p>{{end}}
+{{end}}

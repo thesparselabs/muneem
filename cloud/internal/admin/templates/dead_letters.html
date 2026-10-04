@@ -1,0 +1,47 @@
+{{define "content"}}
+{{template "shopHeader" .Data}}
+{{$csrf := .CSRF}}{{$shop := .Data.Shop.BusinessId}}
+<h2>Dead letters</h2>
+<p>
+  {{if .Data.Open}}Showing open ones. <a href="/admin/shops/{{seg $shop}}/dead-letters?state=all">Show all</a>
+  {{else}}Showing all. <a href="/admin/shops/{{seg $shop}}/dead-letters">Show open only</a>{{end}}
+</p>
+<p class="muted">Resend runs the operation through ingest again as its device; it applies once however often it is sent.
+Dismiss closes it without applying: only when the shop has re-entered or deliberately dropped the transaction.</p>
+{{range .Data.Body}}
+<article class="letter">
+  <h3>#{{.Id}} · {{.EntityType}} <code>{{.EntityId}}</code></h3>
+  <dl class="facts">
+    <div><dt>Error</dt><dd><code>{{.ErrorCode}}</code> {{.ErrorDetail}}</dd></div>
+    <div><dt>Device</dt><dd><code>{{.DeviceId}}</code></dd></div>
+    <div><dt>Operation</dt><dd><code>{{.OperationId}}</code></dd></div>
+    <div><dt>Received</dt><dd>{{when .CreatedAt}}</dd></div>
+    <div><dt>State</dt><dd>
+      {{if .ResolvedAt}}{{str .Resolution}} {{when .ResolvedAt}} by <code>{{str .ResolvedBy}}</code>: {{str .ResolutionNote}}
+      {{else if .AppliedSince}}applied since (the device re-pushed it)
+      {{else}}<strong>open</strong>{{end}}
+    </dd></div>
+  </dl>
+  <details><summary>Payload preview</summary><pre>{{.PayloadPreview}}</pre></details>
+  {{if and (not .ResolvedAt) (not .AppliedSince)}}
+  <div class="actions">
+    <form method="post" action="/admin/dead-letters/{{.Id}}/resend" class="action">
+      <input type="hidden" name="csrf" value="{{$csrf}}">
+      <input type="hidden" name="business" value="{{$shop}}">
+      {{template "reason"}}
+      <button type="submit">Resend</button>
+    </form>
+    <form method="post" action="/admin/dead-letters/{{.Id}}/dismiss" class="action">
+      <input type="hidden" name="csrf" value="{{$csrf}}">
+      <input type="hidden" name="business" value="{{$shop}}">
+      {{template "reason"}}
+      <button type="submit" class="danger">Dismiss</button>
+    </form>
+  </div>
+  {{end}}
+</article>
+{{else}}
+<p>No dead letters.</p>
+{{end}}
+{{with .Data.Next}}<p><a href="/admin/shops/{{seg $shop}}/dead-letters?cursor={{str .}}{{if not $.Data.Open}}&amp;state=all{{end}}" rel="next">Next page</a></p>{{end}}
+{{end}}

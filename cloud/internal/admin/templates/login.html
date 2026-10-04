@@ -1,0 +1,10 @@
+{{define "content"}}
+<h1>Sign in</h1>
+<p class="muted">For Muneem operators only. Every sign-in and every page you open is recorded in the audit log.</p>
+<form method="post" action="/admin/login" class="stack">
+  <input type="hidden" name="csrf" value="{{.CSRF}}">
+  <label>Email <input type="email" name="identifier" required autocomplete="username"></label>
+  <label>Password <input type="password" name="password" required autocomplete="current-password"></label>
+  <button type="submit">Sign in</button>
+</form>
+{{end}}

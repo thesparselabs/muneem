@@ -22,6 +22,8 @@ type Claims struct {
 	Device   string   `json:"device,omitempty"`
 	Roles    []string `json:"roles,omitempty"`
 	PermVer  int      `json:"perm_ver"`
+	// Scope is empty on shop tokens; "op" marks an operator token (ADR-0057), which shop routes refuse.
+	Scope string `json:"scope,omitempty"`
 	jwt.RegisteredClaims
 }
 
@@ -69,7 +71,7 @@ func (s *Signer) Require(next echo.HandlerFunc) echo.HandlerFunc {
 			return httpx.Unauthorized(c, "NOT_AUTHENTICATED", "missing bearer token")
 		}
 		claims, err := s.Parse(strings.TrimPrefix(h, "Bearer "))
-		if err != nil {
+		if err != nil || claims.Scope != "" {
 			return httpx.Unauthorized(c, "SESSION_EXPIRED", "invalid or expired token")
 		}
 		c.Set(claimsKey, claims)

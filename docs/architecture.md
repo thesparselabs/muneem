@@ -23,6 +23,7 @@ packages/sync-reference In-memory reference implementation of the sync protocol,
 cloud/            Go + Echo API, Postgres with row-level security, Go port of the engines; cloud/Dockerfile = the image
 deploy/           Production kit for one VM: compose (api + Caddy), deploy.sh, roles.sql, S3 lifecycle (ADR-0051)
 deploy/monitoring Prometheus, Loki, Grafana (dashboards + alert rules as files), crash collector, Alloy (ADR-0053)
+docs/runbooks/    Operator procedures (ops-*.md, Stage 9i) beside one page per alert (Stage 9c)
 scripts/          schema-lint, diff-fuzz, gen-preload
 design/           PRD, PRD review, HLD, LLD (intent)
 docs/             this folder (reality, with reasons)
@@ -37,6 +38,7 @@ docs/             this folder (reality, with reasons)
 | TS ↔ Go engines | Byte-identical results | shared fixture files in both test suites; nightly differential fuzz |
 | Financial documents & audit log | Append-only; corrections are new documents | SQLite `RAISE(ABORT)` triggers; Postgres triggers + role grants |
 | Tenant data | A business never sees another's rows | Postgres RLS keyed on `app.business_id` set per transaction |
+| Shop ↔ operator | No shop user reaches `/v1/admin` or `/admin`; no operator token opens a shop route; only `muneem_admin` reads across shops | operator grants written only by the owner role; operator tokens under derived keys with scope `op`; `muneem_admin` SELECT policies (ADR-0057) |
 | Hardware / network | Never inside the commit path | (Stage 3+) design rule, HLD §8 |
 | Sync transport ↔ SQLite | The utility process does HTTP only; main alone writes, and a pulled change never writes an outbox or audit row | process split (HLD §3.1); round-trip no-echo test |
 | TS ↔ Go sync servers | Same answers to the same requests | shared protocol fixtures in both suites (ADR-0042) |
@@ -296,6 +298,24 @@ docs/             this folder (reality, with reasons)
   - the probes see every shop through the RLS-bound role, and the role alone sees none;
   - every alert rule has a runbook, and every metric a rule or dashboard uses is exported;
   - scrubbed reports contain none of a PII fixture's values, on both the desktop and the collector.
+## Operator tooling (Stage 9i)
+
+- **Package:** `cloud/internal/admin` (ADR-0057). Its JSON API is `packages/contracts/openapi/muneem-admin-v1.yaml`,
+  generated into `cloud/api/adminapi`, separate from the device contract. The admin page is `html/template`, with no
+  JavaScript.
+- **Listener:** the API serves `/v1/admin` and `/admin/` on `MUNEEM_ADMIN_ADDR` (port 8081, published only on the
+  VM's loopback). It mounts them on the public server only when `MUNEEM_ADMIN_PUBLIC=true`.
+- **Operators:** a row in `operator_grant`, written only by `muneem-api grant-operator` as the owner role. Operator
+  tokens are signed with keys derived from the JWT ring (`Keyring.Derive`), carry scope `op`, live 15 minutes, and are
+  re-checked against the grant on every request.
+- **Database:** cross-shop reads run as `muneem_admin`, through the login role `muneem_admin_app`, in transactions that
+  `SET LOCAL ROLE muneem_admin`. That role has SELECT policies on the tables it needs, and writes only dead-letter
+  resolutions and `admin.*` audit rows. Revoke and resend run as the app role inside the one shop's scope, reusing
+  `device.Revoke` and `devicesync.Ingest.Reapply`.
+- **Audit:** every operator read and action, every sign-in and every failed sign-in is an `admin.*` row in `audit_log`.
+  Actions carry a required reason.
+- **Dead letters:** a dead letter is open until an operator resolves it (`resent` or `dismissed`) or the device's same
+  operation applies.
 
 ## What is not built yet
 

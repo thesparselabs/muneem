@@ -1,0 +1,28 @@
+{{define "content"}}
+{{template "shopHeader" .Data}}
+{{$shop := .Data.Shop.BusinessId}}
+<h2>Backups</h2>
+<p class="muted">Encrypted device backups in object storage. Only confirmed ones can be restored; pending ones never finished uploading.</p>
+<table>
+  <thead>
+    <tr><th scope="col">Backup</th><th scope="col">Device</th><th scope="col">Status</th><th scope="col">Size (bytes)</th><th scope="col">Schema</th><th scope="col">Key</th><th scope="col">Created</th><th scope="col">Confirmed</th></tr>
+  </thead>
+  <tbody>
+    {{range .Data.Body}}
+    <tr>
+      <td><code>{{.Id}}</code></td>
+      <td><code>{{.DeviceId}}</code></td>
+      <td>{{.Status}}</td>
+      <td>{{.Bytes}}</td>
+      <td>{{.SchemaVersion}}</td>
+      <td><code>{{.KeyId}}</code></td>
+      <td>{{when .CreatedAt}}</td>
+      <td>{{when .ConfirmedAt}}</td>
+    </tr>
+    {{else}}
+    <tr><td colspan="8">No backups.</td></tr>
+    {{end}}
+  </tbody>
+</table>
+{{with .Data.Next}}<p><a href="/admin/shops/{{seg $shop}}/backups?cursor={{str .}}" rel="next">Next page</a></p>{{end}}
+{{end}}

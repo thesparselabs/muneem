@@ -9,11 +9,15 @@ export MUNEEM_S3_SECRET_KEY ?= muneem-dev-secret
 export MUNEEM_S3_REGION     ?= us-east-1
 export MUNEEM_BACKUP_MASTER_KEY ?= AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8=  # dev only: wraps escrowed backup keys (8f)
 OPENAPI := ../packages/contracts/openapi/muneem-v1.yaml
+OPENAPI_ADMIN := ../packages/contracts/openapi/muneem-admin-v1.yaml
+OAPI_CODEGEN := go run github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@v2.5.1
 
 .PHONY: gen build run test lint migrate-up migrate-down db-roles smoke
 
-gen:              ## regenerate api/openapi.gen.go from the shared OpenAPI document
-	go run github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@v2.5.1 -generate types,echo-server -package api -o api/openapi.gen.go $(OPENAPI)
+gen:              ## regenerate api/openapi.gen.go and api/adminapi/adminapi.gen.go from the OpenAPI documents
+	$(OAPI_CODEGEN) -generate types,echo-server -package api -o api/openapi.gen.go $(OPENAPI)
+	mkdir -p api/adminapi
+	$(OAPI_CODEGEN) -generate types,echo-server -package adminapi -o api/adminapi/adminapi.gen.go $(OPENAPI_ADMIN)
 
 build: gen
 	go build -o bin/muneem-api ./cmd/api

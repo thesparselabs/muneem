@@ -32,6 +32,13 @@ curl -i localhost:8080/v1/health
   - `MUNEEM_BACKUP_MASTER_KEYS` (`version:base64,...`; the first wraps);
   - the legacy `MUNEEM_BACKUP_MASTER_KEY`, which acts as `v1`.
   - Without a key or object storage, the `/backups` routes answer 503.
+- **Operator tooling (9i, ADR-0057):**
+  - `MUNEEM_ADMIN_DATABASE_URL` names the `muneem_admin_app` login. In development the owner URL also works, because
+    each admin transaction drops to `muneem_admin`. Unset, the tooling is off.
+  - `MUNEEM_ADMIN_ADDR` (`127.0.0.1:8081`) serves `/admin/` and `/v1/admin`.
+  - `MUNEEM_ADMIN_PUBLIC=true` also mounts them on `PORT`.
+  - The admin contract is `packages/contracts/openapi/muneem-admin-v1.yaml`, which `make gen` turns into
+    `api/adminapi/adminapi.gen.go`.
 - **Dev defaults:** the Makefile points at the docker-compose MinIO and a dev-only master key.
 
 Logs are JSON via `log/slog`.
@@ -40,6 +47,7 @@ Logs are JSON via `log/slog`.
 - `migrate-up`;
 - `migrate-down` (dev only);
 - `rewrap`, which re-wraps escrowed keys under the active master key;
+- `grant-operator <email>` / `revoke-operator <email>`. A new account's password is read from stdin;
 - `healthcheck`, which probes `/v1/ready` on `PORT`.
 
 `GET /v1/ready` checks Postgres and object storage (200 or 503), while `/v1/health` stays the liveness probe.

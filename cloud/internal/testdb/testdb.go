@@ -93,7 +93,7 @@ func createDatabase(base, name string) error {
 var tables = []string{
 	"party_outstanding", "product_sales_daily", "daily_payment_summary", "daily_sales_summary",
 	"audit_entry", "backup_key", "backup", "snapshot", "conflict_log", "dead_letter", "journal_line", "journal_entry", "entity_state", "change_log", "sync_operation",
-	"audit_log", "entitlement", "refresh_token", "device_integrity", "device", "terminal", "branch", "business_membership", "business",
+	"operator_grant", "audit_log", "entitlement", "refresh_token", "device_integrity", "device", "terminal", "branch", "business_membership", "business",
 	"organization_member", "app_user", "organization",
 }
 

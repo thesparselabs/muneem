@@ -20,6 +20,7 @@ coverage/
 apps/desktop/src/preload/generated.ts
 packages/contracts/src/http/generated.ts
 cloud/api/openapi.gen.go
+cloud/api/adminapi/adminapi.gen.go
 apps/desktop/native/
 apps/desktop/release/
 packages/db-sqlite/src/migrations.generated.ts
