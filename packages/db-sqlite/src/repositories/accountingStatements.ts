@@ -5,12 +5,65 @@ import { stmt } from '../statements.js';
 export interface StatementFilter { businessId: string; from?: string | null; to: string; branchId?: string | null }
 export interface AccountAmount { accountId: string; code: string; name: string; type: AccountType; role: string | null; debitPaise: number; creditPaise: number }
 
+const shiftDay = (date: string, days: number): string => {
+  const d = new Date(`${date}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + days);
+  return d.toISOString().slice(0, 10);
+};
+const dayBefore = (date: string): string => shiftDay(date, -1);
+const monthStart = (date: string): string => `${date.slice(0, 7)}-01`;
+const later = (a: string, b: string): string => (a > b ? a : b);
+const monthEnd = (date: string): string => new Date(Date.UTC(Number(date.slice(0, 4)), Number(date.slice(5, 7)), 0)).toISOString().slice(0, 10);
+
+// A range as the whole calendar months inside it (read from account_balance) and up to two part-month edges (read from the lines).
+interface MonthSplit { first: string | null; last: string; lo1: string | null; hi1: string | null; lo2: string | null; hi2: string | null }
+function splitByMonth(from: string | null, to: string): MonthSplit | null {
+  const first = from === null || from === monthStart(from) ? from : shiftDay(monthEnd(from), 1);
+  const last = to === monthEnd(to) ? to : dayBefore(monthStart(to));
+  if (first !== null && first > last) return null;
+  const head = from !== null && first !== null && from < first;
+  const tail = last < to;
+  return { first, last, lo1: head ? from : null, hi1: head ? dayBefore(first!) : null, lo2: tail ? shiftDay(last, 1) : null, hi2: tail ? to : null };
+}
+
+// The balance cache has no branch, so a branch's figures always come from the lines.
+const cachedSplit = (f: StatementFilter): MonthSplit | null => (f.branchId ? null : splitByMonth(f.from ?? null, f.to));
+
 // Σ of each account's lines whose entry falls in the range (from open-ended = since the beginning).
 export function accountTotals(db: Db, f: StatementFilter): AccountAmount[] {
-  return stmt(db, `SELECT a.id AS accountId, a.code, a.name, a.type, a.role, COALESCE(SUM(l.debit_paise), 0) AS debitPaise, COALESCE(SUM(l.credit_paise), 0) AS creditPaise
-    FROM journal_line l JOIN journal_entry j ON j.id = l.entry_id JOIN account a ON a.id = l.account_id
-    WHERE j.business_id = @businessId AND j.entry_date <= @to AND (@from IS NULL OR j.entry_date >= @from) AND (@branchId IS NULL OR j.branch_id = @branchId)
-    GROUP BY a.id ORDER BY a.code`).all({ businessId: f.businessId, from: f.from ?? null, to: f.to, branchId: f.branchId ?? null }) as AccountAmount[];
+  const split = cachedSplit(f);
+  if (!split) {
+    return stmt(db, `SELECT a.id AS accountId, a.code, a.name, a.type, a.role, COALESCE(SUM(l.debit_paise), 0) AS debitPaise, COALESCE(SUM(l.credit_paise), 0) AS creditPaise
+      FROM journal_line l JOIN journal_entry j ON j.id = l.entry_id JOIN account a ON a.id = l.account_id
+      WHERE j.business_id = @businessId AND j.entry_date <= @to AND (@from IS NULL OR j.entry_date >= @from) AND (@branchId IS NULL OR j.branch_id = @branchId)
+      GROUP BY a.id ORDER BY a.code`).all({ businessId: f.businessId, from: f.from ?? null, to: f.to, branchId: f.branchId ?? null }) as AccountAmount[];
+  }
+  return stmt(db, `SELECT a.id AS accountId, a.code, a.name, a.type, a.role, SUM(t.dr) AS debitPaise, SUM(t.cr) AS creditPaise FROM (
+      SELECT b.account_id, b.debit_paise AS dr, b.credit_paise AS cr FROM account_balance b JOIN accounting_period p ON p.id = b.period_id
+        WHERE b.business_id = @businessId AND (@first IS NULL OR p.period_start >= @first) AND p.period_end <= @last
+      UNION ALL
+      SELECT l.account_id, l.debit_paise, l.credit_paise FROM journal_entry j CROSS JOIN journal_line l
+        WHERE l.entry_id = j.id AND j.business_id = @businessId AND j.entry_date BETWEEN @lo1 AND @hi1
+      UNION ALL
+      SELECT l.account_id, l.debit_paise, l.credit_paise FROM journal_entry j CROSS JOIN journal_line l
+        WHERE l.entry_id = j.id AND j.business_id = @businessId AND j.entry_date BETWEEN @lo2 AND @hi2
+    ) t JOIN account a ON a.id = t.account_id
+    GROUP BY a.id ORDER BY a.code`).all({ businessId: f.businessId, ...split }) as AccountAmount[];
+}
+
+// Σ debit − credit of one account's lines dated on or before `to`.
+function accountNet(db: Db, f: { businessId: string; accountId: string; to: string; branchId: string | null }): number {
+  const split = cachedSplit(f);
+  if (!split) {
+    return stmt(db, `SELECT COALESCE(SUM(l.debit_paise - l.credit_paise), 0) FROM journal_line l JOIN journal_entry j ON j.id = l.entry_id
+      WHERE j.business_id = @businessId AND l.account_id = @accountId AND (@branchId IS NULL OR j.branch_id = @branchId) AND j.entry_date <= @to`).pluck().get(f) as number;
+  }
+  return stmt(db, `SELECT
+      (SELECT COALESCE(SUM(b.debit_paise - b.credit_paise), 0) FROM account_balance b JOIN accounting_period p ON p.id = b.period_id
+        WHERE b.account_id = @accountId AND b.business_id = @businessId AND p.period_end <= @last)
+      + (SELECT COALESCE(SUM(l.debit_paise - l.credit_paise), 0) FROM journal_entry j CROSS JOIN journal_line l
+        WHERE l.account_id = @accountId AND l.entry_id = j.id AND j.business_id = @businessId AND j.entry_date BETWEEN @lo2 AND @hi2)`)
+    .pluck().get({ businessId: f.businessId, accountId: f.accountId, last: split.last, lo2: split.lo2, hi2: split.hi2 }) as number;
 }
 
 export interface TrialBalanceRow { accountId: string; code: string; name: string; type: AccountType; debitPaise: number; creditPaise: number }
@@ -51,16 +104,10 @@ export const fyStartOf = (date: string): string => {
   return `${Number(date.slice(5, 7)) >= 4 ? y : y - 1}-04-01`;
 };
 
-const dayBefore = (date: string): string => {
-  const d = new Date(`${date}T00:00:00Z`);
-  d.setUTCDate(d.getUTCDate() - 1);
-  return d.toISOString().slice(0, 10);
-};
-
 // Party balances on a control account, split by sign, so customers' advances and suppliers' debits are presented apart (ADR-0032).
 function partySplit(db: Db, f: StatementFilter, role: 'ar' | 'ap'): { debitSide: number; creditSide: number } {
-  const rows = stmt(db, `SELECT SUM(l.debit_paise - l.credit_paise) AS net FROM journal_line l JOIN journal_entry j ON j.id = l.entry_id JOIN account a ON a.id = l.account_id
-    WHERE j.business_id = @businessId AND a.role = @role AND j.entry_date <= @to AND (@branchId IS NULL OR j.branch_id = @branchId)
+  const rows = stmt(db, `SELECT SUM(l.debit_paise - l.credit_paise) AS net FROM account a CROSS JOIN journal_line l CROSS JOIN journal_entry j
+    WHERE l.account_id = a.id AND j.id = l.entry_id AND j.business_id = @businessId AND a.role = @role AND j.entry_date <= @to AND (@branchId IS NULL OR j.branch_id = @branchId)
     GROUP BY COALESCE(l.party_id, '')`).pluck().all({ businessId: f.businessId, role, to: f.to, branchId: f.branchId ?? null }) as number[];
   return { debitSide: rows.filter((n) => n > 0).reduce((s, n) => s + n, 0), creditSide: -rows.filter((n) => n < 0).reduce((s, n) => s + n, 0) };
 }
@@ -111,28 +158,47 @@ export interface LedgerLineRow {
   entryId: string; entryNo: string; date: string; source: string; refType: string | null; refId: string | null; narration: string | null;
   partyType: string | null; partyId: string | null; debitPaise: number; creditPaise: number; balancePaise: number;
 }
+const SPARSE_ACCOUNT_LINES = 2000;
+
+// A busy account's page walks the journal by date; a sparse one reads its few lines and sorts them.
+function ledgerSource(db: Db, accountId: string): string {
+  const lines = stmt(db, 'SELECT COUNT(*) FROM (SELECT 1 FROM journal_line WHERE account_id = ? LIMIT ?)').pluck().get(accountId, SPARSE_ACCOUNT_LINES) as number;
+  return lines < SPARSE_ACCOUNT_LINES ? 'journal_line l CROSS JOIN journal_entry j' : 'journal_entry j CROSS JOIN journal_line l';
+}
+
 // An account's lines in date order with a running balance (debit minus credit), keyset-paged (FR-054 general ledger).
 export function accountLedger(db: Db, f: StatementFilter & { accountId: string; limit: number; cursor?: string | undefined }) {
   const after = decode(f.cursor);
-  const params = { businessId: f.businessId, accountId: f.accountId, from: f.from ?? null, to: f.to, branchId: f.branchId ?? null };
-  const net = (cond: string) => stmt(db, `SELECT COALESCE(SUM(l.debit_paise - l.credit_paise), 0) FROM journal_line l JOIN journal_entry j ON j.id = l.entry_id
-    WHERE j.business_id = @businessId AND l.account_id = @accountId AND (@branchId IS NULL OR j.branch_id = @branchId) AND ${cond}`).pluck().get(params) as number;
-  const rows = stmt(db, `SELECT * FROM (
-      SELECT j.id AS entryId, j.entry_no AS entryNo, j.entry_date AS date, j.source, j.ref_type AS refType, j.ref_id AS refId, j.narration, l.line_no AS n,
-        l.party_type AS partyType, l.party_id AS partyId, l.debit_paise AS debitPaise, l.credit_paise AS creditPaise,
-        SUM(l.debit_paise - l.credit_paise) OVER (ORDER BY j.entry_date, j.id, l.line_no) AS balancePaise
-      FROM journal_line l JOIN journal_entry j ON j.id = l.entry_id
-      WHERE j.business_id = @businessId AND l.account_id = @accountId AND (@branchId IS NULL OR j.branch_id = @branchId) AND j.entry_date <= @to)
-    WHERE (@from IS NULL OR date >= @from) AND (@ad IS NULL OR (date, entryId, n) > (@ad, @ae, @an))
-    ORDER BY date, entryId, n LIMIT @limit`).all({ ...params, ad: after?.d ?? null, ae: after?.e ?? null, an: after?.n ?? null, limit: f.limit + 1 }) as (LedgerLineRow & { n: number })[];
-  const page = rows.slice(0, f.limit);
+  const params = { businessId: f.businessId, accountId: f.accountId, to: f.to, branchId: f.branchId ?? null };
+  const netBefore = (date: string) => accountNet(db, { ...params, to: dayBefore(date) });
+  const rows = stmt(db, `SELECT j.id AS entryId, j.entry_no AS entryNo, j.entry_date AS date, j.source, j.ref_type AS refType, j.ref_id AS refId, j.narration,
+      l.line_no AS n, l.party_type AS partyType, l.party_id AS partyId, l.debit_paise AS debitPaise, l.credit_paise AS creditPaise
+    FROM ${ledgerSource(db, f.accountId)}
+    WHERE l.entry_id = j.id AND l.account_id = @accountId AND j.business_id = @businessId AND (@branchId IS NULL OR j.branch_id = @branchId)
+      AND j.entry_date BETWEEN @lo AND @to AND (@ad IS NULL OR (j.entry_date, j.id, l.line_no) > (@ad, @ae, @an))
+    ORDER BY j.entry_date, j.id, l.line_no LIMIT @limit`).all({
+    ...params, lo: later(f.from ?? '', after?.d ?? ''), ad: after?.d ?? null, ae: after?.e ?? null, an: after?.n ?? null, limit: f.limit + 1,
+  }) as (Omit<LedgerLineRow, 'balancePaise'> & { n: number })[];
+  const openingBalancePaise = f.from ? netBefore(f.from) : 0;
+  let balancePaise = after ? netBefore(after.d) + sameDayUpTo(db, params, after) : openingBalancePaise;
+  const page = rows.slice(0, f.limit).map((r) => {
+    balancePaise += r.debitPaise - r.creditPaise;
+    return { ...r, balancePaise };
+  });
   const last = page.at(-1);
   return {
-    openingBalancePaise: f.from ? net('j.entry_date < @from') : 0,
+    openingBalancePaise,
     items: page as LedgerLineRow[],
-    closingBalancePaise: net('j.entry_date <= @to'),
+    closingBalancePaise: accountNet(db, params),
     nextCursor: rows.length > f.limit && last ? encode({ d: last.date, e: last.entryId, n: last.n }) : null,
   };
+}
+
+// The account's lines on the cursor's day up to and including the cursor's line.
+function sameDayUpTo(db: Db, f: { businessId: string; accountId: string; branchId: string | null }, c: Cursor): number {
+  return stmt(db, `SELECT COALESCE(SUM(l.debit_paise - l.credit_paise), 0) FROM journal_entry j CROSS JOIN journal_line l
+    WHERE l.entry_id = j.id AND l.account_id = @accountId AND j.business_id = @businessId AND (@branchId IS NULL OR j.branch_id = @branchId)
+      AND j.entry_date = @d AND (j.id, l.line_no) <= (@e, @n)`).pluck().get({ ...f, d: c.d, e: c.e, n: c.n }) as number;
 }
 
 export interface DayBookEntry {
