@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import type { Permission } from './permissions.js';
 import {
-  Branch, BranchInput, Business, BusinessInput, DeviceInfo, DocSeries, Health, Identifier, Pin, Session,
+  AuditVerification, Branch, BranchInput, Business, BusinessInput, DeviceInfo, DocSeries, Health, Identifier, Pin, Session,
   SessionUser, SyncStatus, Terminal, TerminalInput, Ulid,
 } from './schemas.js';
 import {
@@ -261,6 +261,7 @@ export const contract = {
     output: z.object({ quickCheck: z.enum(['ok', 'failed']), foreignKeys: z.enum(['ok', 'failed']), auditChain: z.enum(['ok', 'broken']), stock: z.enum(['ok', 'healed', 'not_run']), parties: z.enum(['ok', 'mismatch', 'not_run']), journals: z.enum(['ok', 'healed', 'mismatch', 'not_run']), detail: z.array(z.string()) }),
     permission: 'diagnostics.view', rateLimit: { perSec: 1 }, audit: true,
   }),
+  'diagnostics.verifyAudit': spec({ input: Empty, output: AuditVerification, permission: 'diagnostics.view', rateLimit: { perSec: 1 } }),
   'diagnostics.exportSupportBundle': spec({ input: Empty, output: z.object({ handle: z.string(), bytes: z.number().int() }), permission: 'diagnostics.view', rateLimit: { perSec: 1 }, audit: true }),
   'diagnostics.getLogsTail': spec({ input: z.object({ log: z.enum(['app', 'sync', 'sql-slow', 'hardware']), lines: z.number().int().min(1).max(2000).default(200) }), output: z.array(z.string()), permission: 'diagnostics.view', rateLimit: { perSec: 5 } }),
 

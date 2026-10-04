@@ -363,6 +363,7 @@ export function createApp(cfg: AppConfig) {
     'sync.hydrationStatus': () => hydration.status(),
     'diagnostics.getHealth': () => diagnostics.getHealth(),
     'diagnostics.integrityCheck': () => diagnostics.integrityCheck(),
+    'diagnostics.verifyAudit': () => diagnostics.verifyAudit(),
     'diagnostics.exportSupportBundle': () => diagnostics.exportSupportBundle(),
     'diagnostics.getLogsTail': (i) => diagnostics.getLogsTail(i.log, i.lines),
     ...backups.handlers,

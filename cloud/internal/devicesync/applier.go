@@ -32,7 +32,7 @@ func (a *applier) run() (Result, error) {
 	if err := lockBusiness(a.ctx, a.tx, a.businessID); err != nil {
 		return Result{}, err
 	}
-	for _, s := range []step{a.idempotent, a.knownEntity, a.business, a.dependencies, a.verified} {
+	for _, s := range []step{a.idempotent, a.knownEntity, a.business, a.auditEntry, a.dependencies, a.verified} {
 		if r, done, err := s(); done || err != nil {
 			return r, err
 		}
@@ -163,12 +163,14 @@ func (a *applier) unchanged(cur *entityRow) (Result, error) {
 	return applied(a.op, seq), recordOperation(a.ctx, a.tx, a.businessID, a.caller.DeviceID, a.op, StatusApplied, &seq, nil)
 }
 
-func (a *applier) persist(s stored) (int64, error) {
-	seq, err := appendChange(a.ctx, a.tx, a.businessID, s)
+func (a *applier) persist(s stored) (int64, error) { return persist(a.ctx, a.tx, a.businessID, s) }
+
+func persist(ctx context.Context, tx pgx.Tx, businessID string, s stored) (int64, error) {
+	seq, err := appendChange(ctx, tx, businessID, s)
 	if err != nil {
 		return 0, err
 	}
-	return seq, upsertEntity(a.ctx, a.tx, a.businessID, s, seq)
+	return seq, upsertEntity(ctx, tx, businessID, s, seq)
 }
 
 func (a *applier) project(seq int64) error {
@@ -195,20 +197,25 @@ func (a *applier) review(kind string, detail any) {
 // Every review item is kept in conflict_log and sent down the control stream, so each device lists it (ADR-0041).
 func (a *applier) recordReviews(seq int64) error {
 	for _, r := range a.reviews {
-		if err := insertConflict(a.ctx, a.tx, a.businessID, r, seq); err != nil {
-			return err
-		}
-		item, err := json.Marshal(map[string]any{"id": r.ID, "kind": r.Kind, "entityType": r.EntityType, "entityId": r.EntityID,
-			"deviceId": r.DeviceID, "operationId": r.OperationID, "serverSeq": seq, "detail": r.Detail})
-		if err != nil {
-			return err
-		}
-		if _, err := a.persist(stored{EntityType: ControlReviewItem, EntityID: r.ID, Stream: StreamControl, Version: 1, Payload: item,
-			Writer: a.caller.DeviceID}); err != nil {
+		if err := recordReview(a.ctx, a.tx, a.businessID, r, seq); err != nil {
 			return err
 		}
 	}
 	return nil
+}
+
+func recordReview(ctx context.Context, tx pgx.Tx, businessID string, r conflictRow, seq int64) error {
+	if err := insertConflict(ctx, tx, businessID, r, seq); err != nil {
+		return err
+	}
+	item, err := json.Marshal(map[string]any{"id": r.ID, "kind": r.Kind, "entityType": r.EntityType, "entityId": r.EntityID,
+		"deviceId": r.DeviceID, "operationId": r.OperationID, "serverSeq": seq, "detail": r.Detail})
+	if err != nil {
+		return err
+	}
+	_, err = persist(ctx, tx, businessID, stored{EntityType: ControlReviewItem, EntityID: r.ID, Stream: StreamControl, Version: 1, Payload: item,
+		Writer: r.DeviceID})
+	return err
 }
 
 func (a *applier) document(cur *entityRow) (*stored, error) {

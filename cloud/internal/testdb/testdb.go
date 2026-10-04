@@ -35,7 +35,7 @@ func Open(t testing.TB) *store.DB {
 }
 
 var tables = []string{
-	"backup_key", "backup", "snapshot", "conflict_log", "dead_letter", "journal_line", "journal_entry", "entity_state", "change_log", "sync_operation",
+	"audit_entry", "backup_key", "backup", "snapshot", "conflict_log", "dead_letter", "journal_line", "journal_entry", "entity_state", "change_log", "sync_operation",
 	"audit_log", "entitlement", "refresh_token", "device", "terminal", "branch", "business_membership", "business",
 	"organization_member", "app_user", "organization",
 }

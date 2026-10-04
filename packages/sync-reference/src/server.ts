@@ -1,5 +1,5 @@
 import {
-  PULL_MAX_LIMIT, PUSH_MAX_BYTES, PushRequest, STREAM_OF, SYNC_ERROR_CODES, payloadSchema, type Change, type OutboxEntityType, type PullResponse,
+  AuditEntryPayload, PULL_MAX_LIMIT, PUSH_MAX_BYTES, PushRequest, STREAM_OF, SYNC_ERROR_CODES, payloadSchema, type Change, type OutboxEntityType, type PullResponse,
   type PushOperation, type PushResponse, type PushResult, type Snapshot, type SyncError, type SyncErrorCode, type SyncStream,
 } from '@muneem/contracts';
 import { payloadHash } from './canonical.js';
@@ -138,6 +138,7 @@ export class ReferenceServer implements SyncServer {
     if (seen) return seen.payloadHash === op.payloadHash
       ? { operationId: op.operationId, status: seen.status === 'applied' ? 'duplicate' : 'rejected', ...(seen.serverSeq !== undefined && { serverSeq: seen.serverSeq }), ...(seen.error && { error: seen.error }) }
       : this.reject(known, deviceId, op, error('PAYLOAD_INVALID', 'operation id reused with a different payload'), false);
+    if (op.entityType === 'audit_entry') return this.pushAudit(known, deviceId, op);
     const refused = this.refusal(known, op);
     if (refused) return refused.class === 'permanent' ? this.reject(known, deviceId, op, refused, true) : { operationId: op.operationId, status: refused.class === 'dependency' ? 'deferred' : 'rejected', error: refused };
     const at = this.now().toISOString();
@@ -147,6 +148,25 @@ export class ReferenceServer implements SyncServer {
     known.operations.set(key, { status: 'applied', payloadHash: op.payloadHash, serverSeq });
     known.appliedOperationIds.add(op.operationId);
     return { operationId: op.operationId, status: 'applied', serverSeq };
+  }
+
+  // 8g: an audit row is checked against its device's chain and kept beside it; it never enters the change log (ADR-0048).
+  private pushAudit(b: BusinessState, deviceId: string, op: PushOperation): PushResult {
+    const parsed = AuditEntryPayload.safeParse(op.payload);
+    if (payloadHash(op.payload) !== op.payloadHash || !parsed.success || parsed.data.business_id !== b.id || op.entityId !== parsed.data.id) {
+      return this.reject(b, deviceId, op, error('PAYLOAD_INVALID', 'not an audit row of this business'), true);
+    }
+    const verdict = b.audit.check(parsed.data);
+    if (verdict.kind === 'gap') return { operationId: op.operationId, status: 'deferred', error: error('DEPENDENCY_MISSING', verdict.detail) };
+    if (verdict.kind === 'broken') {
+      this.logConflict(b, { kind: 'audit_chain_broken', entityType: 'audit_entry', entityId: op.entityId, deviceId, rule: 'audit_chain', winner: 'cloud',
+        field: String(parsed.data.seq), deviceValue: { chainDeviceId: parsed.data.device_id, seq: parsed.data.seq, detail: verdict.detail } }, this.now().toISOString());
+      return this.reject(b, deviceId, op, error('AUDIT_CHAIN_BROKEN', verdict.detail), true);
+    }
+    if (verdict.kind === 'append') b.audit.append({ row: parsed.data, operationId: op.operationId, pushedBy: deviceId });
+    b.operations.set(`${deviceId}:${op.operationId}`, { status: 'applied', payloadHash: op.payloadHash });
+    b.appliedOperationIds.add(op.operationId);
+    return { operationId: op.operationId, status: verdict.kind === 'append' ? 'applied' : 'duplicate' };
   }
 
   // ADR-0039: a business made on the desktop arrives as its own create, from a user of its organization.

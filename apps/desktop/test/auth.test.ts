@@ -103,7 +103,7 @@ describe('business setup end-to-end through the gateway', () => {
     expect(t.ok).toBe(true);
     const sel = await g.handle('business.selectTerminal', { terminalId: (t as { data: { id: string } }).data.id }, 1);
     expect(sel).toMatchObject({ ok: true, data: { branchId, terminalId: (t as { data: { id: string } }).data.id } });
-    const outbox = db.prepare("SELECT entity_type, operation_type FROM sync_outbox WHERE entity_type NOT IN ('uom', 'price_list', 'account') ORDER BY seq").all();
+    const outbox = db.prepare("SELECT entity_type, operation_type FROM sync_outbox WHERE entity_type NOT IN ('uom', 'price_list', 'account', 'audit_entry') ORDER BY seq").all();
     const catalogDefaults = db.prepare("SELECT COUNT(*) FROM sync_outbox WHERE entity_type IN ('uom', 'price_list')").pluck().get();
     expect(catalogDefaults).toBe(10); // 9 standard units + the Retail price list, seeded with the business
     const accounts = db.prepare("SELECT COUNT(*) FROM sync_outbox WHERE entity_type = 'account'").pluck().get();
@@ -114,9 +114,11 @@ describe('business setup end-to-end through the gateway', () => {
     ]);
     const s = app.session.require();
     expect(verifyAuditChain(db, s.businessId!, app.device.localDeviceId()).ok).toBe(true);
-    expect((await g.handle('sync.getStatus', {}, 1))).toMatchObject({ ok: true, data: { state: 'queued', pending: 14 + CHART_OF_ACCOUNTS.length } });
+    const auditRows = db.prepare('SELECT COUNT(*) FROM audit_log WHERE business_id = ?').pluck().get(s.businessId) as number;
+    expect(db.prepare("SELECT COUNT(*) FROM sync_outbox WHERE entity_type = 'audit_entry'").pluck().get()).toBe(auditRows); // 8g: each audit row is pushed
+    expect((await g.handle('sync.getStatus', {}, 1))).toMatchObject({ ok: true, data: { state: 'queued', pending: 14 + CHART_OF_ACCOUNTS.length + auditRows } });
     const h = await g.handle('diagnostics.getHealth', {}, 1);
-    expect(h).toMatchObject({ ok: true, data: { outboxDepth: 14 + CHART_OF_ACCOUNTS.length, auditChainOk: true, schemaVersion: SCHEMA_VERSION } });
+    expect(h).toMatchObject({ ok: true, data: { outboxDepth: 14 + CHART_OF_ACCOUNTS.length + auditRows, auditChainOk: true, schemaVersion: SCHEMA_VERSION } });
     expect(await g.handle('diagnostics.integrityCheck', {}, 1)).toMatchObject({ ok: true, data: { quickCheck: 'ok', foreignKeys: 'ok', auditChain: 'ok' } });
   });
   it('backups.runNow writes an encrypted, verified backup (file DB)', async () => {

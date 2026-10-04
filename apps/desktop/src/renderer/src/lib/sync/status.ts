@@ -22,6 +22,7 @@ const BLOCKED_REASON: Record<string, string> = { revoked: 'device removed', upgr
 
 function blockedReason(s: SyncStatus): string {
   if (s.deviceStatus && s.deviceStatus !== 'active') return BLOCKED_REASON[s.deviceStatus] ?? s.deviceStatus;
+  if (s.auditChainBroken) return 'audit trail check failed';
   return `${s.dead} could not sync`;
 }
 

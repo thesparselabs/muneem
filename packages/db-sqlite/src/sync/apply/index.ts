@@ -1,4 +1,4 @@
-import { STREAM_OF, type Change, type OutboxEntityType, type PullResponse, type SyncStream } from '@muneem/contracts';
+import { STREAM_OF, type Change, type OutboxEntityType, type PulledEntityType, type PullResponse, type SyncStream } from '@muneem/contracts';
 import type { Db } from '../../open.js';
 import { rewriteLevels } from '../../repositories/inventory.js';
 import { withTransaction } from '../../uow.js';
@@ -25,7 +25,7 @@ const master = (spec: MasterSpec): Applier => (ctx) => applyMaster(spec, ctx);
 const document = (a: DocumentApplier): Applier => (ctx) => applyDocument(a, ctx);
 
 // One apply function per entity type, keyed like STREAM_OF (7e); control messages have their own (the Go cloud says review_item, the reference server conflict_log).
-const APPLIERS: Readonly<Record<OutboxEntityType | 'conflict_log' | 'review_item' | 'device', Applier>> = {
+const APPLIERS: Readonly<Record<PulledEntityType | 'conflict_log' | 'review_item' | 'device', Applier>> = {
   business: applyBusiness, branch: master(BRANCH), terminal: master(TERMINAL), doc_series: master(DOC_SERIES), setting: applySetting, user_pin: () => undefined,
   account: master(ACCOUNT), expense_category: master(EXPENSE_CATEGORY),
   uom: master(UOM), category: master(CATEGORY), brand: master(BRAND), product: master(PRODUCT), barcode: applyBarcode, uom_conversion: applyConversion,

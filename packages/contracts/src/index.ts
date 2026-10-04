@@ -21,3 +21,4 @@ export * from './sync/types.js';
 export * from './http/index.js';
 export * from './sync/protocol.js';
 export * from './sync/payloads.js';
+export * from './sync/audit.js';

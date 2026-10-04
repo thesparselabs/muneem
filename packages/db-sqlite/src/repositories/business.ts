@@ -60,8 +60,9 @@ export function createBusiness(db: Db, input: BusinessCreate, actor: Actor): Bus
     });
     const business = getBusiness(db, id)!;
     nextLocalSeq(db);
-    appendAudit(db, { businessId: id, deviceId: actor.deviceId, userId: actor.userId, terminalId: actor.terminalId, action: 'business.create', entityType: 'business', entityId: id, after: business });
+    // The business reaches the cloud before its first audit row, which the cloud can only store under it.
     appendOutbox(db, { businessId: id, deviceId: actor.deviceId, entityType: 'business', entityId: id, operationType: 'create', payload: business });
+    appendAudit(db, { businessId: id, deviceId: actor.deviceId, userId: actor.userId, terminalId: actor.terminalId, action: 'business.create', entityType: 'business', entityId: id, after: business });
     return business;
   });
 }

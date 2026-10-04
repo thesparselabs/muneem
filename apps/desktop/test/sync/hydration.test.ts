@@ -57,7 +57,7 @@ describe('hydration (7f): a new device imports the business from a bundle', () =
 
     expect(books(b.db, a.businessId)).toEqual(books(a.db, a.businessId));
     expect(healthy(b.db, a.businessId)).toEqual(HEALTHY);
-    expect(b.db.prepare('SELECT COUNT(*) FROM sync_outbox').pluck().get()).toBe(0);
+    expect(b.db.prepare("SELECT COUNT(*) FROM sync_outbox WHERE entity_type <> 'audit_entry'").pluck().get()).toBe(0);
     const asOf = getHydration(b.db, a.businessId)!.asOfSeq;
     expect(b.db.prepare('SELECT MIN(last_seq) FROM sync_cursor WHERE business_id = ?').pluck().get(a.businessId)).toBeGreaterThanOrEqual(asOf!);
     expect(b.db.prepare("SELECT COUNT(*) FROM audit_log WHERE business_id = ? AND action NOT LIKE '%auth.%' AND action NOT LIKE 'ipc.sync.%'").pluck().get(a.businessId)).toBe(0);

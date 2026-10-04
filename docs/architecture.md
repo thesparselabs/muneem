@@ -45,7 +45,7 @@ docs/             this folder (reality, with reasons)
 - `Σ apportion(total, w) = total`, always
 - `cgst + sgst = pctOf(taxable, rate)`; `|cgst − sgst| ≤ 1`
 - `total = taxable + taxes + round_off`
-- `replay(audit rows) → hash chain verifies`, gap-free `seq` per device
+- `replay(audit rows) → hash chain verifies`, gap-free `seq` per device, on the device and again on the cloud (8g)
 - After a SIGKILL mid-write: no orphan audit or outbox row, `local_sequence` consistent
 - A failed product save or import leaves no product, barcode, price, category, audit or outbox row behind
 - An inclusive selling price never exceeds MRP; one live barcode code per business
@@ -188,6 +188,9 @@ docs/             this folder (reality, with reasons)
   - **Conflicts:** masters merge by field, the cloud wins on price, tax and config, a tombstone wins, and every
     resolution is logged.
   - **Ordering:** pushes for one business are serialized.
+  - **Audit chain** (8g, ADR-0048): audit rows arrive as push-only `audit_entry` operations and are kept per device
+    chain in `audit_entry`, never in `change_log`. `devicesync/auditchain` recomputes each hash with a Go port of
+    `canonicalJson` (shared fixtures in `packages/contracts/fixtures/canonical`); a break is `AUDIT_CHAIN_BROKEN`.
 - **Device** (`apps/desktop/src/main/sync`, ADR-0040):
   - **Push:** the `SyncEngine` claims the outbox in seq order and settles each result: sent, retry with backoff,
     failed, dead after 12 attempts, or superseded. HTTP and gzip run in a utility process.

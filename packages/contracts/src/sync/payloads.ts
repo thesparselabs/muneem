@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import type { OutboxEntityType } from './types.js';
+import { AuditEntryPayload } from './audit.js';
 
 // Version 1 of the wire is the payload each repository already records (Stage 7a). Known fields are typed so
 // the cloud and the apply path can rely on them; anything else passes through untouched.
@@ -126,5 +127,6 @@ const EXACT: Partial<Record<OutboxEntityType, Partial<Record<string, z.ZodTypeAn
 
 // The schema a payload of this entity and operation must satisfy; masters and config are checked loosely.
 export function payloadSchema(entityType: string, operationType: string): z.ZodTypeAny {
+  if (entityType === 'audit_entry') return AuditEntryPayload;
   return EXACT[entityType as OutboxEntityType]?.[operationType] ?? master;
 }

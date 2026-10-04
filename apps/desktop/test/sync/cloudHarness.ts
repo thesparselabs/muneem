@@ -29,6 +29,7 @@ export interface CloudHarness {
   cloudSales(businessId: string): Promise<number>;
   deadLetters(businessId: string): Promise<readonly unknown[]>;
   trialBalance(businessId: string): Promise<readonly unknown[] | null>;
+  auditChains(businessId: string): Promise<Record<string, number>>;
 }
 
 const SAFE_DRIFT_MS = 4 * 60_000;
@@ -117,5 +118,9 @@ export function referenceHarness(seed: number, start: number): ReferenceHarness 
     cloudSales: (id) => Promise.resolve([...server.business(id)!.entities.values()].filter((e) => e.entityType === 'sale').length),
     deadLetters: (id) => Promise.resolve(server.deadLetters(id)),
     trialBalance: () => Promise.resolve(null),
+    auditChains: (id) => {
+      const audit = server.business(id)!.audit;
+      return Promise.resolve(Object.fromEntries(audit.devices().map((d) => [d, audit.chain(d).length])));
+    },
   };
 }

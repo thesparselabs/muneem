@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import type { OutboxEntityType, SyncStream } from './types.js';
+import type { OutboxEntityType, PushStream, SyncStream } from './types.js';
 
 export const SYNC_PROTOCOL = 1;
 export const PUSH_MAX_OPERATIONS = 200;
@@ -9,7 +9,7 @@ export const PULL_MAX_LIMIT = 500;
 // LLD §7.2: control first so a revocation or lock is never stuck behind thousands of products.
 export const STREAM_ORDER: readonly SyncStream[] = ['control', 'config', 'masters', 'documents'];
 
-export const STREAM_OF: Readonly<Record<OutboxEntityType, SyncStream>> = {
+export const STREAM_OF: Readonly<Record<OutboxEntityType, PushStream>> = {
   accounting_period: 'control',
   business: 'config', branch: 'config', terminal: 'config', doc_series: 'config', setting: 'config', user_pin: 'config', account: 'config',
   expense_category: 'config',
@@ -18,12 +18,13 @@ export const STREAM_OF: Readonly<Record<OutboxEntityType, SyncStream>> = {
   pos_session: 'documents', cash_movement: 'documents', sale: 'documents', stock_adjustment: 'documents', party_opening: 'documents',
   purchase: 'documents', debit_note: 'documents', credit_note: 'documents', payment: 'documents', write_off: 'documents', expense: 'documents', allocation: 'documents',
   journal_entry: 'documents',
+  audit_entry: 'audit',
 };
 export const SYNC_ENTITY_TYPES = Object.keys(STREAM_OF) as OutboxEntityType[];
 
 export const SYNC_ERROR_CODES = {
   TOTAL_MISMATCH: 'permanent', JOURNAL_IMBALANCE: 'permanent', JOURNAL_MISMATCH: 'permanent', PAYLOAD_INVALID: 'permanent',
-  DEPENDENCY_MISSING: 'dependency', BUSINESS_UNKNOWN: 'transient', VERSION_UNSUPPORTED: 'transient', UNKNOWN_ENTITY: 'transient',
+  AUDIT_CHAIN_BROKEN: 'permanent', DEPENDENCY_MISSING: 'dependency', BUSINESS_UNKNOWN: 'transient', VERSION_UNSUPPORTED: 'transient', UNKNOWN_ENTITY: 'transient',
 } as const;
 export type SyncErrorCode = keyof typeof SYNC_ERROR_CODES;
 

@@ -1,9 +1,9 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync, copyFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { newUlid } from '@muneem/domain';
-import { AppError, type Health } from '@muneem/contracts';
+import { AppError, type AuditVerification, type Health } from '@muneem/contracts';
 import {
-  dbSizeBytes, foreignKeyCheck, getMeta, META_KEYS, outboxDepth, quickCheck, setMeta, verifyAuditChain,
+  auditRejections, recordAuditCheck, verifyAllAuditChains, dbSizeBytes, foreignKeyCheck, getMeta, META_KEYS, outboxDepth, quickCheck, setMeta, verifyAuditChain,
   currentSchemaVersion, journalsNotMatchingLines, rebuildAccountBalances, reconcilePartiesDb, replayKeys, tieOutFailures, unpostedDocuments, rewriteLevels, stockKeys, type Db, type StockDrift } from '@muneem/db-sqlite';
 import { DEVICE_AUDIT_SCOPE } from '../ipc/gateway.js';
 
@@ -91,15 +91,31 @@ export class DiagnosticsService {
     return 'mismatch';
   }
 
+  // 8g (ADR-0048): every audit chain held here, and any row the cloud refused as a broken chain; a break blocks the sync badge.
+  verifyAudit(): AuditVerification {
+    const db = this.d.db();
+    const checkedAt = new Date().toISOString();
+    const chains = verifyAllAuditChains(db);
+    recordAuditCheck(db, chains, checkedAt);
+    const cloudRejections = auditRejections(db);
+    const broken = chains.filter((c) => !c.ok);
+    if (broken.length > 0 || cloudRejections.length > 0) {
+      this.d.loggers.app.error({ code: 'AUDIT_CHAIN_BROKEN', broken, cloudRejections }, 'the audit trail failed its hash-chain check');
+    }
+    return {
+      checkedAt, ok: broken.length === 0 && cloudRejections.length === 0, cloudRejections,
+      chains: chains.map((c) => ({ businessId: c.businessId, deviceId: c.deviceId, count: c.count, ok: c.ok, brokenAtSeq: c.brokenAtSeq, reason: c.reason })),
+    };
+  }
+
   async integrityCheck() {
     const db = this.d.db();
     const qc = quickCheck(db);
     const fk = foreignKeyCheck(db);
-    const s = this.d.session.get();
-    const scopes = [DEVICE_AUDIT_SCOPE, ...(s?.businessId ? [s.businessId] : [])];
-    const chains = scopes.map((b) => ({ b, r: verifyAuditChain(db, b, this.d.device.localDeviceId()) }));
-    const broken = chains.filter((c) => !c.r.ok);
-    const detail = [...qc.detail.filter((x) => x !== 'ok'), ...fk.detail, ...broken.map((c) => `audit chain ${c.b} broken at seq ${c.r.brokenAtSeq}`)];
+    const audit = this.verifyAudit();
+    const broken = audit.chains.filter((c) => !c.ok);
+    const detail = [...qc.detail.filter((x) => x !== 'ok'), ...fk.detail, ...broken.map((c) => `audit chain ${c.businessId}/${c.deviceId} broken at seq ${c.brokenAtSeq} (${c.reason})`),
+      ...audit.cloudRejections.map((r) => `the cloud refused audit seq ${r.seq}: ${r.detail}`)];
     if (!qc.ok) this.d.loggers.app.error({ detail }, 'DB_CORRUPT detected by integrity check');
     const stock = await this.checkStock();
     if (stock === 'healed') detail.push('stock levels disagreed with their movements and were rebuilt');
@@ -108,7 +124,7 @@ export class DiagnosticsService {
     const journals = this.checkJournals();
     if (journals === 'healed') detail.push('account balances disagreed with the journal lines and were rebuilt');
     if (journals === 'mismatch') detail.push('the books do not agree with their documents; see the app log (JOURNAL_MISMATCH)');
-    return { quickCheck: qc.ok ? 'ok' : 'failed', foreignKeys: fk.ok ? 'ok' : 'failed', auditChain: broken.length ? 'broken' : 'ok', stock, parties, journals, detail } as const;
+    return { quickCheck: qc.ok ? 'ok' : 'failed', foreignKeys: fk.ok ? 'ok' : 'failed', auditChain: audit.ok ? 'ok' : 'broken', stock, parties, journals, detail } as const;
   }
 
   /** Logs + health JSON + schema version + row counts. No invoice contents. Returns an opaque handle, never a path. */

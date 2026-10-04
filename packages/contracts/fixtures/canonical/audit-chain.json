@@ -1,0 +1,73 @@
+{
+ "genesis": "0000000000000000000000000000000000000000000000000000000000000000",
+ "rows": [
+  {
+   "id": "01J00000000000000000AUDIT1",
+   "business_id": "01J0000000000000000000BIZ1",
+   "seq": 1,
+   "user_id": "01J0000000000000000000USR1",
+   "device_id": "01J0000000000000000000DEV1",
+   "terminal_id": null,
+   "action": "business.create",
+   "entity_type": "business",
+   "entity_id": "01J0000000000000000000BIZ1",
+   "before_json": null,
+   "after_json": "{\"name\":\"Sharma Store\",\"stateCode\":\"07\",\"version\":1}",
+   "reason": null,
+   "occurred_at": "2026-10-04T10:00:01.000Z",
+   "prev_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+   "hash": "9135aaab34af837292e276cad7089d2c2fb59fe8f3c284d2b22bbe5837e96910"
+  },
+  {
+   "id": "01J00000000000000000AUDIT2",
+   "business_id": "01J0000000000000000000BIZ1",
+   "seq": 2,
+   "user_id": "01J0000000000000000000USR1",
+   "device_id": "01J0000000000000000000DEV1",
+   "terminal_id": "01J0000000000000000000TRM1",
+   "action": "product.update",
+   "entity_type": "product",
+   "entity_id": "01J0000000000000000000PRD1",
+   "before_json": "{\"name\":\"Soap\",\"sellingPricePaise\":11800}",
+   "after_json": "{\"name\":\"Soap \\\"Bar\\\" <large>\",\"sellingPricePaise\":12500}",
+   "reason": null,
+   "occurred_at": "2026-10-04T10:00:02.000Z",
+   "prev_hash": "9135aaab34af837292e276cad7089d2c2fb59fe8f3c284d2b22bbe5837e96910",
+   "hash": "58bd292810936244110130f4668881de354179a3ce1ab3fa4238ac0a18a4de7a"
+  },
+  {
+   "id": "01J00000000000000000AUDIT3",
+   "business_id": "01J0000000000000000000BIZ1",
+   "seq": 3,
+   "user_id": "01J0000000000000000000USR1",
+   "device_id": "01J0000000000000000000DEV1",
+   "terminal_id": null,
+   "action": "ipc.sales.complete",
+   "entity_type": "sales",
+   "entity_id": null,
+   "before_json": null,
+   "after_json": "{\"9\":\"y\",\"10\":\"x\",\"lines\":[{\"qtyMilli\":1500,\"rate\":0.5}],\"note\":\"é😀 \"}",
+   "reason": null,
+   "occurred_at": "2026-10-04T10:00:03.000Z",
+   "prev_hash": "58bd292810936244110130f4668881de354179a3ce1ab3fa4238ac0a18a4de7a",
+   "hash": "b4bec6ae418e80849f440576a87af6dc50d5d1e74e1581aa8e1dc9a39e120d75"
+  },
+  {
+   "id": "01J00000000000000000AUDIT4",
+   "business_id": "01J0000000000000000000BIZ1",
+   "seq": 4,
+   "user_id": "01J0000000000000000000USR1",
+   "device_id": "01J0000000000000000000DEV1",
+   "terminal_id": null,
+   "action": "period.unlock",
+   "entity_type": "accounting_period",
+   "entity_id": "01J0000000000000000000PRD1",
+   "before_json": null,
+   "after_json": "{\"status\":\"open\",\"unlockReason\":\"late bill\"}",
+   "reason": "late bill",
+   "occurred_at": "2026-10-04T10:00:04.000Z",
+   "prev_hash": "b4bec6ae418e80849f440576a87af6dc50d5d1e74e1581aa8e1dc9a39e120d75",
+   "hash": "d03aa0b0a415e463a0f2a6f7d86b9990414dbb70dcae23936c07af7559b340f9"
+  }
+ ]
+}

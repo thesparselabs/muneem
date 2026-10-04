@@ -144,6 +144,7 @@ export class RestoreService {
         const registered = getSyncDevice(copy);
         if (registered && registered.cloudDeviceId !== this.d.device.cloudDeviceId()) copy.prepare('DELETE FROM sync_device').run();
         this.carryBackupLog(live, copy);
+        this.carryAuditLog(live, copy);
         if (sameDevice) setMeta(copy, META_KEYS.restoreCatchUp, '1');
         else for (const key of [META_KEYS.activeBranchId, META_KEYS.activeTerminalId]) setMeta(copy, key, '');
         appendAudit(copy, {
@@ -155,6 +156,13 @@ export class RestoreService {
     } finally {
       copy.close();
     }
+  }
+
+  // 8g: this device's audit rows written since the backup stay, so the restore does not fork a chain the cloud already holds.
+  private carryAuditLog(live: Db, copy: Db): void {
+    const columns = 'id, business_id, seq, user_id, device_id, terminal_id, action, entity_type, entity_id, before_json, after_json, reason, occurred_at, prev_hash, hash';
+    const insert = copy.prepare(`INSERT OR IGNORE INTO audit_log (${columns}) VALUES (${columns.split(', ').map((c) => '@' + c).join(', ')})`);
+    for (const row of live.prepare(`SELECT ${columns} FROM audit_log WHERE device_id = ? ORDER BY business_id, seq`).iterate(this.d.device.installationId())) insert.run(row);
   }
 
   // The backups on disk (the safety copy among them) stay listed after the swap; an older schema's log is left as it is.

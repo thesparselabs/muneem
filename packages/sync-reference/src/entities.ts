@@ -1,4 +1,4 @@
-import { STREAM_OF, type Change, type OutboxEntityType, type PushOperation } from '@muneem/contracts';
+import { STREAM_OF, type Change, type OutboxEntityType, type PushOperation, type SyncStream } from '@muneem/contracts';
 import { mergeStale, matchesSent, type FieldConflict } from './conflicts.js';
 import type { BusinessState, ConflictLogRow, EntityState, Payload } from './state.js';
 
@@ -6,7 +6,8 @@ export type NewChange = Omit<Change, 'seq'>;
 export type NewConflict = Omit<ConflictLogRow, 'id' | 'at'>;
 export interface Applied { change: NewChange | null; conflicts: NewConflict[] }
 
-const streamOf = (entityType: string) => STREAM_OF[entityType as OutboxEntityType];
+// Push-only types (audit_entry) are stored apart and never reach the change log.
+const streamOf = (entityType: string) => STREAM_OF[entityType as OutboxEntityType] as SyncStream;
 export const isDocument = (entityType: string): boolean => streamOf(entityType) === 'documents';
 const updatedAtOf = (p: Payload): string | null => (typeof p.updatedAt === 'string' ? p.updatedAt : null);
 

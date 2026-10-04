@@ -33,7 +33,8 @@ export type OutboxEntityType =
   | 'expense_category'
   | 'account'
   | 'journal_entry'
-  | 'accounting_period';
+  | 'accounting_period'
+  | 'audit_entry';
 export type OutboxOperationType = 'create' | 'update' | 'cancel' | 'void';
 export type OutboxStatus = 'pending' | 'in_flight' | 'sent' | 'failed' | 'dead' | 'superseded';
 export type OutboxErrorClass = 'transient' | 'permanent' | 'dependency';
@@ -62,6 +63,10 @@ export interface OutboxRow {
 
 export const SYNC_STREAMS = ['masters', 'config', 'documents', 'control'] as const;
 export type SyncStream = (typeof SYNC_STREAMS)[number];
+// 8g: audit rows are pushed on a stream of their own that no device ever pulls (ADR-0048).
+export type PushStream = SyncStream | 'audit';
+export type PushOnlyEntityType = 'audit_entry';
+export type PulledEntityType = Exclude<OutboxEntityType, PushOnlyEntityType>;
 
 /**
  * Headers every cloud request carries (LLD §7).

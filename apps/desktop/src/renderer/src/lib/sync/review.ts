@@ -1,6 +1,7 @@
 import type { ReviewItem } from '@muneem/contracts';
 
 const KINDS: [string[], string][] = [
+  [['audit_chain_broken'], 'Audit trail breaks'],
   [['conflict', 'field_conflict'], 'Field conflicts'],
   [['tombstone', 'tombstone_wins'], 'Deleted elsewhere'],
   [['duplicate_barcode'], 'Duplicate barcodes'],
@@ -13,6 +14,7 @@ const RULES: Record<string, string> = {
   tombstone_wins: 'Delete wins over an edit',
   keep_both: 'Both kept for review',
   stored_as_sent: 'Stored as sent into a locked month',
+  audit_chain: 'Audit row refused by the cloud',
 };
 
 const words = (s: string) => s.replace(/_/g, ' ').replace(/^./, (c) => c.toUpperCase());

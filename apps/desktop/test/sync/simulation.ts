@@ -134,6 +134,10 @@ export async function expectConverged(seed: number, cloud: CloudHarness, { devic
   expect(sent, `seed ${seed}: all three devices sold`).toBeGreaterThan(shape.rounds * 5);
   expect(new Set(reference.journals.map((j) => (j as { entry_no: string }).entry_no.slice(0, 4))).size, `seed ${seed}: three terminals' numbers`).toBeGreaterThanOrEqual(3);
   expect(await cloud.cloudSales(businessId), `seed ${seed}: the cloud holds each sale once`).toBe(sent);
+  const deviceChains = Object.fromEntries(devices.flatMap((d) => d.db.prepare('SELECT device_id, COUNT(*) AS n FROM audit_log WHERE business_id = ? GROUP BY device_id')
+    .all(businessId).map((r) => { const { device_id, n } = r as { device_id: string; n: number }; return [device_id, n]; })));
+  expect(Object.keys(deviceChains), `seed ${seed}: each device kept an audit trail`).toHaveLength(devices.length);
+  expect(await cloud.auditChains(businessId), `seed ${seed}: every device's audit rows reached the cloud`).toEqual(deviceChains);
   const cloudTrialBalance = await cloud.trialBalance(businessId);
   if (cloudTrialBalance) expect(cloudTrialBalance, `seed ${seed}: cloud Trial Balance`).toEqual(reference.trialBalance);
   return { sales: sent, trialBalance: reference.trialBalance };

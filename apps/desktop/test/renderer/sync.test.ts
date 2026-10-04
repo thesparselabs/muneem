@@ -4,6 +4,7 @@ import { ago, stockStaleness, syncBadge } from '../../src/renderer/src/lib/sync/
 import { diffVersions, groupReviewItems, kindLabel, ruleLabel } from '../../src/renderer/src/lib/sync/review.js';
 import { reconcile } from '../../src/renderer/src/lib/sync/reconciliation.js';
 import { errorLine, payloadPreview } from '../../src/renderer/src/lib/sync/outbox.js';
+import { auditSummary, breakLabel } from '../../src/renderer/src/lib/audit.js';
 
 const NOW = Date.parse('2026-10-04T12:00:00Z');
 const minutesAgo = (m: number) => new Date(NOW - m * 60_000).toISOString();
@@ -27,6 +28,20 @@ describe('sync badge (FR-068, LLD §8.4)', () => {
     expect(syncBadge(status({ state: 'blocked', deviceStatus: 'upgrade_required', detail: 'App too old' }), true, NOW)).toMatchObject({
       label: '✕ Needs attention · update required', title: expect.stringContaining('App too old'),
     });
+  });
+
+  it('names a broken audit chain (8g)', () => {
+    expect(syncBadge(status({ state: 'blocked', auditChainBroken: true, detail: 'The audit trail failed its hash-chain check; see Diagnostics' }), true, NOW)).toMatchObject({
+      label: '✕ Needs attention · audit trail check failed', tone: 'error', title: expect.stringContaining('Diagnostics'),
+    });
+  });
+
+  it('words the audit verification (8g)', () => {
+    const chain = { businessId: 'B', deviceId: 'D', count: 4, ok: true, brokenAtSeq: null, reason: null };
+    expect(auditSummary({ checkedAt: minutesAgo(0), ok: true, chains: [chain], cloudRejections: [] })).toBe('All 1 chain intact (4 rows).');
+    const broken = { ...chain, ok: false, brokenAtSeq: 3, reason: 'hash' as const };
+    expect(breakLabel(broken)).toBe('Broken at row 3: a row was changed after it was written');
+    expect(auditSummary({ checkedAt: minutesAgo(0), ok: false, chains: [broken], cloudRejections: [{ operationId: 'x', seq: 5, detail: 'd' }] })).toMatch(/^2 breaks found/u);
   });
 
   it('shows the lag once the oldest waiting change is a minute old', () => {

@@ -209,6 +209,14 @@ describe('cloud backups with key escrow (8f)', () => {
     expect(books(again.db, businessId)).toEqual(before);
     expect(getMeta(again.db, META_KEYS.restoreCatchUp)).toBeNull();
     expect(healthy(again.db, businessId)).toEqual(HEALTHY);
+
+    // 8g: the audit rows written after the backup were carried over, so the chain on the cloud carries on unforked.
+    again.app.syncEngine.recover();
+    await syncUntilQuiet(again.app);
+    const chain = server.business(businessId)!.audit.chain(again.app.device.localDeviceId());
+    expect(chain.map((e) => e.row.hash)).toEqual(again.db.prepare('SELECT hash FROM audit_log WHERE business_id = ? ORDER BY seq').pluck().all(businessId));
+    expect(server.deadLetters(businessId)).toEqual([]);
+    expect(await caller(again.app).data('diagnostics.verifyAudit')).toMatchObject({ ok: true });
   }, 120_000);
 
   it('a failed upload is recorded and retried; a tampered cloud object is refused before anything is swapped', async () => {

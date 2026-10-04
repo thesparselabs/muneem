@@ -1,14 +1,14 @@
 import { ZodError, type z } from 'zod';
 import { AppError, contract, type Channel, type ClientError, type Contract, type IpcEnvelope, type Session } from '@muneem/contracts';
 import { newUlid } from '@muneem/domain';
-import { appendAudit, readSyncStatus, withTransaction, type Db } from '@muneem/db-sqlite';
+import { appendAudit, DEVICE_AUDIT_SCOPE, readSyncStatus, withTransaction, type Db } from '@muneem/db-sqlite';
 import type { Loggers } from '../infra/logger.js';
 import type { SessionService } from '../services/session.js';
 import type { Rbac } from '../rbac.js';
 import type { EventBus } from '../infra/events.js';
 
-/** Audit scope for events that happen before any business exists (login, device setup). */
-export const DEVICE_AUDIT_SCOPE = '_device';
+/** Audit scope for events that happen before any business exists (login, device setup); never pushed. */
+export { DEVICE_AUDIT_SCOPE };
 
 /** Handler input is the PARSED (z.output) shape; output is re-validated by the gateway. */
 export type Handler<C extends Channel> = (input: z.output<Contract[C]['input']>, ctx: Session | null) => unknown;

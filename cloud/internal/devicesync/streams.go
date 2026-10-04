@@ -1,11 +1,14 @@
 package devicesync
 
+import "github.com/sparselabs/muneem/cloud/internal/devicesync/auditchain"
+
 // Mirrors STREAM_OF and SYNC_ERROR_CODES in packages/contracts/src/sync/protocol.ts.
 const (
 	StreamControl   = "control"
 	StreamConfig    = "config"
 	StreamMasters   = "masters"
 	StreamDocuments = "documents"
+	StreamAudit     = "audit" // pushed, never pulled (ADR-0048)
 )
 
 var streamOf = map[string]string{
@@ -18,6 +21,7 @@ var streamOf = map[string]string{
 	"pos_session": StreamDocuments, "cash_movement": StreamDocuments, "sale": StreamDocuments, "stock_adjustment": StreamDocuments,
 	"party_opening": StreamDocuments, "purchase": StreamDocuments, "debit_note": StreamDocuments, "credit_note": StreamDocuments, "payment": StreamDocuments,
 	"write_off": StreamDocuments, "expense": StreamDocuments, "allocation": StreamDocuments, "journal_entry": StreamDocuments,
+	auditchain.EntityType: StreamAudit,
 }
 
 var validStreams = map[string]bool{StreamControl: true, StreamConfig: true, StreamMasters: true, StreamDocuments: true}
@@ -31,11 +35,12 @@ const (
 	CodeBusinessUnknown    = "BUSINESS_UNKNOWN"
 	CodeVersionUnsupported = "VERSION_UNSUPPORTED"
 	CodeUnknownEntity      = "UNKNOWN_ENTITY"
+	CodeAuditChainBroken   = "AUDIT_CHAIN_BROKEN"
 )
 
 var classOf = map[string]string{
 	CodeTotalMismatch: "permanent", CodeJournalImbalance: "permanent", CodeJournalMismatch: "permanent", CodePayloadInvalid: "permanent",
-	CodeDependencyMissing: "dependency", CodeBusinessUnknown: "transient", CodeVersionUnsupported: "transient", CodeUnknownEntity: "transient",
+	CodeAuditChainBroken: "permanent", CodeDependencyMissing: "dependency", CodeBusinessUnknown: "transient", CodeVersionUnsupported: "transient", CodeUnknownEntity: "transient",
 }
 
 const (

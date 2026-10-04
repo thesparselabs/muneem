@@ -2,7 +2,7 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { describe, it } from 'vitest';
 import { createHash } from 'node:crypto';
 import { newUlid } from '@muneem/domain';
-import { canonicalJson } from '@muneem/db-sqlite';
+import { canonicalJson, computeAuditHash, type AuditRow } from '@muneem/db-sqlite';
 import { CompleteSaleInput, PaymentInput, SaleDraft, type PushOperation } from '@muneem/contracts';
 import { ORG_ID, USER_ID, caller, ownerAtTill, testApp } from '../helpers.js';
 
@@ -25,14 +25,10 @@ describe('sync protocol fixtures', () => {
     const draft = SaleDraft.parse({ lines: [{ productId: soap.id, uomId: pcs, qtyMilli: 2000 }], customerId: ravi.id });
     app.sales.complete(CompleteSaleInput.parse({ ...draft, commandId: newUlid(), expectedTotalPaise: 23_600, tenders: [{ method: 'credit', amountPaise: 23_600 }] }));
     const receipt = app.payments.create(PaymentInput.parse({ partyType: 'customer', partyId: ravi.id, amountPaise: 10_000, method: 'cash', commandId: newUlid() }));
-    const outbox = (sql: string) => (db.prepare(sql).all(businessId) as Record<string, unknown>[]).map((r): PushOperation => ({
-      operationId: r.operation_id as string, seq: r.seq as number, entityType: r.entity_type as string, entityId: r.entity_id as string,
-      operationType: r.operation_type as PushOperation['operationType'], dependsOn: (r.depends_on_operation_id as string | null) ?? null,
-      payloadHash: r.payload_hash as string, payload: JSON.parse(r.payload_json as string) as Record<string, unknown>,
-    }));
-    const ops = outbox('SELECT * FROM sync_outbox WHERE business_id = ? ORDER BY seq');
+    const outbox = (sql: string) => (db.prepare(sql).all(businessId) as Record<string, unknown>[]).map(toOperation);
+    const ops = outbox("SELECT * FROM sync_outbox WHERE business_id = ? AND entity_type <> 'audit_entry' ORDER BY seq");
     app.payments.cancel(receipt.id, 'bounced');
-    const cancelOps = outbox('SELECT * FROM sync_outbox WHERE business_id = ? ORDER BY seq').filter((o) => o.seq > ops.at(-1)!.seq);
+    const cancelOps = outbox("SELECT * FROM sync_outbox WHERE business_id = ? AND entity_type <> 'audit_entry' ORDER BY seq").filter((o) => o.seq > ops.at(-1)!.seq);
     const push = (operations: PushOperation[]) => ({ businessId, protocol: 1, schemaVersion: 14, clientTime: CLIENT_TIME, operations });
     const applied = (o: PushOperation[]) => ({ results: o.map((x) => ({ operationId: x.operationId, status: 'applied' })) });
     const sale = ops.find((o) => o.entityType === 'sale')!;
@@ -136,7 +132,47 @@ describe('sync protocol fixtures', () => {
         ],
       },
     };
-    mkdirSync(OUT, { recursive: true });
-    for (const [name, f] of Object.entries(fixtures)) writeFileSync(new URL(`${name}.json`, OUT), `${JSON.stringify({ name, ...f }, null, 1)}\n`);
+    write(fixtures);
+  });
+
+  run('records the audit chain fixture (8g)', async () => {
+    const { app, db } = await testApp();
+    const { businessId } = await ownerAtTill(app);
+    await app.register.open(10_000);
+    const outbox = (sql: string) => (db.prepare(sql).all(businessId) as Record<string, unknown>[]).map(toOperation);
+    const business = outbox("SELECT * FROM sync_outbox WHERE business_id = ? AND entity_type = 'business' ORDER BY seq").slice(0, 1);
+    const [a1, a2, a3, a4, a5] = outbox("SELECT * FROM sync_outbox WHERE business_id = ? AND entity_type = 'audit_entry' ORDER BY seq") as [PushOperation, PushOperation, PushOperation, PushOperation, PushOperation];
+    const push = (operations: PushOperation[]) => ({ businessId, protocol: 1, schemaVersion: 14, clientTime: CLIENT_TIME, operations });
+    const result = (o: PushOperation, status: string, code?: string) => ({ operationId: o.operationId, status, ...(code && { error: { code, class: code === 'DEPENDENCY_MISSING' ? 'dependency' : 'permanent' } }) });
+    const again = (o: PushOperation, payload: Record<string, unknown>): PushOperation => ({ ...o, operationId: newUlid(), payload, payloadHash: hash(payload) });
+    const tampered = again(a5, { ...a5.payload, after_json: '{"tampered":true}' });
+    const forgedRow = { ...a3.payload, occurred_at: '2026-10-04T09:00:00.000Z' } as unknown as AuditRow;
+    const forged = again(a3, { ...forgedRow, hash: computeAuditHash(forgedRow) });
+    write({
+      'push-audit-chain': {
+        description: 'Audit rows apply in seq order; a gap waits, a resend (same or new operation id) is a duplicate, an edited row or a second row at a held seq is AUDIT_CHAIN_BROKEN, and the chain carries on.',
+        setup: { organizationId: ORG_ID, userId: USER_ID, devices: ['A', 'B'] }, steps: [
+          { device: 'A', call: 'push', request: push([...business, a1, a2]), expect: { results: [...business, a1, a2].map((o) => result(o, 'applied')) } },
+          { device: 'A', call: 'push', request: push([a4]), expect: { results: [result(a4, 'deferred', 'DEPENDENCY_MISSING')] } },
+          { device: 'A', call: 'push', request: push([a3, a4]), expect: { results: [result(a3, 'applied'), result(a4, 'applied')] } },
+          { device: 'A', call: 'push', request: push([a1, a2, again(a2, a2.payload)]), expect: { results: [result(a1, 'duplicate'), result(a2, 'duplicate'), { status: 'duplicate' }] } },
+          { device: 'A', call: 'push', request: push([tampered, forged]), expect: { results: [result(tampered, 'rejected', 'AUDIT_CHAIN_BROKEN'), result(forged, 'rejected', 'AUDIT_CHAIN_BROKEN')] } },
+          { device: 'A', call: 'push', request: push([a5]), expect: { results: [result(a5, 'applied')] } },
+        ],
+      },
+    });
   });
 });
+
+function write(fixtures: Record<string, object>): void {
+  mkdirSync(OUT, { recursive: true });
+  for (const [name, f] of Object.entries(fixtures)) writeFileSync(new URL(`${name}.json`, OUT), `${JSON.stringify({ name, ...f }, null, 1)}\n`);
+}
+
+function toOperation(r: Record<string, unknown>): PushOperation {
+  return {
+    operationId: r.operation_id as string, seq: r.seq as number, entityType: r.entity_type as string, entityId: r.entity_id as string,
+    operationType: r.operation_type as PushOperation['operationType'], dependsOn: (r.depends_on_operation_id as string | null) ?? null,
+    payloadHash: r.payload_hash as string, payload: JSON.parse(r.payload_json as string) as Record<string, unknown>,
+  };
+}

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { api, errorMessage } from '../api.js';
 import { useCan } from '../lib/permissions.js';
+import AuditPanel from './diagnostics/AuditPanel.js';
 import BackupsPanel from './diagnostics/BackupsPanel.js';
 import SyncPanel from './diagnostics/SyncPanel.js';
 
@@ -20,6 +21,7 @@ export default function Diagnostics() {
       <h1 className="text-2xl font-semibold">Diagnostics</h1>
       {canSync && <SyncPanel />}
       <BackupsPanel />
+      <AuditPanel />
       <div className="card">
         <h2 className="font-semibold mb-3">Health</h2>
         {h && (
