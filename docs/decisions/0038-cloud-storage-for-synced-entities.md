@@ -37,3 +37,32 @@ Postgres table now would double the schema work, and it would have to change whe
 - **Writes serialize per business.** Each operation's transaction takes a per-business advisory lock before it reads
   anything, so `change_log` seqs commit in seq order and a device paging by seq never steps past a change still in
   flight. Two pushes of the same operation (a double submit) therefore apply it once.
+
+## As built (7f) — hydration bundles
+- **Contents:** gzipped NDJSON. Line 1 is `BundleHeader {format: 'muneem-bundle', version: 1, businessId, asOfSeq,
+  counts}`, where `counts` is change lines per stream. Every other line is a pull `Change`, in `STREAM_ORDER`
+  (control, config, masters, documents).
+  - **Control, config and masters** are each entity's latest `entity_state` row: `seq` is its `last_seq`, and a
+    tombstone is sent as `op: "delete"` with its last payload, as pull would send it. Within a stream they go by entity
+    type in `STREAM_OF`'s declaration order (referenced types first, so a barcode never precedes its product), then
+    by seq. The cloud-made control types (`device`, `review_item`) follow `accounting_period`.
+  - **Documents** are every `change_log` version in seq order: a cancelled document arrives as its create, then its
+    cancel.
+  - **Consistency:** one read-only repeatable-read transaction. Writes commit in seq order under the per-business
+    lock, so `asOfSeq` (the highest seq read) has no gaps below it. The device sets every stream cursor to `asOfSeq`,
+    then pulls.
+- **Building:** `POST /sync/bootstrap` reuses a building row less than 15 minutes old, or a ready bundle at most
+  1,000 changes behind whose expiry is more than an hour away. Otherwise it records a `building` row and builds in a
+  goroutine, with at most 2 builds at once. The bundle streams from Postgres through a pipe into a multipart upload,
+  so it is never held whole in memory. A ready bundle lives 24 hours. A build that fails, or runs past 15 minutes, is
+  reported as `failed`.
+- **Delivery:** `GET /sync/bootstrap/{id}` presigns a fresh GET URL on every call. Its `expiresAt` is the URL's
+  expiry: one hour, or the bundle's expiry if that comes sooner. S3 serves `Range`, so a download resumes, and an
+  expired URL is renewed by asking again.
+- **Who may bootstrap:** a signed, active device of a user who is a member of the business. The device need not be
+  bound to the business yet (a device being added), but one already bound to another business is refused.
+  Bootstrapping does not bind it; its first push does. Migration 0003 lets a member read a snapshot row by id
+  before any business scope is set.
+- **Storage:** an S3-compatible bucket behind `snapshot.ObjectStore` (Put, PresignGet), using `minio-go`. Locally
+  this is MinIO in docker-compose (`bitnamilegacy/minio`, because `minio/minio` is no longer on Docker Hub). Objects
+  are not yet deleted after they expire; a bucket lifecycle rule is an operations task.

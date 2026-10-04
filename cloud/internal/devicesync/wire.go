@@ -70,6 +70,21 @@ type PullResponse struct {
 	ServerTime time.Time `json:"serverTime"`
 }
 
+const (
+	SnapshotBuilding = "building"
+	SnapshotReady    = "ready"
+	SnapshotFailed   = "failed"
+)
+
+type Snapshot struct {
+	SnapshotID string     `json:"snapshotId"`
+	Status     string     `json:"status"`
+	URL        *string    `json:"url,omitempty"`
+	AsOfSeq    *int64     `json:"asOfSeq,omitempty"`
+	Bytes      *int64     `json:"bytes,omitempty"`
+	ExpiresAt  *time.Time `json:"expiresAt,omitempty"`
+}
+
 func applied(op Operation, seq int64) Result {
 	return Result{OperationID: op.OperationID, Status: StatusApplied, ServerSeq: &seq}
 }

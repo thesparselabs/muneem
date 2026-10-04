@@ -50,3 +50,15 @@ const (
 	ControlDevice     = "device"
 	ControlReviewItem = "review_item"
 )
+
+// StreamOrder is STREAM_ORDER: control first so a revocation or lock is never stuck behind thousands of products.
+var StreamOrder = []string{StreamControl, StreamConfig, StreamMasters, StreamDocuments}
+
+// LatestStateTypes lists each non-document stream's entity types, referenced types before the types that reference
+// them (STREAM_OF's declaration order), so a bundle of latest states imports without a missing parent.
+var LatestStateTypes = map[string][]string{
+	StreamControl: {"accounting_period", ControlDevice, ControlReviewItem},
+	StreamConfig:  {"business", "branch", "terminal", "doc_series", "setting", "user_pin", "account", "expense_category"},
+	StreamMasters: {"uom", "category", "brand", "product", "barcode", "uom_conversion", "price_list", "price_list_item", "customer",
+		"customer_credit_limit", "supplier", "warehouse"},
+}

@@ -76,7 +76,16 @@ type Scope struct {
 
 // WithTx runs fn in a transaction with the scope applied via SET LOCAL (RLS defence-in-depth).
 func (d *DB) WithTx(ctx context.Context, s Scope, fn func(tx pgx.Tx) error) error {
-	tx, err := d.Pool.BeginTx(ctx, pgx.TxOptions{})
+	return d.withTx(ctx, pgx.TxOptions{}, s, fn)
+}
+
+// WithSnapshotTx is WithTx in one read-only, repeatable-read snapshot: every query sees the same committed state.
+func (d *DB) WithSnapshotTx(ctx context.Context, s Scope, fn func(tx pgx.Tx) error) error {
+	return d.withTx(ctx, pgx.TxOptions{IsoLevel: pgx.RepeatableRead, AccessMode: pgx.ReadOnly}, s, fn)
+}
+
+func (d *DB) withTx(ctx context.Context, opts pgx.TxOptions, s Scope, fn func(tx pgx.Tx) error) error {
+	tx, err := d.Pool.BeginTx(ctx, opts)
 	if err != nil {
 		return err
 	}

@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"os"
 	"strconv"
 	"testing"
 	"time"
@@ -25,7 +26,9 @@ import (
 	"github.com/sparselabs/muneem/cloud/internal/business"
 	"github.com/sparselabs/muneem/cloud/internal/device"
 	"github.com/sparselabs/muneem/cloud/internal/devicesync"
+	"github.com/sparselabs/muneem/cloud/internal/devicesync/snapshot"
 	"github.com/sparselabs/muneem/cloud/internal/httpx"
+	"github.com/sparselabs/muneem/cloud/internal/objectstore"
 	"github.com/sparselabs/muneem/cloud/internal/store"
 	"github.com/sparselabs/muneem/cloud/internal/testdb"
 )
@@ -49,6 +52,7 @@ type cloud struct {
 	db     *store.DB
 	e      *echo.Echo
 	signer *auth.Signer
+	snaps  *snapshot.Service
 	user   string
 	org    string
 }
@@ -59,14 +63,40 @@ func newCloud(t *testing.T) *cloud {
 	signer := auth.NewSigner("test-secret")
 	verifier := device.NewVerifier(db)
 	log := slog.New(slog.NewTextHandler(io.Discard, nil))
+	snaps := snapshot.NewService(db, testObjectStore(t), log, snapshot.DefaultOptions)
+	t.Cleanup(snaps.Wait)
 	h := handlers{
 		authHandler:     &auth.Handler{DB: db, Signer: signer},
 		deviceHandler:   &device.Handler{DB: db, Verifier: verifier, Revocations: devicesync.Control{}},
 		businessHandler: &business.Handler{DB: db},
-		syncHandler:     &devicesync.Handler{Ingest: &devicesync.Ingest{DB: db, Log: log}, Feed: &devicesync.Feed{DB: db}},
+		syncHandler:     &devicesync.Handler{Ingest: &devicesync.Ingest{DB: db, Log: log}, Feed: &devicesync.Feed{DB: db}, Snapshots: snaps},
 	}
 	e := httpx.New(httpx.Deps{Handlers: h, RequireAuth: signer.Require, DeviceVerifier: verifier.Middleware, Logger: log})
-	return &cloud{t: t, db: db, e: e, signer: signer}
+	return &cloud{t: t, db: db, e: e, signer: signer, snaps: snaps}
+}
+
+// testObjectStore is MinIO when MUNEEM_TEST_S3_ENDPOINT is set, else an in-memory store served over HTTP.
+func testObjectStore(t *testing.T) snapshot.ObjectStore {
+	if endpoint := os.Getenv("MUNEEM_TEST_S3_ENDPOINT"); endpoint != "" {
+		s3, err := objectstore.NewS3(context.Background(), objectstore.S3Config{Endpoint: endpoint, Bucket: envOr("MUNEEM_TEST_S3_BUCKET", "muneem-test"),
+			AccessKey: os.Getenv("MUNEEM_TEST_S3_ACCESS_KEY"), SecretKey: os.Getenv("MUNEEM_TEST_S3_SECRET_KEY"), Region: os.Getenv("MUNEEM_TEST_S3_REGION")})
+		if err != nil {
+			t.Fatal(err)
+		}
+		return s3
+	}
+	m := objectstore.NewMemory()
+	srv := httptest.NewServer(m)
+	t.Cleanup(srv.Close)
+	m.BaseURL = srv.URL
+	return m
+}
+
+func envOr(key, fallback string) string {
+	if v := os.Getenv(key); v != "" {
+		return v
+	}
+	return fallback
 }
 
 func (c *cloud) seedOwner(userID, orgID string) {

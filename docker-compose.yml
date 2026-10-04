@@ -16,5 +16,14 @@ services:
   redis:
     image: redis:7-alpine
     ports: ["6379:6379"]
+  minio:                   # hydration bundles (Stage 7f); minio/minio is no longer on Docker Hub
+    image: bitnamilegacy/minio:2025.5.24
+    environment:
+      MINIO_ROOT_USER: muneem
+      MINIO_ROOT_PASSWORD: muneem-dev-secret
+      MINIO_DEFAULT_BUCKETS: muneem-snapshots
+    ports: ["9000:9000", "9001:9001"]
+    volumes: ["miniodata:/bitnami/minio/data"]
 volumes:
   pgdata:
+  miniodata:

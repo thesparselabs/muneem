@@ -17,8 +17,9 @@ import (
 )
 
 type Handler struct {
-	Ingest *Ingest
-	Feed   *Feed
+	Ingest    *Ingest
+	Feed      *Feed
+	Snapshots Snapshots
 }
 
 func callerOf(c echo.Context) Caller {
@@ -83,12 +84,51 @@ func (h *Handler) SyncPull(c echo.Context, p api.SyncPullParams) error {
 	return c.JSON(http.StatusOK, res)
 }
 
-func notYet(c echo.Context) error {
-	return httpx.Fail(c, http.StatusNotImplemented, "NOT_IMPLEMENTED", api.Transient, "hydration is not available yet")
+func (h *Handler) SyncBootstrap(c echo.Context) error {
+	caller, ok, err := h.hydrator(c)
+	if !ok {
+		return err
+	}
+	var body api.SyncBootstrapJSONRequestBody
+	if err := json.NewDecoder(io.LimitReader(c.Request().Body, 4096)).Decode(&body); err != nil || body.BusinessId == "" {
+		return httpx.Validation(c, "businessId is required")
+	}
+	snap, err := h.Snapshots.Request(c.Request().Context(), caller, body.BusinessId)
+	return snapshotReply(c, snap, err)
 }
 
-func (h *Handler) SyncBootstrap(c echo.Context) error         { return notYet(c) }
-func (h *Handler) GetSnapshot(c echo.Context, _ string) error { return notYet(c) }
+func (h *Handler) GetSnapshot(c echo.Context, snapshotID string) error {
+	caller, ok, err := h.hydrator(c)
+	if !ok {
+		return err
+	}
+	snap, err := h.Snapshots.Get(c.Request().Context(), caller, snapshotID)
+	return snapshotReply(c, snap, err)
+}
+
+// hydrator is the signed device asking for a bundle, or the reply refusing it.
+func (h *Handler) hydrator(c echo.Context) (Caller, bool, error) {
+	caller := callerOf(c)
+	if h.Snapshots == nil {
+		return caller, false, httpx.Fail(c, http.StatusServiceUnavailable, "HYDRATION_UNAVAILABLE", api.Transient, "object storage is not configured")
+	}
+	if caller.DeviceID == "" {
+		return caller, false, httpx.Unauthorized(c, "DEVICE_REQUIRED", "hydration must come from a registered, signed device")
+	}
+	return caller, true, nil
+}
+
+func snapshotReply(c echo.Context, snap *Snapshot, err error) error {
+	switch {
+	case errors.Is(err, ErrNotMember):
+		return httpx.NotFound(c, "business")
+	case errors.Is(err, ErrSnapshotNotFound):
+		return httpx.NotFound(c, "snapshot")
+	case err != nil:
+		return httpx.Internal(c, err)
+	}
+	return c.JSON(http.StatusOK, snap)
+}
 
 // decodePush reads a gzipped or plain body, refusing more than 2 MB once inflated.
 func decodePush(r *http.Request) (*PushRequest, error) {
