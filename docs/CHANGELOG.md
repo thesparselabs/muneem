@@ -12,6 +12,18 @@ All notable changes, newest first. Each entry records **what** changed and **why
   - **Before the pilot:** USB/Windows printing with ₹ and Indic text.
   - **Scale bar:** 500k transactions, 20k SKUs and 50k customers against the strict LLD §18 budgets.
   - **Monitoring:** self-hosted Prometheus, Loki and Grafana, with a self-hosted crash collector.
+- **Release pipeline (9e, ADR-0056).** Why: HLD §12/§13 ask for signed, staged and checkable updates.
+  - **`release.yml`:** it builds the Windows NSIS installer, Azure-signed when the signing secrets are set. Without
+    them, the build is unsigned, marked as a prerelease and published to dev only.
+  - **What it publishes:** CycloneDX SBOMs (pnpm and Go), SHA-256 checksums, the channel's `latest.yml`, an immutable
+    `releases/<version>/` archive and a GitHub Release.
+  - **Channels:** a fresh build never goes straight to stable.
+- **`promote.yml` (9e).** It moves a built release between channels, or changes its rollout, without rebuilding, so
+  beta and stable get the same bytes. A rollout of 0 halts it, promoting from the archive rolls back, and unsigned
+  builds never reach stable.
+- **Crash DSN and symbols (9e).** The release build bakes in the crash collector's address from `vars.MUNEEM_CRASH_DSN`.
+  It stays empty outside a vite build, which the kill -9 suite's plain-Node child caught. Hidden source maps are kept
+  as a symbols artifact and never shipped.
 - **Observability (9c, ADR-0053).** Why: production must be measurable and must alert before a shop notices, using
   the self-hosted stack the user chose.
   - **Cloud metrics:** on an internal port only. They cover requests and latency per route, ingest outcomes, dead

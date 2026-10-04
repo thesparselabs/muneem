@@ -15,8 +15,8 @@ export interface CrashReportsDeps {
   log: Logger;
 }
 
-// The release pipeline sets the collector's DSN for packaged builds (9e); MUNEEM_CRASH_DSN overrides it.
-export const DEFAULT_CRASH_DSN: string | null = null;
+// The release build bakes the DSN in (9e); outside a vite build (scripts, the crash child) import.meta.env is absent.
+export const DEFAULT_CRASH_DSN: string | null = import.meta.env?.MAIN_VITE_CRASH_DSN || null;
 
 const MAX_PER_HOUR = 10;
 const SAME_ERROR_WINDOW_MS = 10 * 60_000;
