@@ -92,7 +92,8 @@ export function supersedeStale(db: Db, businessId: string, entityTypes: Readonly
     const rows = (stmt(db, `SELECT seq, operation_id, entity_type, entity_id, payload_json FROM sync_outbox
       WHERE business_id = ? AND status IN ('pending','failed') AND operation_type = 'update' ORDER BY seq`).all(businessId) as UpdateRow[])
       .filter((r) => entityTypes.has(r.entity_type));
-    const waitedOn = new Set(stmt(db, 'SELECT depends_on_operation_id FROM sync_outbox WHERE business_id = ? AND depends_on_operation_id IS NOT NULL')
+    // Only an unsent row can still be waiting: a dependent is never sent ahead of what it depends on.
+    const waitedOn = new Set(stmt(db, `SELECT depends_on_operation_id FROM sync_outbox WHERE business_id = ? AND status IN ${UNSENT} AND depends_on_operation_id IS NOT NULL`)
       .pluck().all(businessId) as string[]);
     const supersede = stmt(db, "UPDATE sync_outbox SET status = 'superseded' WHERE seq = ? AND status IN ('pending','failed')");
     let n = 0;

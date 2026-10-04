@@ -35,8 +35,8 @@ export function applyAllocations(ctx: ApplyContext, s: Source, lines: unknown, o
 
 function voidAllocations(ctx: ApplyContext, sourceType: string, sourceId: string, on: string): void {
   const at = new Date().toISOString();
-  stmt(ctx.db, `UPDATE allocation SET voided_at = ?, voided_on = ?, updated_at = ?, version = version + 1 WHERE source_type = ? AND source_id = ? AND voided_at IS NULL`)
-    .run(at, on, at, sourceType, sourceId);
+  stmt(ctx.db, `UPDATE allocation SET voided_at = ?, voided_on = ?, updated_at = ?, version = version + 1
+    WHERE business_id = ? AND source_type = ? AND source_id = ? AND voided_at IS NULL`).run(at, on, at, ctx.businessId, sourceType, sourceId);
 }
 
 function createPayment(ctx: ApplyContext, p: Payload): void {
