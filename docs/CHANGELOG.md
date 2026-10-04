@@ -23,6 +23,20 @@ All notable changes, newest first. Each entry records **what** changed and **why
   - **Files:** the user picks where an export goes in a save dialog, and the screen never sees a path.
   - **First report:** the Trial Balance; 8e adds the rest.
   - **IPC:** `reports.listDefinitions`, `reports.run`, `reports.export`.
+- **Year-end close (8d, ADR-0045 as built).** Why: FR-096 and the Stage 6 deferral.
+  - **The close:** an `fy_close` closes the year's income and expense to 3300 Retained Earnings with one `CL/` journal
+    dated 31 March, posted into the locked March. `postClosingJournal` is the only path allowed to post into a locked
+    month.
+  - **Before closing:** every month of the year must be locked, and a regular-scheme business must have set off GST.
+    A new permission, `accounting.close`, is held by the owner and the accountant preset; managers do not have it.
+  - **Sync:** the close is cloud-authoritative on the control stream, one per year. A device that has synced posts its
+    closing journal only when the cloud accepts it, so two devices can never both close a year.
+  - **Late arrivals:** a late journal synced into a closed year shows "needs re-close" with the amount, and an
+    adjusting closing journal follows. The adjustment is posted by a user, not automatically.
+  - **Screen:** Accounts → Year end.
+  - **Statements:** the P&L leaves out closing journals. The Balance Sheet's retained earnings are 3300 plus years not
+    yet closed, so a closed year's reports read exactly as before.
+  - **Docs:** LLD §5.2 now says there is no opening journal.
 - **Reports catalogue (8e, ADR-0046 as built).** Why: FR-054 and PRD §25; every report exports and prints from one
   place.
   - **What is in it:** 25 reports on the 8a engine: sales by day, month, product, category and payment method; credit

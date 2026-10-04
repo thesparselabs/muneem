@@ -168,6 +168,8 @@ docs/             this folder (reality, with reasons)
   - **The backfill** posts anything saved before Stage 6. Each business gets it once per run, with the terminal and user
     fixed when it starts, and each journal is queued for sync after its document.
   - **Diagnostics and the 6-hourly timer** rebuild a drifted balance cache and report everything else.
+- **Year end** (ADR-0045): a closing journal moves the year's income and expense to 3300. `postClosingJournal` is the
+  only posting into a locked month, and statements leave closing journals out of P&L.
 - **Manual journals** (ADR-0035) never touch AR, AP, Inventory or tax accounts, so the tie-outs hold by construction.
 - **Statements:** Trial Balance, P&L and Balance Sheet read the journal. Retained earnings are computed until Stage 8's
   closing journal, and customer advances and supplier debits are presented apart.
