@@ -9,7 +9,7 @@ import { useCan } from '../../lib/permissions.js';
 import { CreditLimitDialog, CustomerEditDialog, OpeningDialog, SupplierDialog, WriteOffDialog } from './PartyDialogs.js';
 
 type Modal = 'edit' | 'opening' | 'limit' | 'writeOff' | null;
-const REF_LABEL: Record<string, string> = { sale: 'Sale', purchase: 'Purchase', debit_note: 'Debit note', payment: 'Payment', write_off: 'Write-off', opening: 'Opening balance', expense: 'Expense' };
+const REF_LABEL: Record<string, string> = { sale: 'Sale', purchase: 'Purchase', debit_note: 'Debit note', credit_note: 'Credit note', payment: 'Payment', write_off: 'Write-off', opening: 'Opening balance', expense: 'Expense' };
 
 export default function PartyPage() {
   const { kind, id } = useParams<{ kind: PartyType; id: string }>();
@@ -68,7 +68,7 @@ export default function PartyPage() {
           <span>Unapplied credit: {open.data.credits.map((c) => `${c.docNumber ?? c.type} ${formatPaise(c.openPaise)}`).join(', ')}</span>
           <button type="button" className="btn-secondary" onClick={async () => {
             try {
-              for (const c of open.data!.credits) await api.payments.allocate({ partyType, partyId: p.id, creditType: c.type as 'payment' | 'debit_note' | 'opening', creditId: c.id, allocation: 'auto' });
+              for (const c of open.data!.credits) await api.payments.allocate({ partyType, partyId: p.id, creditType: c.type as 'payment' | 'debit_note' | 'credit_note' | 'opening', creditId: c.id, allocation: 'auto' });
               done();
             } catch (e) { setError(errorMessage(e)); }
           }}>Apply to open bills</button>

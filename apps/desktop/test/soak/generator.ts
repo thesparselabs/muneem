@@ -1,7 +1,7 @@
 import { addDays, monthStart, newUlid } from '@muneem/domain';
 import { findUomByCode, stockState, type Db } from '@muneem/db-sqlite';
 import {
-  AllocateInput, CompleteSaleInput, CreatePurchaseInput, CustomerInput, ExpenseInput, ManualJournalInput, PaymentInput, ProductInput, PurchaseDraft, ReturnPurchaseInput,
+  AllocateInput, CompleteReturnInput, CompleteSaleInput, CreatePurchaseInput, CustomerInput, ExpenseInput, ManualJournalInput, PaymentInput, ProductInput, PurchaseDraft, ReturnPurchaseInput,
   SaleDraft, SupplierInput, WriteOffInput, type ChargeRef, type TenderLine,
 } from '@muneem/contracts';
 import type { App } from '../../src/main/app.js';
@@ -18,7 +18,7 @@ export interface SoakOptions {
 }
 
 export interface SoakCounts {
-  sales: number; creditOverrides: number; purchases: number; debitNotes: number; receipts: number; supplierPayments: number; allocations: number;
+  sales: number; creditOverrides: number; creditNotes: number; cancelledSales: number; purchases: number; debitNotes: number; receipts: number; supplierPayments: number; allocations: number;
   expenses: number; stockDocuments: number; cashMovements: number; manualJournals: number; writeOffs: number;
   cancelledPayments: number; cancelledExpenses: number; cancelledPurchases: number; periodsLocked: number; backdated: number;
 }
@@ -73,10 +73,12 @@ const VENDOR_GSTINS = ['07DDDDD0000D1Z5', '09GGGGG0000G1Z5'];
 
 class Trader {
   readonly counts: SoakCounts = {
-    sales: 0, creditOverrides: 0, purchases: 0, debitNotes: 0, receipts: 0, supplierPayments: 0, allocations: 0, expenses: 0, stockDocuments: 0,
+    sales: 0, creditOverrides: 0, creditNotes: 0, cancelledSales: 0, purchases: 0, debitNotes: 0, receipts: 0, supplierPayments: 0, allocations: 0, expenses: 0, stockDocuments: 0,
     cashMovements: 0, manualJournals: 0, writeOffs: 0, cancelledPayments: 0, cancelledExpenses: 0, cancelledPurchases: 0, periodsLocked: 0, backdated: 0,
   };
   private readonly purchases: string[] = [];
+  private readonly sales: string[] = [];
+  private readonly creditSales: string[] = [];
   private readonly returned = new Set<string>();
   private readonly payments: string[] = [];
   private readonly expenses: string[] = [];
@@ -123,6 +125,7 @@ class Trader {
     this.supplierPayments();
     this.spend();
     this.returnGoods();
+    this.takeBack();
     this.stockWork();
     this.occasional();
     for (let i = half; i < this.salesPerDay; i++) this.sell();
@@ -169,7 +172,8 @@ class Trader {
     if (tenders.some((t) => t.method === 'credit') && tenders.reduce((s, t) => s + (t.method === 'credit' ? t.amountPaise : 0), 0) > (quote.credit?.availablePaise ?? 0)) {
       this.counts.creditOverrides++;
     }
-    this.step(() => this.app.sales.complete(CompleteSaleInput.parse({ ...draft, commandId: newUlid(), expectedTotalPaise: total, tenders })));
+    const { saleId } = this.step(() => this.app.sales.complete(CompleteSaleInput.parse({ ...draft, commandId: newUlid(), expectedTotalPaise: total, tenders })));
+    (tenders.some((t) => t.method === 'credit') ? this.creditSales : this.sales).push(saleId);
     this.clearingPaise += tenders.filter((t) => t.method === 'upi' || t.method === 'card').reduce((s, t) => s + t.amountPaise, 0);
     this.counts.sales++;
   }
@@ -303,6 +307,28 @@ class Trader {
     })));
     this.returned.add(p.id);
     this.counts.debitNotes++;
+  }
+
+  // ADR-0043: now and then a customer brings part of a recent bill back, and once in a while a bill is cancelled whole.
+  private takeBack(): void {
+    if (this.dayNo % 6 === 5) {
+      const saleId = this.sales.at(-1);
+      if (!saleId || this.app.returns.list({ saleId, limit: 1 }).items.length > 0) return;
+      this.step(() => this.app.returns.cancel({ saleId, reason: 'billed by mistake' }));
+      this.counts.cancelledSales++;
+      this.counts.creditNotes++;
+      return;
+    }
+    const pool = this.dayNo % 3 === 0 && this.creditSales.length > 0 ? this.creditSales : this.sales;
+    if (!this.rng.chance(0.4) || pool.length === 0) return;
+    const saleId = this.rng.pick(pool.slice(-15));
+    const line = this.app.returns.quote({ saleId, lines: [{ lineNo: 1, qtyMilli: 1 }] }).lines.find((l) => l.returnableQtyMilli >= 1000);
+    if (!line) return;
+    const draft = { saleId, lines: [{ lineNo: line.lineNo, qtyMilli: 1000 }] };
+    const quote = this.app.returns.quote(draft);
+    if (quote.totalPaise <= 0) return;
+    this.step(() => this.app.returns.complete(CompleteReturnInput.parse({ ...draft, commandId: newUlid(), reason: 'damaged pack', expectedTotalPaise: quote.totalPaise })));
+    this.counts.creditNotes++;
   }
 
   private stockWork(): void {

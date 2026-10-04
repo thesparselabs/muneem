@@ -57,6 +57,10 @@ export const RegisterReport = z.object({
   cashInPaise: z.number().int(),
   cashOutPaise: z.number().int(),
   safeDropPaise: z.number().int(),
+  // Credit notes issued in the session and the cash they paid out of the drawer (ADR-0043).
+  returnsCount: z.number().int().optional(),
+  returnsTotalPaise: z.number().int().optional(),
+  cashRefundPaise: z.number().int().optional(),
   expectedCashPaise: z.number().int().nullable(),
   countedCashPaise: z.number().int().optional(),
   variancePaise: z.number().int().optional(),

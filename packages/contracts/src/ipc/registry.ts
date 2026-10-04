@@ -28,6 +28,7 @@ import {
   ListAccountsInput, LockPeriodInput, ManualJournalInput, Period, ProfitAndLoss, RangeInput, RenameAccountInput, ReverseJournalInput, TrialBalance, UnlockPeriodInput,
 } from './accounting.js';
 import { CompleteSaleInput, CompleteSaleResult, HeldBill, HoldBillInput, Sale, SaleDraft, SaleListInput, SalePage, SaleQuote } from './sales.js';
+import { CancelSaleInput, CompleteReturnInput, CompleteReturnResult, CreditNote, CreditNoteListInput, CreditNotePage, ReturnDraft, ReturnQuote } from './returns.js';
 import { PrintJobSummary, PrinterConfig, ReceiptDoc } from './print.js';
 import { SETTING_KEYS } from './settings.js';
 import { CloudBusiness, HydrationStartInput, HydrationStatus } from './hydration.js';
@@ -167,6 +168,13 @@ export const contract = {
   'sales.get': spec({ input: z.object({ id: Ulid }), output: Sale, permission: 'sales.view', rateLimit: { perSec: 20 } }),
   'sales.list': spec({ input: SaleListInput, output: SalePage, permission: 'sales.view', rateLimit: { perSec: 10 } }),
   'sales.getReceipt': spec({ input: z.object({ saleId: Ulid }), output: ReceiptDoc, permission: 'sales.view', rateLimit: { perSec: 10 } }),
+  'sales.cancel': spec({ input: CancelSaleInput, output: CompleteReturnResult, permission: 'sales.cancel', rateLimit: { perSec: 1 }, audit: true }),
+  'returns.quote': spec({ input: ReturnDraft, output: ReturnQuote, permission: 'sales.view', rateLimit: { perSec: 20 } }),
+  'returns.complete': spec({ input: CompleteReturnInput, output: CompleteReturnResult, permission: 'sales.edit', rateLimit: { perSec: 2 }, audit: true, idempotent: 'commandId' }),
+  'returns.get': spec({ input: z.object({ id: Ulid }), output: CreditNote, permission: 'sales.view', rateLimit: { perSec: 20 } }),
+  'returns.list': spec({ input: CreditNoteListInput, output: CreditNotePage, permission: 'sales.view', rateLimit: { perSec: 10 } }),
+  'returns.getReceipt': spec({ input: z.object({ creditNoteId: Ulid }), output: ReceiptDoc, permission: 'sales.view', rateLimit: { perSec: 10 } }),
+  'returns.reprint': spec({ input: z.object({ creditNoteId: Ulid }), output: z.object({ jobId: Ulid }), permission: 'pos.create', rateLimit: { perSec: 2 }, audit: true }),
 
   'printer.getConfig': spec({ input: Empty, output: PrinterConfig, permission: 'pos.view', rateLimit: { perSec: 5 } }),
   'printer.setConfig': spec({ input: PrinterConfig, output: PrinterConfig, permission: 'settings.manage', rateLimit: { perSec: 2 }, audit: true }),

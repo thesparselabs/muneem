@@ -25,6 +25,7 @@ export type OutboxEntityType =
   | 'customer_credit_limit'
   | 'purchase'
   | 'debit_note'
+  | 'credit_note'
   | 'payment'
   | 'write_off'
   | 'expense'

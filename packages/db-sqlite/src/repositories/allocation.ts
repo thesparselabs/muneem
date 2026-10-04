@@ -5,7 +5,7 @@ import type { Actor } from './business.js';
 import { syncColumns } from './catalogWrite.js';
 import { docNumbers } from './partyDocuments.js';
 
-export type AllocationSource = 'payment' | 'debit_note' | 'write_off' | 'opening';
+export type AllocationSource = 'payment' | 'debit_note' | 'credit_note' | 'write_off' | 'opening';
 export type AllocationTarget = 'sale' | 'purchase' | 'expense' | 'opening';
 
 export interface AllocationInput {

@@ -46,7 +46,7 @@ export const PaymentSummary = Payment.omit({ allocations: true, note: true, refe
 export const PaymentPage = z.object({ items: z.array(PaymentSummary), nextCursor: z.string().nullable() });
 export type PaymentPage = z.infer<typeof PaymentPage>;
 
-export const CREDIT_TYPES = ['payment', 'debit_note', 'opening'] as const;
+export const CREDIT_TYPES = ['payment', 'debit_note', 'credit_note', 'opening'] as const;
 export const AllocateInput = z.object({
   partyType: PartyType, partyId: Ulid, creditType: z.enum(CREDIT_TYPES), creditId: Ulid, allocation: AllocationChoice.default('auto'),
 });

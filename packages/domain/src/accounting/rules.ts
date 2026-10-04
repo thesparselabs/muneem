@@ -31,6 +31,26 @@ export const SALE_RULE: PostingRule<SaleFacts> = [
   { side: 'cr', account: account('inventory'), amount: (f) => f.cogsPaise },
 ];
 
+// Sale return (ADR-0043): the sale's lines for the returned part on the other side — revenue, output tax and round-off
+// reversed, the refund paid from cash or clearing or credited to the customer, and the goods back in stock at what they cost.
+export interface SaleReturnFacts {
+  cashPaise: number; clearingPaise: number; creditPaise: number; customerId: string | null;
+  taxablePaise: number; tax: TaxHeads; roundOffPaise: number; costPaise: number;
+}
+export const SALE_RETURN_RULE: PostingRule<SaleReturnFacts> = [
+  { side: 'dr', account: account('sales_goods'), amount: (f) => f.taxablePaise },
+  { side: 'dr', account: account('output_cgst'), amount: (f) => f.tax.cgstPaise },
+  { side: 'dr', account: account('output_sgst'), amount: (f) => f.tax.sgstPaise },
+  { side: 'dr', account: account('output_igst'), amount: (f) => f.tax.igstPaise },
+  { side: 'dr', account: account('output_cess'), amount: (f) => f.tax.cessPaise },
+  { side: 'dr', account: account('round_off'), amount: (f) => f.roundOffPaise },
+  { side: 'cr', account: account('cash'), amount: (f) => f.cashPaise },
+  { side: 'cr', account: account('clearing'), amount: (f) => f.clearingPaise },
+  { side: 'cr', account: account('ar'), amount: (f) => f.creditPaise, party: (f) => ({ partyType: 'customer', partyId: f.customerId! }) },
+  { side: 'dr', account: account('inventory'), amount: (f) => f.costPaise },
+  { side: 'cr', account: account('cogs'), amount: (f) => f.costPaise },
+];
+
 // Purchase (LLD §5.2, ADR-0023): stock at landed cost, claimable tax by head, the bill total owed to the supplier.
 export interface PurchaseFacts { supplierId: string; inventoryPaise: number; itc: TaxHeads; roundOffPaise: number; totalPaise: number }
 export const PURCHASE_RULE: PostingRule<PurchaseFacts> = [

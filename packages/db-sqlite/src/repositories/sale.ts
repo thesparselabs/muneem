@@ -145,12 +145,15 @@ function decodeCursor(s: string | undefined): ListCursor | null {
 // Newest first, keyed on (created_at, id) so sales sharing a timestamp are never skipped at a page boundary.
 export function listSales(db: Db, businessId: string, f: { sessionId?: string | undefined; limit: number; cursor?: string | undefined }): SalePage {
   const after = decodeCursor(f.cursor);
-  const rows = stmt(db, `SELECT id, doc_number, doc_date, customer_snapshot_json, total_paise, status, created_at FROM sale
-    WHERE business_id = @businessId AND (@sessionId IS NULL OR session_id = @sessionId)
+  const rows = stmt(db, `SELECT id, doc_number, doc_date, customer_snapshot_json, total_paise, status, created_at,
+      (SELECT COALESCE(SUM(i.qty_milli), 0) FROM credit_note_item i JOIN credit_note n ON n.id = i.credit_note_id WHERE n.sale_id = sale.id AND n.status = 'posted') AS returned_milli,
+      (SELECT SUM(qty_milli) FROM sale_item WHERE sale_id = sale.id) AS sold_milli
+    FROM sale WHERE business_id = @businessId AND (@sessionId IS NULL OR session_id = @sessionId)
       AND (@t IS NULL OR (created_at, id) < (@t, @id))
     ORDER BY created_at DESC, id DESC LIMIT @limit`).all({
     businessId, sessionId: f.sessionId ?? null, t: after?.t ?? null, id: after?.id ?? null, limit: f.limit + 1,
-  }) as { id: string; doc_number: string; doc_date: string; customer_snapshot_json: string; total_paise: number; status: Sale['status']; created_at: string }[];
+  }) as { id: string; doc_number: string; doc_date: string; customer_snapshot_json: string; total_paise: number; status: Sale['status']; created_at: string;
+    returned_milli: number; sold_milli: number }[];
   const page = rows.slice(0, f.limit);
   const last = page.at(-1);
   return {
@@ -158,6 +161,7 @@ export function listSales(db: Db, businessId: string, f: { sessionId?: string | 
       const c = JSON.parse(r.customer_snapshot_json) as CustomerSnapshot;
       return {
         id: r.id, docNumber: r.doc_number, docDate: r.doc_date, totalPaise: r.total_paise, status: r.status, createdAt: r.created_at,
+        returned: r.returned_milli === 0 ? 'none' as const : r.returned_milli >= r.sold_milli ? 'full' as const : 'partial' as const,
         ...(c.name && { customerName: c.name }),
       };
     }),

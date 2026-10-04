@@ -1,6 +1,6 @@
 import { expect } from 'vitest';
 import { newUlid } from '@muneem/domain';
-import { CompleteSaleInput, CustomerInput, PaymentInput, ProductInput, ProductUpdate, SaleDraft } from '@muneem/contracts';
+import { CompleteReturnInput, CompleteSaleInput, CustomerInput, PaymentInput, ProductInput, ProductUpdate, SaleDraft } from '@muneem/contracts';
 import { getMeta, META_KEYS, type Db } from '@muneem/db-sqlite';
 import { Prng } from '../soak/generator.js';
 import type { App } from '../../src/main/app.js';
@@ -69,8 +69,23 @@ export async function simulate(seed: number, cloud: CloudHarness, shape: Simulat
       const own = d.db.prepare("SELECT id FROM payment WHERE business_id = ? AND status = 'posted' AND device_id = ? ORDER BY id")
         .pluck().all(businessId, getMeta(d.db, META_KEYS.installationId)) as string[];
       if (own.length > 0) d.app.payments.cancel(rng.pick(own), 'bounced');
-    } else {
+    } else if (roll < 0.97) {
       d.app.inventory.adjust({ lines: [{ productId: rng.pick(products), qtyMilli: -1000, reason: 'damage' }] });
+    } else {
+      returnOwnSale(d);
+    }
+  };
+
+  // ADR-0043: a device takes back one unit of its own latest bill that still has some left, refunding the way it was paid.
+  const returnOwnSale = (d: Device) => {
+    const own = d.db.prepare('SELECT id FROM sale WHERE business_id = ? AND device_id = ? AND credit_paise = 0 ORDER BY created_at DESC, id DESC LIMIT 5')
+      .pluck().all(businessId, getMeta(d.db, META_KEYS.installationId)) as string[];
+    for (const saleId of own) {
+      const line = d.app.returns.quote({ saleId, lines: [{ lineNo: 1, qtyMilli: 1 }] }).lines.find((l) => l.returnableQtyMilli >= 1000);
+      if (!line) continue;
+      const draft = { saleId, lines: [{ lineNo: line.lineNo, qtyMilli: 1000 }], refundMethod: 'upi' as const };
+      d.app.returns.complete(CompleteReturnInput.parse({ ...draft, commandId: newUlid(), reason: 'returned', expectedTotalPaise: d.app.returns.quote(draft).totalPaise }));
+      return;
     }
   };
 

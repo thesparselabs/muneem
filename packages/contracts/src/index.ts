@@ -4,6 +4,7 @@ export * from './ipc/schemas.js';
 export * from './ipc/catalog.js';
 export * from './ipc/pos.js';
 export * from './ipc/sales.js';
+export * from './ipc/returns.js';
 export * from './ipc/print.js';
 export * from './ipc/settings.js';
 export * from './ipc/inventory.js';

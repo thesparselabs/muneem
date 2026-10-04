@@ -40,7 +40,15 @@ function purchaseTotalsHold(p: Payload): boolean {
 const debitNoteTotalsHold = (p: Payload): boolean =>
   taxed(p as Partial<Heads>) + num(p.chargesPaise) + num(p.roundOffPaise) === num(p.totalPaise);
 
-const TOTALS: Record<string, (p: Payload) => boolean> = { sale: saleTotalsHold, purchase: purchaseTotalsHold, debit_note: debitNoteTotalsHold };
+// A credit note: its lines add up to it, and what was refunded plus what was credited is the whole of it.
+function creditNoteTotalsHold(p: Payload): boolean {
+  const lines = (p.lines ?? []) as (Partial<Heads> & { totalPaise?: number })[];
+  const total = num(p.totalPaise);
+  return taxed(p as Partial<Heads>) + num(p.roundOffPaise) === total && sum(lines, (l) => num(l.totalPaise)) + num(p.roundOffPaise) === total
+    && lines.every((l) => taxed(l) === num(l.totalPaise)) && num(p.refundPaise) + num(p.creditPaise) === total;
+}
+
+const TOTALS: Record<string, (p: Payload) => boolean> = { sale: saleTotalsHold, purchase: purchaseTotalsHold, debit_note: debitNoteTotalsHold, credit_note: creditNoteTotalsHold };
 
 // The light verifier (ADR-0042): document totals add up and every journal in the payload balances.
 export function verifyOperation(entityType: string, operationType: string, payload: Payload): SyncErrorCode | null {

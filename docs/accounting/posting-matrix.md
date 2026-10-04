@@ -30,6 +30,26 @@ and ₹379.60 on credit; COGS is ₹700.
 - **Debits:** Cash 500, Clearing 300, AR 379.60, Round Off 0.40, COGS 700.
 - **Credits:** Sales 1,000, Output CGST 90, Output SGST 90, Inventory 700.
 
+## Credit note (sale return or cancel) ◆
+
+| Dr | Cr | Amount |
+|---|---|---|
+| 4100 Sales — Goods ◆ | | the returned lines' taxable value |
+| 2210 / 2220 / 2230 / 2240 Output CGST / SGST / IGST / Cess | | tax by head, each line's share of the sale line's own tax |
+| 4900 Round Off | | the sale's round-off (signed), only on the note that completes a full return |
+| | 1300 AR (customer) | the part that settles what the customer still owes on the bill, or all of it when credited to the account |
+| | 1100 Cash / 1250 Clearing | the rest, refunded in cash, or by UPI or card |
+| 1400 Inventory | 5100 COGS | the goods back at what they cost when sold: each line's share of the sale line's COGS |
+
+*Example:* the whole of the sale above comes back after the customer has paid ₹79.60 of the ₹379.60 owed. ₹300
+settles the rest of the bill and ₹879.60 is refunded in cash.
+- **Debits:** Sales 1,000, Output CGST 90, Output SGST 90, Inventory 700.
+- **Credits:** Round Off 0.40, Cash 879.60, AR 300, COGS 700.
+
+◆ The return reverses revenue in 4100 itself rather than a separate Sales Returns account, so the P&L shows net sales.
+A part return carries no round-off; the note that completes a full return takes back the sale's, so a bill returned
+in any number of parts nets to exactly zero (ADR-0043). Cancelling a sale is the same journal for the whole bill.
+
 ## Purchase invoice
 
 | Dr | Cr | Amount |
@@ -132,7 +152,8 @@ Every amount is the stock movements' recorded value, so 1400 equals the inventor
 ◆ The drawer does not know why cash went in or out, so it waits in 1199 with the reason as narration until the
 accountant reclassifies it, for example to Drawings or an expense.
 
-Cash that moves for a payment or an expense posts with that document, not here.
+Cash that moves for a payment, an expense or a credit note's cash refund posts with that document, not here. A cash
+refund lowers the register's expected cash like change given.
 
 **Opening a register posts nothing.** The float comes from cash the business already holds, and 1100 is all the
 business's cash, in the drawer and out of it. The cash a shop starts with is recorded once, as a manual journal:
@@ -145,4 +166,3 @@ zero even though the drawer holds money.
   Balance Sheet.
 - **Card/UPI settlement** (Dr Bank, Dr Bank Charges, Cr Clearing) is a manual journal.
 - **Reverse-charge purchases** are refused (ADR-0023).
-- **Sale returns and credit notes** are deferred.

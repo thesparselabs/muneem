@@ -6,7 +6,7 @@ import type { Actor } from './business.js';
 import { syncColumns } from './catalogWrite.js';
 import { partyDocumentsSql, type PartyDocumentRow } from './partyDocuments.js';
 
-export type PartyRefType = 'sale' | 'purchase' | 'debit_note' | 'payment' | 'write_off' | 'opening' | 'expense';
+export type PartyRefType = 'sale' | 'purchase' | 'debit_note' | 'credit_note' | 'payment' | 'write_off' | 'opening' | 'expense';
 
 export interface PartyEntryInput {
   businessId: string; partyType: PartyType; partyId: string; refType: PartyRefType; refId: string; kind: 'post' | 'cancel';

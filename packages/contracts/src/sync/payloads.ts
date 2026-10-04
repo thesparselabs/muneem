@@ -65,6 +65,19 @@ const DebitNote = open({
   lines: z.array(open({ purchaseItemId: Id, qtyMilli: z.number().int() })).min(1), movements: z.array(MovementPayload), corrections: z.array(JournalPayload),
   entry: PartyEntryPayload, journal: JournalPayload, ...TaxHeads, ...Filing, warehouseId: Id.optional(), allocations: z.array(AllocationLine).optional(),
 });
+// ADR-0043: each line carries the sale line it came from, so a server can recompute the return from the sale's own tax.
+const SoldLine = open({ qtyMilli: z.number().int(), baseQtyMilli: z.number().int(), taxablePaise: Paise, cogsPaise: Paise, ...TaxHeads });
+const CreditNote = open({
+  id: Id, businessId: Id, saleId: Id, terminalId: Id, sessionId: Id.nullish(), customerId: Id.nullish(), docNumber: z.string(), docDate: Day,
+  kind: z.enum(['return', 'cancel']), reason: z.string(), supplyType: z.string(), taxablePaise: Paise, roundOffPaise: Paise, totalPaise: Paise, costPaise: Paise,
+  refundMethod: z.enum(['cash', 'upi', 'card', 'credit']), refundPaise: Paise, creditPaise: Paise, ...TaxHeads,
+  lines: z.array(open({
+    saleItemId: Id, productId: Id, qtyMilli: z.number().int(), baseQtyMilli: z.number().int(), returnedBeforeMilli: z.number().int(), taxablePaise: Paise,
+    totalPaise: Paise, costPaise: Paise, sold: SoldLine, ...TaxHeads,
+  })).min(1),
+  movements: z.array(MovementPayload), corrections: z.array(JournalPayload), entry: PartyEntryPayload.nullable(), allocations: z.array(AllocationLine),
+  journal: JournalPayload, ...Filing, warehouseId: Id.optional(),
+});
 const Payment = open({
   id: Id, businessId: Id, partyType: z.enum(['customer', 'supplier']), partyId: Id, docNumber: z.string(), paymentDate: Day, method: z.string(),
   amountPaise: Paise, allocations: z.array(AllocationLine), entry: PartyEntryPayload, journal: JournalPayload, ...Filing, terminalId: Id.nullish(),
@@ -98,6 +111,7 @@ const EXACT: Partial<Record<OutboxEntityType, Partial<Record<string, z.ZodTypeAn
   sale: { create: Sale },
   purchase: { create: Purchase, cancel: Cancel },
   debit_note: { create: DebitNote },
+  credit_note: { create: CreditNote },
   payment: { create: Payment, cancel: Cancel },
   write_off: { create: WriteOff },
   expense: { create: Expense, cancel: Cancel },

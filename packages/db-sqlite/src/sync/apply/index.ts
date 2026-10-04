@@ -12,6 +12,7 @@ import { EXPENSE } from './expenses.js';
 import { applyJournalEntry } from './journals.js';
 import { applyMaster, type MasterSpec } from './master.js';
 import { CUSTOMER, SUPPLIER, applyCreditLimit } from './parties.js';
+import { CREDIT_NOTE } from './creditNotes.js';
 import { DEBIT_NOTE, PURCHASE } from './purchases.js';
 import { applyCashMovement, POS_SESSION } from './register.js';
 import { recordLocalReview } from './review.js';
@@ -30,7 +31,7 @@ const APPLIERS: Readonly<Record<OutboxEntityType | 'conflict_log' | 'review_item
   uom: master(UOM), category: master(CATEGORY), brand: master(BRAND), product: master(PRODUCT), barcode: applyBarcode, uom_conversion: applyConversion,
   price_list: master(PRICE_LIST), price_list_item: applyPriceItems, customer: master(CUSTOMER), customer_credit_limit: applyCreditLimit, supplier: master(SUPPLIER),
   warehouse: master(WAREHOUSE),
-  pos_session: document(POS_SESSION), cash_movement: applyCashMovement, sale: document(SALE), stock_adjustment: applyStockDocument,
+  pos_session: document(POS_SESSION), cash_movement: applyCashMovement, sale: document(SALE), credit_note: document(CREDIT_NOTE), stock_adjustment: applyStockDocument,
   party_opening: document(PARTY_OPENING), purchase: document(PURCHASE), debit_note: document(DEBIT_NOTE), payment: document(PAYMENT), write_off: document(WRITE_OFF),
   expense: document(EXPENSE), allocation: applyAllocationEntity, journal_entry: applyJournalEntry,
   accounting_period: applyPeriod, conflict_log: applyConflictLog, review_item: applyReviewItem, device: applyDeviceMessage,

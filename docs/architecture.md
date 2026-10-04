@@ -67,6 +67,10 @@ docs/             this folder (reality, with reasons)
 - A supplier return leaves at its landed cost and replay = projection still holds; an issue that leaves stock on hand
   never takes more than the stock is worth (ADR-0027)
 - After repeated SIGKILLs mid-billing: one ledger entry per credit sale and the party ledgers reconcile
+- A sale line returned in any number of parts adds up to the line exactly, and a whole bill returned is exactly the
+  bill (domain properties, Go-shared golden vectors); a credit note never returns more than was sold on a line
+  (trigger); output tax in the ledger = sales tax − credit-note tax (tie-out); after SIGKILLs mid-return no credit note
+  is missing its lines, stock movements, party entry, journal, receipt, audit or outbox row (ADR-0043)
 - `purchases.create` (200 lines) p95 < 1 s; a payment settling 500 bills < 250 ms; reconciliation of 10,000 documents
   < 2 s
 - Every journal balances (engine + CHECK) and equals its lines; a document has one journal and at most one reversal; no
@@ -126,7 +130,7 @@ docs/             this folder (reality, with reasons)
 
 - **Sub-ledger** (ADR-0022): `party_ledger_entry` is append-only and written only by `postPartyEntry`, in the same
   transaction as its document. Positive means the party owes the business. Documents are charges (credit sales,
-  purchases, credit expenses, openings) or settlements (payments, debit notes, write-offs, opening advances).
+  purchases, credit expenses, openings) or settlements (payments, debit notes, credit notes, write-offs, opening advances).
   `PARTY_DOCUMENTS_SQL` reads them all in one shape, and `reconcilePartiesDb` checks entries against them.
   Diagnostics and the 6-hourly timer run it and report a mismatch; they never heal it.
 - **Allocation** (ADR-0025): settlements are applied to charges in `allocation` rows, oldest due date first or as

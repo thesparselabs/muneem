@@ -1,6 +1,6 @@
 import { newUlid } from '@muneem/domain';
 import {
-  CompleteSaleInput, CreatePurchaseInput, CustomerInput, ExpenseInput, ManualJournalInput, PaymentInput, ProductInput, ProductUpdate, ReturnPurchaseInput, SaleDraft,
+  CompleteReturnInput, CompleteSaleInput, CreatePurchaseInput, CustomerInput, ExpenseInput, ManualJournalInput, PaymentInput, ProductInput, ProductUpdate, ReturnPurchaseInput, SaleDraft,
   SupplierInput, WriteOffInput,
 } from '@muneem/contracts';
 import { findUomByCode, type Db } from '@muneem/db-sqlite';
@@ -32,6 +32,10 @@ export async function goldenDay(app: App, db: Db): Promise<{ businessId: string;
     (t) => [{ method: 'upi', amountPaise: 1000, reference: 'UPI-55' }, { method: 'cash', amountPaise: t - 1000 + 2000 }]);
   const credit = complete(app, SaleDraft.parse({ customerId: limited.id, lines: [{ productId: soap.id, uomId: box, qtyMilli: 1000 }] }), (t) => [{ method: 'cash', amountPaise: t - 30_000 }, { method: 'credit', amountPaise: 30_000 }]);
   app.writeOffs.create(WriteOffInput.parse({ customerId: limited.id, items: [{ type: 'sale', id: credit.saleId, amountPaise: 100 }], reason: 'not recoverable', commandId: newUlid() }));
+  const giveBack = { saleId: credit.saleId, lines: [{ lineNo: 1, qtyMilli: 500 }] };
+  app.returns.complete(CompleteReturnInput.parse({ ...giveBack, commandId: newUlid(), reason: 'six bars were damaged', expectedTotalPaise: app.returns.quote(giveBack).totalPaise }));
+  const mistaken = complete(app, SaleDraft.parse({ lines: [{ productId: parle.id, uomId: pcs, qtyMilli: 2000 }] }), (t) => [{ method: 'cash', amountPaise: t }]);
+  app.returns.cancel({ saleId: mistaken.saleId, reason: 'billed twice' });
   app.payments.create(PaymentInput.parse({ partyType: 'customer', partyId: meena.id, amountPaise: 40_000, method: 'cash', commandId: newUlid() }));
 
   const acme = app.suppliers.create(SupplierInput.parse({ name: 'Acme Traders', stateCode: '07', gstin: '07AAAAA0000A1Z5', creditDays: 30 }));

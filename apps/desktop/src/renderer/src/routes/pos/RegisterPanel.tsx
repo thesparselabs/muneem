@@ -74,6 +74,8 @@ export function ReportView({ report }: { report: RegisterReport }) {
       {row('Cash in', formatPaise(report.cashInPaise))}
       {row('Cash out', formatPaise(report.cashOutPaise))}
       {row('Safe drops', formatPaise(report.safeDropPaise))}
+      {!!report.returnsCount && row(`Credit notes (${report.returnsCount})`, formatPaise(report.returnsTotalPaise ?? 0))}
+      {!!report.cashRefundPaise && row('Cash refunded', formatPaise(report.cashRefundPaise))}
       {row('Expected cash', report.expectedCashPaise === null ? 'hidden (blind close)' : formatPaise(report.expectedCashPaise), true)}
       {report.countedCashPaise !== undefined && row('Counted cash', formatPaise(report.countedCashPaise), true)}
       {report.variancePaise !== undefined && row('Variance', formatPaise(report.variancePaise), true)}

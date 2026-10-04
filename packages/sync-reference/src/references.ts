@@ -7,7 +7,7 @@ const ref = (entityType: string, id: unknown): EntityRef[] => (str(id) ? [{ enti
 const party = (p: Payload): EntityRef[] => ref(p.partyType === 'supplier' ? 'supplier' : 'customer', p.partyId);
 
 const TARGET_TYPES: Record<string, string> = { sale: 'sale', purchase: 'purchase', expense: 'expense', opening: 'party_opening' };
-const SOURCE_TYPES: Record<string, string> = { payment: 'payment', debit_note: 'debit_note', write_off: 'write_off', opening: 'party_opening' };
+const SOURCE_TYPES: Record<string, string> = { payment: 'payment', debit_note: 'debit_note', credit_note: 'credit_note', write_off: 'write_off', opening: 'party_opening' };
 
 // An opening allocated against is the party_opening entity whose `opening.id` it is; openings are stored by that id.
 const allocationTargets = (p: Payload): EntityRef[] =>
@@ -17,6 +17,7 @@ const CREATE_REFS: Record<string, (p: Payload) => EntityRef[]> = {
   sale: (p) => [...ref('pos_session', p.sessionId), ...ref('customer', p.customerId)],
   purchase: (p) => ref('supplier', p.supplierId),
   debit_note: (p) => ref('purchase', p.purchaseId),
+  credit_note: (p) => [...ref('sale', p.saleId), ...ref('customer', p.customerId), ...ref('pos_session', p.sessionId)],
   payment: (p) => [...party(p), ...allocationTargets(p)],
   write_off: (p) => [...ref('customer', p.customerId), ...allocationTargets(p)],
   expense: (p) => ref('supplier', p.supplierId),

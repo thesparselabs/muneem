@@ -53,6 +53,7 @@ const ENTITY_LABEL = `CASE c.entity_type
     WHEN 'category' THEN (SELECT name FROM category WHERE id = c.entity_id)
     WHEN 'barcode' THEN (SELECT code FROM barcode WHERE id = c.entity_id)
     WHEN 'sale' THEN (SELECT doc_number FROM sale WHERE id = c.entity_id)
+    WHEN 'credit_note' THEN (SELECT doc_number FROM credit_note WHERE id = c.entity_id)
   END`;
 
 export function listReviewItems(db: Db, businessId: string, status: 'open' | 'reviewed' | 'all', limit: number): ReviewItem[] {

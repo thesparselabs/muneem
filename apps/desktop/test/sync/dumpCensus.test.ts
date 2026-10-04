@@ -1,7 +1,7 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { describe, it, vi } from 'vitest';
 import { newUlid } from '@muneem/domain';
-import { CompleteSaleInput, SaleDraft } from '@muneem/contracts';
+import { CompleteReturnInput, CompleteSaleInput, SaleDraft } from '@muneem/contracts';
 import type { Db } from '@muneem/db-sqlite';
 import { runSoak } from '../soak/generator.js';
 import { caller, ownerAtTill, testApp } from '../helpers.js';
@@ -32,7 +32,7 @@ describe('sync census dumps', () => {
     dump(soak.db, soak.businessId, 'soak.json');
   }, 600_000);
 
-  // What the soak never makes: bill and line discounts, cess, inter-state supply and change given.
+  // What the soak never makes: bill and line discounts, cess, inter-state supply and change given, and returns of such lines.
   run('sales the soak does not make', async () => {
     const { app, db } = await testApp();
     const api = caller(app);
@@ -59,14 +59,23 @@ describe('sync census dumps', () => {
       { lines: lines.slice(1, 3), billDiscount: { kind: 'percent', value: 333 }, customerId: mumbai.id },
       { lines: lines.slice(0, 1), placeOfSupplyOverride: { stateCode: '29', reason: 'delivered to Bengaluru' } },
     ];
+    const saleIds: string[] = [];
     for (const [i, d] of drafts.entries()) {
       const draft = SaleDraft.parse(d);
       const total = app.sales.quote(draft).totals.totalPaise;
       const tenders = i % 2 === 0
         ? [{ method: 'cash', amountPaise: Math.ceil((total + 1) / 10_000) * 10_000 }]
         : [{ method: 'upi', amountPaise: total - 1000 }, { method: 'cash', amountPaise: 5000 }];
-      app.sales.complete(CompleteSaleInput.parse({ ...draft, commandId: newUlid(), expectedTotalPaise: total, tenders }));
+      saleIds.push(app.sales.complete(CompleteSaleInput.parse({ ...draft, commandId: newUlid(), expectedTotalPaise: total, tenders })).saleId);
     }
+    const giveBack = (saleId: string, back: { lineNo: number; qtyMilli: number }[]) => {
+      const d = { saleId, lines: back };
+      app.returns.complete(CompleteReturnInput.parse({ ...d, commandId: newUlid(), reason: 'returned', expectedTotalPaise: app.returns.quote(d).totalPaise }));
+    };
+    giveBack(saleIds[0]!, [{ lineNo: 2, qtyMilli: 3000 }, { lineNo: 3, qtyMilli: 250 }]);
+    giveBack(saleIds[0]!, [{ lineNo: 2, qtyMilli: 4000 }]);
+    giveBack(saleIds[1]!, [{ lineNo: 1, qtyMilli: 1000 }]);
+    app.returns.cancel({ saleId: saleIds[2]!, reason: 'wrong bill' });
     dump(db, businessId, 'variety.json');
   }, 120_000);
 });

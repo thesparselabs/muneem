@@ -27,8 +27,9 @@ export function accountingTieOuts(db: Db, businessId: string): TieOut[] {
   ];
   for (const h of HEADS) {
     out.push({
-      name: `output ${h.toUpperCase()} = sales tax`, ledgerPaise: -roleBalance(`output_${h}`),
-      subledgerPaise: one(db, `SELECT COALESCE(SUM(${h}_paise), 0) FROM sale WHERE business_id = ? AND status = 'posted'`, businessId),
+      name: `output ${h.toUpperCase()} = sales tax less credit notes`, ledgerPaise: -roleBalance(`output_${h}`),
+      subledgerPaise: one(db, `SELECT COALESCE((SELECT SUM(${h}_paise) FROM sale WHERE business_id = @b AND status = 'posted'), 0)
+        - COALESCE((SELECT SUM(${h}_paise) FROM credit_note WHERE business_id = @b AND status = 'posted'), 0)`, businessId),
     });
     out.push({
       name: `input ${h.toUpperCase()} = claimable tax`, ledgerPaise: roleBalance(`input_${h}`),

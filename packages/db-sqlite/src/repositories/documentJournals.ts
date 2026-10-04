@@ -1,6 +1,6 @@
 import {
   buildJournal, CASH_MOVEMENT_RULE, COST_CORRECTION_RULE, DEBIT_NOTE_RULE, EXPENSE_RULE, OPENING_STOCK_RULE, PARTY_OPENING_RULE, PURCHASE_RULE, RECEIPT_RULE,
-  REGISTER_VARIANCE_RULE, SALE_RULE, STOCK_ADJUSTMENT_RULE, SUPPLIER_PAYMENT_RULE, WRITE_OFF_RULE, type JournalLine, type TaxHeads,
+  REGISTER_VARIANCE_RULE, SALE_RETURN_RULE, SALE_RULE, STOCK_ADJUSTMENT_RULE, SUPPLIER_PAYMENT_RULE, WRITE_OFF_RULE, type JournalLine, type TaxHeads,
 } from '@muneem/domain';
 import type { Db } from '../open.js';
 import { appendOutbox } from '../outbox.js';
@@ -10,7 +10,7 @@ import { journalForRef, postJournal, reverseJournal, type JournalInput, type Pos
 
 // Every journal is built from the document as stored, so live posting and the backfill can never differ (ADR-0030/0034).
 export type JournalDocKind =
-  | 'sale' | 'purchase' | 'debit_note' | 'payment' | 'write_off' | 'expense' | 'stock_document' | 'cost_correction' | 'party_opening'
+  | 'sale' | 'credit_note' | 'purchase' | 'debit_note' | 'payment' | 'write_off' | 'expense' | 'stock_document' | 'cost_correction' | 'party_opening'
   | 'register_close' | 'cash_movement';
 // Who numbers a journal whose document has no number, and the branch it falls under when the document has none.
 export interface Poster { branchId: string; terminalId: string }
@@ -34,6 +34,21 @@ function sale(db: Db, id: string): Built | null {
     tax: heads({ cgst: s.cgst_paise, sgst: s.sgst_paise, igst: s.igst_paise, cess: s.cess_paise }), roundOffPaise: s.round_off_paise, cogsPaise: s.cogs_paise,
   });
   return { businessId: s.business_id, input: { branchId: s.branch_id, terminalId: s.terminal_id, source: 'sale', refType: 'sale', refId: id, entryNo: s.doc_number, docDate: s.doc_date, lines } };
+}
+
+// ADR-0043: the refund leaves by the method it was paid in; the part that settles the customer's bill goes against their account.
+function creditNote(db: Db, id: string): Built | null {
+  const n = get<{ business_id: string; branch_id: string; terminal_id: string; doc_number: string; doc_date: string; customer_id: string | null;
+    taxable_paise: number; cgst_paise: number; sgst_paise: number; igst_paise: number; cess_paise: number; round_off_paise: number; cost_paise: number;
+    refund_method: string; refund_paise: number; credit_paise: number }>(db, 'SELECT * FROM credit_note WHERE id = ?', id);
+  if (!n) return null;
+  const lines = buildJournal(SALE_RETURN_RULE, {
+    cashPaise: n.refund_method === 'cash' ? n.refund_paise : 0, clearingPaise: n.refund_method === 'cash' ? 0 : n.refund_paise, creditPaise: n.credit_paise,
+    customerId: n.customer_id, taxablePaise: n.taxable_paise, tax: heads({ cgst: n.cgst_paise, sgst: n.sgst_paise, igst: n.igst_paise, cess: n.cess_paise }),
+    roundOffPaise: n.round_off_paise, costPaise: n.cost_paise,
+  });
+  return { businessId: n.business_id, input: { branchId: n.branch_id, terminalId: n.terminal_id, source: 'sale_return', refType: 'credit_note', refId: id,
+    entryNo: n.doc_number, docDate: n.doc_date, lines } };
 }
 
 function purchase(db: Db, id: string): Built | null {
@@ -151,7 +166,7 @@ function cashMovement(db: Db, id: string): Built | null {
 }
 
 const BUILDERS: Record<JournalDocKind, (db: Db, id: string) => Built | null> = {
-  sale, purchase, debit_note: debitNote, payment, write_off: writeOff, expense, stock_document: stockDocument, cost_correction: costCorrection,
+  sale, credit_note: creditNote, purchase, debit_note: debitNote, payment, write_off: writeOff, expense, stock_document: stockDocument, cost_correction: costCorrection,
   party_opening: partyOpening, register_close: registerClose, cash_movement: cashMovement,
 };
 

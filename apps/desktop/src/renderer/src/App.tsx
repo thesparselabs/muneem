@@ -29,6 +29,7 @@ import ProductEdit from './routes/ProductEdit.js';
 import ImportProducts from './routes/ImportProducts.js';
 import CatalogSettings from './routes/CatalogSettings.js';
 import PosScreen from './routes/pos/PosScreen.js';
+import Sales from './routes/sales/Sales.js';
 import StockList from './routes/inventory/StockList.js';
 import ProductLedger from './routes/inventory/ProductLedger.js';
 import AdjustStock from './routes/inventory/AdjustStock.js';
@@ -71,6 +72,7 @@ export default function App() {
         <Route path="/products/:id" element={<ProductEdit />} />
         <Route path="/settings/catalog" element={<CatalogSettings />} />
         <Route path="/pos" element={<PosScreen />} />
+        <Route path="/sales" element={<Sales />} />
         <Route path="/inventory" element={<StockList />} />
         <Route path="/inventory/product/:id" element={<ProductLedger />} />
         <Route path="/inventory/adjust" element={<AdjustStock />} />

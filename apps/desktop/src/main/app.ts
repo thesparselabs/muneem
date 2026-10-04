@@ -47,6 +47,7 @@ import { PosContext } from './services/pos/posContext.js';
 import { RegisterService } from './services/pos/register.js';
 import { SalePricing } from './services/pos/salePricing.js';
 import { SaleService } from './services/pos/sales.js';
+import { ReturnService } from './services/returns/returnService.js';
 import { ProductSearch } from './services/productSearch.js';
 import { ProductService } from './services/products.js';
 import { DeviceService } from './services/device.js';
@@ -157,6 +158,7 @@ export function createApp(cfg: AppConfig) {
   const printerConfig = new PrinterConfigStore(cfg.db);
   const printQueue = new PrintQueue({ db: cfg.db, config: printerConfig, receiptsDir: cfg.receiptsDir, log: cfg.loggers.hardware });
   const sales = new SaleService(posCtx, new SalePricing(posCtx), register, () => session.require().user.name, (r) => printQueue.enqueue(r.printJobId));
+  const returns = new ReturnService(posCtx, () => session.require().user.name, (r) => printQueue.enqueue(r.printJobId));
   const productImport = new ImportService(catalogCtx, new PreviewStore(cfg.now ?? (() => Date.now())), invalidateSearch);
   const diagnostics = new DiagnosticsService({
     db: cfg.db, dbFile: cfg.dbFile, bundlesDir: cfg.bundlesDir, loggers: cfg.loggers, session, device,
@@ -323,6 +325,13 @@ export function createApp(cfg: AppConfig) {
     'sales.get': (i) => sales.get(i.id),
     'sales.list': (i) => sales.list(i),
     'sales.getReceipt': (i) => sales.receipt(i.saleId),
+    'sales.cancel': (i) => returns.cancel(i),
+    'returns.quote': (i) => returns.quote(i),
+    'returns.complete': (i) => returns.complete(i),
+    'returns.get': (i) => returns.get(i.id),
+    'returns.list': (i) => returns.list(i),
+    'returns.getReceipt': (i) => returns.receipt(i.creditNoteId),
+    'returns.reprint': (i) => { returns.get(i.creditNoteId); return { jobId: printQueue.reprint(i.creditNoteId, posCtx.userId()) }; },
     'printer.getConfig': () => printerConfig.get(),
     'printer.setConfig': (i) => printerConfig.set(i),
     'printer.testPrint': async () => { await printQueue.testPrint(); return { ok: true as const }; },
@@ -367,6 +376,6 @@ export function createApp(cfg: AppConfig) {
     onCommitted: () => sync.nudge(), holds: (id) => gate.holds(id),
   });
 
-  return { events, session, reports, rbac, cloud, connectivity, device, auth, business, settings, products, catalog, pricing, productImport, customers, suppliers, customerLedger, supplierLedger, purchases, purchaseReturns, purchaseImport, payments, writeOffs, expenses, periods, backlog, statements, chart, manualJournals, register, sales, printQueue, inventory, openingImport, diagnostics, backups, closeReadConnections, gateway, handlers, syncStatus, syncEngine, sync, hydration, hydrationGate: gate };
+  return { events, session, reports, rbac, cloud, connectivity, device, auth, business, settings, products, catalog, pricing, productImport, customers, suppliers, customerLedger, supplierLedger, purchases, purchaseReturns, purchaseImport, payments, writeOffs, expenses, periods, backlog, statements, chart, manualJournals, register, sales, returns, printQueue, inventory, openingImport, diagnostics, backups, closeReadConnections, gateway, handlers, syncStatus, syncEngine, sync, hydration, hydrationGate: gate };
 }
 export type App = ReturnType<typeof createApp>;

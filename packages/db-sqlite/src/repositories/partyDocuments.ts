@@ -20,6 +20,8 @@ const BRANCHES: readonly { partyType: PartyType | null; party: string; sql: stri
     `CASE WHEN side = ${usual} THEN settled_paise ELSE allocated_paise END`)} FROM party_opening WHERE 1` },
   { partyType: null, party: 'party_id', sql: `${COLS("'settlement'", 'payment', 'party_type', 'party_id', 'doc_number', 'payment_date', 'payment_date', 'amount_paise', 'allocated_paise')} FROM payment WHERE 1` },
   { partyType: 'supplier', party: 'supplier_id', sql: `${COLS("'settlement'", 'debit_note', "'supplier'", 'supplier_id', 'doc_number', 'doc_date', 'doc_date', 'total_paise', 'allocated_paise')} FROM debit_note WHERE 1` },
+  { partyType: 'customer', party: 'customer_id', sql: `${COLS("'settlement'", 'credit_note', "'customer'", 'customer_id', 'doc_number', 'doc_date', 'doc_date', 'credit_paise', 'allocated_paise')}
+    FROM credit_note WHERE credit_paise > 0` },
   { partyType: 'customer', party: 'customer_id', sql: `${COLS("'settlement'", 'write_off', "'customer'", 'customer_id', 'NULL', 'doc_date', 'doc_date', 'amount_paise', 'allocated_paise')} FROM write_off WHERE 1` },
 ];
 
@@ -37,7 +39,7 @@ export interface PartyDocumentRow {
   doc_date: string; due_date: string; amount_paise: number; used_paise: number; live: 0 | 1;
 }
 
-const NUMBERED: Record<string, string> = { sale: 'sale', purchase: 'purchase', debit_note: 'debit_note', payment: 'payment', expense: 'expense' };
+const NUMBERED: Record<string, string> = { sale: 'sale', purchase: 'purchase', debit_note: 'debit_note', credit_note: 'credit_note', payment: 'payment', expense: 'expense' };
 
 // Document numbers for just the rows being shown, by indexed id lookups per type.
 export function docNumbers(db: Db, refs: readonly { type: string; id: string }[]): Map<string, string> {

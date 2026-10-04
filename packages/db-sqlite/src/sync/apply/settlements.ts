@@ -9,7 +9,7 @@ import { applyDrawerMovements, applyPartyEntry, statusIs, str, type DocumentAppl
 import { applyJournal } from './journals.js';
 import { exists, insertRow, updateRow } from './rows.js';
 
-interface Source { partyType: PartyType; partyId: string; sourceType: 'payment' | 'debit_note' | 'write_off' | 'opening'; sourceId: string }
+interface Source { partyType: PartyType; partyId: string; sourceType: 'payment' | 'debit_note' | 'credit_note' | 'write_off' | 'opening'; sourceId: string }
 interface AllocationLine { id: string; targetType: string; targetId: string; amountPaise: number; allocatedOn?: string }
 
 const TARGET_DATE: Record<string, string> = {
@@ -83,6 +83,7 @@ export const WRITE_OFF: DocumentApplier = { table: 'write_off', create: createWr
 
 const SOURCE_PARTY: Record<string, string> = {
   payment: 'SELECT party_type, party_id FROM payment WHERE id = ?', debit_note: "SELECT 'supplier' AS party_type, supplier_id AS party_id FROM debit_note WHERE id = ?",
+  credit_note: "SELECT 'customer' AS party_type, customer_id AS party_id FROM credit_note WHERE id = ?",
   write_off: "SELECT 'customer' AS party_type, customer_id AS party_id FROM write_off WHERE id = ?", opening: 'SELECT party_type, party_id FROM party_opening WHERE id = ?',
 };
 

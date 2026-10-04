@@ -16,7 +16,7 @@ var streamOf = map[string]string{
 	"uom_conversion": StreamMasters, "price_list": StreamMasters, "price_list_item": StreamMasters, "customer": StreamMasters,
 	"customer_credit_limit": StreamMasters, "supplier": StreamMasters, "warehouse": StreamMasters,
 	"pos_session": StreamDocuments, "cash_movement": StreamDocuments, "sale": StreamDocuments, "stock_adjustment": StreamDocuments,
-	"party_opening": StreamDocuments, "purchase": StreamDocuments, "debit_note": StreamDocuments, "payment": StreamDocuments,
+	"party_opening": StreamDocuments, "purchase": StreamDocuments, "debit_note": StreamDocuments, "credit_note": StreamDocuments, "payment": StreamDocuments,
 	"write_off": StreamDocuments, "expense": StreamDocuments, "allocation": StreamDocuments, "journal_entry": StreamDocuments,
 }
 

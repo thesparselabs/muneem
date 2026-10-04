@@ -117,10 +117,16 @@ export function computeInvoice(input: GstInvoiceInput): GstInvoiceResult {
   };
 }
 
+// A credit note is reported as CDNR when the customer has a GSTIN, otherwise as CDNUR (ADR-0043).
+export function creditNoteBucket(taxScheme: GstInvoiceInput['taxScheme'], customerGstin: string | undefined): Gstr1Bucket {
+  if (taxScheme !== 'regular') return 'na';
+  return customerGstin ? 'cdnr' : 'cdnur';
+}
+
 function bucketOf(input: GstInvoiceInput, supplyType: 'intra' | 'inter', totalPaise: number): Gstr1Bucket {
+  if (input.docType === 'credit_note') return creditNoteBucket(input.taxScheme, input.customerGstin);
   if (input.taxScheme !== 'regular') return 'na';
   const hasGstin = !!input.customerGstin;
-  if (input.docType === 'credit_note') return hasGstin ? 'cdnr' : 'cdnur';
   if (hasGstin) return 'b2b';
   if (supplyType === 'inter' && totalPaise > input.b2clThresholdPaise) return 'b2cl';
   const treatments = new Set<TaxTreatment>(input.lines.map((l) => l.taxTreatment));

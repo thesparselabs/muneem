@@ -6,8 +6,8 @@ import { appendOutbox } from '../outbox.js';
 import { nowIso, withTransaction } from '../uow.js';
 import type { Actor } from './business.js';
 
-// Sale documents use the invoice format (ADR-0014); everything else carries a kind letter (ADR-0028). Chosen by type, never by width.
-const INVOICE_DOC_TYPES = new Set(['tax_invoice', 'bill_of_supply', 'credit_note', 'delivery_challan']);
+// Sale documents use the invoice format (ADR-0014); everything else, credit notes included, carries a kind letter (ADR-0028/0043).
+const INVOICE_DOC_TYPES = new Set(['tax_invoice', 'bill_of_supply', 'delivery_challan']);
 
 export interface DocSeriesRow { id: string; businessId: string; branchId: string | null; terminalId: string | null; docType: string; fy: string; prefix: string; padWidth: number; nextSeq: number }
 type Raw = { id: string; business_id: string; branch_id: string | null; terminal_id: string | null; doc_type: string; fy: string; prefix: string; pad_width: number; next_seq: number };

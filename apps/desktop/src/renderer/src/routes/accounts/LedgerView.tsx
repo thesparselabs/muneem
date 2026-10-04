@@ -6,7 +6,7 @@ const DOC_LINK: Record<string, (id: string) => string> = {
   purchase: (id) => `/purchases/${id}`, payment: (id) => `/payments/${id}`,
 };
 const SOURCE: Record<string, string> = {
-  sale: 'Sale', purchase: 'Purchase', purchase_return: 'Debit note', receipt: 'Receipt', payment: 'Payment', expense: 'Expense', write_off: 'Write-off',
+  sale: 'Sale', sale_return: 'Credit note', purchase: 'Purchase', purchase_return: 'Debit note', receipt: 'Receipt', payment: 'Payment', expense: 'Expense', write_off: 'Write-off',
   stock_adjustment: 'Stock', opening: 'Opening', register_close: 'Register', cash_movement: 'Cash in/out', manual: 'Journal',
 };
 

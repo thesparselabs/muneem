@@ -1,0 +1,1977 @@
+{
+ "version": 1,
+ "cases": [
+  {
+   "name": "HAND first of three units: 10001/3 rounds up to 3334",
+   "input": {
+    "lines": [
+     {
+      "line": {
+       "qtyMilli": 3000,
+       "baseQtyMilli": 3000,
+       "taxablePaise": 10001,
+       "cgstPaise": 900,
+       "sgstPaise": 900,
+       "igstPaise": 0,
+       "cessPaise": 0,
+       "cogsPaise": 7000
+      },
+      "returnedBeforeMilli": 0,
+      "qtyMilli": 1000
+     }
+    ],
+    "saleRoundOffPaise": -1,
+    "roundOffReturnedPaise": 0
+   },
+   "expected": {
+    "lines": [
+     {
+      "qtyMilli": 1000,
+      "baseQtyMilli": 1000,
+      "taxablePaise": 3334,
+      "cgstPaise": 300,
+      "sgstPaise": 300,
+      "igstPaise": 0,
+      "cessPaise": 0,
+      "totalPaise": 3934,
+      "costPaise": 2333
+     }
+    ],
+    "taxablePaise": 3334,
+    "cgstPaise": 300,
+    "sgstPaise": 300,
+    "igstPaise": 0,
+    "cessPaise": 0,
+    "roundOffPaise": 0,
+    "totalPaise": 3934,
+    "costPaise": 2333,
+    "completesSale": false
+   }
+  },
+  {
+   "name": "HAND second of three units takes what the first left: 6667 − 3334",
+   "input": {
+    "lines": [
+     {
+      "line": {
+       "qtyMilli": 3000,
+       "baseQtyMilli": 3000,
+       "taxablePaise": 10001,
+       "cgstPaise": 900,
+       "sgstPaise": 900,
+       "igstPaise": 0,
+       "cessPaise": 0,
+       "cogsPaise": 7000
+      },
+      "returnedBeforeMilli": 1000,
+      "qtyMilli": 1000
+     }
+    ],
+    "saleRoundOffPaise": -1,
+    "roundOffReturnedPaise": 0
+   },
+   "expected": {
+    "lines": [
+     {
+      "qtyMilli": 1000,
+      "baseQtyMilli": 1000,
+      "taxablePaise": 3333,
+      "cgstPaise": 300,
+      "sgstPaise": 300,
+      "igstPaise": 0,
+      "cessPaise": 0,
+      "totalPaise": 3933,
+      "costPaise": 2334
+     }
+    ],
+    "taxablePaise": 3333,
+    "cgstPaise": 300,
+    "sgstPaise": 300,
+    "igstPaise": 0,
+    "cessPaise": 0,
+    "roundOffPaise": 0,
+    "totalPaise": 3933,
+    "costPaise": 2334,
+    "completesSale": false
+   }
+  },
+  {
+   "name": "HAND last unit completes the sale and takes back its round-off",
+   "input": {
+    "lines": [
+     {
+      "line": {
+       "qtyMilli": 3000,
+       "baseQtyMilli": 3000,
+       "taxablePaise": 10001,
+       "cgstPaise": 900,
+       "sgstPaise": 900,
+       "igstPaise": 0,
+       "cessPaise": 0,
+       "cogsPaise": 7000
+      },
+      "returnedBeforeMilli": 2000,
+      "qtyMilli": 1000
+     }
+    ],
+    "saleRoundOffPaise": -1,
+    "roundOffReturnedPaise": 0
+   },
+   "expected": {
+    "lines": [
+     {
+      "qtyMilli": 1000,
+      "baseQtyMilli": 1000,
+      "taxablePaise": 3334,
+      "cgstPaise": 300,
+      "sgstPaise": 300,
+      "igstPaise": 0,
+      "cessPaise": 0,
+      "totalPaise": 3934,
+      "costPaise": 2333
+     }
+    ],
+    "taxablePaise": 3334,
+    "cgstPaise": 300,
+    "sgstPaise": 300,
+    "igstPaise": 0,
+    "cessPaise": 0,
+    "roundOffPaise": -1,
+    "totalPaise": 3933,
+    "costPaise": 2333,
+    "completesSale": true
+   }
+  },
+  {
+   "name": "HAND whole line at once is the line exactly",
+   "input": {
+    "lines": [
+     {
+      "line": {
+       "qtyMilli": 3000,
+       "baseQtyMilli": 3000,
+       "taxablePaise": 10001,
+       "cgstPaise": 900,
+       "sgstPaise": 900,
+       "igstPaise": 0,
+       "cessPaise": 0,
+       "cogsPaise": 7000
+      },
+      "returnedBeforeMilli": 0,
+      "qtyMilli": 3000
+     }
+    ],
+    "saleRoundOffPaise": -1,
+    "roundOffReturnedPaise": 0
+   },
+   "expected": {
+    "lines": [
+     {
+      "qtyMilli": 3000,
+      "baseQtyMilli": 3000,
+      "taxablePaise": 10001,
+      "cgstPaise": 900,
+      "sgstPaise": 900,
+      "igstPaise": 0,
+      "cessPaise": 0,
+      "totalPaise": 11801,
+      "costPaise": 7000
+     }
+    ],
+    "taxablePaise": 10001,
+    "cgstPaise": 900,
+    "sgstPaise": 900,
+    "igstPaise": 0,
+    "cessPaise": 0,
+    "roundOffPaise": -1,
+    "totalPaise": 11800,
+    "costPaise": 7000,
+    "completesSale": true
+   }
+  },
+  {
+   "name": "HAND a box line returns its base units in proportion",
+   "input": {
+    "lines": [
+     {
+      "line": {
+       "qtyMilli": 2000,
+       "baseQtyMilli": 24000,
+       "taxablePaise": 10001,
+       "cgstPaise": 0,
+       "sgstPaise": 0,
+       "igstPaise": 1800,
+       "cessPaise": 0,
+       "cogsPaise": 7000
+      },
+      "returnedBeforeMilli": 0,
+      "qtyMilli": 500
+     }
+    ],
+    "saleRoundOffPaise": -1,
+    "roundOffReturnedPaise": 0
+   },
+   "expected": {
+    "lines": [
+     {
+      "qtyMilli": 500,
+      "baseQtyMilli": 6000,
+      "taxablePaise": 2500,
+      "cgstPaise": 0,
+      "sgstPaise": 0,
+      "igstPaise": 450,
+      "cessPaise": 0,
+      "totalPaise": 2950,
+      "costPaise": 1750
+     }
+    ],
+    "taxablePaise": 2500,
+    "cgstPaise": 0,
+    "sgstPaise": 0,
+    "igstPaise": 450,
+    "cessPaise": 0,
+    "roundOffPaise": 0,
+    "totalPaise": 2950,
+    "costPaise": 1750,
+    "completesSale": false
+   }
+  },
+  {
+   "name": "HAND more than is left refused",
+   "input": {
+    "lines": [
+     {
+      "line": {
+       "qtyMilli": 3000,
+       "baseQtyMilli": 3000,
+       "taxablePaise": 10001,
+       "cgstPaise": 900,
+       "sgstPaise": 900,
+       "igstPaise": 0,
+       "cessPaise": 0,
+       "cogsPaise": 7000
+      },
+      "returnedBeforeMilli": 2000,
+      "qtyMilli": 2000
+     }
+    ],
+    "saleRoundOffPaise": -1,
+    "roundOffReturnedPaise": 0
+   },
+   "error": "INVALID_INPUT"
+  },
+  {
+   "name": "HAND nothing to return refused",
+   "input": {
+    "lines": [],
+    "saleRoundOffPaise": 0,
+    "roundOffReturnedPaise": 0
+   },
+   "error": "INVALID_INPUT"
+  },
+  {
+   "name": "GRID n=1 part 1 of 3",
+   "input": {
+    "lines": [
+     {
+      "line": {
+       "qtyMilli": 1250,
+       "baseQtyMilli": 1250,
+       "taxablePaise": 99998,
+       "cgstPaise": 0,
+       "sgstPaise": 0,
+       "igstPaise": 17999,
+       "cessPaise": 0,
+       "cogsPaise": 70013
+      },
+      "returnedBeforeMilli": 0,
+      "qtyMilli": 416
+     }
+    ],
+    "saleRoundOffPaise": -23,
+    "roundOffReturnedPaise": 0
+   },
+   "expected": {
+    "lines": [
+     {
+      "qtyMilli": 416,
+      "baseQtyMilli": 416,
+      "taxablePaise": 33279,
+      "cgstPaise": 0,
+      "sgstPaise": 0,
+      "igstPaise": 5990,
+      "cessPaise": 0,
+      "totalPaise": 39269,
+      "costPaise": 23300
+     }
+    ],
+    "taxablePaise": 33279,
+    "cgstPaise": 0,
+    "sgstPaise": 0,
+    "igstPaise": 5990,
+    "cessPaise": 0,
+    "roundOffPaise": 0,
+    "totalPaise": 39269,
+    "costPaise": 23300,
+    "completesSale": false
+   }
+  },
+  {
+   "name": "GRID n=1 part 2 of 3",
+   "input": {
+    "lines": [
+     {
+      "line": {
+       "qtyMilli": 1250,
+       "baseQtyMilli": 1250,
+       "taxablePaise": 99998,
+       "cgstPaise": 0,
+       "sgstPaise": 0,
+       "igstPaise": 17999,
+       "cessPaise": 0,
+       "cogsPaise": 70013
+      },
+      "returnedBeforeMilli": 416,
+      "qtyMilli": 417
+     }
+    ],
+    "saleRoundOffPaise": -23,
+    "roundOffReturnedPaise": 0
+   },
+   "expected": {
+    "lines": [
+     {
+      "qtyMilli": 417,
+      "baseQtyMilli": 417,
+      "taxablePaise": 33360,
+      "cgstPaise": 0,
+      "sgstPaise": 0,
+      "igstPaise": 6005,
+      "cessPaise": 0,
+      "totalPaise": 39365,
+      "costPaise": 23357
+     }
+    ],
+    "taxablePaise": 33360,
+    "cgstPaise": 0,
+    "sgstPaise": 0,
+    "igstPaise": 6005,
+    "cessPaise": 0,
+    "roundOffPaise": 0,
+    "totalPaise": 39365,
+    "costPaise": 23357,
+    "completesSale": false
+   }
+  },
+  {
+   "name": "GRID n=1 part 3 of 3",
+   "input": {
+    "lines": [
+     {
+      "line": {
+       "qtyMilli": 1250,
+       "baseQtyMilli": 1250,
+       "taxablePaise": 99998,
+       "cgstPaise": 0,
+       "sgstPaise": 0,
+       "igstPaise": 17999,
+       "cessPaise": 0,
+       "cogsPaise": 70013
+      },
+      "returnedBeforeMilli": 833,
+      "qtyMilli": 417
+     }
+    ],
+    "saleRoundOffPaise": -23,
+    "roundOffReturnedPaise": 0
+   },
+   "expected": {
+    "lines": [
+     {
+      "qtyMilli": 417,
+      "baseQtyMilli": 417,
+      "taxablePaise": 33359,
+      "cgstPaise": 0,
+      "sgstPaise": 0,
+      "igstPaise": 6004,
+      "cessPaise": 0,
+      "totalPaise": 39363,
+      "costPaise": 23356
+     }
+    ],
+    "taxablePaise": 33359,
+    "cgstPaise": 0,
+    "sgstPaise": 0,
+    "igstPaise": 6004,
+    "cessPaise": 0,
+    "roundOffPaise": -23,
+    "totalPaise": 39340,
+    "costPaise": 23356,
+    "completesSale": true
+   }
+  },
+  {
+   "name": "GRID n=1 two lines, the rest of the bill",
+   "input": {
+    "lines": [
+     {
+      "line": {
+       "qtyMilli": 1250,
+       "baseQtyMilli": 1250,
+       "taxablePaise": 99998,
+       "cgstPaise": 0,
+       "sgstPaise": 0,
+       "igstPaise": 17999,
+       "cessPaise": 0,
+       "cogsPaise": 70013
+      },
+      "returnedBeforeMilli": 0,
+      "qtyMilli": 1250
+     },
+     {
+      "line": {
+       "qtyMilli": 3000,
+       "baseQtyMilli": 3000,
+       "taxablePaise": 10001,
+       "cgstPaise": 900,
+       "sgstPaise": 900,
+       "igstPaise": 0,
+       "cessPaise": 0,
+       "cogsPaise": 7000
+      },
+      "returnedBeforeMilli": 1000,
+      "qtyMilli": 2000
+     }
+    ],
+    "saleRoundOffPaise": 45,
+    "roundOffReturnedPaise": 0
+   },
+   "expected": {
+    "lines": [
+     {
+      "qtyMilli": 1250,
+      "baseQtyMilli": 1250,
+      "taxablePaise": 99998,
+      "cgstPaise": 0,
+      "sgstPaise": 0,
+      "igstPaise": 17999,
+      "cessPaise": 0,
+      "totalPaise": 117997,
+      "costPaise": 70013
+     },
+     {
+      "qtyMilli": 2000,
+      "baseQtyMilli": 2000,
+      "taxablePaise": 6667,
+      "cgstPaise": 600,
+      "sgstPaise": 600,
+      "igstPaise": 0,
+      "cessPaise": 0,
+      "totalPaise": 7867,
+      "costPaise": 4667
+     }
+    ],
+    "taxablePaise": 106665,
+    "cgstPaise": 600,
+    "sgstPaise": 600,
+    "igstPaise": 17999,
+    "cessPaise": 0,
+    "roundOffPaise": 45,
+    "totalPaise": 125909,
+    "costPaise": 74680,
+    "completesSale": true
+   }
+  },
+  {
+   "name": "GRID n=2 part 1 of 3",
+   "input": {
+    "lines": [
+     {
+      "line": {
+       "qtyMilli": 2500,
+       "baseQtyMilli": 2500,
+       "taxablePaise": 199989,
+       "cgstPaise": 17999,
+       "sgstPaise": 17999,
+       "igstPaise": 0,
+       "cessPaise": 0,
+       "cogsPaise": 140026
+      },
+      "returnedBeforeMilli": 0,
+      "qtyMilli": 833
+     }
+    ],
+    "saleRoundOffPaise": -16,
+    "roundOffReturnedPaise": 0
+   },
+   "expected": {
+    "lines": [
+     {
+      "qtyMilli": 833,
+      "baseQtyMilli": 833,
+      "taxablePaise": 66636,
+      "cgstPaise": 5997,
+      "sgstPaise": 5997,
+      "igstPaise": 0,
+      "cessPaise": 0,
+      "totalPaise": 78630,
+      "costPaise": 46657
+     }
+    ],
+    "taxablePaise": 66636,
+    "cgstPaise": 5997,
+    "sgstPaise": 5997,
+    "igstPaise": 0,
+    "cessPaise": 0,
+    "roundOffPaise": 0,
+    "totalPaise": 78630,
+    "costPaise": 46657,
+    "completesSale": false
+   }
+  },
+  {
+   "name": "GRID n=2 part 2 of 3",
+   "input": {
+    "lines": [
+     {
+      "line": {
+       "qtyMilli": 2500,
+       "baseQtyMilli": 2500,
+       "taxablePaise": 199989,
+       "cgstPaise": 17999,
+       "sgstPaise": 17999,
+       "igstPaise": 0,
+       "cessPaise": 0,
+       "cogsPaise": 140026
+      },
+      "returnedBeforeMilli": 833,
+      "qtyMilli": 833
+     }
+    ],
+    "saleRoundOffPaise": -16,
+    "roundOffReturnedPaise": 0
+   },
+   "expected": {
+    "lines": [
+     {
+      "qtyMilli": 833,
+      "baseQtyMilli": 833,
+      "taxablePaise": 66637,
+      "cgstPaise": 5998,
+      "sgstPaise": 5998,
+      "igstPaise": 0,
+      "cessPaise": 0,
+      "totalPaise": 78633,
+      "costPaise": 46656
+     }
+    ],
+    "taxablePaise": 66637,
+    "cgstPaise": 5998,
+    "sgstPaise": 5998,
+    "igstPaise": 0,
+    "cessPaise": 0,
+    "roundOffPaise": 0,
+    "totalPaise": 78633,
+    "costPaise": 46656,
+    "completesSale": false
+   }
+  },
+  {
+   "name": "GRID n=2 part 3 of 3",
+   "input": {
+    "lines": [
+     {
+      "line": {
+       "qtyMilli": 2500,
+       "baseQtyMilli": 2500,
+       "taxablePaise": 199989,
+       "cgstPaise": 17999,
+       "sgstPaise": 17999,
+       "igstPaise": 0,
+       "cessPaise": 0,
+       "cogsPaise": 140026
+      },
+      "returnedBeforeMilli": 1666,
+      "qtyMilli": 834
+     }
+    ],
+    "saleRoundOffPaise": -16,
+    "roundOffReturnedPaise": 0
+   },
+   "expected": {
+    "lines": [
+     {
+      "qtyMilli": 834,
+      "baseQtyMilli": 834,
+      "taxablePaise": 66716,
+      "cgstPaise": 6004,
+      "sgstPaise": 6004,
+      "igstPaise": 0,
+      "cessPaise": 0,
+      "totalPaise": 78724,
+      "costPaise": 46713
+     }
+    ],
+    "taxablePaise": 66716,
+    "cgstPaise": 6004,
+    "sgstPaise": 6004,
+    "igstPaise": 0,
+    "cessPaise": 0,
+    "roundOffPaise": -16,
+    "totalPaise": 78708,
+    "costPaise": 46713,
+    "completesSale": true
+   }
+  },
+  {
+   "name": "GRID n=2 two lines, the rest of the bill",
+   "input": {
+    "lines": [
+     {
+      "line": {
+       "qtyMilli": 2500,
+       "baseQtyMilli": 2500,
+       "taxablePaise": 199989,
+       "cgstPaise": 17999,
+       "sgstPaise": 17999,
+       "igstPaise": 0,
+       "cessPaise": 0,
+       "cogsPaise": 140026
+      },
+      "returnedBeforeMilli": 0,
+      "qtyMilli": 2500
+     },
+     {
+      "line": {
+       "qtyMilli": 3000,
+       "baseQtyMilli": 3000,
+       "taxablePaise": 10001,
+       "cgstPaise": 900,
+       "sgstPaise": 900,
+       "igstPaise": 0,
+       "cessPaise": 0,
+       "cogsPaise": 7000
+      },
+      "returnedBeforeMilli": 1000,
+      "qtyMilli": 2000
+     }
+    ],
+    "saleRoundOffPaise": 45,
+    "roundOffReturnedPaise": 0
+   },
+   "expected": {
+    "lines": [
+     {
+      "qtyMilli": 2500,
+      "baseQtyMilli": 2500,
+      "taxablePaise": 199989,
+      "cgstPaise": 17999,
+      "sgstPaise": 17999,
+      "igstPaise": 0,
+      "cessPaise": 0,
+      "totalPaise": 235987,
+      "costPaise": 140026
+     },
+     {
+      "qtyMilli": 2000,
+      "baseQtyMilli": 2000,
+      "taxablePaise": 6667,
+      "cgstPaise": 600,
+      "sgstPaise": 600,
+      "igstPaise": 0,
+      "cessPaise": 0,
+      "totalPaise": 7867,
+      "costPaise": 4667
+     }
+    ],
+    "taxablePaise": 206656,
+    "cgstPaise": 18599,
+    "sgstPaise": 18599,
+    "igstPaise": 0,
+    "cessPaise": 0,
+    "roundOffPaise": 45,
+    "totalPaise": 243899,
+    "costPaise": 144693,
+    "completesSale": true
+   }
+  },
+  {
+   "name": "GRID n=3 part 1 of 3",
+   "input": {
+    "lines": [
+     {
+      "line": {
+       "qtyMilli": 3750,
+       "baseQtyMilli": 45000,
+       "taxablePaise": 299980,
+       "cgstPaise": 0,
+       "sgstPaise": 0,
+       "igstPaise": 53996,
+       "cessPaise": 0,
+       "cogsPaise": 210039
+      },
+      "returnedBeforeMilli": 0,
+      "qtyMilli": 1250
+     }
+    ],
+    "saleRoundOffPaise": -9,
+    "roundOffReturnedPaise": 0
+   },
+   "expected": {
+    "lines": [
+     {
+      "qtyMilli": 1250,
+      "baseQtyMilli": 15000,
+      "taxablePaise": 99993,
+      "cgstPaise": 0,
+      "sgstPaise": 0,
+      "igstPaise": 17999,
+      "cessPaise": 0,
+      "totalPaise": 117992,
+      "costPaise": 70013
+     }
+    ],
+    "taxablePaise": 99993,
+    "cgstPaise": 0,
+    "sgstPaise": 0,
+    "igstPaise": 17999,
+    "cessPaise": 0,
+    "roundOffPaise": 0,
+    "totalPaise": 117992,
+    "costPaise": 70013,
+    "completesSale": false
+   }
+  },
+  {
+   "name": "GRID n=3 part 2 of 3",
+   "input": {
+    "lines": [
+     {
+      "line": {
+       "qtyMilli": 3750,
+       "baseQtyMilli": 45000,
+       "taxablePaise": 299980,
+       "cgstPaise": 0,
+       "sgstPaise": 0,
+       "igstPaise": 53996,
+       "cessPaise": 0,
+       "cogsPaise": 210039
+      },
+      "returnedBeforeMilli": 1250,
+      "qtyMilli": 1250
+     }
+    ],
+    "saleRoundOffPaise": -9,
+    "roundOffReturnedPaise": 0
+   },
+   "expected": {
+    "lines": [
+     {
+      "qtyMilli": 1250,
+      "baseQtyMilli": 15000,
+      "taxablePaise": 99994,
+      "cgstPaise": 0,
+      "sgstPaise": 0,
+      "igstPaise": 17998,
+      "cessPaise": 0,
+      "totalPaise": 117992,
+      "costPaise": 70013
+     }
+    ],
+    "taxablePaise": 99994,
+    "cgstPaise": 0,
+    "sgstPaise": 0,
+    "igstPaise": 17998,
+    "cessPaise": 0,
+    "roundOffPaise": 0,
+    "totalPaise": 117992,
+    "costPaise": 70013,
+    "completesSale": false
+   }
+  },
+  {
+   "name": "GRID n=3 part 3 of 3",
+   "input": {
+    "lines": [
+     {
+      "line": {
+       "qtyMilli": 3750,
+       "baseQtyMilli": 45000,
+       "taxablePaise": 299980,
+       "cgstPaise": 0,
+       "sgstPaise": 0,
+       "igstPaise": 53996,
+       "cessPaise": 0,
+       "cogsPaise": 210039
+      },
+      "returnedBeforeMilli": 2500,
+      "qtyMilli": 1250
+     }
+    ],
+    "saleRoundOffPaise": -9,
+    "roundOffReturnedPaise": 0
+   },
+   "expected": {
+    "lines": [
+     {
+      "qtyMilli": 1250,
+      "baseQtyMilli": 15000,
+      "taxablePaise": 99993,
+      "cgstPaise": 0,
+      "sgstPaise": 0,
+      "igstPaise": 17999,
+      "cessPaise": 0,
+      "totalPaise": 117992,
+      "costPaise": 70013
+     }
+    ],
+    "taxablePaise": 99993,
+    "cgstPaise": 0,
+    "sgstPaise": 0,
+    "igstPaise": 17999,
+    "cessPaise": 0,
+    "roundOffPaise": -9,
+    "totalPaise": 117983,
+    "costPaise": 70013,
+    "completesSale": true
+   }
+  },
+  {
+   "name": "GRID n=3 two lines, the rest of the bill",
+   "input": {
+    "lines": [
+     {
+      "line": {
+       "qtyMilli": 3750,
+       "baseQtyMilli": 45000,
+       "taxablePaise": 299980,
+       "cgstPaise": 0,
+       "sgstPaise": 0,
+       "igstPaise": 53996,
+       "cessPaise": 0,
+       "cogsPaise": 210039
+      },
+      "returnedBeforeMilli": 0,
+      "qtyMilli": 3750
+     },
+     {
+      "line": {
+       "qtyMilli": 3000,
+       "baseQtyMilli": 3000,
+       "taxablePaise": 10001,
+       "cgstPaise": 900,
+       "sgstPaise": 900,
+       "igstPaise": 0,
+       "cessPaise": 0,
+       "cogsPaise": 7000
+      },
+      "returnedBeforeMilli": 1000,
+      "qtyMilli": 2000
+     }
+    ],
+    "saleRoundOffPaise": 45,
+    "roundOffReturnedPaise": 0
+   },
+   "expected": {
+    "lines": [
+     {
+      "qtyMilli": 3750,
+      "baseQtyMilli": 45000,
+      "taxablePaise": 299980,
+      "cgstPaise": 0,
+      "sgstPaise": 0,
+      "igstPaise": 53996,
+      "cessPaise": 0,
+      "totalPaise": 353976,
+      "costPaise": 210039
+     },
+     {
+      "qtyMilli": 2000,
+      "baseQtyMilli": 2000,
+      "taxablePaise": 6667,
+      "cgstPaise": 600,
+      "sgstPaise": 600,
+      "igstPaise": 0,
+      "cessPaise": 0,
+      "totalPaise": 7867,
+      "costPaise": 4667
+     }
+    ],
+    "taxablePaise": 306647,
+    "cgstPaise": 600,
+    "sgstPaise": 600,
+    "igstPaise": 53996,
+    "cessPaise": 0,
+    "roundOffPaise": 45,
+    "totalPaise": 361888,
+    "costPaise": 214706,
+    "completesSale": true
+   }
+  },
+  {
+   "name": "GRID n=4 part 1 of 3",
+   "input": {
+    "lines": [
+     {
+      "line": {
+       "qtyMilli": 5000,
+       "baseQtyMilli": 5000,
+       "taxablePaise": 399971,
+       "cgstPaise": 35997,
+       "sgstPaise": 35997,
+       "igstPaise": 0,
+       "cessPaise": 4948,
+       "cogsPaise": 280052
+      },
+      "returnedBeforeMilli": 0,
+      "qtyMilli": 1666
+     }
+    ],
+    "saleRoundOffPaise": -2,
+    "roundOffReturnedPaise": 0
+   },
+   "expected": {
+    "lines": [
+     {
+      "qtyMilli": 1666,
+      "baseQtyMilli": 1666,
+      "taxablePaise": 133270,
+      "cgstPaise": 11994,
+      "sgstPaise": 11994,
+      "igstPaise": 0,
+      "cessPaise": 1649,
+      "totalPaise": 158907,
+      "costPaise": 93313
+     }
+    ],
+    "taxablePaise": 133270,
+    "cgstPaise": 11994,
+    "sgstPaise": 11994,
+    "igstPaise": 0,
+    "cessPaise": 1649,
+    "roundOffPaise": 0,
+    "totalPaise": 158907,
+    "costPaise": 93313,
+    "completesSale": false
+   }
+  },
+  {
+   "name": "GRID n=4 part 2 of 3",
+   "input": {
+    "lines": [
+     {
+      "line": {
+       "qtyMilli": 5000,
+       "baseQtyMilli": 5000,
+       "taxablePaise": 399971,
+       "cgstPaise": 35997,
+       "sgstPaise": 35997,
+       "igstPaise": 0,
+       "cessPaise": 4948,
+       "cogsPaise": 280052
+      },
+      "returnedBeforeMilli": 1666,
+      "qtyMilli": 1667
+     }
+    ],
+    "saleRoundOffPaise": -2,
+    "roundOffReturnedPaise": 0
+   },
+   "expected": {
+    "lines": [
+     {
+      "qtyMilli": 1667,
+      "baseQtyMilli": 1667,
+      "taxablePaise": 133351,
+      "cgstPaise": 12002,
+      "sgstPaise": 12002,
+      "igstPaise": 0,
+      "cessPaise": 1649,
+      "totalPaise": 159004,
+      "costPaise": 93370
+     }
+    ],
+    "taxablePaise": 133351,
+    "cgstPaise": 12002,
+    "sgstPaise": 12002,
+    "igstPaise": 0,
+    "cessPaise": 1649,
+    "roundOffPaise": 0,
+    "totalPaise": 159004,
+    "costPaise": 93370,
+    "completesSale": false
+   }
+  },
+  {
+   "name": "GRID n=4 part 3 of 3",
+   "input": {
+    "lines": [
+     {
+      "line": {
+       "qtyMilli": 5000,
+       "baseQtyMilli": 5000,
+       "taxablePaise": 399971,
+       "cgstPaise": 35997,
+       "sgstPaise": 35997,
+       "igstPaise": 0,
+       "cessPaise": 4948,
+       "cogsPaise": 280052
+      },
+      "returnedBeforeMilli": 3333,
+      "qtyMilli": 1667
+     }
+    ],
+    "saleRoundOffPaise": -2,
+    "roundOffReturnedPaise": 0
+   },
+   "expected": {
+    "lines": [
+     {
+      "qtyMilli": 1667,
+      "baseQtyMilli": 1667,
+      "taxablePaise": 133350,
+      "cgstPaise": 12001,
+      "sgstPaise": 12001,
+      "igstPaise": 0,
+      "cessPaise": 1650,
+      "totalPaise": 159002,
+      "costPaise": 93369
+     }
+    ],
+    "taxablePaise": 133350,
+    "cgstPaise": 12001,
+    "sgstPaise": 12001,
+    "igstPaise": 0,
+    "cessPaise": 1650,
+    "roundOffPaise": -2,
+    "totalPaise": 159000,
+    "costPaise": 93369,
+    "completesSale": true
+   }
+  },
+  {
+   "name": "GRID n=4 two lines, the rest of the bill",
+   "input": {
+    "lines": [
+     {
+      "line": {
+       "qtyMilli": 5000,
+       "baseQtyMilli": 5000,
+       "taxablePaise": 399971,
+       "cgstPaise": 35997,
+       "sgstPaise": 35997,
+       "igstPaise": 0,
+       "cessPaise": 4948,
+       "cogsPaise": 280052
+      },
+      "returnedBeforeMilli": 0,
+      "qtyMilli": 5000
+     },
+     {
+      "line": {
+       "qtyMilli": 3000,
+       "baseQtyMilli": 3000,
+       "taxablePaise": 10001,
+       "cgstPaise": 900,
+       "sgstPaise": 900,
+       "igstPaise": 0,
+       "cessPaise": 0,
+       "cogsPaise": 7000
+      },
+      "returnedBeforeMilli": 1000,
+      "qtyMilli": 2000
+     }
+    ],
+    "saleRoundOffPaise": 45,
+    "roundOffReturnedPaise": 0
+   },
+   "expected": {
+    "lines": [
+     {
+      "qtyMilli": 5000,
+      "baseQtyMilli": 5000,
+      "taxablePaise": 399971,
+      "cgstPaise": 35997,
+      "sgstPaise": 35997,
+      "igstPaise": 0,
+      "cessPaise": 4948,
+      "totalPaise": 476913,
+      "costPaise": 280052
+     },
+     {
+      "qtyMilli": 2000,
+      "baseQtyMilli": 2000,
+      "taxablePaise": 6667,
+      "cgstPaise": 600,
+      "sgstPaise": 600,
+      "igstPaise": 0,
+      "cessPaise": 0,
+      "totalPaise": 7867,
+      "costPaise": 4667
+     }
+    ],
+    "taxablePaise": 406638,
+    "cgstPaise": 36597,
+    "sgstPaise": 36597,
+    "igstPaise": 0,
+    "cessPaise": 4948,
+    "roundOffPaise": 45,
+    "totalPaise": 484825,
+    "costPaise": 284719,
+    "completesSale": true
+   }
+  },
+  {
+   "name": "GRID n=5 part 1 of 3",
+   "input": {
+    "lines": [
+     {
+      "line": {
+       "qtyMilli": 6250,
+       "baseQtyMilli": 6250,
+       "taxablePaise": 499962,
+       "cgstPaise": 0,
+       "sgstPaise": 0,
+       "igstPaise": 89993,
+       "cessPaise": 0,
+       "cogsPaise": 350065
+      },
+      "returnedBeforeMilli": 0,
+      "qtyMilli": 2083
+     }
+    ],
+    "saleRoundOffPaise": 5,
+    "roundOffReturnedPaise": 0
+   },
+   "expected": {
+    "lines": [
+     {
+      "qtyMilli": 2083,
+      "baseQtyMilli": 2083,
+      "taxablePaise": 166627,
+      "cgstPaise": 0,
+      "sgstPaise": 0,
+      "igstPaise": 29993,
+      "cessPaise": 0,
+      "totalPaise": 196620,
+      "costPaise": 116670
+     }
+    ],
+    "taxablePaise": 166627,
+    "cgstPaise": 0,
+    "sgstPaise": 0,
+    "igstPaise": 29993,
+    "cessPaise": 0,
+    "roundOffPaise": 0,
+    "totalPaise": 196620,
+    "costPaise": 116670,
+    "completesSale": false
+   }
+  },
+  {
+   "name": "GRID n=5 part 2 of 3",
+   "input": {
+    "lines": [
+     {
+      "line": {
+       "qtyMilli": 6250,
+       "baseQtyMilli": 6250,
+       "taxablePaise": 499962,
+       "cgstPaise": 0,
+       "sgstPaise": 0,
+       "igstPaise": 89993,
+       "cessPaise": 0,
+       "cogsPaise": 350065
+      },
+      "returnedBeforeMilli": 2083,
+      "qtyMilli": 2083
+     }
+    ],
+    "saleRoundOffPaise": 5,
+    "roundOffReturnedPaise": 0
+   },
+   "expected": {
+    "lines": [
+     {
+      "qtyMilli": 2083,
+      "baseQtyMilli": 2083,
+      "taxablePaise": 166628,
+      "cgstPaise": 0,
+      "sgstPaise": 0,
+      "igstPaise": 29993,
+      "cessPaise": 0,
+      "totalPaise": 196621,
+      "costPaise": 116669
+     }
+    ],
+    "taxablePaise": 166628,
+    "cgstPaise": 0,
+    "sgstPaise": 0,
+    "igstPaise": 29993,
+    "cessPaise": 0,
+    "roundOffPaise": 0,
+    "totalPaise": 196621,
+    "costPaise": 116669,
+    "completesSale": false
+   }
+  },
+  {
+   "name": "GRID n=5 part 3 of 3",
+   "input": {
+    "lines": [
+     {
+      "line": {
+       "qtyMilli": 6250,
+       "baseQtyMilli": 6250,
+       "taxablePaise": 499962,
+       "cgstPaise": 0,
+       "sgstPaise": 0,
+       "igstPaise": 89993,
+       "cessPaise": 0,
+       "cogsPaise": 350065
+      },
+      "returnedBeforeMilli": 4166,
+      "qtyMilli": 2084
+     }
+    ],
+    "saleRoundOffPaise": 5,
+    "roundOffReturnedPaise": 0
+   },
+   "expected": {
+    "lines": [
+     {
+      "qtyMilli": 2084,
+      "baseQtyMilli": 2084,
+      "taxablePaise": 166707,
+      "cgstPaise": 0,
+      "sgstPaise": 0,
+      "igstPaise": 30007,
+      "cessPaise": 0,
+      "totalPaise": 196714,
+      "costPaise": 116726
+     }
+    ],
+    "taxablePaise": 166707,
+    "cgstPaise": 0,
+    "sgstPaise": 0,
+    "igstPaise": 30007,
+    "cessPaise": 0,
+    "roundOffPaise": 5,
+    "totalPaise": 196719,
+    "costPaise": 116726,
+    "completesSale": true
+   }
+  },
+  {
+   "name": "GRID n=5 two lines, the rest of the bill",
+   "input": {
+    "lines": [
+     {
+      "line": {
+       "qtyMilli": 6250,
+       "baseQtyMilli": 6250,
+       "taxablePaise": 499962,
+       "cgstPaise": 0,
+       "sgstPaise": 0,
+       "igstPaise": 89993,
+       "cessPaise": 0,
+       "cogsPaise": 350065
+      },
+      "returnedBeforeMilli": 0,
+      "qtyMilli": 6250
+     },
+     {
+      "line": {
+       "qtyMilli": 3000,
+       "baseQtyMilli": 3000,
+       "taxablePaise": 10001,
+       "cgstPaise": 900,
+       "sgstPaise": 900,
+       "igstPaise": 0,
+       "cessPaise": 0,
+       "cogsPaise": 7000
+      },
+      "returnedBeforeMilli": 1000,
+      "qtyMilli": 2000
+     }
+    ],
+    "saleRoundOffPaise": 45,
+    "roundOffReturnedPaise": 0
+   },
+   "expected": {
+    "lines": [
+     {
+      "qtyMilli": 6250,
+      "baseQtyMilli": 6250,
+      "taxablePaise": 499962,
+      "cgstPaise": 0,
+      "sgstPaise": 0,
+      "igstPaise": 89993,
+      "cessPaise": 0,
+      "totalPaise": 589955,
+      "costPaise": 350065
+     },
+     {
+      "qtyMilli": 2000,
+      "baseQtyMilli": 2000,
+      "taxablePaise": 6667,
+      "cgstPaise": 600,
+      "sgstPaise": 600,
+      "igstPaise": 0,
+      "cessPaise": 0,
+      "totalPaise": 7867,
+      "costPaise": 4667
+     }
+    ],
+    "taxablePaise": 506629,
+    "cgstPaise": 600,
+    "sgstPaise": 600,
+    "igstPaise": 89993,
+    "cessPaise": 0,
+    "roundOffPaise": 45,
+    "totalPaise": 597867,
+    "costPaise": 354732,
+    "completesSale": true
+   }
+  },
+  {
+   "name": "GRID n=6 part 1 of 3",
+   "input": {
+    "lines": [
+     {
+      "line": {
+       "qtyMilli": 7500,
+       "baseQtyMilli": 90000,
+       "taxablePaise": 599953,
+       "cgstPaise": 53995,
+       "sgstPaise": 53996,
+       "igstPaise": 0,
+       "cessPaise": 0,
+       "cogsPaise": 420078
+      },
+      "returnedBeforeMilli": 0,
+      "qtyMilli": 2500
+     }
+    ],
+    "saleRoundOffPaise": 12,
+    "roundOffReturnedPaise": 0
+   },
+   "expected": {
+    "lines": [
+     {
+      "qtyMilli": 2500,
+      "baseQtyMilli": 30000,
+      "taxablePaise": 199984,
+      "cgstPaise": 17998,
+      "sgstPaise": 17999,
+      "igstPaise": 0,
+      "cessPaise": 0,
+      "totalPaise": 235981,
+      "costPaise": 140026
+     }
+    ],
+    "taxablePaise": 199984,
+    "cgstPaise": 17998,
+    "sgstPaise": 17999,
+    "igstPaise": 0,
+    "cessPaise": 0,
+    "roundOffPaise": 0,
+    "totalPaise": 235981,
+    "costPaise": 140026,
+    "completesSale": false
+   }
+  },
+  {
+   "name": "GRID n=6 part 2 of 3",
+   "input": {
+    "lines": [
+     {
+      "line": {
+       "qtyMilli": 7500,
+       "baseQtyMilli": 90000,
+       "taxablePaise": 599953,
+       "cgstPaise": 53995,
+       "sgstPaise": 53996,
+       "igstPaise": 0,
+       "cessPaise": 0,
+       "cogsPaise": 420078
+      },
+      "returnedBeforeMilli": 2500,
+      "qtyMilli": 2500
+     }
+    ],
+    "saleRoundOffPaise": 12,
+    "roundOffReturnedPaise": 0
+   },
+   "expected": {
+    "lines": [
+     {
+      "qtyMilli": 2500,
+      "baseQtyMilli": 30000,
+      "taxablePaise": 199985,
+      "cgstPaise": 17999,
+      "sgstPaise": 17998,
+      "igstPaise": 0,
+      "cessPaise": 0,
+      "totalPaise": 235982,
+      "costPaise": 140026
+     }
+    ],
+    "taxablePaise": 199985,
+    "cgstPaise": 17999,
+    "sgstPaise": 17998,
+    "igstPaise": 0,
+    "cessPaise": 0,
+    "roundOffPaise": 0,
+    "totalPaise": 235982,
+    "costPaise": 140026,
+    "completesSale": false
+   }
+  },
+  {
+   "name": "GRID n=6 part 3 of 3",
+   "input": {
+    "lines": [
+     {
+      "line": {
+       "qtyMilli": 7500,
+       "baseQtyMilli": 90000,
+       "taxablePaise": 599953,
+       "cgstPaise": 53995,
+       "sgstPaise": 53996,
+       "igstPaise": 0,
+       "cessPaise": 0,
+       "cogsPaise": 420078
+      },
+      "returnedBeforeMilli": 5000,
+      "qtyMilli": 2500
+     }
+    ],
+    "saleRoundOffPaise": 12,
+    "roundOffReturnedPaise": 0
+   },
+   "expected": {
+    "lines": [
+     {
+      "qtyMilli": 2500,
+      "baseQtyMilli": 30000,
+      "taxablePaise": 199984,
+      "cgstPaise": 17998,
+      "sgstPaise": 17999,
+      "igstPaise": 0,
+      "cessPaise": 0,
+      "totalPaise": 235981,
+      "costPaise": 140026
+     }
+    ],
+    "taxablePaise": 199984,
+    "cgstPaise": 17998,
+    "sgstPaise": 17999,
+    "igstPaise": 0,
+    "cessPaise": 0,
+    "roundOffPaise": 12,
+    "totalPaise": 235993,
+    "costPaise": 140026,
+    "completesSale": true
+   }
+  },
+  {
+   "name": "GRID n=6 two lines, the rest of the bill",
+   "input": {
+    "lines": [
+     {
+      "line": {
+       "qtyMilli": 7500,
+       "baseQtyMilli": 90000,
+       "taxablePaise": 599953,
+       "cgstPaise": 53995,
+       "sgstPaise": 53996,
+       "igstPaise": 0,
+       "cessPaise": 0,
+       "cogsPaise": 420078
+      },
+      "returnedBeforeMilli": 0,
+      "qtyMilli": 7500
+     },
+     {
+      "line": {
+       "qtyMilli": 3000,
+       "baseQtyMilli": 3000,
+       "taxablePaise": 10001,
+       "cgstPaise": 900,
+       "sgstPaise": 900,
+       "igstPaise": 0,
+       "cessPaise": 0,
+       "cogsPaise": 7000
+      },
+      "returnedBeforeMilli": 1000,
+      "qtyMilli": 2000
+     }
+    ],
+    "saleRoundOffPaise": 45,
+    "roundOffReturnedPaise": 0
+   },
+   "expected": {
+    "lines": [
+     {
+      "qtyMilli": 7500,
+      "baseQtyMilli": 90000,
+      "taxablePaise": 599953,
+      "cgstPaise": 53995,
+      "sgstPaise": 53996,
+      "igstPaise": 0,
+      "cessPaise": 0,
+      "totalPaise": 707944,
+      "costPaise": 420078
+     },
+     {
+      "qtyMilli": 2000,
+      "baseQtyMilli": 2000,
+      "taxablePaise": 6667,
+      "cgstPaise": 600,
+      "sgstPaise": 600,
+      "igstPaise": 0,
+      "cessPaise": 0,
+      "totalPaise": 7867,
+      "costPaise": 4667
+     }
+    ],
+    "taxablePaise": 606620,
+    "cgstPaise": 54595,
+    "sgstPaise": 54596,
+    "igstPaise": 0,
+    "cessPaise": 0,
+    "roundOffPaise": 45,
+    "totalPaise": 715856,
+    "costPaise": 424745,
+    "completesSale": true
+   }
+  },
+  {
+   "name": "GRID n=7 part 1 of 3",
+   "input": {
+    "lines": [
+     {
+      "line": {
+       "qtyMilli": 8750,
+       "baseQtyMilli": 8750,
+       "taxablePaise": 699944,
+       "cgstPaise": 0,
+       "sgstPaise": 0,
+       "igstPaise": 125989,
+       "cessPaise": 0,
+       "cogsPaise": 490091
+      },
+      "returnedBeforeMilli": 0,
+      "qtyMilli": 2916
+     }
+    ],
+    "saleRoundOffPaise": 19,
+    "roundOffReturnedPaise": 0
+   },
+   "expected": {
+    "lines": [
+     {
+      "qtyMilli": 2916,
+      "baseQtyMilli": 2916,
+      "taxablePaise": 233261,
+      "cgstPaise": 0,
+      "sgstPaise": 0,
+      "igstPaise": 41987,
+      "cessPaise": 0,
+      "totalPaise": 275248,
+      "costPaise": 163326
+     }
+    ],
+    "taxablePaise": 233261,
+    "cgstPaise": 0,
+    "sgstPaise": 0,
+    "igstPaise": 41987,
+    "cessPaise": 0,
+    "roundOffPaise": 0,
+    "totalPaise": 275248,
+    "costPaise": 163326,
+    "completesSale": false
+   }
+  },
+  {
+   "name": "GRID n=7 part 2 of 3",
+   "input": {
+    "lines": [
+     {
+      "line": {
+       "qtyMilli": 8750,
+       "baseQtyMilli": 8750,
+       "taxablePaise": 699944,
+       "cgstPaise": 0,
+       "sgstPaise": 0,
+       "igstPaise": 125989,
+       "cessPaise": 0,
+       "cogsPaise": 490091
+      },
+      "returnedBeforeMilli": 2916,
+      "qtyMilli": 2917
+     }
+    ],
+    "saleRoundOffPaise": 19,
+    "roundOffReturnedPaise": 0
+   },
+   "expected": {
+    "lines": [
+     {
+      "qtyMilli": 2917,
+      "baseQtyMilli": 2917,
+      "taxablePaise": 233342,
+      "cgstPaise": 0,
+      "sgstPaise": 0,
+      "igstPaise": 42001,
+      "cessPaise": 0,
+      "totalPaise": 275343,
+      "costPaise": 163383
+     }
+    ],
+    "taxablePaise": 233342,
+    "cgstPaise": 0,
+    "sgstPaise": 0,
+    "igstPaise": 42001,
+    "cessPaise": 0,
+    "roundOffPaise": 0,
+    "totalPaise": 275343,
+    "costPaise": 163383,
+    "completesSale": false
+   }
+  },
+  {
+   "name": "GRID n=7 part 3 of 3",
+   "input": {
+    "lines": [
+     {
+      "line": {
+       "qtyMilli": 8750,
+       "baseQtyMilli": 8750,
+       "taxablePaise": 699944,
+       "cgstPaise": 0,
+       "sgstPaise": 0,
+       "igstPaise": 125989,
+       "cessPaise": 0,
+       "cogsPaise": 490091
+      },
+      "returnedBeforeMilli": 5833,
+      "qtyMilli": 2917
+     }
+    ],
+    "saleRoundOffPaise": 19,
+    "roundOffReturnedPaise": 0
+   },
+   "expected": {
+    "lines": [
+     {
+      "qtyMilli": 2917,
+      "baseQtyMilli": 2917,
+      "taxablePaise": 233341,
+      "cgstPaise": 0,
+      "sgstPaise": 0,
+      "igstPaise": 42001,
+      "cessPaise": 0,
+      "totalPaise": 275342,
+      "costPaise": 163382
+     }
+    ],
+    "taxablePaise": 233341,
+    "cgstPaise": 0,
+    "sgstPaise": 0,
+    "igstPaise": 42001,
+    "cessPaise": 0,
+    "roundOffPaise": 19,
+    "totalPaise": 275361,
+    "costPaise": 163382,
+    "completesSale": true
+   }
+  },
+  {
+   "name": "GRID n=7 two lines, the rest of the bill",
+   "input": {
+    "lines": [
+     {
+      "line": {
+       "qtyMilli": 8750,
+       "baseQtyMilli": 8750,
+       "taxablePaise": 699944,
+       "cgstPaise": 0,
+       "sgstPaise": 0,
+       "igstPaise": 125989,
+       "cessPaise": 0,
+       "cogsPaise": 490091
+      },
+      "returnedBeforeMilli": 0,
+      "qtyMilli": 8750
+     },
+     {
+      "line": {
+       "qtyMilli": 3000,
+       "baseQtyMilli": 3000,
+       "taxablePaise": 10001,
+       "cgstPaise": 900,
+       "sgstPaise": 900,
+       "igstPaise": 0,
+       "cessPaise": 0,
+       "cogsPaise": 7000
+      },
+      "returnedBeforeMilli": 1000,
+      "qtyMilli": 2000
+     }
+    ],
+    "saleRoundOffPaise": 45,
+    "roundOffReturnedPaise": 0
+   },
+   "expected": {
+    "lines": [
+     {
+      "qtyMilli": 8750,
+      "baseQtyMilli": 8750,
+      "taxablePaise": 699944,
+      "cgstPaise": 0,
+      "sgstPaise": 0,
+      "igstPaise": 125989,
+      "cessPaise": 0,
+      "totalPaise": 825933,
+      "costPaise": 490091
+     },
+     {
+      "qtyMilli": 2000,
+      "baseQtyMilli": 2000,
+      "taxablePaise": 6667,
+      "cgstPaise": 600,
+      "sgstPaise": 600,
+      "igstPaise": 0,
+      "cessPaise": 0,
+      "totalPaise": 7867,
+      "costPaise": 4667
+     }
+    ],
+    "taxablePaise": 706611,
+    "cgstPaise": 600,
+    "sgstPaise": 600,
+    "igstPaise": 125989,
+    "cessPaise": 0,
+    "roundOffPaise": 45,
+    "totalPaise": 833845,
+    "costPaise": 494758,
+    "completesSale": true
+   }
+  },
+  {
+   "name": "GRID n=8 part 1 of 3",
+   "input": {
+    "lines": [
+     {
+      "line": {
+       "qtyMilli": 10000,
+       "baseQtyMilli": 10000,
+       "taxablePaise": 799935,
+       "cgstPaise": 71994,
+       "sgstPaise": 71994,
+       "igstPaise": 0,
+       "cessPaise": 9896,
+       "cogsPaise": 560104
+      },
+      "returnedBeforeMilli": 0,
+      "qtyMilli": 3333
+     }
+    ],
+    "saleRoundOffPaise": 26,
+    "roundOffReturnedPaise": 0
+   },
+   "expected": {
+    "lines": [
+     {
+      "qtyMilli": 3333,
+      "baseQtyMilli": 3333,
+      "taxablePaise": 266618,
+      "cgstPaise": 23996,
+      "sgstPaise": 23996,
+      "igstPaise": 0,
+      "cessPaise": 3298,
+      "totalPaise": 317908,
+      "costPaise": 186683
+     }
+    ],
+    "taxablePaise": 266618,
+    "cgstPaise": 23996,
+    "sgstPaise": 23996,
+    "igstPaise": 0,
+    "cessPaise": 3298,
+    "roundOffPaise": 0,
+    "totalPaise": 317908,
+    "costPaise": 186683,
+    "completesSale": false
+   }
+  },
+  {
+   "name": "GRID n=8 part 2 of 3",
+   "input": {
+    "lines": [
+     {
+      "line": {
+       "qtyMilli": 10000,
+       "baseQtyMilli": 10000,
+       "taxablePaise": 799935,
+       "cgstPaise": 71994,
+       "sgstPaise": 71994,
+       "igstPaise": 0,
+       "cessPaise": 9896,
+       "cogsPaise": 560104
+      },
+      "returnedBeforeMilli": 3333,
+      "qtyMilli": 3333
+     }
+    ],
+    "saleRoundOffPaise": 26,
+    "roundOffReturnedPaise": 0
+   },
+   "expected": {
+    "lines": [
+     {
+      "qtyMilli": 3333,
+      "baseQtyMilli": 3333,
+      "taxablePaise": 266619,
+      "cgstPaise": 23995,
+      "sgstPaise": 23995,
+      "igstPaise": 0,
+      "cessPaise": 3299,
+      "totalPaise": 317908,
+      "costPaise": 186682
+     }
+    ],
+    "taxablePaise": 266619,
+    "cgstPaise": 23995,
+    "sgstPaise": 23995,
+    "igstPaise": 0,
+    "cessPaise": 3299,
+    "roundOffPaise": 0,
+    "totalPaise": 317908,
+    "costPaise": 186682,
+    "completesSale": false
+   }
+  },
+  {
+   "name": "GRID n=8 part 3 of 3",
+   "input": {
+    "lines": [
+     {
+      "line": {
+       "qtyMilli": 10000,
+       "baseQtyMilli": 10000,
+       "taxablePaise": 799935,
+       "cgstPaise": 71994,
+       "sgstPaise": 71994,
+       "igstPaise": 0,
+       "cessPaise": 9896,
+       "cogsPaise": 560104
+      },
+      "returnedBeforeMilli": 6666,
+      "qtyMilli": 3334
+     }
+    ],
+    "saleRoundOffPaise": 26,
+    "roundOffReturnedPaise": 0
+   },
+   "expected": {
+    "lines": [
+     {
+      "qtyMilli": 3334,
+      "baseQtyMilli": 3334,
+      "taxablePaise": 266698,
+      "cgstPaise": 24003,
+      "sgstPaise": 24003,
+      "igstPaise": 0,
+      "cessPaise": 3299,
+      "totalPaise": 318003,
+      "costPaise": 186739
+     }
+    ],
+    "taxablePaise": 266698,
+    "cgstPaise": 24003,
+    "sgstPaise": 24003,
+    "igstPaise": 0,
+    "cessPaise": 3299,
+    "roundOffPaise": 26,
+    "totalPaise": 318029,
+    "costPaise": 186739,
+    "completesSale": true
+   }
+  },
+  {
+   "name": "GRID n=8 two lines, the rest of the bill",
+   "input": {
+    "lines": [
+     {
+      "line": {
+       "qtyMilli": 10000,
+       "baseQtyMilli": 10000,
+       "taxablePaise": 799935,
+       "cgstPaise": 71994,
+       "sgstPaise": 71994,
+       "igstPaise": 0,
+       "cessPaise": 9896,
+       "cogsPaise": 560104
+      },
+      "returnedBeforeMilli": 0,
+      "qtyMilli": 10000
+     },
+     {
+      "line": {
+       "qtyMilli": 3000,
+       "baseQtyMilli": 3000,
+       "taxablePaise": 10001,
+       "cgstPaise": 900,
+       "sgstPaise": 900,
+       "igstPaise": 0,
+       "cessPaise": 0,
+       "cogsPaise": 7000
+      },
+      "returnedBeforeMilli": 1000,
+      "qtyMilli": 2000
+     }
+    ],
+    "saleRoundOffPaise": 45,
+    "roundOffReturnedPaise": 0
+   },
+   "expected": {
+    "lines": [
+     {
+      "qtyMilli": 10000,
+      "baseQtyMilli": 10000,
+      "taxablePaise": 799935,
+      "cgstPaise": 71994,
+      "sgstPaise": 71994,
+      "igstPaise": 0,
+      "cessPaise": 9896,
+      "totalPaise": 953819,
+      "costPaise": 560104
+     },
+     {
+      "qtyMilli": 2000,
+      "baseQtyMilli": 2000,
+      "taxablePaise": 6667,
+      "cgstPaise": 600,
+      "sgstPaise": 600,
+      "igstPaise": 0,
+      "cessPaise": 0,
+      "totalPaise": 7867,
+      "costPaise": 4667
+     }
+    ],
+    "taxablePaise": 806602,
+    "cgstPaise": 72594,
+    "sgstPaise": 72594,
+    "igstPaise": 0,
+    "cessPaise": 9896,
+    "roundOffPaise": 45,
+    "totalPaise": 961731,
+    "costPaise": 564771,
+    "completesSale": true
+   }
+  }
+ ]
+}

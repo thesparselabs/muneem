@@ -9,4 +9,5 @@ export * from './pos/index.js';
 export * from './inventory/index.js';
 export * from './parties/index.js';
 export * from './purchases/index.js';
+export * from './sales/index.js';
 export * from './accounting/index.js';

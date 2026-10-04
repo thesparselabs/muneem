@@ -10,6 +10,7 @@ import { can } from '../lib/permissions.js';
 const NAV: { to: string; label: string; enabled: boolean; stage?: string; need?: Permission }[] = [
   { to: '/', label: 'Home', enabled: true },
   { to: '/pos', label: 'POS · Billing', enabled: true },
+  { to: '/sales', label: 'Sales · Returns', enabled: true, need: 'sales.view' },
   { to: '/products', label: 'Products', enabled: true },
   { to: '/inventory', label: 'Inventory', enabled: true },
   { to: '/purchases', label: 'Purchases', enabled: true, need: 'purchases.view' },
