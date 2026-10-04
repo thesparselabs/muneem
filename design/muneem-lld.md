@@ -682,7 +682,7 @@ Inter-state swaps the two `Output CGST/SGST` lines for `Output IGST`. Compositio
 **Transfer, same GSTIN:** **no journal entry** — Inventory is a single account with a warehouse dimension on the movement. (A different-GSTIN branch transfer is a taxable supply and is out of MVP — guard-railed per the FR-010 clarification.)
 **Card/UPI settlement:** `Dr Bank · Dr 5460 Bank Charges · Cr 1250 Clearing`, reconciled when the acquirer credits.
 **Register cash variance:** short → `Dr 5900 · Cr 1100`; over → `Dr 1100 · Cr 4300`, always with the approver in the audit trail.
-**Year-end close:** income/expense accounts closed to `3300 Retained Earnings`; balance-sheet accounts carried forward as an `opening` journal in the new FY.
+**Year-end close:** income/expense accounts closed to `3300 Retained Earnings` by one `closing` journal dated 31 March (ADR-0045); balance-sheet accounts need no opening journal, since the ledger is continuous.
 
 ### 5.3 Posting rules as data
 

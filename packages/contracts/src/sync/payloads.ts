@@ -120,6 +120,12 @@ const SessionClose = open({ sessionId: Id, closedAt: Ts, countedCashPaise: Paise
 const CashMovement = open({ id: Id, sessionId: Id, kind: z.string(), amountPaise: Paise, reason: z.string() });
 const Allocation = open({ creditType: z.string(), creditId: Id, allocations: z.array(AllocationLine) });
 const Period = open({ id: Id, periodStart: Day, periodEnd: Day, status: z.enum(['open', 'locked']) });
+// ADR-0045: the whole close each time — version 1 closes the year, each later version adds one adjusting closing.
+const ClosingBalance = open({ code: z.string(), type: z.enum(['income', 'expense']), netPaise: Paise });
+const FyClose = open({
+  id: Id, businessId: Id, fy: z.string().regex(/^\d{4}-\d{2}$/u), fyEnd: Day, version: z.number().int().positive(),
+  closings: z.array(open({ version: z.number().int().positive(), journal: JournalPayload.nullable(), balances: z.array(ClosingBalance) })),
+});
 
 const master = open({ id: Id.optional() });
 const EXACT: Partial<Record<OutboxEntityType, Partial<Record<string, z.ZodTypeAny>>>> = {
@@ -139,6 +145,7 @@ const EXACT: Partial<Record<OutboxEntityType, Partial<Record<string, z.ZodTypeAn
   allocation: { create: Allocation },
   journal_entry: { create: JournalPayload },
   accounting_period: { create: Period, update: Period },
+  fy_close: { create: FyClose, update: FyClose },
 };
 
 // The schema a payload of this entity and operation must satisfy; masters and config are checked loosely.

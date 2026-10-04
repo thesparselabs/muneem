@@ -35,6 +35,6 @@ const SELF_REFS = new Set(['cancel', 'void']);
 export function requiredRefs(entityType: string, operationType: string, entityId: string, payload: Payload): EntityRef[] {
   if (SELF_REFS.has(operationType)) return [{ entityType, entityId }];
   if (entityType === 'customer_credit_limit') return [{ entityType: 'customer', entityId }];
-  if (entityType === 'pos_session' && operationType === 'update') return [{ entityType, entityId }];
+  if ((entityType === 'pos_session' || entityType === 'fy_close') && operationType === 'update') return [{ entityType, entityId }];
   return CREATE_REFS[entityType]?.(payload) ?? [];
 }

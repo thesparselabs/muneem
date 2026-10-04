@@ -110,7 +110,7 @@ func (l *txLookup) JournalDebit(id string) (int64, bool) {
 }
 
 func (a *applier) verified() (Result, bool, error) {
-	if streamOf[a.op.EntityType] == StreamDocuments {
+	if streamOf[a.op.EntityType] == StreamDocuments || a.op.EntityType == "fy_close" {
 		js, err := verify.Journals(a.op.EntityType, a.op.Payload)
 		if err == nil {
 			err = verify.Balanced(js)
@@ -134,9 +134,12 @@ func (a *applier) store() (Result, error) {
 		return Result{}, err
 	}
 	var s *stored
-	if streamOf[a.op.EntityType] == StreamDocuments {
+	switch {
+	case a.op.EntityType == "fy_close":
+		s, err = a.yearClose(cur)
+	case streamOf[a.op.EntityType] == StreamDocuments:
 		s, err = a.document(cur)
-	} else {
+	default:
 		s, err = a.resolved(cur)
 	}
 	if err != nil {

@@ -18,6 +18,22 @@ export const LatePosting = z.object({
 });
 export type LatePosting = z.infer<typeof LatePosting>;
 
+// ADR-0045: each financial year with its checklist, and its close once there is one.
+const Fy = z.string().regex(/^\d{4}-\d{2}$/u, 'a financial year like 2025-26');
+export const YearCloseInput = z.object({ fy: Fy });
+export const ClosingView = z.object({
+  version: Int, entryNo: z.string().nullable(), entryDate: BusinessDate, profitPaise: Int,
+  lines: z.array(z.object({ code: z.string(), name: z.string(), debitPaise: Int, creditPaise: Int })),
+});
+export const FinancialYear = z.object({
+  fy: Fy, start: BusinessDate, end: BusinessDate, ended: z.boolean(), status: z.enum(['open', 'requested', 'closed']),
+  months: z.array(z.object({ month: BusinessDate, status: z.enum(['open', 'locked']) })),
+  gst: z.object({ required: z.boolean(), lastActiveMonth: BusinessDate.nullable(), settledThrough: BusinessDate.nullable() }),
+  blockers: z.array(z.string()), profitPaise: Int, residuePaise: Int, needsReclose: z.boolean(), closeId: Ulid.nullable(), closedAt: IsoDateTime.nullable(), closedBy: z.string().nullable(),
+  closings: z.array(ClosingView), pending: z.boolean(), syncError: z.string().nullable(),
+});
+export type FinancialYear = z.infer<typeof FinancialYear>;
+
 export const BacklogResult = z.object({ posted: Int, remaining: Int });
 export type BacklogResult = z.infer<typeof BacklogResult>;
 

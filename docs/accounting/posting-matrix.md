@@ -181,9 +181,24 @@ CGST first (the head its own credit cannot cover), cess credit pays cess, and th
 |---|---|---|
 | 2300 GST Payable | 1200 Bank | the challan's total; its heads are kept on the document |
 
+## Year-end close ◆
+
+| Dr | Cr | Amount |
+|---|---|---|
+| each 4xxx income account | | its credit balance for the year, cleared |
+| | each 5xxx expense account | its debit balance for the year, cleared |
+| | 3300 Retained Earnings | the year's profit (Dr when a loss) |
+
+*Example:* a year with sales 1,00,000.00, COGS 60,000.00 and rent 12,000.00 closes with Dr Sales 1,00,000.00,
+Cr COGS 60,000.00, Cr Rent 12,000.00 and Cr Retained Earnings 28,000.00.
+
+◆ Dated 31 March and posted into that March even though it is locked, numbered `CL/2526` per business (ADR-0045). It
+never touches control accounts. An **adjusting closing journal** (`CL/2526/2`, …) with the same shape closes whatever
+reaches the year after its close — a document synced in from a device that had not heard of the locks. There is no
+opening journal: balance-sheet accounts simply carry on. The P&L leaves closing journals out, so a closed year's P&L
+reads as it did before the close.
+
 ## Not posted yet
 
-- **Year end:** the closing and opening journals come in Stage 8. Until then, retained earnings are computed on the
-  Balance Sheet.
 - **Card/UPI settlement** (Dr Bank, Dr Bank Charges, Cr Clearing) is a manual journal.
 - **Reverse-charge purchases** are refused (ADR-0023).

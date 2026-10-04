@@ -10,7 +10,7 @@ export const PULL_MAX_LIMIT = 500;
 export const STREAM_ORDER: readonly SyncStream[] = ['control', 'config', 'masters', 'documents'];
 
 export const STREAM_OF: Readonly<Record<OutboxEntityType, PushStream>> = {
-  accounting_period: 'control',
+  accounting_period: 'control', fy_close: 'control',
   business: 'config', branch: 'config', terminal: 'config', doc_series: 'config', setting: 'config', user_pin: 'config', account: 'config',
   expense_category: 'config',
   uom: 'masters', category: 'masters', brand: 'masters', product: 'masters', barcode: 'masters', uom_conversion: 'masters', price_list: 'masters',
@@ -24,7 +24,7 @@ export const SYNC_ENTITY_TYPES = Object.keys(STREAM_OF) as OutboxEntityType[];
 
 export const SYNC_ERROR_CODES = {
   TOTAL_MISMATCH: 'permanent', JOURNAL_IMBALANCE: 'permanent', JOURNAL_MISMATCH: 'permanent', PAYLOAD_INVALID: 'permanent',
-  AUDIT_CHAIN_BROKEN: 'permanent', DEPENDENCY_MISSING: 'dependency', BUSINESS_UNKNOWN: 'transient', VERSION_UNSUPPORTED: 'transient', UNKNOWN_ENTITY: 'transient',
+  AUDIT_CHAIN_BROKEN: 'permanent', INVALID_STATE: 'permanent', DEPENDENCY_MISSING: 'dependency', BUSINESS_UNKNOWN: 'transient', VERSION_UNSUPPORTED: 'transient', UNKNOWN_ENTITY: 'transient',
 } as const;
 export type SyncErrorCode = keyof typeof SYNC_ERROR_CODES;
 

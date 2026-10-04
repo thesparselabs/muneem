@@ -9,6 +9,7 @@ import { ServerError } from './errors.js';
 import { requiredRefs } from './references.js';
 import { BusinessState, type ConflictLogRow, type DeadLetter, type EntityState } from './state.js';
 import { verifyOperation } from './verify.js';
+import { yearCloseRefusal } from './yearEnd.js';
 
 export interface PullQuery { businessId: string; stream: SyncStream; since: number; limit: number }
 
@@ -188,7 +189,7 @@ export class ReferenceServer implements SyncServer {
     const missing = requiredRefs(op.entityType, op.operationType, op.entityId, op.payload).find((r) => !b.live(r.entityType, r.entityId));
     if (missing) return error('DEPENDENCY_MISSING', `waiting for ${missing.entityType} ${missing.entityId}`);
     const failed = verifyOperation(op.entityType, op.operationType, op.payload);
-    return failed ? error(failed, `${op.entityType} ${op.entityId} failed verification`) : null;
+    return failed ? error(failed, `${op.entityType} ${op.entityId} failed verification`) : yearCloseRefusal(b, op);
   }
 
   // Nothing is dropped and nothing is silently fixed: the full payload goes to dead-letter (ADR-0038).

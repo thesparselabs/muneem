@@ -1,4 +1,4 @@
-import { addDays, monthStart, newUlid } from '@muneem/domain';
+import { addDays, financialYearOf, fyBounds, monthStart, newUlid } from '@muneem/domain';
 import { findUomByCode, stockState, type Db } from '@muneem/db-sqlite';
 import {
   AllocateInput, CompleteReturnInput, CompleteSaleInput, CreatePurchaseInput, CustomerInput, ExpenseInput, ManualJournalInput, PaymentInput, ProductInput, PurchaseDraft, ReturnPurchaseInput,
@@ -15,6 +15,8 @@ export interface SoakOptions {
   file: boolean;
   setTime: (ms: number) => void;
   appOptions?: Omit<TestAppOptions, 'file' | 'now'>;
+  // 8d: set GST off before each month is locked, and close each year once its March is locked.
+  yearEnd?: boolean;
 }
 
 export interface SoakCounts {
@@ -23,7 +25,12 @@ export interface SoakCounts {
   cancelledPayments: number; cancelledExpenses: number; cancelledPurchases: number; periodsLocked: number; backdated: number;
 }
 
-export interface SoakRun { app: App; db: Db; businessId: string; startDate: string; endDate: string; monthEnds: string[]; counts: SoakCounts; elapsedMs: number }
+// A closed year's P&L and year-end Balance Sheet as they read just before it was closed.
+export interface YearEndRecord { setoffs: number; closed: { fy: string; profitAndLoss: unknown; balanceSheet: unknown }[] }
+
+export interface SoakRun {
+  app: App; db: Db; businessId: string; startDate: string; endDate: string; monthEnds: string[]; counts: SoakCounts; yearEnd: YearEndRecord; elapsedMs: number;
+}
 
 // mulberry32: a small seeded generator, so the same seed makes the same documents.
 export class Prng {
@@ -87,9 +94,10 @@ class Trader {
   private today = '';
   private dayNo = 0;
   private overrideDue = false;
+  readonly yearEnd: YearEndRecord = { setoffs: 0, closed: [] };
 
   constructor(private readonly app: App, private readonly db: Db, private readonly shop: Shop, private readonly rng: Prng, private readonly clock: SoakClock,
-    private readonly salesPerDay: number, private readonly startDate: string) {}
+    private readonly salesPerDay: number, private readonly startDate: string, private readonly closesYears = false) {}
 
   private get unitsPerProductPerDay(): number { return Math.max(1, Math.ceil((this.salesPerDay * 5) / this.shop.products.length)); }
 
@@ -141,8 +149,13 @@ class Trader {
 
   private monthEnd(lastDay: string): void {
     const period = monthStart(lastDay);
+    if (this.closesYears) {
+      this.step(() => this.app.gst.setoffs.post({ month: period, commandId: newUlid() }));
+      this.yearEnd.setoffs++;
+    }
     this.step(() => this.app.periods.lock(period));
     this.counts.periodsLocked++;
+    if (this.closesYears && period.slice(5, 7) === '03') this.closeYear(financialYearOf(lastDay));
     const backDate = [`${lastDay.slice(0, 8)}20`, lastDay, this.startDate].filter((d) => d >= this.startDate && d <= lastDay)[0]!;
     const customer = this.rng.pick(this.shop.customers);
     this.payments.push(this.step(() => this.app.payments.create(PaymentInput.parse({
@@ -156,6 +169,13 @@ class Trader {
     this.counts.receipts++;
     this.counts.expenses++;
     this.counts.backdated += 3;
+  }
+
+  private closeYear(fy: string): void {
+    for (const m of this.app.yearEnd.list().find((y) => y.fy === fy)!.months) if (m.status === 'open') this.step(() => this.app.periods.lock(m.month));
+    const { start, end } = fyBounds(fy);
+    this.yearEnd.closed.push({ fy, profitAndLoss: this.app.statements.profitAndLoss({ from: start, to: end }), balanceSheet: this.app.statements.balanceSheet({ asOf: end }) });
+    this.step(() => this.app.yearEnd.close(fy));
   }
 
   private sell(): void {
@@ -456,7 +476,7 @@ export async function runSoak(opts: SoakOptions): Promise<SoakRun> {
   const { app, db } = await testApp({ ...opts.appOptions, file: opts.file, now: () => clock.now() });
   const rng = new Prng(opts.seed);
   const shop = await setUpShop(app, db, rng);
-  const trader = new Trader(app, db, shop, rng, clock, opts.salesPerDay, startDate);
+  const trader = new Trader(app, db, shop, rng, clock, opts.salesPerDay, startDate, opts.yearEnd ?? false);
   trader.openingDay(startDate);
   const monthEnds: string[] = [];
   let previous: string | null = null;
@@ -466,5 +486,5 @@ export async function runSoak(opts: SoakOptions): Promise<SoakRun> {
     await trader.day(date, previous);
     previous = date;
   }
-  return { app, db, businessId: shop.businessId, startDate, endDate: opts.endDate, monthEnds, counts: trader.counts, elapsedMs: performance.now() - t0 };
+  return { app, db, businessId: shop.businessId, startDate, endDate: opts.endDate, monthEnds, counts: trader.counts, yearEnd: trader.yearEnd, elapsedMs: performance.now() - t0 };
 }

@@ -1,5 +1,5 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
-import { describe, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { newUlid } from '@muneem/domain';
 import { CompleteReturnInput, CompleteSaleInput, CreatePurchaseInput, GstPaymentInput, PurchaseDraft, SaleDraft } from '@muneem/contracts';
 import type { Db } from '@muneem/db-sqlite';
@@ -100,4 +100,13 @@ describe('sync census dumps', () => {
     app.gst.payments.record(GstPaymentInput.parse({ commandId: newUlid(), paymentDate: '2026-06-04', challanRef: 'CPIN26060400001', month: '2026-05-01', ...setoff.cash }));
     dump(db, businessId, 'gst.json');
   }, 120_000);
+
+  // ADR-0045: two months of a seeded soak across 1 April, then the year set off, locked and closed.
+  run('a year-end close', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    const soak = await runSoak({ seed: 11, days: 45, salesPerDay: 4, endDate: '2026-04-20', file: false, setTime: (ms) => vi.setSystemTime(ms), yearEnd: true });
+    vi.useRealTimers();
+    expect(soak.app.yearEnd.list().find((y) => y.fy === '2025-26')).toMatchObject({ status: 'closed' });
+    dump(soak.db, soak.businessId, 'yearend.json');
+  }, 600_000);
 });

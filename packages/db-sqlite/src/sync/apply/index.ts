@@ -7,6 +7,7 @@ import { applyBarcode, applyConversion, applyPriceItems, BRAND, CATEGORY, PRICE_
 import { ACCOUNT, applyBusiness, applySetting, BRANCH, DOC_SERIES, EXPENSE_CATEGORY, TERMINAL } from './config.js';
 import { actorFor, appliedVersion, markApplied, Touched, type ApplyContext } from './context.js';
 import { applyConflictLog, applyDeviceMessage, applyPeriod, applyReviewItem } from './control.js';
+import { applyFyClose } from './yearEnd.js';
 import { applyDocument, type DocumentApplier } from './documents.js';
 import { EXPENSE } from './expenses.js';
 import { applyJournalEntry } from './journals.js';
@@ -36,7 +37,7 @@ const APPLIERS: Readonly<Record<PulledEntityType | 'conflict_log' | 'review_item
   stock_adjustment: applyStockDocument,
   party_opening: document(PARTY_OPENING), purchase: document(PURCHASE), debit_note: document(DEBIT_NOTE), payment: document(PAYMENT), write_off: document(WRITE_OFF),
   expense: document(EXPENSE), allocation: applyAllocationEntity, journal_entry: applyJournalEntry,
-  accounting_period: applyPeriod, conflict_log: applyConflictLog, review_item: applyReviewItem, device: applyDeviceMessage,
+  accounting_period: applyPeriod, fy_close: applyFyClose, conflict_log: applyConflictLog, review_item: applyReviewItem, device: applyDeviceMessage,
 };
 
 // includeOwn: a hydrating device takes every change, its own included, since nothing it once sent is in this database.

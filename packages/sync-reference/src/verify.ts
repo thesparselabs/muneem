@@ -1,4 +1,5 @@
 import type { SyncErrorCode } from '@muneem/contracts';
+import { closingsHold } from './yearEnd.js';
 
 type Payload = Record<string, unknown>;
 interface Line { debitPaise: number; creditPaise: number }
@@ -13,6 +14,7 @@ function journalsOf(entityType: string, p: Payload): Payload[] {
   const out: Payload[] = [];
   if (p.journal && typeof p.journal === 'object') out.push(p.journal as Payload);
   if (Array.isArray(p.corrections)) out.push(...(p.corrections as Payload[]));
+  if (entityType === 'fy_close' && Array.isArray(p.closings)) out.push(...(p.closings as Payload[]).flatMap((c) => (c.journal ? [c.journal as Payload] : [])));
   return out;
 }
 
@@ -73,6 +75,7 @@ const TOTALS: Record<string, (p: Payload) => boolean> = {
 export function verifyOperation(entityType: string, operationType: string, payload: Payload): SyncErrorCode | null {
   const totals = operationType === 'create' ? TOTALS[entityType] : undefined;
   if (totals && !totals(payload)) return 'TOTAL_MISMATCH';
+  if (entityType === 'fy_close' && !closingsHold(payload)) return 'JOURNAL_MISMATCH';
   if (!journalsOf(entityType, payload).every(balanced)) return 'JOURNAL_IMBALANCE';
   return null;
 }

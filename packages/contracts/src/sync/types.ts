@@ -36,6 +36,7 @@ export type OutboxEntityType =
   | 'account'
   | 'journal_entry'
   | 'accounting_period'
+  | 'fy_close'
   | 'audit_entry';
 export type OutboxOperationType = 'create' | 'update' | 'cancel' | 'void';
 export type OutboxStatus = 'pending' | 'in_flight' | 'sent' | 'failed' | 'dead' | 'superseded';

@@ -39,6 +39,8 @@ var creates = map[string]check{
 // Operation verifies one pushed operation; a nil result means the cloud found nothing wrong with it.
 func Operation(entityType, operationType string, payload []byte, lk Lookup) error {
 	switch {
+	case entityType == "fy_close":
+		return decoded(verifyFyClose)(payload, lk)
 	case operationType == "cancel":
 		return verifyCancel(payload, lk)
 	case entityType == "pos_session" && operationType == "update":

@@ -1,5 +1,5 @@
 import { AppError } from '@muneem/contracts';
-import { docSeriesPrefix, financialYearOf, monthEnd, monthStart, newUlid, nextMonthStart, reverse, totals, type JournalLine } from '@muneem/domain';
+import { docSeriesPrefix, financialYearOf, fyEndOf, monthEnd, monthStart, newUlid, nextMonthStart, reverse, totals, type JournalLine } from '@muneem/domain';
 import type { Db } from '../open.js';
 import { stmt } from '../statements.js';
 import { appendAudit } from '../audit.js';
@@ -135,6 +135,15 @@ export function postSyncedJournal(db: Db, j: SyncedJournalInput, actor: Actor): 
   return writeJournal(db, j, {
     id: j.id, entryNo: j.entryNo, entryDate: j.entryDate, periodId, late: j.latePosting, reversalOf: j.reversalOf, ...(j.createdAt && { createdAt: j.createdAt }),
   }, actor);
+}
+
+// ADR-0045: the one sanctioned posting into a locked month. A year's closing journal is dated its last day and lands in that
+// March, locked or not, so the month's balance cache holds it (ADR-0036); nothing else may take this path.
+export function postClosingJournal(db: Db, j: SyncedJournalInput, actor: Actor): PostedJournal | null {
+  if (j.source !== 'closing' || j.entryDate !== fyEndOf(financialYearOf(j.entryDate)) || j.docDate !== j.entryDate) {
+    throw new AppError('INVALID_STATE', `only a closing journal dated a year's last day may post into a locked month (${j.source} ${j.entryDate})`);
+  }
+  return postSyncedJournal(db, j, actor);
 }
 
 type LineRow = { debit_paise: number; credit_paise: number; party_type: 'customer' | 'supplier' | null; party_id: string | null; code: string; role: string | null };

@@ -52,6 +52,7 @@ export * from './repositories/documentJournals.js';
 export * from './repositories/periods.js';
 export * from './repositories/journalBacklog.js';
 export * from './repositories/accountingStatements.js';
+export * from './repositories/yearEnd.js';
 export * from './sync/outboxQueue.js';
 export * from './sync/syncState.js';
 export * from './sync/hydrationState.js';

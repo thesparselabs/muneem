@@ -34,6 +34,7 @@ import { WriteOffService } from './services/payments/writeOffs.js';
 import { ExpenseService } from './services/expenses/expenseService.js';
 import { JournalBacklog } from './services/accounting/backlog.js';
 import { PeriodService } from './services/accounting/periods.js';
+import { YearEndService } from './services/accounting/yearEnd.js';
 import { ChartService } from './services/accounting/chart.js';
 import { ManualJournalService } from './services/accounting/manualJournals.js';
 import { GstContext } from './services/gst/gstContext.js';
@@ -142,6 +143,7 @@ export function createApp(cfg: AppConfig) {
   const writeOffs = new WriteOffService(posCtx, allocator);
   const expenses = new ExpenseService(posCtx, drawer);
   const periods = new PeriodService(posCtx);
+  const yearEnd = new YearEndService(posCtx);
   const backlog = new JournalBacklog(posCtx);
   const statements = new StatementService(posCtx);
   let readDb: Db | null = null;
@@ -313,6 +315,9 @@ export function createApp(cfg: AppConfig) {
     'accounting.lockPeriod': (i) => periods.lock(i.periodStart),
     'accounting.unlockPeriod': (i) => periods.unlock(i.periodStart, i.reason),
     'accounting.listLatePostings': () => periods.latePostings(),
+    'accounting.getYearEnd': () => yearEnd.list(),
+    'accounting.closeYear': (i) => yearEnd.close(i.fy),
+    'accounting.recloseYear': (i) => yearEnd.reclose(i.fy),
     'accounting.postBacklog': () => backlog.run(),
     'accounting.rebuildBalances': () => ({ rebuilt: backlog.rebuildBalances() }),
     'pos.getSession': () => register.current(),
@@ -392,6 +397,6 @@ export function createApp(cfg: AppConfig) {
     onCommitted: () => sync.nudge(), holds: (id) => gate.holds(id),
   });
 
-  return { events, session, reports, dashboard, rbac, cloud, connectivity, device, auth, business, settings, products, catalog, pricing, productImport, customers, suppliers, customerLedger, supplierLedger, purchases, purchaseReturns, purchaseImport, payments, writeOffs, expenses, periods, backlog, statements, chart, manualJournals, gst, register, sales, returns, printQueue, inventory, openingImport, diagnostics, backups, closeReadConnections, gateway, handlers, syncStatus, syncEngine, sync, hydration, hydrationGate: gate };
+  return { events, session, reports, dashboard, rbac, cloud, connectivity, device, auth, business, settings, products, catalog, pricing, productImport, customers, suppliers, customerLedger, supplierLedger, purchases, purchaseReturns, purchaseImport, payments, writeOffs, expenses, periods, yearEnd, backlog, statements, chart, manualJournals, gst, register, sales, returns, printQueue, inventory, openingImport, diagnostics, backups, closeReadConnections, gateway, handlers, syncStatus, syncEngine, sync, hydration, hydrationGate: gate };
 }
 export type App = ReturnType<typeof createApp>;

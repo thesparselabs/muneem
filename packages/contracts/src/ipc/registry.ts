@@ -26,6 +26,7 @@ import {
 import {
   AccountLedgerInput, AccountLedgerPage, AccountView, AsOfInput, BacklogResult, BalanceSheet, CreateAccountInput, DayBookInput, DayBookPage, JournalView, LatePosting,
   ListAccountsInput, LockPeriodInput, ManualJournalInput, Period, ProfitAndLoss, RangeInput, RenameAccountInput, ReverseJournalInput, TrialBalance, UnlockPeriodInput,
+  FinancialYear, YearCloseInput,
 } from './accounting.js';
 import { CompleteSaleInput, CompleteSaleResult, HeldBill, HoldBillInput, Sale, SaleDraft, SaleListInput, SalePage, SaleQuote } from './sales.js';
 import { CancelSaleInput, CompleteReturnInput, CompleteReturnResult, CreditNote, CreditNoteListInput, CreditNotePage, ReturnDraft, ReturnQuote } from './returns.js';
@@ -236,6 +237,9 @@ export const contract = {
   'accounting.lockPeriod': spec({ input: LockPeriodInput, output: Period, permission: 'accounting.manage', rateLimit: { perSec: 1 }, audit: true }),
   'accounting.unlockPeriod': spec({ input: UnlockPeriodInput, output: Period, permission: 'accounting.manage', rateLimit: { perSec: 1 }, audit: true }),
   'accounting.listLatePostings': spec({ input: Empty, output: z.array(LatePosting), permission: 'accounting.view', rateLimit: { perSec: 5 } }),
+  'accounting.getYearEnd': spec({ input: Empty, output: z.array(FinancialYear), permission: 'accounting.view', rateLimit: { perSec: 5 } }),
+  'accounting.closeYear': spec({ input: YearCloseInput, output: FinancialYear, permission: 'accounting.close', rateLimit: { perSec: 1 }, audit: true }),
+  'accounting.recloseYear': spec({ input: YearCloseInput, output: FinancialYear, permission: 'accounting.close', rateLimit: { perSec: 1 }, audit: true }),
   'accounting.postBacklog': spec({ input: Empty, output: BacklogResult, permission: 'accounting.manage', rateLimit: { perSec: 1 }, audit: true }),
   'accounting.rebuildBalances': spec({ input: Empty, output: z.object({ rebuilt: z.number().int() }), permission: 'accounting.manage', rateLimit: { perSec: 1 }, audit: true }),
 

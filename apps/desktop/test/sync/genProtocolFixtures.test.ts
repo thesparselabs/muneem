@@ -162,6 +162,42 @@ describe('sync protocol fixtures', () => {
       },
     });
   });
+
+  // ADR-0045: a year closed on A applies; a close of the same year from B is refused for good, and B pulls A's.
+  run('records the year-end close fixture (8d)', async () => {
+    let clock = Date.parse('2026-03-10T06:30:00Z');
+    const { app, db } = await testApp({ now: () => clock });
+    const api = caller(app);
+    const { businessId } = await ownerAtTill(app, { gstin: '07AAAAA0000A1Z5' });
+    const pcs = (await api.data<{ id: string; code: string }[]>('catalog.listUoms')).find((u) => u.code === 'PCS')!.id;
+    const soap = await api.data<{ id: string }>('products.create', { name: 'Soap', hsnCode: '3401', baseUomId: pcs, gstRateBp: 1800, sellingPricePaise: 11_800, priceIsInclusive: true });
+    app.inventory.setOpeningStock({ lines: [{ productId: soap.id, qtyMilli: 10_000, unitCostPaise: 5_000 }] });
+    await app.register.open(10_000);
+    const draft = SaleDraft.parse({ lines: [{ productId: soap.id, uomId: pcs, qtyMilli: 2000 }] });
+    app.sales.complete(CompleteSaleInput.parse({ ...draft, commandId: newUlid(), expectedTotalPaise: 23_600, tenders: [{ method: 'cash', amountPaise: 23_600 }] }));
+    clock = Date.parse('2026-04-05T06:30:00Z');
+    app.gst.setoffs.post({ month: '2026-03-01', commandId: newUlid() });
+    for (let m = 4; m <= 15; m++) app.periods.lock(`${m <= 12 ? 2025 : 2026}-${String(((m - 1) % 12) + 1).padStart(2, '0')}-01`);
+    app.yearEnd.close('2025-26');
+    const ops = (db.prepare("SELECT * FROM sync_outbox WHERE business_id = ? AND entity_type <> 'audit_entry' ORDER BY seq").all(businessId) as Record<string, unknown>[]).map(toOperation);
+    const close = ops.find((o) => o.entityType === 'fy_close')!;
+    const closeId = newUlid();
+    const closing = (close.payload.closings as { journal: Record<string, unknown> }[])[0]!;
+    const payload = { ...close.payload, id: closeId, closings: [{ ...closing, journal: { ...closing.journal, id: newUlid(), refId: closeId } }] };
+    const second: PushOperation = { ...close, operationId: newUlid(), entityId: closeId, seq: 1, payload, payloadHash: hash(payload) };
+    const push = (operations: PushOperation[]) => ({ businessId, protocol: 1, schemaVersion: 14, clientTime: CLIENT_TIME, operations });
+    write({
+      'year-close-once': {
+        description: "A closes a financial year after locking its months: the close applies on the control stream. B closing the same year is refused (INVALID_STATE), and B pulls A's close.",
+        setup: { organizationId: ORG_ID, userId: USER_ID, devices: ['A', 'B'] }, steps: [
+          { device: 'A', call: 'push', request: push(ops), expect: { results: ops.map((o) => ({ operationId: o.operationId, status: 'applied' })) } },
+          { device: 'B', call: 'push', request: push([second]), expect: { results: [{ operationId: second.operationId, status: 'rejected', error: { code: 'INVALID_STATE', class: 'permanent' } }] } },
+          { device: 'B', call: 'pull', request: { businessId, stream: 'control', since: 0, limit: 500 },
+            expect: { lastChangeFor: { entityType: 'fy_close', entityId: close.entityId, originDeviceId: 'A', payload: { fy: '2025-26', version: 1 } } } },
+        ],
+      },
+    });
+  });
 });
 
 function write(fixtures: Record<string, object>): void {

@@ -92,6 +92,13 @@ func refs(js []Journal) []*Journal {
 
 // Journals lists every journal an operation carries, in the order the device posted them.
 func Journals(entityType string, payload []byte) ([]*Journal, error) {
+	if entityType == "fy_close" {
+		c, err := DecodeFyClose(payload)
+		if err != nil {
+			return nil, err
+		}
+		return c.journals(), nil
+	}
 	if entityType == "journal_entry" {
 		var j Journal
 		if err := json.Unmarshal(payload, &j); err != nil {

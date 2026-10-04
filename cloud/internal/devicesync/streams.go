@@ -12,8 +12,8 @@ const (
 )
 
 var streamOf = map[string]string{
-	"accounting_period": StreamControl,
-	"business":          StreamConfig, "branch": StreamConfig, "terminal": StreamConfig, "doc_series": StreamConfig, "setting": StreamConfig,
+	"accounting_period": StreamControl, "fy_close": StreamControl,
+	"business": StreamConfig, "branch": StreamConfig, "terminal": StreamConfig, "doc_series": StreamConfig, "setting": StreamConfig,
 	"user_pin": StreamConfig, "account": StreamConfig, "expense_category": StreamConfig,
 	"uom": StreamMasters, "category": StreamMasters, "brand": StreamMasters, "product": StreamMasters, "barcode": StreamMasters,
 	"uom_conversion": StreamMasters, "price_list": StreamMasters, "price_list_item": StreamMasters, "customer": StreamMasters,
@@ -37,11 +37,12 @@ const (
 	CodeVersionUnsupported = "VERSION_UNSUPPORTED"
 	CodeUnknownEntity      = "UNKNOWN_ENTITY"
 	CodeAuditChainBroken   = "AUDIT_CHAIN_BROKEN"
+	CodeInvalidState       = "INVALID_STATE"
 )
 
 var classOf = map[string]string{
 	CodeTotalMismatch: "permanent", CodeJournalImbalance: "permanent", CodeJournalMismatch: "permanent", CodePayloadInvalid: "permanent",
-	CodeAuditChainBroken: "permanent", CodeDependencyMissing: "dependency", CodeBusinessUnknown: "transient", CodeVersionUnsupported: "transient", CodeUnknownEntity: "transient",
+	CodeAuditChainBroken: "permanent", CodeInvalidState: "permanent", CodeDependencyMissing: "dependency", CodeBusinessUnknown: "transient", CodeVersionUnsupported: "transient", CodeUnknownEntity: "transient",
 }
 
 const (
@@ -63,7 +64,7 @@ var StreamOrder = []string{StreamControl, StreamConfig, StreamMasters, StreamDoc
 // LatestStateTypes lists each non-document stream's entity types, referenced types before the types that reference
 // them (STREAM_OF's declaration order), so a bundle of latest states imports without a missing parent.
 var LatestStateTypes = map[string][]string{
-	StreamControl: {"accounting_period", ControlDevice, ControlReviewItem},
+	StreamControl: {"accounting_period", "fy_close", ControlDevice, ControlReviewItem},
 	StreamConfig:  {"business", "branch", "terminal", "doc_series", "setting", "user_pin", "account", "expense_category"},
 	StreamMasters: {"uom", "category", "brand", "product", "barcode", "uom_conversion", "price_list", "price_list_item", "customer",
 		"customer_credit_limit", "supplier", "warehouse"},

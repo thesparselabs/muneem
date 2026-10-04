@@ -125,7 +125,16 @@ function duplicateBarcode(b: BusinessState, op: PushOperation, deviceId: string)
   return clash ? [{ kind: 'duplicate_barcode', entityType: 'barcode', entityId: op.entityId, deviceId, rule: 'keep_both', winner: 'device', cloudValue: clash.entityId }] : [];
 }
 
+// ADR-0045: a year close is stored whole as each version arrives; the refusal rules already ordered them.
+function applyYearClose(b: BusinessState, op: PushOperation, deviceId: string): Applied {
+  const existing = b.entity(op.entityType, op.entityId);
+  if (!existing) return { change: changeOf(created(b, op, deviceId), 'upsert', deviceId), conflicts: [] };
+  bump(existing, op.payload, deviceId);
+  return { change: changeOf(existing, 'upsert', deviceId), conflicts: [] };
+}
+
 export function applyOperation(b: BusinessState, op: PushOperation, deviceId: string, at: string): Applied {
+  if (op.entityType === 'fy_close') return applyYearClose(b, op, deviceId);
   const effects = [...controlEffects(b, op, deviceId), ...duplicateBarcode(b, op, deviceId)];
   const applied = isDocument(op.entityType) ? applyDocument(b, op, deviceId) : applyMaster(b, op, deviceId, at);
   return { change: applied.change, conflicts: [...applied.conflicts, ...effects] };

@@ -90,7 +90,7 @@ var createRefs = map[string]func(p *refPayload) []ref{
 // references lists what must already be stored. Cancels and updates of documents need the document itself; a
 // credit limit needs its customer.
 func references(op Operation) ([]ref, error) {
-	if streamOf[op.EntityType] == StreamDocuments && op.OperationType != "create" {
+	if (streamOf[op.EntityType] == StreamDocuments || op.EntityType == "fy_close") && op.OperationType != "create" {
 		return []ref{{op.EntityType, op.EntityID}}, nil
 	}
 	if op.EntityType == "customer_credit_limit" {

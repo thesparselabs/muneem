@@ -21,6 +21,7 @@ import Statements from './routes/accounts/Statements.js';
 import Books from './routes/accounts/Books.js';
 import ManualJournal from './routes/accounts/ManualJournal.js';
 import Periods from './routes/accounts/Periods.js';
+import YearEnd from './routes/accounts/YearEnd.js';
 import GstReturns from './routes/gst/GstReturns.js';
 import GstSetoff from './routes/gst/GstSetoff.js';
 import GstPayments from './routes/gst/GstPayments.js';
@@ -99,6 +100,7 @@ export default function App() {
         <Route path="/accounts/books" element={<Books />} />
         <Route path="/accounts/journal/new" element={<ManualJournal />} />
         <Route path="/accounts/periods" element={<Periods />} />
+        <Route path="/accounts/year-end" element={<YearEnd />} />
         <Route path="/gst" element={<GstReturns />} />
         <Route path="/gst/setoff" element={<GstSetoff />} />
         <Route path="/gst/payments" element={<GstPayments />} />
