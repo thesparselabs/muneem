@@ -11,6 +11,7 @@ import type { ColdStart } from '../src/main/sync/hydration/hydrationGate.js';
 import type { SaveFile } from '../src/main/reports/service.js';
 import type { PdfRenderer } from '../src/main/reports/exports/pdf.js';
 import type { BackupTransport, RestoreHost } from '../src/main/backups/index.js';
+import type { CrashSend } from '../src/main/telemetry/crashReports.js';
 import type { Updater } from '../src/main/update/updater.js';
 import type { SpoolerTransport } from '../src/main/services/print/spooler.js';
 import type { LineRasteriser } from '../src/main/services/print/raster.js';
@@ -67,7 +68,7 @@ export interface TestAppOptions {
   coldStart?: ColdStart; bundleFetcher?: BundleFetcher; apiBaseUrl?: string; secrets?: SecretStore;
   saveFile?: SaveFile; pdfRenderer?: PdfRenderer;
   backupTransport?: (credentials: () => Credentials | null) => BackupTransport; restoreHost?: RestoreHost;
-  updater?: Updater; updateBaseUrl?: string; registerIdleMs?: number; appVersion?: string;
+  updater?: Updater; updateBaseUrl?: string; registerIdleMs?: number; appVersion?: string; crashSend?: CrashSend;
   printSpooler?: SpoolerTransport; lineRasteriser?: LineRasteriser;
 }
 
@@ -84,7 +85,7 @@ export async function testApp(opts: TestAppOptions = {}): Promise<{ app: App; db
     ...(opts.saveFile && { saveFile: opts.saveFile }), ...(opts.pdfRenderer && { pdfRenderer: opts.pdfRenderer }),
     ...(opts.backupTransport && { backupTransport: opts.backupTransport }), ...(opts.restoreHost && { restoreHost: opts.restoreHost }),
     ...(opts.updater && { updater: opts.updater }), ...(opts.updateBaseUrl && { updateBaseUrl: opts.updateBaseUrl }),
-    ...(opts.registerIdleMs !== undefined && { registerIdleMs: opts.registerIdleMs }),
+    ...(opts.registerIdleMs !== undefined && { registerIdleMs: opts.registerIdleMs }), ...(opts.crashSend && { crashSend: opts.crashSend }),
     ...(opts.printSpooler && { printSpooler: opts.printSpooler }), ...(opts.lineRasteriser && { lineRasteriser: opts.lineRasteriser }),
     coldStart: opts.coldStart ?? 'pull', ...(opts.bundleFetcher && { bundleFetcher: opts.bundleFetcher }), sleep: async () => undefined,
   });

@@ -85,6 +85,8 @@ import { DEFAULT_UPDATE_BASE_URL } from './update/channels.js';
 import type { Updater } from './update/updater.js';
 import { createNotifications } from './notifications/index.js';
 import { CustomerPrivacyService } from './services/parties/customerPrivacy.js';
+import { createTelemetry } from './telemetry/index.js';
+import type { CrashSend } from './telemetry/crashReports.js';
 import type { SyncStatus, UpdateStatus } from '@muneem/contracts';
 export interface AppConfig {
   db: () => Db;
@@ -116,6 +118,10 @@ export interface AppConfig {
   registerIdleMs?: number;
   printSpooler?: SpoolerTransport;
   lineRasteriser?: LineRasteriser;
+  // ADR-0053: the crash collector's DSN (null: never send); crashSend replaces the HTTP sender in tests.
+  crashDsn?: string | null;
+  crashSend?: CrashSend;
+  isDev?: boolean;
 }
 
 export function createApp(cfg: AppConfig) {
@@ -190,6 +196,11 @@ export function createApp(cfg: AppConfig) {
   const diagnostics = new DiagnosticsService({
     db: cfg.db, dbFile: cfg.dbFile, bundlesDir: cfg.bundlesDir, loggers: cfg.loggers, session, device,
     appVersion: cfg.appVersion, secretStoreAvailable: cfg.secrets.encrypted, connectivity: () => connectivity.snapshot(),
+  });
+  const telemetry = createTelemetry({
+    db: cfg.db, businessId: () => session.get()?.businessId ?? null, installationId: () => device.installationId(), appVersion: cfg.appVersion,
+    platform: cfg.platform, dsn: cfg.crashDsn ?? null, isDev: cfg.isDev ?? false, log: cfg.loggers.app,
+    ...(cfg.fetchImpl && { fetchImpl: cfg.fetchImpl }), ...(cfg.crashSend && { send: cfg.crashSend }), ...(cfg.now && { now: cfg.now }),
   });
   const syncStatus = () => readSyncStatus(cfg.db(), connectivity.online, connectivity.serverSkewMs);
   const credentials = (): Credentials | null => {
@@ -448,6 +459,7 @@ export function createApp(cfg: AppConfig) {
     'diagnostics.exportSupportBundle': () => diagnostics.exportSupportBundle(),
     'diagnostics.getLogsTail': (i) => diagnostics.getLogsTail(i.log, i.lines),
     ...backups.handlers,
+    ...telemetry.handlers,
     ...updates.handlers,
     ...notifications.handlers,
   };
@@ -460,6 +472,6 @@ export function createApp(cfg: AppConfig) {
     onCommitted: (channel) => { sync.nudge(); notifications.runner.afterCommit(channel); }, holds: (id) => gate.holds(id), onDispatch: (channel) => updates.activity.dispatch(channel),
   });
 
-  return { events, session, reports, dashboard, rbac, cloud, connectivity, device, auth, business, settings, products, catalog, pricing, productImport, customers, suppliers, customerLedger, supplierLedger, purchases, purchaseReturns, purchaseImport, payments, writeOffs, expenses, periods, yearEnd, backlog, statements, chart, manualJournals, gst, register, sales, returns, printQueue, inventory, openingImport, diagnostics, backups, closeReadConnections, gateway, handlers, syncStatus, syncEngine, sync, hydration, hydrationGate: gate, updates, notifications, customerPrivacy };
+  return { events, session, reports, dashboard, rbac, cloud, connectivity, device, auth, business, settings, products, catalog, pricing, productImport, customers, suppliers, customerLedger, supplierLedger, purchases, purchaseReturns, purchaseImport, payments, writeOffs, expenses, periods, yearEnd, backlog, statements, chart, manualJournals, gst, register, sales, returns, printQueue, inventory, openingImport, diagnostics, backups, closeReadConnections, gateway, handlers, syncStatus, syncEngine, sync, hydration, hydrationGate: gate, updates, notifications, customerPrivacy, telemetry };
 }
 export type App = ReturnType<typeof createApp>;

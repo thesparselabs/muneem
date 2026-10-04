@@ -8,6 +8,7 @@ export * from './ipc/returns.js';
 export * from './ipc/gst.js';
 export * from './ipc/print.js';
 export * from './ipc/settings.js';
+export * from './ipc/telemetry.js';
 export * from './ipc/inventory.js';
 export * from './ipc/parties.js';
 export * from './ipc/purchases.js';

@@ -1,4 +1,4 @@
-import { app, BrowserWindow, dialog, ipcMain, safeStorage, session, shell } from 'electron';
+import { app, BrowserWindow, crashReporter, dialog, ipcMain, safeStorage, session, shell } from 'electron';
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -15,12 +15,14 @@ import { createLoggers } from './infra/logger.js';
 import { createElectronSecretStore } from './infra/secrets.js';
 import { electronHtmlToPdf, electronSaveFile } from './infra/files.js';
 import { registerIpc } from './ipc/gateway.js';
-import { currentSchemaVersion, restoreDatabaseFile, type Db } from '@muneem/db-sqlite';
+import { currentSchemaVersion, getMeta, restoreDatabaseFile, setMeta, type Db } from '@muneem/db-sqlite';
 import { rmSync } from 'node:fs';
 import { startSyncWorker } from './sync/syncWorker.js';
 import { ElectronPagePrinter, ElectronPrinterDirectory, ElectronRasteriser, HiddenPrintPage, receiptFontsDir } from './infra/printSurface.js';
 import { PowerShellRawJob } from './services/print/rawSpoolJob.js';
 import { WindowsSpooler } from './services/print/spooler.js';
+import { installProcessHooks, reportNativeCrashes } from './telemetry/hooks.js';
+import { DEFAULT_CRASH_DSN } from './telemetry/crashReports.js';
 
 app.setName('Muneem'); // userData → %APPDATA%/Muneem (before 'ready')
 const isDev = !app.isPackaged;
@@ -33,6 +35,8 @@ const CSP = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inl
 const DEV_SERVER_CSP = CSP.replace("script-src 'self'", "script-src 'self' 'unsafe-inline'").replace("connect-src 'self'", "connect-src 'self' ws://localhost:*");
 
 if (!app.requestSingleInstanceLock()) app.quit();
+// ADR-0053: native crashes become local minidumps only; they hold process memory, so they are never uploaded.
+crashReporter.start({ uploadToServer: false, compress: true });
 
 let mainWindow: BrowserWindow | null = null;
 let muneem: App | null = null;
@@ -42,6 +46,7 @@ let printPage: HiddenPrintPage | null = null;
 const SPOOLER_TIMEOUT_MS = 20_000; // a cold PowerShell compiles its P/Invoke helper first
 
 const UPDATE_CHECK_EVERY_MS = 4 * 3600_000;
+const CRASH_DUMPS_CHECKED = 'crash_dumps_checked_at';
 const FIRST_UPDATE_CHECK_MS = 2 * 60_000;
 
 // Packaged builds use electron-updater; a dev run updates only from a local folder feed (MUNEEM_UPDATE_DIR), if any.
@@ -126,7 +131,8 @@ async function boot(): Promise<void> {
     hydrationDir: join(userData, 'hydration'),
     saveFile: electronSaveFile(() => mainWindow), pdfRenderer: electronHtmlToPdf,
     ...printing(loggers),
-    apiBaseUrl, appVersion: app.getVersion(), platform: process.platform,
+    apiBaseUrl, appVersion: app.getVersion(), platform: process.platform, isDev,
+    crashDsn: process.env.MUNEEM_CRASH_DSN ?? (app.isPackaged ? DEFAULT_CRASH_DSN : null),
     isTrustedSender: (id) => mainWindow?.webContents.id === id,
     // 8f: a restore closes everything, swaps the database file and relaunches; the IPC reply goes out first.
     ...(() => { const u = updateSource(loggers); return { updater: u.updater, updateBaseUrl: u.baseUrl }; })(),
@@ -158,6 +164,9 @@ async function boot(): Promise<void> {
     },
   });
   muneem.device.ensureIdentity();
+  installProcessHooks(muneem.telemetry.crashReports, process, app, (reason) => loggers.app.error({ err: String(reason) }, 'unhandled rejection'));
+  const dumpsCheckedAt = { get: () => Number(getMeta(db!, CRASH_DUMPS_CHECKED) ?? Date.now()), set: (at: number) => setMeta(db!, CRASH_DUMPS_CHECKED, String(at)) };
+  reportNativeCrashes(muneem.telemetry.crashReports, app.getPath('crashDumps'), dumpsCheckedAt, Date.now());
   registerIpc(ipcMain, muneem.gateway);
   muneem.events.attach({ send: (ch, p) => mainWindow?.webContents.send(ch, p) });
   muneem.connectivity.start();

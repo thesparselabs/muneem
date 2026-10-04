@@ -15,6 +15,8 @@ export const SETTING_SCHEMAS = {
   })).max(20),
   'inventory.negativeStock': z.enum(['block', 'warn', 'allow']),
   'pos.receiptFooter': z.array(z.string().trim().max(48, 'at most 48 characters per line')).max(5, 'at most 5 lines'),
+  // NFR-025 / ADR-0053: crash and error reports leave the device only when the owner turns this on (default off).
+  'telemetry.crashReports': z.boolean(),
 } as const;
 export type SettingKey = keyof typeof SETTING_SCHEMAS;
 export type SettingValue<K extends SettingKey> = z.infer<(typeof SETTING_SCHEMAS)[K]>;

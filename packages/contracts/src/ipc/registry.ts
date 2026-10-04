@@ -33,6 +33,7 @@ import { CompleteSaleInput, CompleteSaleResult, HeldBill, HoldBillInput, Sale, S
 import { CancelSaleInput, CompleteReturnInput, CompleteReturnResult, CreditNote, CreditNoteListInput, CreditNotePage, ReturnDraft, ReturnQuote } from './returns.js';
 import { InstalledPrinter, PrintJobSummary, PrinterConfig, ReceiptDoc } from './print.js';
 import { SETTING_KEYS } from './settings.js';
+import { CrashReportingStatus, RendererErrorInput } from './telemetry.js';
 import { CloudBusiness, HydrationStartInput, HydrationStatus } from './hydration.js';
 import { Dashboard, ExportReportInput, ExportReportResult, ReportDefinitionView, ReportResult, RunReportInput } from './reports.js';
 import { GstLedgerView, GstMonthInput, GstPayment, GstPaymentInput, GstReturnSummary, GstSetoff, GstSetoffPreview, PostGstSetoffInput } from './gst.js';
@@ -292,6 +293,9 @@ export const contract = {
   }),
   'diagnostics.verifyAudit': spec({ input: Empty, output: AuditVerification, permission: 'diagnostics.view', rateLimit: { perSec: 1 } }),
   'diagnostics.exportSupportBundle': spec({ input: Empty, output: z.object({ handle: z.string(), bytes: z.number().int() }), permission: 'diagnostics.view', rateLimit: { perSec: 1 }, audit: true }),
+  'diagnostics.crashReporting': spec({ input: Empty, output: CrashReportingStatus, permission: 'diagnostics.view', rateLimit: { perSec: 5 } }),
+  // Renderer errors are forwarded before sign-in too; the reporter drops them unless the business opted in.
+  'diagnostics.reportRendererError': spec({ input: RendererErrorInput, output: Ok, permission: null, rateLimit: { perSec: 2 } }),
   'diagnostics.getLogsTail': spec({ input: z.object({ log: z.enum(['app', 'sync', 'sql-slow', 'hardware']), lines: z.number().int().min(1).max(2000).default(200) }), output: z.array(z.string()), permission: 'diagnostics.view', rateLimit: { perSec: 5 } }),
 
   // ADR-0047 (8f). A restore swaps the database and restarts, so it writes its own audit row into the restored file.
