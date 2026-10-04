@@ -5,6 +5,15 @@ All notable changes, newest first. Each entry records **what** changed and **why
 
 ## [Unreleased]
 
+### Added — Stage 7 sync
+- **Stage 7 plan (`docs/plans/stage-7-sync.md`).** Decided with the user:
+  - **Verification:** the cloud recomputes totals and checks journals; allocation gets a Go port.
+  - **Pull scope:** everything flows down, including other terminals' documents.
+  - **Transport:** sync runs in a utility process.
+  - **Hydration:** NDJSON bundles via S3-compatible storage.
+
+  Build stages now show Stage 6 merged (PR #7) and Stage 7 in progress.
+
 ### Added — Stage 6 accounting
 - **Stage 6 plan (`docs/plans/stage-6-accounting.md`).** Decided with the user:
   - **Journals:** written in each document's own transaction, with a one-time backfill for documents saved before
