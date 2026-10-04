@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { ReportDefinitionView } from '@muneem/contracts';
+import { amountOf, marginPercent, paymentShares, trendBars } from '../../src/renderer/src/lib/reports/dashboard.js';
 import { checkParams, defaultParams, formatCell, groupReports, periodLabel, runParams } from '../../src/renderer/src/lib/reports/reportForm.js';
 
 const def = (over: Partial<ReportDefinitionView>): ReportDefinitionView => ({
@@ -34,5 +35,23 @@ describe('report form helpers', () => {
     expect(formatCell('money', null)).toBe('');
     expect(periodLabel({ from: '2026-04-01', to: '2026-04-30' })).toBe('2026-04-01 to 2026-04-30');
     expect(periodLabel({ asOf: '2026-04-30' })).toBe('As of 2026-04-30');
+  });
+});
+
+describe('dashboard chart helpers', () => {
+  it('draws bars on a shared zero line, a day of net returns below it', () => {
+    const bars = trendBars([{ day: 'a', netSalesPaise: 300 }, { day: 'b', netSalesPaise: -100 }, { day: 'c', netSalesPaise: 0 }], 30, 40, 0);
+    expect(bars.map((b) => [b.x, b.y, b.width, b.height])).toEqual([[0, 0, 10, 30], [10, 30, 10, 10], [20, 30, 10, 0]]);
+    expect(trendBars([], 30, 40)).toEqual([]);
+  });
+
+  it('splits payments into whole percentages that add up to 100, leaving out what netted to nothing', () => {
+    const shares = paymentShares([{ method: 'cash', amountPaise: 1 }, { method: 'upi', amountPaise: 1 }, { method: 'credit', amountPaise: 1 }, { method: 'card', amountPaise: -5 }]);
+    expect(shares.map((s) => [s.label, s.percent])).toEqual([['Cash', 34], ['UPI', 33], ['Credit', 33]]);
+    expect(paymentShares([])).toEqual([]);
+    expect(amountOf([{ method: 'upi', amountPaise: 7 }], 'upi')).toBe(7);
+    expect(amountOf([], 'cash')).toBe(0);
+    expect(marginPercent(2_500, 10_000)).toBe(25);
+    expect(marginPercent(0, 0)).toBeNull();
   });
 });

@@ -4,7 +4,7 @@ import { newUlid } from '@muneem/domain';
 import { AppError, type AuditVerification, type Health } from '@muneem/contracts';
 import {
   auditRejections, recordAuditCheck, verifyAllAuditChains, dbSizeBytes, foreignKeyCheck, getMeta, META_KEYS, outboxDepth, quickCheck, setMeta, verifyAuditChain,
-  currentSchemaVersion, journalsNotMatchingLines, rebuildAccountBalances, reconcilePartiesDb, replayKeys, tieOutFailures, unpostedDocuments, rewriteLevels, stockKeys, type Db, type StockDrift } from '@muneem/db-sqlite';
+  currentSchemaVersion, dailySummaryDrift, journalsNotMatchingLines, rebuildDailySummaries, withTransaction, rebuildAccountBalances, reconcilePartiesDb, replayKeys, tieOutFailures, unpostedDocuments, rewriteLevels, stockKeys, type Db, type StockDrift } from '@muneem/db-sqlite';
 import { DEVICE_AUDIT_SCOPE } from '../ipc/gateway.js';
 
 const STOCK_CHECK_BATCH = 200;
@@ -91,6 +91,18 @@ export class DiagnosticsService {
     return 'mismatch';
   }
 
+  // 8e: the dashboard's daily tables are a cache of the documents, so drift is logged and rebuilt from them; `since` keeps a scheduled run short.
+  checkSummaries(since?: string): 'ok' | 'healed' | 'not_run' {
+    const businessId = this.d.session.get()?.businessId;
+    if (!businessId) return 'not_run';
+    const db = this.d.db();
+    const drift = dailySummaryDrift(db, businessId, since);
+    if (drift.length === 0) return 'ok';
+    this.d.loggers.app.error({ code: 'SUMMARY_DRIFT', drift }, 'the daily summaries disagreed with their documents; rebuilding');
+    withTransaction(db, () => rebuildDailySummaries(db, businessId));
+    return 'healed';
+  }
+
   // 8g (ADR-0048): every audit chain held here, and any row the cloud refused as a broken chain; a break blocks the sync badge.
   verifyAudit(): AuditVerification {
     const db = this.d.db();
@@ -124,7 +136,9 @@ export class DiagnosticsService {
     const journals = this.checkJournals();
     if (journals === 'healed') detail.push('account balances disagreed with the journal lines and were rebuilt');
     if (journals === 'mismatch') detail.push('the books do not agree with their documents; see the app log (JOURNAL_MISMATCH)');
-    return { quickCheck: qc.ok ? 'ok' : 'failed', foreignKeys: fk.ok ? 'ok' : 'failed', auditChain: audit.ok ? 'ok' : 'broken', stock, parties, journals, detail } as const;
+    const summaries = this.checkSummaries();
+    if (summaries === 'healed') detail.push('the dashboard summaries disagreed with their documents and were rebuilt');
+    return { quickCheck: qc.ok ? 'ok' : 'failed', foreignKeys: fk.ok ? 'ok' : 'failed', auditChain: audit.ok ? 'ok' : 'broken', stock, parties, journals, summaries, detail } as const;
   }
 
   /** Logs + health JSON + schema version + row counts. No invoice contents. Returns an opaque handle, never a path. */

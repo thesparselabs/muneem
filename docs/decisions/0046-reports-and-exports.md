@@ -18,7 +18,7 @@ FR-054 and PRD §25 list the reports; LLD §14 sketches a ReportDefinition engin
 - Built in Stage 8 (8a/8e); amended with an "As built" note if reality differs.
 
 ## As built (8e)
-- **Catalogue:** 29 definitions in `apps/desktop/src/main/reports/definitions/` (sales, purchases and expenses, cash and
+- **Catalogue:** 25 definitions in `apps/desktop/src/main/reports/definitions/` (sales, purchases and expenses, cash and
   payments, stock, parties, accounts); their SQL lives in `packages/db-sqlite/src/reports/`. Reports read the
   documents and the journal, never the dashboard's summary tables. Statements, books and ledgers reuse the Stage 5/6
   queries. Report runs happen on the read-only connection in the main process; the utility process is still to come.
@@ -33,3 +33,15 @@ FR-054 and PRD §25 list the reports; LLD §14 sketches a ReportDefinition engin
   posted to cost of sales in the period.
 - **Params:** report parameters gain `customer` and `supplier` kinds (a party picker); the general ledger takes an
   account code as text so users without `accounting.view` can still run it.
+- **Dashboard (FR-072):** `reports.dashboard` reads `daily_sales_summary`, `daily_payment_summary` and
+  `product_sales_daily` (migration 0018), plus two indexed sums (today's purchases; party balances from the party
+  sub-ledger) and this branch's low stock. About 30–40 ms at 200k sales against the 300 ms budget (LLD §18).
+- **Summary upkeep:** the daily tables are kept by **SQLite triggers** on `sale`, `sale_item`, `sale_tender`,
+  `credit_note`, `credit_note_item`, `payment` and `expense` (insert, and a payment's or expense's cancel), so every
+  writer — the sale and return commits, payments, expenses, the pull appliers and hydration — updates them in its
+  own transaction without each having to remember to (the allocation totals' precedent). Their definition is the
+  `v_*` views of the same migration, which back the backfill, `rebuildDailySummaries` and `dailySummaryDrift`.
+  A drift is logged (`SUMMARY_DRIFT`) and rebuilt by the integrity check (whole history) and the 6-hourly check
+  (last 35 days, about 1 s at 200k sales).
+- **Cloud:** the same three tables plus `party_outstanding`, projected in the push transaction from each applied
+  operation (Go migration 0006), read by `GET /reports/daily`.

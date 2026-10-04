@@ -129,6 +129,7 @@ async function boot(): Promise<void> {
     void muneem?.diagnostics.checkStock({ slice: true }).catch((e) => loggers.app.error({ err: String(e) }, 'scheduled stock check failed'));
     try { muneem?.diagnostics.checkParties(); } catch (e) { loggers.app.error({ err: String(e) }, 'scheduled party check failed'); }
     try { muneem?.diagnostics.checkJournals(); } catch (e) { loggers.app.error({ err: String(e) }, 'scheduled journal check failed'); }
+    try { muneem?.diagnostics.checkSummaries(new Date(Date.now() - 35 * 86_400_000).toLocaleDateString('en-CA')); } catch (e) { loggers.app.error({ err: String(e) }, 'scheduled summary check failed'); }
     try { muneem?.diagnostics.verifyAudit(); } catch (e) { loggers.app.error({ err: String(e) }, 'scheduled audit chain check failed'); }
   }, 6 * 3600_000);
   backupTimer.unref();

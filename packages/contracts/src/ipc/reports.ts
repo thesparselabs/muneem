@@ -31,3 +31,23 @@ export type ExportFormat = z.infer<typeof ExportFormat>;
 export const ExportReportInput = RunReportInput.extend({ format: ExportFormat });
 export const ExportReportResult = z.object({ saved: z.boolean(), fileName: z.string(), bytes: z.number().int() });
 export type ExportReportResult = z.infer<typeof ExportReportResult>;
+
+// FR-072: the offline dashboard, read from the daily summary tables (LLD §18); money in paise, quantities in milli-units.
+const Int = z.number().int();
+const MethodAmount = z.object({ method: z.string(), amountPaise: Int });
+export const Dashboard = z.object({
+  today: z.string(),
+  sales: z.object({
+    saleCount: Int, salesPaise: Int, returnCount: Int, returnsPaise: Int, netSalesPaise: Int, netTaxablePaise: Int, grossProfitPaise: Int,
+  }),
+  todayTenders: z.array(MethodAmount),
+  purchasesPaise: Int,
+  expensesPaise: Int,
+  receivablePaise: Int,
+  payablePaise: Int,
+  trend: z.array(z.object({ day: z.string(), netSalesPaise: Int, grossProfitPaise: Int })),
+  paymentSplit: z.array(MethodAmount),
+  topProducts: z.array(z.object({ productId: z.string(), name: z.string(), uomCode: z.string(), qtyMilli: Int, netSalesPaise: Int })),
+  lowStock: z.object({ count: Int, items: z.array(z.object({ productId: z.string(), name: z.string(), uomCode: z.string(), qtyMilli: Int })) }),
+});
+export type Dashboard = z.infer<typeof Dashboard>;

@@ -5,8 +5,14 @@ import { overdueOver30 } from '../lib/parties/forms.js';
 import { useCan } from '../lib/permissions.js';
 import { api } from '../api.js';
 import { useUi } from '../store.js';
+import Dashboard from './home/Dashboard.js';
 
 export default function Home() {
+  return useCan('reports.view') ? <Dashboard /> : <Welcome />;
+}
+
+// For users without reports (a cashier): the till's own status and what they may follow up.
+function Welcome() {
   const { session, sync } = useUi();
   const device = useQuery({ queryKey: ['device'], queryFn: () => api.device.getInfo({}) });
   const branches = useQuery({ queryKey: ['branches'], queryFn: () => api.business.getBranches({}) });
@@ -47,10 +53,6 @@ export default function Home() {
           </ul>
         </div>
       )}
-      <div className="card">
-        <h2 className="font-semibold mb-2">New in Stage 5</h2>
-        <p className="text-sm text-slate-700">Customers and suppliers with their ledgers and opening balances, payments that settle bills oldest first, credit sales at the POS within each customer's limit, purchases and expenses. Accounts arrive in Stage 6.</p>
-      </div>
     </div>
   );
 }

@@ -76,6 +76,7 @@ import { CsvWriter } from './reports/exports/csv.js';
 import { PdfWriter, type PdfRenderer } from './reports/exports/pdf.js';
 import { XlsxWriter } from './reports/exports/xlsx.js';
 import { ReportService, type SaveFile } from './reports/service.js';
+import { DashboardService } from './reports/dashboard.js';
 export interface AppConfig {
   db: () => Db;
   dbFile: string;
@@ -145,15 +146,17 @@ export function createApp(cfg: AppConfig) {
   const statements = new StatementService(posCtx);
   let readDb: Db | null = null;
   const closeReadConnections = () => { readDb?.close(); readDb = null; };
+  const reportDb = () => (cfg.dbFile === ':memory:' ? cfg.db() : (readDb ??= openDatabase(cfg.dbFile, { readonly: true })));
   const reports = new ReportService({
     catalogue: new ReportCatalogue(REPORTS),
-    readDb: () => (cfg.dbFile === ':memory:' ? cfg.db() : (readDb ??= openDatabase(cfg.dbFile, { readonly: true }))),
+    readDb: reportDb,
     businessId: () => posCtx.businessId(), today: () => posCtx.today(), can: (p) => posCtx.can(p),
     business: () => { const b = business.get(); return { name: b?.name ?? '', gstin: b?.gstin ?? null }; },
     writers: [new CsvWriter(), new XlsxWriter(), ...(cfg.pdfRenderer ? [new PdfWriter(cfg.pdfRenderer)] : [])],
     saveFile: cfg.saveFile ?? ((fileName) => Promise.resolve({ saved: false, fileName })),
   });
   const chart = new ChartService(posCtx, statements);
+  const dashboard = new DashboardService({ readDb: reportDb, businessId: () => posCtx.businessId(), today: () => posCtx.today(), lowStock: () => listStock(cfg.db(), posCtx.businessId(), inventory.warehouseId(), { lowOnly: true, limit: 50 }).items });
   const manualJournals = new ManualJournalService(posCtx);
   const gstCtx = new GstContext(posCtx);
   const gst = { returns: new GstReturnService(gstCtx), setoffs: new GstSetoffService(gstCtx), payments: new GstPaymentService(gstCtx) };
@@ -364,6 +367,7 @@ export function createApp(cfg: AppConfig) {
     'gst.postSetoff': (i) => gst.setoffs.post(i),
     'gst.recordPayment': (i) => gst.payments.record(i),
     'gst.ledger': () => gst.payments.ledger(),
+    'reports.dashboard': () => dashboard.get(),
     'sync.getStatus': () => syncStatus(),
     'sync.retry': () => { void sync.retry(); return syncStatus(); },
     ...syncScreenHandlers({
@@ -388,6 +392,6 @@ export function createApp(cfg: AppConfig) {
     onCommitted: () => sync.nudge(), holds: (id) => gate.holds(id),
   });
 
-  return { events, session, reports, rbac, cloud, connectivity, device, auth, business, settings, products, catalog, pricing, productImport, customers, suppliers, customerLedger, supplierLedger, purchases, purchaseReturns, purchaseImport, payments, writeOffs, expenses, periods, backlog, statements, chart, manualJournals, gst, register, sales, returns, printQueue, inventory, openingImport, diagnostics, backups, closeReadConnections, gateway, handlers, syncStatus, syncEngine, sync, hydration, hydrationGate: gate };
+  return { events, session, reports, dashboard, rbac, cloud, connectivity, device, auth, business, settings, products, catalog, pricing, productImport, customers, suppliers, customerLedger, supplierLedger, purchases, purchaseReturns, purchaseImport, payments, writeOffs, expenses, periods, backlog, statements, chart, manualJournals, gst, register, sales, returns, printQueue, inventory, openingImport, diagnostics, backups, closeReadConnections, gateway, handlers, syncStatus, syncEngine, sync, hydration, hydrationGate: gate };
 }
 export type App = ReturnType<typeof createApp>;
