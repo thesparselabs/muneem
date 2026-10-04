@@ -23,6 +23,22 @@ All notable changes, newest first. Each entry records **what** changed and **why
   - **Files:** the user picks where an export goes in a save dialog, and the screen never sees a path.
   - **First report:** the Trial Balance; 8e adds the rest.
   - **IPC:** `reports.listDefinitions`, `reports.run`, `reports.export`.
+- **Reports catalogue (8e, ADR-0046 as built).** Why: FR-054 and PRD §25; every report exports and prints from one
+  place.
+  - **What is in it:** 25 reports on the 8a engine: sales by day, month, product, category and payment method; credit
+    notes; day-end; purchases; expenses; payments; cash; stock valuation and movement; product profit; receivables and
+    payables as of a date with ageing (closing the Stage 5 carry); customer and supplier ledgers; and every Stage 6
+    statement and book. A Reports screen lists them.
+  - **Returns:** a credit note reduces sales on its own date, never back-dated, everywhere.
+- **Offline dashboard (8e, FR-072).** Why: the owner sees today's business offline, inside the 300 ms budget.
+  - **What it shows:** today's net sales, the cash/UPI/credit split, gross profit, purchases, expenses, low stock,
+    receivables and payables, top sellers and a 30-day trend.
+  - **Speed:** about 30 ms at 200k sales.
+  - **Data:** it reads daily summary tables (SQLite 0018) that triggers keep current on sales, credit notes, payments
+    and expenses, pulled documents included. Diagnostics rebuilds and heals any drift.
+- **Cloud daily aggregates (8e, Go 0006).** Why: the Stage 7 carry, for owner reports. Each pushed document updates the
+  same daily tables and `party_outstanding` on the cloud. `GET /reports/daily` is members only, and a test shows the
+  cloud's figures equal the device's.
 - **GST returns from documents (8c, ADR-0044 as built).** Why: FR-047/FR-094; filed figures must always match the books.
   - **What is built:** the GSTR-1 sections (B2B, B2CL, B2CS, CDNR/CDNUR, exports, nil/exempt per line), the HSN
     summary with UQC, documents issued, GSTR-3B (3.1, 4, 5) and the ITC register.
