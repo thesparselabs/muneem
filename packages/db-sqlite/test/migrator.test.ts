@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { mkdtempSync } from 'node:fs';
+import { copyFileSync, mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
-import { MIGRATIONS, backupDatabase, currentSchemaVersion, migrate, nativeBindingOf, openDatabase, quickCheck, foreignKeyCheck, stmt } from '../src/index.js';
+import { MIGRATIONS, backupDatabase, currentSchemaVersion, migrate, nativeBindingOf, openDatabase, quickCheck, foreignKeyCheck, restoreDatabaseFile, stmt } from '../src/index.js';
 import { freshDb } from './helpers.js';
 
 describe('migrator', () => {
@@ -501,5 +501,26 @@ describe('0011_allocation_dates_backfill', () => {
       { id: 'a2', allocated_on: '2026-06-02', voided_on: '2026-07-03' },       // made later: that day; void: the cancel's date
     ]);
     expect(() => db.exec("UPDATE allocation SET allocated_on = '2026-01-01'")).toThrow(/append-only/);
+  });
+});
+
+describe('restore', () => {
+  it('a restore over a database whose WAL survived a crash gives exactly the backup', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'muneem-restore-'));
+    const file = join(dir, 'live.sqlite');
+    const db = openDatabase(file);
+    db.exec('CREATE TABLE t (n INTEGER); INSERT INTO t VALUES (1);');
+    await backupDatabase(db, join(dir, 'backup.sqlite'));
+    db.pragma('wal_autocheckpoint = 0');
+    db.exec('INSERT INTO t VALUES (2), (3);');
+    copyFileSync(`${file}-wal`, join(dir, 'crash.wal'));
+    db.close();
+    copyFileSync(join(dir, 'crash.wal'), `${file}-wal`);
+
+    restoreDatabaseFile(join(dir, 'backup.sqlite'), file);
+    const restored = openDatabase(file);
+    expect(restored.prepare('SELECT n FROM t ORDER BY n').pluck().all()).toEqual([1]);
+    expect(quickCheck(restored).ok).toBe(true);
+    restored.close();
   });
 });

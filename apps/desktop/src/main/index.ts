@@ -6,6 +6,7 @@ import { createApp, type App } from './app.js';
 import { dbPaths, DbCorruptError, latestBackup, openAndMigrate } from './infra/db.js';
 import { createLoggers } from './infra/logger.js';
 import { createElectronSecretStore } from './infra/secrets.js';
+import { electronHtmlToPdf, electronSaveFile } from './infra/files.js';
 import { registerIpc } from './ipc/gateway.js';
 import { currentSchemaVersion, restoreDatabaseFile, type Db } from '@muneem/db-sqlite';
 import { startSyncWorker } from './sync/syncWorker.js';
@@ -64,6 +65,7 @@ async function boot(): Promise<void> {
   muneem = createApp({
     db: () => db!, dbFile: paths.file, receiptsDir: join(userData, 'receipts'), backupsDir: paths.backups, bundlesDir: join(userData, 'support-bundles'), secrets, loggers,
     hydrationDir: join(userData, 'hydration'),
+    saveFile: electronSaveFile(() => mainWindow), pdfRenderer: electronHtmlToPdf,
     apiBaseUrl, appVersion: app.getVersion(), platform: process.platform,
     isTrustedSender: (id) => mainWindow?.webContents.id === id,
     // 7d: HTTP, gzip and signing run in a utility process; main stays the only writer of SQLite.

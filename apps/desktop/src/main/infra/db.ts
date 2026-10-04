@@ -1,5 +1,6 @@
 import { join } from 'node:path';
-import { existsSync, mkdirSync, readdirSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync, statSync } from 'node:fs';
+import { newUlid } from '@muneem/domain';
 import { DbCorruptError, MIGRATIONS, currentSchemaVersion, migrate, openDatabase, type Db } from '@muneem/db-sqlite';
 import type { Loggers } from './logger.js';
 
@@ -24,6 +25,10 @@ export async function openAndMigrate(paths: DbPaths, loggers: Loggers, nativeBin
   const backupPath = from > 0 && from < target ? join(paths.backups, `pre-migration-v${from}-to-v${target}.sqlite`) : undefined;
   const r = await migrate(db, { ...(backupPath && { backupPath }), log: (m) => loggers.app.info({ migration: m }, 'migrate') });
   if (r.applied.length) loggers.app.info({ from: r.from, to: r.to, backup: r.backupPath }, 'schema migrated');
+  if (r.backupPath && existsSync(r.backupPath)) {
+    db.prepare("INSERT INTO backup_log (id, path, bytes, verified, kind, created_at) VALUES (?, ?, ?, 1, 'pre_migration', ?)")
+      .run(newUlid(), r.backupPath, statSync(r.backupPath).size, new Date().toISOString());
+  }
   return { db, schemaVersion: currentSchemaVersion(db) };
 }
 

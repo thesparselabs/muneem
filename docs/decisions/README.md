@@ -47,3 +47,11 @@ Template: Context → Decision → Consequences → Status.
 | [0040](0040-applying-pulled-documents.md) | Applying another terminal's documents |
 | [0041](0041-conflict-matrix-as-built.md) | The conflict matrix as built |
 | [0042](0042-how-sync-is-tested.md) | How sync is tested |
+| [0043](0043-returns-and-credit-notes.md) | Returns and credit notes |
+| [0044](0044-gst-returns-and-set-off.md) | GST returns and set-off |
+| [0045](0045-year-end-close.md) | Year-end close |
+| [0046](0046-reports-and-exports.md) | Reports and exports |
+| [0047](0047-backups-and-key-escrow.md) | Backups and key escrow |
+| [0048](0048-audit-chain-on-the-cloud.md) | Audit chain on the cloud |
+| [0049](0049-updates-and-protocol-support.md) | Updates and protocol support |
+| [0050](0050-notifications-and-consent.md) | Notifications and consent |

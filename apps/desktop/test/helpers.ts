@@ -8,6 +8,8 @@ import { silentLoggers } from '../src/main/infra/logger.js';
 import { MemorySecretStore, type SecretStore } from '../src/main/infra/secrets.js';
 import type { BundleFetcher, Credentials, Transport } from '../src/main/sync/transport.js';
 import type { ColdStart } from '../src/main/sync/hydration/hydrationGate.js';
+import type { SaveFile } from '../src/main/reports/service.js';
+import type { PdfRenderer } from '../src/main/reports/exports/pdf.js';
 
 export interface FakeServer { calls: { method: string; path: string; body: unknown; headers: Record<string, string> }[]; online: boolean; respond: (method: string, path: string, body: unknown) => { status: number; body: unknown } }
 
@@ -59,6 +61,7 @@ export interface TestAppOptions {
   server?: FakeServer; now?: () => number; file?: boolean; dbFile?: string;
   syncTransport?: (credentials: () => Credentials | null) => Transport; random?: () => number; fetch?: typeof fetch;
   coldStart?: ColdStart; bundleFetcher?: BundleFetcher; apiBaseUrl?: string; secrets?: SecretStore;
+  saveFile?: SaveFile; pdfRenderer?: PdfRenderer;
 }
 
 export async function testApp(opts: TestAppOptions = {}): Promise<{ app: App; db: Db; server: FakeServer; dir: string }> {
@@ -71,6 +74,7 @@ export async function testApp(opts: TestAppOptions = {}): Promise<{ app: App; db
     db: () => db, dbFile: file, receiptsDir: join(dir, 'receipts'), backupsDir: join(dir, 'backups'), bundlesDir: join(dir, 'bundles'), secrets: opts.secrets ?? new MemorySecretStore(), loggers: silentLoggers(),
     apiBaseUrl: opts.apiBaseUrl ?? 'http://cloud.test/v1', appVersion: '0.0.0-test', platform: 'linux', fetchImpl: opts.fetch ?? fakeFetch(server), probeIntervalMs: 3_600_000, ...(opts.now && { now: opts.now }),
     ...(opts.syncTransport && { syncTransport: opts.syncTransport }), ...(opts.random && { random: opts.random }),
+    ...(opts.saveFile && { saveFile: opts.saveFile }), ...(opts.pdfRenderer && { pdfRenderer: opts.pdfRenderer }),
     coldStart: opts.coldStart ?? 'pull', ...(opts.bundleFetcher && { bundleFetcher: opts.bundleFetcher }), sleep: async () => undefined,
   });
   app.device.ensureIdentity();

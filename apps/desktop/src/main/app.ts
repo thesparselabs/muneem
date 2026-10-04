@@ -2,7 +2,7 @@
  * Composition root. Builds services + IPC handlers from explicit dependencies so tests can wire
  * an in-memory SQLite, a memory secret store and a fake fetch without touching Electron.
  */
-import { listStock, listWarehouses, productMovements, readSyncStatus, rebuildStockLevels, stockValuation, type Db } from '@muneem/db-sqlite';
+import { listStock, listWarehouses, openDatabase, productMovements, readSyncStatus, rebuildStockLevels, stockValuation, type Db } from '@muneem/db-sqlite';
 import { CloudClient } from './infra/cloudClient.js';
 import { Connectivity } from './infra/connectivity.js';
 import { EventBus } from './infra/events.js';
@@ -61,6 +61,12 @@ import { HydrationService } from './sync/hydration/hydrationService.js';
 import { Hydrator } from './sync/hydration/hydrator.js';
 import { dirname, join } from 'node:path';
 
+import { ReportCatalogue } from './reports/catalogue.js';
+import { REPORTS } from './reports/definitions/index.js';
+import { CsvWriter } from './reports/exports/csv.js';
+import { PdfWriter, type PdfRenderer } from './reports/exports/pdf.js';
+import { XlsxWriter } from './reports/exports/xlsx.js';
+import { ReportService, type SaveFile } from './reports/service.js';
 export interface AppConfig {
   db: () => Db;
   dbFile: string;
@@ -82,6 +88,8 @@ export interface AppConfig {
   hydrationDir?: string;
   bundleFetcher?: BundleFetcher;
   sleep?: (ms: number) => Promise<void>;
+  saveFile?: SaveFile;
+  pdfRenderer?: PdfRenderer;
 }
 
 export function createApp(cfg: AppConfig) {
@@ -124,6 +132,15 @@ export function createApp(cfg: AppConfig) {
   const periods = new PeriodService(posCtx);
   const backlog = new JournalBacklog(posCtx);
   const statements = new StatementService(posCtx);
+  let readDb: Db | null = null;
+  const reports = new ReportService({
+    catalogue: new ReportCatalogue(REPORTS),
+    readDb: () => (cfg.dbFile === ':memory:' ? cfg.db() : (readDb ??= openDatabase(cfg.dbFile, { readonly: true }))),
+    businessId: () => posCtx.businessId(), today: () => posCtx.today(), can: (p) => posCtx.can(p),
+    business: () => { const b = business.get(); return { name: b?.name ?? '', gstin: b?.gstin ?? null }; },
+    writers: [new CsvWriter(), new XlsxWriter(), ...(cfg.pdfRenderer ? [new PdfWriter(cfg.pdfRenderer)] : [])],
+    saveFile: cfg.saveFile ?? ((fileName) => Promise.resolve({ saved: false, fileName })),
+  });
   const chart = new ChartService(posCtx, statements);
   const manualJournals = new ManualJournalService(posCtx);
   const register = new RegisterService(posCtx);
@@ -303,6 +320,9 @@ export function createApp(cfg: AppConfig) {
     'inventory.stockTake': (i) => inventory.stockTake(i),
     'inventory.importOpeningPreview': (i) => openingImport.preview(i),
     'inventory.importOpeningCommit': (i) => openingImport.commit(i.importId, i.commandId),
+    'reports.listDefinitions': () => reports.list(),
+    'reports.run': (i) => reports.run(i.id, i.params),
+    'reports.export': (i) => reports.export(i.id, i.params, i.format),
     'sync.getStatus': () => syncStatus(),
     'sync.retry': () => { void sync.retry(); return syncStatus(); },
     ...syncScreenHandlers({
@@ -326,6 +346,6 @@ export function createApp(cfg: AppConfig) {
     onCommitted: () => sync.nudge(), holds: (id) => gate.holds(id),
   });
 
-  return { events, session, rbac, cloud, connectivity, device, auth, business, settings, products, catalog, pricing, productImport, customers, suppliers, customerLedger, supplierLedger, purchases, purchaseReturns, purchaseImport, payments, writeOffs, expenses, periods, backlog, statements, chart, manualJournals, register, sales, printQueue, inventory, openingImport, diagnostics, gateway, handlers, syncStatus, syncEngine, sync, hydration, hydrationGate: gate };
+  return { events, session, reports, rbac, cloud, connectivity, device, auth, business, settings, products, catalog, pricing, productImport, customers, suppliers, customerLedger, supplierLedger, purchases, purchaseReturns, purchaseImport, payments, writeOffs, expenses, periods, backlog, statements, chart, manualJournals, register, sales, printQueue, inventory, openingImport, diagnostics, gateway, handlers, syncStatus, syncEngine, sync, hydration, hydrationGate: gate };
 }
 export type App = ReturnType<typeof createApp>;

@@ -31,6 +31,7 @@ import { CompleteSaleInput, CompleteSaleResult, HeldBill, HoldBillInput, Sale, S
 import { PrintJobSummary, PrinterConfig, ReceiptDoc } from './print.js';
 import { SETTING_KEYS } from './settings.js';
 import { CloudBusiness, HydrationStartInput, HydrationStatus } from './hydration.js';
+import { ExportReportInput, ExportReportResult, ReportDefinitionView, ReportResult, RunReportInput } from './reports.js';
 import {
   AdjustmentResult, AdjustStockInput, MovementPage, MovementsInput, OpeningImportCommitInput, OpeningImportPreview, OpeningImportPreviewInput,
   OpeningStockInput, StockListInput, StockPage, StockRow, StockTakeInput, Valuation,
@@ -227,6 +228,11 @@ export const contract = {
   'accounting.listLatePostings': spec({ input: Empty, output: z.array(LatePosting), permission: 'accounting.view', rateLimit: { perSec: 5 } }),
   'accounting.postBacklog': spec({ input: Empty, output: BacklogResult, permission: 'accounting.manage', rateLimit: { perSec: 1 }, audit: true }),
   'accounting.rebuildBalances': spec({ input: Empty, output: z.object({ rebuilt: z.number().int() }), permission: 'accounting.manage', rateLimit: { perSec: 1 }, audit: true }),
+
+  // ADR-0046: each report checks its own permission too (financial statements need reports.financial).
+  'reports.listDefinitions': spec({ input: Empty, output: z.array(ReportDefinitionView), permission: 'reports.view', rateLimit: { perSec: 5 } }),
+  'reports.run': spec({ input: RunReportInput, output: ReportResult, permission: 'reports.view', rateLimit: { perSec: 5 } }),
+  'reports.export': spec({ input: ExportReportInput, output: ExportReportResult, permission: 'reports.export', rateLimit: { perSec: 1 }, audit: true }),
 
   'sync.getStatus': spec({ input: Empty, output: SyncStatus, permission: null, rateLimit: { perSec: 10 } }),
   'sync.retry': spec({ input: Empty, output: SyncStatus, permission: 'sync.view', rateLimit: { perSec: 1 } }),

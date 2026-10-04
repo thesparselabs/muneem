@@ -15,6 +15,21 @@ All notable changes, newest first. Each entry records **what** changed and **why
   - **Updates:** the full updater, with channels, staged rollout and rollback.
 
   Build stages now show Stage 7 merged (PR #8) and Stage 8 in progress.
+- **Report engine and exports (8a, ADR-0046).** Why: FR-054 and FR-077; nothing could be exported before.
+  - **Definitions:** each report declares its parameters, columns and permission. It runs on a read-only database
+    connection, and validates its options.
+  - **Exports:** CSV (UTF-8 with a BOM, numbers in rupees), XLSX (numeric cells with Indian number formats) and PDF
+    (printed from a hidden, script-free window). Each carries the business, GSTIN, title, options and time.
+  - **Files:** the user picks where an export goes in a save dialog, and the screen never sees a path.
+  - **First report:** the Trial Balance; 8e adds the rest.
+  - **IPC:** `reports.listDefinitions`, `reports.run`, `reports.export`.
+- **Restoring a database removes any leftover WAL first** instead of overwriting it with the backup's bytes. A test
+  shows the old code was not actually corrupting: SQLite ignores a WAL with an invalid header. Deleting is the
+  intended behaviour, and the test guards it.
+- **Pre-migration backups are recorded in `backup_log`,** like scheduled and manual ones, so backup health sees them.
+- **Decisions for Stage 8:** ADRs 0043–0050 cover returns and credit notes, GST returns and set-off, year-end close,
+  reports and exports, backups and key escrow, the audit chain on the cloud, updates and protocol support, and
+  notifications and consent.
 
 ### Added — Stage 7 sync
 - **Stage 7 plan (`docs/plans/stage-7-sync.md`).** Decided with the user:
