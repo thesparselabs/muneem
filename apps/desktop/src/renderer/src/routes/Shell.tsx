@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { api } from '../api.js';
 import { useUi } from '../store.js';
 import SyncBadge from '../components/SyncBadge.js';
+import UpdateBanner from '../components/UpdateBanner.js';
 import type { Permission } from '@muneem/contracts';
 import { can } from '../lib/permissions.js';
 
@@ -21,6 +22,7 @@ const NAV: { to: string; label: string; enabled: boolean; stage?: string; need?:
   { to: '/gst', label: 'GST', enabled: true, need: 'gst.view' },
   { to: '/reports', label: 'Reports', enabled: true, need: 'reports.view' },
   { to: '/settings/review', label: 'Review items', enabled: true, need: 'sync.view' },
+  { to: '/settings/updates', label: 'Updates', enabled: true, need: 'settings.view' },
   { to: '/diagnostics', label: 'Diagnostics', enabled: true },
 ];
 
@@ -59,7 +61,7 @@ export default function Shell() {
           ))}
         </ul>
       </nav>
-      <main className="overflow-auto p-6 print:overflow-visible print:p-0"><Outlet /></main>
+      <main className="overflow-auto p-6 print:overflow-visible print:p-0"><UpdateBanner /><Outlet /></main>
     </div>
   );
 }

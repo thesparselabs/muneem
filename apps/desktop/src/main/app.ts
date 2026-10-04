@@ -78,6 +78,9 @@ import { PdfWriter, type PdfRenderer } from './reports/exports/pdf.js';
 import { XlsxWriter } from './reports/exports/xlsx.js';
 import { ReportService, type SaveFile } from './reports/service.js';
 import { DashboardService } from './reports/dashboard.js';
+import { createUpdates } from './update/index.js';
+import { DEFAULT_UPDATE_BASE_URL } from './update/channels.js';
+import type { Updater } from './update/updater.js';
 export interface AppConfig {
   db: () => Db;
   dbFile: string;
@@ -103,6 +106,9 @@ export interface AppConfig {
   pdfRenderer?: PdfRenderer;
   backupTransport?: (credentials: () => Credentials | null) => BackupTransport;
   restoreHost?: RestoreHost;
+  updater?: Updater | null;
+  updateBaseUrl?: string;
+  registerIdleMs?: number;
 }
 
 export function createApp(cfg: AppConfig) {
@@ -194,6 +200,12 @@ export function createApp(cfg: AppConfig) {
     appVersion: cfg.appVersion, now: cfg.now ?? (() => Date.now()), sleep: cfg.sleep ?? ((ms) => new Promise((resolve) => setTimeout(resolve, ms))),
     loggers: cfg.loggers, auditScope: DEVICE_AUDIT_SCOPE,
   });
+  const updates = createUpdates({
+    db: cfg.db, updater: cfg.updater ?? null, baseUrl: cfg.updateBaseUrl ?? DEFAULT_UPDATE_BASE_URL, appVersion: cfg.appVersion, installationId: () => device.installationId(),
+    registerOpen: () => { try { return register.current() !== null; } catch { return false; } },
+    emit: (status) => events.emit('update.status', status), now: cfg.now ?? (() => Date.now()), log: cfg.loggers.app,
+    ...(cfg.registerIdleMs !== undefined && { registerIdleMs: cfg.registerIdleMs }),
+  });
   const gate = new HydrationGate(cfg.db, cfg.coldStart ?? 'hydrate');
   const syncEngine = new SyncEngine({
     db: cfg.db, transport: syncTransport, device, businessId: () => session.get()?.businessId ?? null, schemaVersion: () => currentSchemaVersion(cfg.db()),
@@ -216,6 +228,7 @@ export function createApp(cfg: AppConfig) {
     send: (channel, payload) => {
       if (channel === 'connectivity.changed' && (payload as { online?: boolean }).online) sync.online();
       if (channel === 'session.changed' && (payload as { businessId?: string | null } | null)?.businessId) sync.online();
+      if (channel === 'session.changed') updates.activity.clearCart();
     },
   });
 
@@ -387,6 +400,7 @@ export function createApp(cfg: AppConfig) {
     'diagnostics.exportSupportBundle': () => diagnostics.exportSupportBundle(),
     'diagnostics.getLogsTail': (i) => diagnostics.getLogsTail(i.log, i.lines),
     ...backups.handlers,
+    ...updates.handlers,
   };
 
   printQueue.resumeUnfinished(catalogCtx.today());
@@ -394,9 +408,9 @@ export function createApp(cfg: AppConfig) {
   const gateway = createGateway({
     handlers, session, rbac, db: cfg.db, deviceId: () => device.localDeviceId(), loggers: cfg.loggers, events,
     connectivity: () => connectivity.snapshot(), isTrustedSender: cfg.isTrustedSender ?? (() => true), ...(cfg.now && { now: cfg.now }),
-    onCommitted: () => sync.nudge(), holds: (id) => gate.holds(id),
+    onCommitted: () => sync.nudge(), holds: (id) => gate.holds(id), onDispatch: (channel) => updates.activity.dispatch(channel),
   });
 
-  return { events, session, reports, dashboard, rbac, cloud, connectivity, device, auth, business, settings, products, catalog, pricing, productImport, customers, suppliers, customerLedger, supplierLedger, purchases, purchaseReturns, purchaseImport, payments, writeOffs, expenses, periods, yearEnd, backlog, statements, chart, manualJournals, gst, register, sales, returns, printQueue, inventory, openingImport, diagnostics, backups, closeReadConnections, gateway, handlers, syncStatus, syncEngine, sync, hydration, hydrationGate: gate };
+  return { events, session, reports, dashboard, rbac, cloud, connectivity, device, auth, business, settings, products, catalog, pricing, productImport, customers, suppliers, customerLedger, supplierLedger, purchases, purchaseReturns, purchaseImport, payments, writeOffs, expenses, periods, yearEnd, backlog, statements, chart, manualJournals, gst, register, sales, returns, printQueue, inventory, openingImport, diagnostics, backups, closeReadConnections, gateway, handlers, syncStatus, syncEngine, sync, hydration, hydrationGate: gate, updates };
 }
 export type App = ReturnType<typeof createApp>;

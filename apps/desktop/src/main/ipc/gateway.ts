@@ -27,10 +27,12 @@ export interface GatewayDeps {
   now?: () => number;
   onCommitted?: (channel: string) => void;
   holds?: (businessId: string) => boolean;
+  // Called as a handler starts; the returned function runs when it settles (8i counts commands in flight).
+  onDispatch?: (channel: string) => () => void;
 }
 
 // FR-086: while a business is being imported only sign-in, sync, diagnostics and reading the business itself are open.
-const OPEN_WHILE_IMPORTING = /^(auth|sync|diagnostics|device|app)\.|^business\.(get|create)$/u;
+const OPEN_WHILE_IMPORTING = /^(auth|sync|diagnostics|device|app|update)\.|^business\.(get|create)$/u;
 
 /** Token bucket per (channel, principal). */
 class RateLimiter {
@@ -97,7 +99,13 @@ export function createGateway(d: GatewayDeps) {
         throw new AppError('INVALID_STATE', 'This device is still adding the business. Billing opens when it is ready to bill offline.');
       }
       limiter.hit(channel, ctx?.user.id ?? 'anon', spec.rateLimit.perSec);
-      const out = await (d.handlers[channel as Channel] as (i: unknown, c: Session | null) => unknown)(input, ctx);
+      const settled = d.onDispatch?.(channel);
+      let out: unknown;
+      try {
+        out = await (d.handlers[channel as Channel] as (i: unknown, c: Session | null) => unknown)(input, ctx);
+      } finally {
+        settled?.();
+      }
       if (spec.audit) {
         const after = d.session.get();
         const businessId = after?.businessId ?? ctx?.businessId ?? DEVICE_AUDIT_SCOPE;

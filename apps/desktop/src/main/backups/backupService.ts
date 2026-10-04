@@ -40,6 +40,8 @@ export async function sha256File(path: string): Promise<string> {
 
 const removeSqlite = (path: string) => { for (const s of ['', '-wal', '-shm']) rmSync(path + s, { force: true }); };
 
+export interface SealedBackup { path: string; bytes: number; keyId: string; sha256: string }
+
 export interface CheckedCopy { manifest: BackupManifest | null; rowCounts: Record<string, number> }
 
 // Encrypted local backups (ADR-0047): copy, verify, seal, verify the sealed file, log, prune.
@@ -63,12 +65,28 @@ export class BackupService {
     const db = this.d.db();
     const businessId = this.businessId();
     if (!businessId) throw new AppError('INVALID_STATE', 'There is no business on this device to back up yet');
-    mkdirSync(this.d.dir, { recursive: true });
-    const id = newUlid();
     const createdAt = iso(this.d.now());
-    const plain = join(this.d.dir, `.plain-${id}.sqlite`);
+    const base = { id: newUlid(), kind, createdAt, businessId, schemaVersion: currentSchemaVersion(db) };
+    try {
+      const sealed = await this.seal(kind, businessId, createdAt);
+      insertBackupLog(db, { ...base, ...sealed, verified: true, encrypted: true, cloudStatus: opts.upload ? 'pending' : 'none' });
+      setMeta(db, META_KEYS.lastBackupAt, createdAt);
+      this.prune();
+      return getBackupLog(db, base.id)!;
+    } catch (e) {
+      const error = e instanceof Error ? e.message : String(e);
+      this.d.log.error({ code: 'BACKUP_FAILED', kind, err: error }, 'backup failed');
+      insertBackupLog(db, { ...base, path: '', bytes: 0, verified: false, error });
+      throw e instanceof AppError ? e : new AppError('INTERNAL', `Backup failed: ${error}`);
+    }
+  }
+
+  // Copy, verify, seal and verify the sealed file, without touching backup_log (8i: the schema may be older than this build).
+  async seal(kind: BackupKind, businessId: string, createdAt = iso(this.d.now())): Promise<SealedBackup> {
+    const db = this.d.db();
+    mkdirSync(this.d.dir, { recursive: true });
+    const plain = join(this.d.dir, `.plain-${newUlid()}.sqlite`);
     const path = join(this.d.dir, `muneem-${stamp(createdAt)}-${kind}.mbk`);
-    const base = { id, path, kind, createdAt, businessId, schemaVersion: currentSchemaVersion(db) };
     try {
       const copy = await backupDatabase(db, plain);
       if (!copy.verified) throw new Error('the database copy failed quick_check');
@@ -77,16 +95,10 @@ export class BackupService {
       const signed = signManifest({ ...manifest, keyId: key.keyId }, this.privateKey(), this.d.device.publicKey());
       const sealed = await sealFile(plain, path, key.key, signed);
       await openFile(path, key.key);
-      insertBackupLog(db, { ...base, bytes: sealed.bytes, verified: true, encrypted: true, keyId: key.keyId, sha256: sealed.sha256, cloudStatus: opts.upload ? 'pending' : 'none' });
-      setMeta(db, META_KEYS.lastBackupAt, createdAt);
-      this.prune();
-      return getBackupLog(db, id)!;
+      return { path, bytes: sealed.bytes, keyId: key.keyId, sha256: sealed.sha256 };
     } catch (e) {
       rmSync(path, { force: true });
-      const error = e instanceof Error ? e.message : String(e);
-      this.d.log.error({ code: 'BACKUP_FAILED', kind, err: error }, 'backup failed');
-      insertBackupLog(db, { ...base, path: '', bytes: 0, verified: false, error });
-      throw e instanceof AppError ? e : new AppError('INTERNAL', `Backup failed: ${error}`);
+      throw e;
     } finally {
       removeSqlite(plain);
     }

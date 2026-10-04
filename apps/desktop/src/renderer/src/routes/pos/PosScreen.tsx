@@ -38,6 +38,11 @@ export default function PosScreen() {
   const quoteSeq = useRef(0);
   const pendingCommand = useRef<PendingCommand | null>(null);
 
+  // 8i: an update never installs while a bill is on screen.
+  const cartLines = cart.lines.length;
+  useEffect(() => { void api.pos.reportCart({ lines: cartLines }).catch(() => undefined); }, [cartLines]);
+  useEffect(() => () => { void api.pos.reportCart({ lines: 0 }).catch(() => undefined); }, []);
+
   const requote = useCallback(async (next: Cart) => {
     if (next.lines.length === 0) return;
     const seq = ++quoteSeq.current;

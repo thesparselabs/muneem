@@ -1,4 +1,4 @@
-import type { HydrationStatus, Session, SyncStatus } from '@muneem/contracts';
+import type { HydrationStatus, Session, SyncStatus, UpdateStatus } from '@muneem/contracts';
 
 /** Main → renderer push channels. Whitelisted in the generated preload. */
 export interface PushEvents {
@@ -6,6 +6,7 @@ export interface PushEvents {
   'connectivity.changed': { online: boolean; lastProbeAt: string | null; serverSkewMs: number | null };
   'session.changed': Session | null;
   'sync.hydration': HydrationStatus;
+  'update.status': UpdateStatus;
 }
 export type PushEventName = keyof PushEvents;
-export const PUSH_EVENT_NAMES: readonly PushEventName[] = ['sync.status', 'connectivity.changed', 'session.changed', 'sync.hydration'];
+export const PUSH_EVENT_NAMES: readonly PushEventName[] = ['sync.status', 'connectivity.changed', 'session.changed', 'sync.hydration', 'update.status'];

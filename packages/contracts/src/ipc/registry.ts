@@ -35,6 +35,7 @@ import { SETTING_KEYS } from './settings.js';
 import { CloudBusiness, HydrationStartInput, HydrationStatus } from './hydration.js';
 import { Dashboard, ExportReportInput, ExportReportResult, ReportDefinitionView, ReportResult, RunReportInput } from './reports.js';
 import { GstLedgerView, GstMonthInput, GstPayment, GstPaymentInput, GstReturnSummary, GstSetoff, GstSetoffPreview, PostGstSetoffInput } from './gst.js';
+import { ReportCartInput, SetChannelInput, UpdateStatus } from './updates.js';
 import { BackupList, BackupRef, BackupVerification, RestoreBackupInput, RestoreFromCloudInput, RestoreResult, RunBackupResult } from './backups.js';
 import {
   AdjustmentResult, AdjustStockInput, MovementPage, MovementsInput, OpeningImportCommitInput, OpeningImportPreview, OpeningImportPreviewInput,
@@ -165,6 +166,8 @@ export const contract = {
   'pos.listHeldBills': spec({ input: Empty, output: z.array(HeldBill), permission: 'pos.view', rateLimit: { perSec: 10 } }),
   'pos.getHeldBill': spec({ input: z.object({ id: Ulid }), output: HeldBill, permission: 'pos.view', rateLimit: { perSec: 10 } }),
   'pos.discardBill': spec({ input: z.object({ id: Ulid }), output: Ok, permission: 'pos.create', rateLimit: { perSec: 5 }, audit: true }),
+  // 8i: the POS screen tells main whether a bill is being rung up, so an update never installs mid-sale.
+  'pos.reportCart': spec({ input: ReportCartInput, output: Ok, permission: 'pos.view', rateLimit: { perSec: 20 } }),
   'sales.quote': spec({ input: SaleDraft, output: SaleQuote, permission: 'sales.create', rateLimit: { perSec: 30 } }),
   'sales.complete': spec({ input: CompleteSaleInput, output: CompleteSaleResult, permission: 'sales.create', rateLimit: { perSec: 5 }, audit: true, idempotent: 'commandId' }),
   'sales.get': spec({ input: z.object({ id: Ulid }), output: Sale, permission: 'sales.view', rateLimit: { perSec: 20 } }),
@@ -285,6 +288,12 @@ export const contract = {
   'backups.restore': spec({ input: RestoreBackupInput, output: RestoreResult, permission: 'diagnostics.manage', rateLimit: { perSec: 1 } }),
   // A new device (setup) has a session but no business yet, so this checks the session and the membership itself, as hydration does.
   'backups.restoreFromCloud': spec({ input: RestoreFromCloudInput, output: RestoreResult, permission: null, rateLimit: { perSec: 1 } }),
+
+  // ADR-0049 (8i). Status is readable by anyone at the till so the banner shows; installing restarts the app.
+  'update.getStatus': spec({ input: Empty, output: UpdateStatus, permission: null, rateLimit: { perSec: 5 } }),
+  'update.checkNow': spec({ input: Empty, output: UpdateStatus, permission: 'settings.view', rateLimit: { perSec: 1 } }),
+  'update.installNow': spec({ input: Empty, output: UpdateStatus, permission: 'diagnostics.manage', rateLimit: { perSec: 1 }, audit: true }),
+  'update.setChannel': spec({ input: SetChannelInput, output: UpdateStatus, permission: 'settings.manage', rateLimit: { perSec: 1 }, audit: true }),
 } as const satisfies Record<string, ContractSpec>;
 
 export type Contract = typeof contract;
