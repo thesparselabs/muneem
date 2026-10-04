@@ -5,6 +5,28 @@ All notable changes, newest first. Each entry records **what** changed and **why
 
 ## [Unreleased]
 
+### Added — Stage 9 hardening and pilot
+- **Stage 9 plan (`docs/plans/stage-9-hardening.md`).** Three agents surveyed the designs, every deferred item and
+  operational readiness. Decided with the user:
+  - **Hosting:** one VM with Caddy, managed Postgres with point-in-time recovery, and managed S3.
+  - **Before the pilot:** USB/Windows printing with ₹ and Indic text.
+  - **Scale bar:** 500k transactions, 20k SKUs and 50k customers against the strict LLD §18 budgets.
+  - **Monitoring:** self-hosted Prometheus, Loki and Grafana, with a self-hosted crash collector.
+- **The cloud is deployable (9b, ADR-0051).** Why: production needs one reproducible artifact and a scripted, safe
+  deploy.
+  - **Image:** a distroless, non-root container and a CI `cloud-image` job.
+  - **Deploy kit:** `deploy/` holds the Caddy TLS proxy, a production compose file, `roles.sql` and the S3 lifecycle
+    rules. `deploy.sh` migrates as the owner, restarts only once healthy, and rolls back to the previous image.
+  - **Runbook:** `docs/operations/deploy.md`.
+  - **Readiness:** `GET /v1/ready` checks Postgres and object storage. Snapshot builds drain on shutdown.
+  - **Rate limits:** `X-Forwarded-For` is trusted only from private-network proxies.
+- **Rotatable secrets (9b, ADR-0052).** Why: both secrets can now change without logging users out or orphaning
+  backups.
+  - **JWT:** signing keys carry a `kid` (`JWT_SECRETS`).
+  - **Backups:** the master key is a versioned keyring (`MUNEEM_BACKUP_MASTER_KEYS`, Go migration 0007), with a
+    `rewrap` command.
+  - **Compatibility:** the legacy single variables still work.
+
 ### Added — Stage 8 reports, compliance, backup and update
 - **Stage 8 plan (`docs/plans/stage-8-reports.md`).** Three agents surveyed the designs, what earlier stages deferred,
   and the GST and year-end gaps; the plan's details of every part come from that. Decided with the user:
