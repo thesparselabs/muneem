@@ -43,3 +43,23 @@ export function outboxDepth(db: Db): { depth: number; oldestUnsyncedAt: string |
   const r = db.prepare("SELECT COUNT(*) AS n, MIN(created_at) AS oldest FROM sync_outbox WHERE status IN ('pending','in_flight','failed')").get() as { n: number; oldest: string | null };
   return { depth: r.n, oldestUnsyncedAt: r.oldest };
 }
+
+/** ADR-0053: what still waits once the batch in flight lands (dead counts: it never drains by itself), and stock below zero. */
+export function syncHeartbeat(db: Db, businessId: string, inFlightBatchId: string): { outboxDepth: number; oldestPendingAt: string | null; negativeStockCount: number } {
+  const r = db.prepare(`SELECT COUNT(*) AS n, MIN(created_at) AS oldest FROM sync_outbox
+    WHERE status IN ('pending','in_flight','failed','dead') AND business_id = ? AND batch_id IS NOT ?`).get(businessId, inFlightBatchId) as { n: number; oldest: string | null };
+  const negative = db.prepare('SELECT COUNT(*) FROM stock_level WHERE business_id = ? AND qty_milli < 0').pluck().get(businessId) as number;
+  return { outboxDepth: r.n, oldestPendingAt: r.oldest, negativeStockCount: negative };
+}
+
+/** ADR-0054: raw journal totals and the documents cursor they stand at, for the cloud's device-vs-cloud comparison. */
+export function journalTotalsAtCursor(db: Db, businessId: string): { journalCount: number; journalDebitPaise: number; journalCreditPaise: number; documentsSeq: number; outboxDepth: number } {
+  const r = db.prepare(`SELECT
+      (SELECT COUNT(*) FROM journal_entry WHERE business_id = ?) AS n,
+      (SELECT COALESCE(SUM(debit_paise), 0) FROM journal_line WHERE business_id = ?) AS debit,
+      (SELECT COALESCE(SUM(credit_paise), 0) FROM journal_line WHERE business_id = ?) AS credit,
+      (SELECT COALESCE(MAX(last_seq), 0) FROM sync_cursor WHERE business_id = ? AND stream = 'documents') AS seq,
+      (SELECT COUNT(*) FROM sync_outbox WHERE business_id = ? AND status IN ('pending','in_flight','failed','dead')) AS depth`)
+    .get(businessId, businessId, businessId, businessId, businessId) as { n: number; debit: number; credit: number; seq: number; depth: number };
+  return { journalCount: r.n, journalDebitPaise: r.debit, journalCreditPaise: r.credit, documentsSeq: r.seq, outboxDepth: r.depth };
+}

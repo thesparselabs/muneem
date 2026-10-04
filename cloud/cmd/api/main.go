@@ -18,7 +18,9 @@ import (
 	"github.com/sparselabs/muneem/cloud/internal/device"
 	"github.com/sparselabs/muneem/cloud/internal/devicesync"
 	"github.com/sparselabs/muneem/cloud/internal/devicesync/snapshot"
+	"github.com/sparselabs/muneem/cloud/internal/health"
 	"github.com/sparselabs/muneem/cloud/internal/httpx"
+	"github.com/sparselabs/muneem/cloud/internal/metrics"
 	"github.com/sparselabs/muneem/cloud/internal/objectstore"
 	"github.com/sparselabs/muneem/cloud/internal/reports"
 	"github.com/sparselabs/muneem/cloud/internal/store"
@@ -110,32 +112,40 @@ func serve(log *slog.Logger, dbURL string) {
 
 	protocols, err := httpx.ProtocolsFromEnv(os.Getenv)
 	must(log, err)
+	probeOptions, err := health.OptionsFromEnv(os.Getenv)
+	must(log, err)
+	m := metrics.New()
+	m.WatchPool(db.Pool)
 	log.Info("sync protocols", "min", protocols.Min, "current", protocols.Current)
 	log.Info("jwt keys", "active_kid", keys.ActiveID())
 	signer := auth.NewKeyringSigner(keys)
 	verifier := device.NewVerifier(db)
 	objects, err := newObjectStore(ctx, log)
 	must(log, err)
-	readiness := httpx.Readiness{Checks: []httpx.Check{{Name: "postgres", Pinger: db}}, Log: log}
+	readiness := httpx.Readiness{Checks: []httpx.Check{{Name: "postgres", Pinger: db}}, Log: log, Observer: m}
 	var snapshots devicesync.Snapshots
 	var snapshotService *snapshot.Service
 	if objects != nil {
 		snapshotService = snapshot.NewService(db, objects, log, snapshot.DefaultOptions)
+		snapshotService.Jobs = m
 		snapshots = snapshotService
 		readiness.Checks = append(readiness.Checks, httpx.Check{Name: "object_store", Pinger: objects})
 	}
 	backupService, err := newBackups(db, objects, log)
 	must(log, err)
+	if backupService != nil {
+		backupService.Jobs = m
+	}
 	h := handlers{
 		authHandler:     &auth.Handler{DB: db, Signer: signer},
 		deviceHandler:   &device.Handler{DB: db, Verifier: verifier, Revocations: devicesync.Control{}},
 		businessHandler: &business.Handler{DB: db},
-		syncHandler:     &devicesync.Handler{Ingest: &devicesync.Ingest{DB: db, Log: log}, Feed: &devicesync.Feed{DB: db}, Snapshots: snapshots, Protocols: protocols},
+		syncHandler:     &devicesync.Handler{Ingest: &devicesync.Ingest{DB: db, Log: log, Metrics: m}, Feed: &devicesync.Feed{DB: db}, Snapshots: snapshots, Protocols: protocols},
 		backupHandler:   &backups.Handler{Service: backupService},
 		reportHandler:   &reports.Handler{DB: db},
 		Readiness:       readiness,
 	}
-	e := httpx.New(httpx.Deps{Handlers: h, RequireAuth: signer.Require, DeviceVerifier: verifier.Middleware, Logger: log, Protocols: protocols})
+	e := httpx.New(httpx.Deps{Handlers: h, RequireAuth: signer.Require, DeviceVerifier: verifier.Middleware, Logger: log, Protocols: protocols, Requests: m})
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8080"
@@ -147,6 +157,9 @@ func serve(log *slog.Logger, dbURL string) {
 			os.Exit(1)
 		}
 	}()
+	metricsServer := serveMetrics(log, m)
+	prober := &health.Prober{Source: health.SQLSource{Q: db.Pool}, Gauges: health.NewGauges(m.Registry), Jobs: m, Log: log, Opt: probeOptions}
+	go prober.Run(ctx)
 	<-ctx.Done()
 	log.Info("shutting down")
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
@@ -154,11 +167,26 @@ func serve(log *slog.Logger, dbURL string) {
 	if err := e.Shutdown(shutdownCtx); err != nil {
 		log.Warn("http shutdown", "error", err)
 	}
+	if err := metricsServer.Shutdown(shutdownCtx); err != nil {
+		log.Warn("metrics shutdown", "error", err)
+	}
 	if snapshotService != nil {
 		if err := snapshotService.Shutdown(shutdownCtx); err != nil {
 			log.Warn("snapshot builds cancelled at shutdown", "error", err)
 		}
 	}
+}
+
+// serveMetrics listens on MUNEEM_METRICS_ADDR (default loopback), a port Caddy never proxies.
+func serveMetrics(log *slog.Logger, m *metrics.Metrics) *http.Server {
+	srv := m.Server(os.Getenv("MUNEEM_METRICS_ADDR"))
+	go func() {
+		log.Info("metrics listening", "addr", srv.Addr)
+		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			log.Error("metrics server", "error", err)
+		}
+	}()
+	return srv
 }
 
 // newObjectStore connects MUNEEM_S3_*; without an endpoint hydration and cloud backups answer 503.

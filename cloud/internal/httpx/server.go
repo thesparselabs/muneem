@@ -25,6 +25,8 @@ type Deps struct {
 	Logger         *slog.Logger
 	// Protocols accepted on /v1/sync/*; the zero value means DefaultProtocols.
 	Protocols Protocols
+	// Requests records RED metrics per route when set.
+	Requests RequestObserver
 }
 
 // New builds the Echo instance with the middleware pipeline:
@@ -36,6 +38,9 @@ func New(d Deps) *echo.Echo {
 	// X-Forwarded-For is believed only from private-network proxies (Caddy on the VM), so rate limits key on the client.
 	e.IPExtractor = echo.ExtractIPFromXFFHeader()
 	e.Use(RequestID(), ServerTime, middleware.Recover(), middleware.BodyLimit("2M"))
+	if d.Requests != nil {
+		e.Use(ObserveRequests(d.Requests))
+	}
 	e.Use(middleware.RequestLoggerWithConfig(middleware.RequestLoggerConfig{
 		LogStatus: true, LogURI: true, LogMethod: true, LogLatency: true, LogRequestID: true, LogError: true,
 		LogValuesFunc: func(c echo.Context, v middleware.RequestLoggerValues) error {

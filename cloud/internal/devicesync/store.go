@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"math"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -237,6 +238,32 @@ func notePush(ctx context.Context, tx pgx.Tx, deviceID, businessID string, lastP
 		last_push_seq = GREATEST(COALESCE(last_push_seq, 0), COALESCE($3, 0)), clock_skew_ms = COALESCE($4, clock_skew_ms) WHERE id = $1`,
 		deviceID, businessID, lastPushSeq, skewMs)
 	return err
+}
+
+func noteHeartbeat(ctx context.Context, tx pgx.Tx, deviceID string, hb Heartbeat) error {
+	_, err := tx.Exec(ctx, `UPDATE device SET outbox_depth = $2, oldest_pending_at = $3, negative_stock_count = $4, heartbeat_at = now() WHERE id = $1`,
+		deviceID, clampCount(hb.OutboxDepth), hb.OldestPendingAt, clampCount(hb.NegativeStockCount))
+	return err
+}
+
+// noteIntegrity keeps the newest report per device; an older one arriving late never replaces it.
+func noteIntegrity(ctx context.Context, tx pgx.Tx, businessID, deviceID string, r Integrity) error {
+	_, err := tx.Exec(ctx, `INSERT INTO device_integrity (device_id, business_id, checked_at, tie_out_failures, replay_mismatches, audit_chain_ok,
+		journal_count, journal_debit_paise, journal_credit_paise, documents_seq, outbox_depth)
+		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
+		ON CONFLICT (device_id) DO UPDATE SET business_id = EXCLUDED.business_id, checked_at = EXCLUDED.checked_at,
+		tie_out_failures = EXCLUDED.tie_out_failures, replay_mismatches = EXCLUDED.replay_mismatches, audit_chain_ok = EXCLUDED.audit_chain_ok,
+		journal_count = EXCLUDED.journal_count, journal_debit_paise = EXCLUDED.journal_debit_paise, journal_credit_paise = EXCLUDED.journal_credit_paise,
+		documents_seq = EXCLUDED.documents_seq, outbox_depth = EXCLUDED.outbox_depth, received_at = now()
+		WHERE device_integrity.checked_at < EXCLUDED.checked_at`,
+		deviceID, businessID, r.CheckedAt, clampCount(r.TieOutFailures), clampCount(r.ReplayMismatches), r.AuditChainOk,
+		max(r.JournalCount, 0), max(r.JournalDebitPaise, 0), max(r.JournalCreditPaise, 0), max(r.DocumentsSeq, 0), clampCount(r.OutboxDepth))
+	return err
+}
+
+// clampCount keeps telemetry from ever failing a push on an INT column.
+func clampCount(n int) int {
+	return min(max(n, 0), math.MaxInt32)
 }
 
 func notePull(ctx context.Context, tx pgx.Tx, deviceID string, seq int64) error {

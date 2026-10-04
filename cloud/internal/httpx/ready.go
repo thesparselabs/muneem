@@ -26,9 +26,15 @@ const DefaultReadyTimeout = 2 * time.Second
 
 // Readiness answers GET /v1/ready: 200 when every check pings within Timeout, else 503; failures are logged, not returned.
 type Readiness struct {
-	Checks  []Check
-	Timeout time.Duration
-	Log     *slog.Logger
+	Checks   []Check
+	Timeout  time.Duration
+	Log      *slog.Logger
+	Observer ReadyObserver
+}
+
+// ReadyObserver records each check's outcome; the container healthcheck calls /v1/ready every 10 s, keeping it fresh.
+type ReadyObserver interface {
+	ReadyCheck(name string, ok bool)
 }
 
 func (r Readiness) GetReady(c echo.Context) error {
@@ -54,6 +60,9 @@ func (r Readiness) GetReady(c echo.Context) error {
 	wg.Wait()
 	for _, check := range out.Checks {
 		out.Ready = out.Ready && check.Ok
+		if r.Observer != nil {
+			r.Observer.ReadyCheck(check.Name, check.Ok)
+		}
 	}
 	status := http.StatusOK
 	if !out.Ready {

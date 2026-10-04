@@ -31,8 +31,14 @@ type Options struct {
 
 var DefaultOptions = Options{ReuseWithin: 1000, Expiry: 24 * time.Hour, URLTTL: time.Hour, BuildTimeout: 15 * time.Minute, Workers: 2}
 
+// JobObserver records each build's outcome and duration; metrics.Metrics implements it.
+type JobObserver interface {
+	ObserveJob(job, outcome string, took time.Duration)
+}
+
 // Service implements devicesync.Snapshots: it records a building row, builds in the background, and presigns.
 type Service struct {
+	Jobs  JobObserver
 	db    *store.DB
 	store ObjectStore
 	log   *slog.Logger

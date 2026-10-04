@@ -1,6 +1,6 @@
-import { PUSH_MAX_BYTES, PUSH_MAX_OPERATIONS, STREAM_OF, SYNC_PROTOCOL, type OutboxEntityType, type PushOperation, type PushRequest, type PushResult } from '@muneem/contracts';
+import { IntegrityReport, PUSH_MAX_BYTES, PUSH_MAX_OPERATIONS, STREAM_OF, SYNC_PROTOCOL, type OutboxEntityType, type PushHeartbeat, type PushOperation, type PushRequest, type PushResult } from '@muneem/contracts';
 import { newUlid } from '@muneem/domain';
-import { claimBatch, releaseBatch, settleOperations, supersedeStale, type ClaimedOperation, type Db, type Settlement } from '@muneem/db-sqlite';
+import { claimBatch, getMeta, integrityReportKey, releaseBatch, settleOperations, supersedeStale, syncHeartbeat, type ClaimedOperation, type Db, type Settlement } from '@muneem/db-sqlite';
 import { MAX_ATTEMPTS, nextAttemptAt } from './backoff.js';
 import { isTransportError, TransportError, type Transport } from './transport.js';
 import { authorized, block, type WireIdentity } from './wire.js';
@@ -37,7 +37,10 @@ export class Pusher {
       if (ops.length === 0) return outcome;
       let results: PushResult[];
       try {
-        const request: PushRequest = { businessId: id.businessId, protocol: SYNC_PROTOCOL, schemaVersion: this.d.schemaVersion(), clientTime: this.iso(), operations: ops.map(toWire) };
+        const request: PushRequest = {
+          businessId: id.businessId, protocol: SYNC_PROTOCOL, schemaVersion: this.d.schemaVersion(), clientTime: this.iso(), operations: ops.map(toWire),
+          heartbeat: this.heartbeat(id.businessId, batchId),
+        };
         results = (await authorized((t) => t.push(request), this.d.transport, this.d.refreshAuth)).results;
       } catch (e) {
         outcome.error = this.release(batchId, ops, e);
@@ -50,6 +53,18 @@ export class Pusher {
   }
 
   private iso(): string { return new Date(this.d.now()).toISOString(); }
+
+  // ADR-0053/0054: telemetry rides on the push; a malformed stored report is left off rather than sent.
+  private heartbeat(businessId: string, batchId: string): PushHeartbeat {
+    const db = this.d.db();
+    const beat: PushHeartbeat = syncHeartbeat(db, businessId, batchId);
+    const raw = getMeta(db, integrityReportKey(businessId));
+    if (!raw) return beat;
+    try {
+      const parsed = IntegrityReport.safeParse(JSON.parse(raw));
+      return parsed.success ? { ...beat, integrity: parsed.data } : beat;
+    } catch { return beat; }
+  }
 
   // The whole batch never got an answer: back to pending, counted unless the device itself has to change first.
   private release(batchId: string, ops: readonly ClaimedOperation[], e: unknown): string {

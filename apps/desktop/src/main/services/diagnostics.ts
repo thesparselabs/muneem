@@ -1,10 +1,10 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync, copyFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { newUlid } from '@muneem/domain';
-import { AppError, type AuditVerification, type Health } from '@muneem/contracts';
+import { AppError, type AuditVerification, type Health, type IntegrityReport } from '@muneem/contracts';
 import {
   auditRejections, recordAuditCheck, verifyAllAuditChains, dbSizeBytes, foreignKeyCheck, getMeta, META_KEYS, outboxDepth, quickCheck, setMeta, verifyAuditChain,
-  currentSchemaVersion, dailySummaryDrift, journalsNotMatchingLines, rebuildDailySummaries, withTransaction, rebuildAccountBalances, reconcilePartiesDb, replayKeys, tieOutFailures, unpostedDocuments, rewriteLevels, stockKeys, type Db, type StockDrift } from '@muneem/db-sqlite';
+  currentSchemaVersion, dailySummaryDrift, journalTotalsAtCursor, integrityReportKey, journalsNotMatchingLines, rebuildDailySummaries, withTransaction, rebuildAccountBalances, reconcilePartiesDb, replayKeys, tieOutFailures, unpostedDocuments, rewriteLevels, stockKeys, type Db, type StockDrift } from '@muneem/db-sqlite';
 import { DEVICE_AUDIT_SCOPE } from '../ipc/gateway.js';
 
 const STOCK_CHECK_BATCH = 200;
@@ -21,6 +21,7 @@ export interface DiagnosticsDeps {
 
 export class DiagnosticsService {
   private handles = new Map<string, string>();
+  private findings = { replayMismatches: 0, tieOutFailures: 0 };
   constructor(private readonly d: DiagnosticsDeps) {}
 
   getHealth(): Health {
@@ -56,6 +57,7 @@ export class DiagnosticsService {
       await new Promise((r) => setImmediate(r));
     }
     const miscosted = drift.filter((d) => d.badMovementIds.length > 0);
+    this.findings.replayMismatches = drift.filter((d) => d.levelDrift || d.badMovementIds.length > 0).length;
     if (miscosted.length > 0) {
       this.d.loggers.app.warn({ code: 'STOCK_COST_MISMATCH', movements: miscosted.map((d) => ({ productId: d.productId, ids: d.badMovementIds })) }, 'movements costed from a drifted stock level; review them');
     }
@@ -86,6 +88,7 @@ export class DiagnosticsService {
     const tieOuts = tieOutFailures(db, businessId);
     const unposted = unpostedDocuments(db, businessId);
     const badJournals = journalsNotMatchingLines(db, businessId);
+    this.findings.tieOutFailures = tieOuts.length + unposted.length + badJournals;
     if (tieOuts.length === 0 && unposted.length === 0 && badJournals === 0) return healed ? 'healed' : 'ok';
     this.d.loggers.app.error({ code: 'JOURNAL_MISMATCH', tieOuts, unposted: unposted.slice(0, 50), badJournals }, 'the books do not agree with their documents');
     return 'mismatch';
@@ -118,6 +121,27 @@ export class DiagnosticsService {
       checkedAt, ok: broken.length === 0 && cloudRejections.length === 0, cloudRejections,
       chains: chains.map((c) => ({ businessId: c.businessId, deviceId: c.deviceId, count: c.count, ok: c.ok, brokenAtSeq: c.brokenAtSeq, reason: c.reason })),
     };
+  }
+
+  // The 6-hourly checks; each runs alone so one failing never skips the rest, and the findings go out on the next push (ADR-0054).
+  async scheduledChecks(): Promise<void> {
+    const fail = (what: string) => (e: unknown) => this.d.loggers.app.error({ err: String(e) }, `scheduled ${what} check failed`);
+    const run = (what: string, fn: () => unknown) => { try { fn(); } catch (e) { fail(what)(e); } };
+    const stock = await this.checkStock({ slice: true }).catch((e) => { fail('stock')(e); return 'not_run' as const; });
+    run('party', () => this.checkParties());
+    let journals: string = 'not_run';
+    run('journal', () => { journals = this.checkJournals(); });
+    run('summary', () => this.checkSummaries(new Date(Date.now() - 35 * 86_400_000).toLocaleDateString('en-CA')));
+    let audit: AuditVerification | null = null;
+    run('audit chain', () => { audit = this.verifyAudit(); });
+    const businessId = this.d.session.get()?.businessId;
+    if (businessId && stock !== 'not_run' && journals !== 'not_run' && audit) run('integrity report', () => this.recordIntegrity(businessId, (audit as AuditVerification).ok));
+  }
+
+  private recordIntegrity(businessId: string, auditChainOk: boolean): void {
+    const db = this.d.db();
+    const report: IntegrityReport = { checkedAt: new Date().toISOString(), ...this.findings, auditChainOk, ...journalTotalsAtCursor(db, businessId) };
+    setMeta(db, integrityReportKey(businessId), JSON.stringify(report));
   }
 
   async integrityCheck() {

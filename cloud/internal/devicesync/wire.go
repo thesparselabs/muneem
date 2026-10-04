@@ -13,6 +13,29 @@ type PushRequest struct {
 	SchemaVersion int         `json:"schemaVersion"`
 	ClientTime    time.Time   `json:"clientTime"`
 	Operations    []Operation `json:"operations"`
+	Heartbeat     *Heartbeat  `json:"heartbeat,omitempty"`
+}
+
+// Heartbeat is the device's outbox as it stands once this batch lands (ADR-0053), plus its negative-stock count.
+type Heartbeat struct {
+	OutboxDepth        int        `json:"outboxDepth"`
+	OldestPendingAt    *time.Time `json:"oldestPendingAt"`
+	NegativeStockCount int        `json:"negativeStockCount"`
+	Integrity          *Integrity `json:"integrity,omitempty"`
+}
+
+// Integrity is the device's latest scheduled integrity run (ADR-0054): its findings and its journal totals as of its
+// documents cursor, which the cloud compares with its own journals up to that seq.
+type Integrity struct {
+	CheckedAt          time.Time `json:"checkedAt"`
+	TieOutFailures     int       `json:"tieOutFailures"`
+	ReplayMismatches   int       `json:"replayMismatches"`
+	AuditChainOk       bool      `json:"auditChainOk"`
+	JournalCount       int64     `json:"journalCount"`
+	JournalDebitPaise  int64     `json:"journalDebitPaise"`
+	JournalCreditPaise int64     `json:"journalCreditPaise"`
+	DocumentsSeq       int64     `json:"documentsSeq"`
+	OutboxDepth        int       `json:"outboxDepth"`
 }
 
 type Operation struct {

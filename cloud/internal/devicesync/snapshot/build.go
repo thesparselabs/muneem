@@ -30,6 +30,7 @@ func objectKey(businessID, id string) string {
 }
 
 func (s *Service) build(id, businessID string) {
+	started := time.Now()
 	ctx, cancel := context.WithTimeout(s.base, s.opt.BuildTimeout)
 	defer cancel()
 	key := objectKey(businessID, id)
@@ -46,11 +47,23 @@ func (s *Service) build(id, businessID string) {
 	if txErr := s.db.WithTx(recordCtx, store.Scope{BusinessID: businessID}, finish); txErr != nil {
 		s.log.Error("snapshot status not recorded", "snapshot_id", id, "business_id", businessID, "error", txErr)
 	}
+	s.observe(err, time.Since(started))
 	if err != nil {
 		s.log.Error("snapshot build failed", "alert", true, "snapshot_id", id, "business_id", businessID, "error", err)
 		return
 	}
 	s.log.Info("snapshot built", "snapshot_id", id, "business_id", businessID, "as_of_seq", h.AsOfSeq, "bytes", bytes)
+}
+
+func (s *Service) observe(err error, took time.Duration) {
+	if s.Jobs == nil {
+		return
+	}
+	outcome := "ok"
+	if err != nil {
+		outcome = "failed"
+	}
+	s.Jobs.ObserveJob("snapshot_build", outcome, took)
 }
 
 // upload pipes the bundle from one read snapshot of the database straight into the object store.

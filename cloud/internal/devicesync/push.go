@@ -25,8 +25,27 @@ func (c Caller) scope(businessID string) store.Scope {
 
 // Ingest applies pushed operations, each in its own transaction (LLD §7.1).
 type Ingest struct {
-	DB  *store.DB
-	Log *slog.Logger
+	DB      *store.DB
+	Log     *slog.Logger
+	Metrics IngestObserver
+}
+
+// IngestObserver counts operation outcomes and dead letters; metrics.Metrics implements it.
+type IngestObserver interface {
+	OperationResult(status, code string)
+	DeadLettered(code string)
+}
+
+type noIngestMetrics struct{}
+
+func (noIngestMetrics) OperationResult(string, string) {}
+func (noIngestMetrics) DeadLettered(string)            {}
+
+func (s *Ingest) metrics() IngestObserver {
+	if s.Metrics == nil {
+		return noIngestMetrics{}
+	}
+	return s.Metrics
 }
 
 func (s *Ingest) Push(ctx context.Context, c Caller, req *PushRequest) (*PushResponse, error) {
@@ -38,6 +57,7 @@ func (s *Ingest) Push(ctx context.Context, c Caller, req *PushRequest) (*PushRes
 			return nil, err
 		}
 		results = append(results, r)
+		s.metrics().OperationResult(r.Status, resultCode(r))
 		if r.Status == StatusApplied || r.Status == StatusDuplicate {
 			seq := op.Seq
 			if pushed == nil || seq > *pushed {
@@ -45,7 +65,7 @@ func (s *Ingest) Push(ctx context.Context, c Caller, req *PushRequest) (*PushRes
 			}
 		}
 	}
-	next, err := s.bookkeep(ctx, c, req.BusinessID, pushed)
+	next, err := s.bookkeep(ctx, c, req.BusinessID, pushed, req.Heartbeat)
 	if err != nil {
 		return nil, err
 	}
@@ -86,12 +106,20 @@ func (s *Ingest) reject(ctx context.Context, c Caller, businessID string, op Ope
 	if err != nil {
 		return Result{}, err
 	}
+	s.metrics().DeadLettered(f.Code)
 	s.Log.Error("sync operation rejected", "alert", true, "code", f.Code, "detail", f.Detail, "business_id", businessID,
 		"device_id", c.DeviceID, "operation_id", op.OperationID, "entity_type", op.EntityType, "entity_id", op.EntityID)
 	return rejected(op, f.Code, f.Detail), nil
 }
 
-func (s *Ingest) bookkeep(ctx context.Context, c Caller, businessID string, pushed *int64) (int64, error) {
+func resultCode(r Result) string {
+	if r.Error == nil {
+		return ""
+	}
+	return r.Error.Code
+}
+
+func (s *Ingest) bookkeep(ctx context.Context, c Caller, businessID string, pushed *int64, hb *Heartbeat) (int64, error) {
 	var next int64
 	err := s.DB.WithTx(ctx, c.scope(businessID), func(tx pgx.Tx) error {
 		exists, err := businessExists(ctx, tx, businessID)
@@ -100,6 +128,16 @@ func (s *Ingest) bookkeep(ctx context.Context, c Caller, businessID string, push
 		}
 		if err := notePush(ctx, tx, c.DeviceID, businessID, pushed, c.SkewMs); err != nil {
 			return err
+		}
+		if hb != nil {
+			if err := noteHeartbeat(ctx, tx, c.DeviceID, *hb); err != nil {
+				return err
+			}
+			if hb.Integrity != nil {
+				if err := noteIntegrity(ctx, tx, businessID, c.DeviceID, *hb.Integrity); err != nil {
+					return err
+				}
+			}
 		}
 		next, err = lastSeq(ctx, tx, businessID)
 		return err
