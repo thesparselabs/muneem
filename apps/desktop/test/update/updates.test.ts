@@ -53,6 +53,8 @@ describe('auto-update (8i)', () => {
     expect(t.events.filter((e) => e.state === 'downloading').map((e) => e.percent)).toEqual([...t.events.filter((e) => e.state === 'downloading').map((e) => e.percent)].sort((a, b) => a! - b!));
     const ready = await caller(t.app).data<UpdateStatus>('update.getStatus');
     expect(ready).toMatchObject({ state: 'ready', percent: 100, installBlockedReason: null });
+    const notices = await caller(t.app).data<{ items: { kind: string; title: string; link: string | null }[] }>('notifications.list', { status: 'open', limit: 20 });
+    expect(notices.items).toEqual(expect.arrayContaining([expect.objectContaining({ kind: 'update_ready', title: 'Update 0.2.0 is ready', link: '/settings/updates' })]));
 
     await caller(t.app).data('update.installNow');
     expect(t.installed).toHaveLength(1);

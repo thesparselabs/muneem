@@ -23,7 +23,7 @@ FR-074 lists notification triggers; FR-104 (DPDP) requires consent, export and e
 - Built in Stage 8 (8h); amended with an "As built" note if reality differs.
 
 ## As built (8h)
-- **Storage:** `notification` (migration 0021) with one open row per (business, kind, entity), enforced by a partial
+- **Storage:** `notification` (migration 0020) with one open row per (business, kind, entity), enforced by a partial
   unique index. Device-wide kinds (sync, backups, audit chain, updates) are stored under the `_device` scope and show
   in whichever business is open. A raise is idempotent: the open row is refreshed in place (`unchanged` when nothing
   differs); a worse severity clears `read_at` and `dismissed_at` so a dismissed warning that turns critical comes

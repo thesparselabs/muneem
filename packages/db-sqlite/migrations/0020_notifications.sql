@@ -1,4 +1,4 @@
--- 0021_notifications — Stage 8h (ADR-0050): the in-app notification centre and DPDP consent on customers.
+-- 0020_notifications — Stage 8h (ADR-0050): the in-app notification centre and DPDP consent on customers.
 -- Notifications are local to this device and never synced: each device derives them from data it already holds.
 CREATE TABLE notification (
   id           TEXT PRIMARY KEY,

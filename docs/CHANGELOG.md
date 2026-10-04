@@ -23,6 +23,23 @@ All notable changes, newest first. Each entry records **what** changed and **why
   - **Files:** the user picks where an export goes in a save dialog, and the screen never sees a path.
   - **First report:** the Trial Balance; 8e adds the rest.
   - **IPC:** `reports.listDefinitions`, `reports.run`, `reports.export`.
+- **In-app notification centre (8h, ADR-0050 as built).** Why: FR-074; the owner sees problems without hunting for
+  them.
+  - **Where they appear:** a bell with the unread count, a notifications page, and a "Needs attention" card on the
+    dashboard.
+  - **What raises them:** low stock, overdue customers, suppliers due, blocked sync, backup failures or staleness, a
+    broken audit chain, review items and a ready update. Each is raised and resolved automatically, at start-up,
+    every 6 hours and after relevant commands.
+  - **Local only:** notifications are kept per device and filtered by each user's permissions.
+- **DPDP consent, profile export and erasure (8h, FR-104).** Why: consent and erasure rights must exist before
+  reminders are sent.
+  - **Consent:** customer consent (purpose, channel, given or withdrawn, by whom) syncs with the customer. Withdrawing
+    is as easy as giving.
+  - **Export:** owners and managers can export a profile as JSON or CSV.
+  - **Erasure:** it anonymises the profile and keeps statutory invoices and their customer snapshots. It is refused
+    while a balance remains. Neither cloud server lets a stale edit un-erase a customer.
+  - **Not built:** the SMS/WhatsApp reminder sender is designed in ADR-0050 only.
+  - **Migration:** SQLite 0020.
 - **Auto-update (8i, ADR-0049 as built).** Why: NFR-013; a shop must get fixes without losing data or a sale.
   - **Channels and rollout:** dev, beta and stable channels, with a staged rollout by a stable installation-id cohort.
     Settings → Updates and an update-ready banner.

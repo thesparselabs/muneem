@@ -83,7 +83,7 @@ import { DEFAULT_UPDATE_BASE_URL } from './update/channels.js';
 import type { Updater } from './update/updater.js';
 import { createNotifications } from './notifications/index.js';
 import { CustomerPrivacyService } from './services/parties/customerPrivacy.js';
-import type { SyncStatus } from '@muneem/contracts';
+import type { SyncStatus, UpdateStatus } from '@muneem/contracts';
 export interface AppConfig {
   db: () => Db;
   dbFile: string;
@@ -206,7 +206,7 @@ export function createApp(cfg: AppConfig) {
   const updates = createUpdates({
     db: cfg.db, updater: cfg.updater ?? null, baseUrl: cfg.updateBaseUrl ?? DEFAULT_UPDATE_BASE_URL, appVersion: cfg.appVersion, installationId: () => device.installationId(),
     registerOpen: () => { try { return register.current() !== null; } catch { return false; } },
-    emit: (status) => events.emit('update.status', status), now: cfg.now ?? (() => Date.now()), log: cfg.loggers.app,
+    emit: (status) => { events.emit('update.status', status); announceUpdate(status); }, now: cfg.now ?? (() => Date.now()), log: cfg.loggers.app,
     ...(cfg.registerIdleMs !== undefined && { registerIdleMs: cfg.registerIdleMs }),
   });
   const gate = new HydrationGate(cfg.db, cfg.coldStart ?? 'hydrate');
@@ -247,7 +247,17 @@ export function createApp(cfg: AppConfig) {
       businessCreatedAt: () => business.get()?.createdAt ?? null,
       reviewCounts: () => openReviewCounts(cfg.db(), posCtx.businessId()),
     },
-  });
+  });  // ADR-0050: the updater's ready state is a notification for everyone; a later status resolves it.
+  function announceUpdate(status: UpdateStatus): void {
+    const release = status.availableVersion;
+    if (status.state === 'ready' && release) {
+      notifications.service.notify('update_ready', {
+        severity: 'info', entityType: 'release', entityId: release, title: `Update ${release} is ready`,
+        body: 'It installs when the register is closed, or from Settings → Updates.', link: '/settings/updates',
+      });
+    }
+  }
+
   // ADR-0050: detectors run when a business opens and when sync's health changes; the 6-hourly timer runs them all.
   events.attach({
     send: (channel, payload) => {

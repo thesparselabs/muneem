@@ -392,3 +392,10 @@ bug).
 9. **Audit:** Diagnostics → Audit trail shows "verified". (A tampered row is covered by tests only.)
 10. **Updates:** Settings → Updates on a dev feed. "Check now" downloads; "Restart and update" is refused with a sale
     in the cart and allowed when idle.
+11. **Notifications:** the bell shows the unread count in the worst severity's colour. Set a reorder level above stock
+    and restart: a low-stock notification appears. Mark read and dismiss; restock, and it moves to resolved. A
+    cashier sees no stock or backup items.
+12. **Consent and erasure:** on a customer, record SMS consent and withdraw it. Export the profile as JSON and CSV.
+    Erasing with a balance is refused; settle, erase, and the profile is blank while old receipts still show the name.
+13. **Update notice:** "Update … is ready" appears in the notification centre and links to Settings → Updates.
+
