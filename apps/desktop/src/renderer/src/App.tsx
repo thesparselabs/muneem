@@ -21,6 +21,9 @@ import Statements from './routes/accounts/Statements.js';
 import Books from './routes/accounts/Books.js';
 import ManualJournal from './routes/accounts/ManualJournal.js';
 import Periods from './routes/accounts/Periods.js';
+import GstReturns from './routes/gst/GstReturns.js';
+import GstSetoff from './routes/gst/GstSetoff.js';
+import GstPayments from './routes/gst/GstPayments.js';
 import Shell from './routes/Shell.js';
 import Home from './routes/Home.js';
 import Diagnostics from './routes/Diagnostics.js';
@@ -95,6 +98,9 @@ export default function App() {
         <Route path="/accounts/books" element={<Books />} />
         <Route path="/accounts/journal/new" element={<ManualJournal />} />
         <Route path="/accounts/periods" element={<Periods />} />
+        <Route path="/gst" element={<GstReturns />} />
+        <Route path="/gst/setoff" element={<GstSetoff />} />
+        <Route path="/gst/payments" element={<GstPayments />} />
         <Route path="/settings/printer" element={<PrinterSettings />} />
         <Route path="/settings/review" element={<ReviewItems />} />
         <Route path="/diagnostics" element={<Diagnostics />} />

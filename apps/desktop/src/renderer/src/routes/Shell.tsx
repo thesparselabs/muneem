@@ -18,6 +18,7 @@ const NAV: { to: string; label: string; enabled: boolean; stage?: string; need?:
   { to: '/payments', label: 'Payments', enabled: true, need: 'payments.view' },
   { to: '/expenses', label: 'Expenses', enabled: true, need: 'expenses.view' },
   { to: '/accounts', label: 'Accounts', enabled: true, need: 'accounting.view' },
+  { to: '/gst', label: 'GST', enabled: true, need: 'gst.view' },
   { to: '/reports', label: 'Reports', enabled: false, stage: 'Stage 8' },
   { to: '/settings/review', label: 'Review items', enabled: true, need: 'sync.view' },
   { to: '/diagnostics', label: 'Diagnostics', enabled: true },
