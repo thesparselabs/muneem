@@ -12,6 +12,24 @@ All notable changes, newest first. Each entry records **what** changed and **why
   - **Before the pilot:** USB/Windows printing with ₹ and Indic text.
   - **Scale bar:** 500k transactions, 20k SKUs and 50k customers against the strict LLD §18 budgets.
   - **Monitoring:** self-hosted Prometheus, Loki and Grafana, with a self-hosted crash collector.
+- **Playwright + Electron UI suite (9j).** Why: the Stage 2–8 manual checklists had never been run, and unit tests
+  cannot catch what only the built app does.
+  - **How it runs:** `pnpm e2e:ui`, and the CI job `e2e-ui` under Xvfb. It drives the built app with a temp profile, a
+    stub cloud over the reference sync server, and the printer simulator.
+  - **What it covers:** 33 tests for the golden flow, keyboard-only POS (F2–F9, Esc, Tab), offline billing and
+    recovery, and cashier permissions. Every one of the 34 screens is checked to fit 1366×768.
+- **Fixed: every report and the GST returns page failed in the Electron app (9j).** The read-only report connection
+  loaded the Node build of SQLite instead of Electron's. It affected packaged builds too, and it is in the Stage 8 code.
+  It now reuses the main connection's native binding.
+- **Fixed: keyboard-only POS gaps (9j).**
+  - **Payment:** dialogs focus their first field, so F5 then Enter completes a sale instead of closing the payment
+    dialog, and focus returns to the opener on close.
+  - **Held bills:** F7 then Enter retrieves the first held bill.
+  - **After a sale:** the search box takes focus again.
+- **Fixed: stale data straight after a change (9j).** A completed sale or return refreshes every cached read; "Receive
+  payment" had said "Nothing is open" just after a credit sale. The notification bell refetches when it appears.
+- **One QA record (9j).** `docs/qa/manual-checklist.md` lists every Stage 2–8 manual step as automated (naming its
+  test) or still manual, with a Windows-host section and a results table. The stage plans point to it.
 - **Fixed: per-unit cess on an MRP (tax-inclusive) item was billed on top of the MRP (9h, ADR-0059).** A ₹150 pack with
   ₹10 per-unit cess billed ₹160. The per-unit cess now comes out of the gross before the back-calculation, in both
   the TypeScript and Go engines, with a HAND golden vector and a property test, and LLD §3.1 is updated. The golden
