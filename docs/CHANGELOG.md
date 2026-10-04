@@ -12,6 +12,30 @@ All notable changes, newest first. Each entry records **what** changed and **why
   - **Before the pilot:** USB/Windows printing with ₹ and Indic text.
   - **Scale bar:** 500k transactions, 20k SKUs and 50k customers against the strict LLD §18 budgets.
   - **Monitoring:** self-hosted Prometheus, Loki and Grafana, with a self-hosted crash collector.
+- **Every LLD §18 budget passes at 500k sales, 20k SKUs and 50k customers (9f).** Why: NFR-021 and the user's scale
+  bar.
+
+  | Budget | Before | After |
+  |---|---|---|
+  | Cold start | about 19 min | 2.1 s |
+  | `sales.complete` p95 | 638 ms | 55 ms |
+  | Dashboard | 506 ms | 154 ms |
+  | A sale while checks run | billing frozen for minutes | 90 ms |
+
+  Barcode lookup, search and cart recalculation stay at 0.1–4 ms.
+  - **Indexes (migration 0021):** the sync queue's reads during a push fall from 145 s to 32 ms, sync status from
+    397 ms to 0.01 ms, the dashboard's party totals and top products, and customer search.
+- **Reports and integrity checks run in a read worker (9f, ADR-0058).** The worker has its own read-only connection. At
+  500k these checks had held the billing thread for minutes; the main thread now only applies a fix when one is
+  needed.
+- **Start-up runs `quick_check` only after an unclean exit (9f).** The worker checks the file once a day in the
+  background. Cold start at 500k drops from about 19 minutes to 2.1 s.
+- **Scale tests (9f):**
+  - **The dataset:** a seeded builder for the 500k dataset.
+  - **`pnpm scale`:** measures every budget on a 4 GB profile, plus the upgrade path, nightly in CI.
+  - **Query-plan gate:** an `EXPLAIN QUERY PLAN` gate on the hot paths runs in the default suite.
+  - **Open:** upgrading a 500k database takes about 24 minutes (a 9-minute pre-migration backup plus checks). This
+    needs a file-copy backup and a scoped foreign-key check.
 - **Chaos and fault suite (9g, ADR-0060).** Why: NFR-012, NFR-018 and NFR-019 must hold under real faults, not
   only in the happy path.
   - **What it covers:** disk full during commits and backups; power loss mid-commit for every posting command (returns,
