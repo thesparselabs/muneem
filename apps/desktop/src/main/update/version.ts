@@ -1,3 +1,5 @@
+import type { UpdateChannel } from '@muneem/contracts';
+
 const parse = (v: string) => {
   const [core = '', pre] = v.replace(/^v/u, '').split('-', 2);
   return { nums: core.split('.').map((n) => Number.parseInt(n, 10) || 0), pre: pre ?? null };
@@ -15,4 +17,10 @@ export function compareVersions(a: string, b: string): number {
   if (x.pre === null) return 1;
   if (y.pre === null) return -1;
   return x.pre < y.pre ? -1 : 1;
+}
+
+// A prerelease build starts on the channel its version names; everything else on stable.
+export function defaultChannelFor(version: string): UpdateChannel {
+  if (/-dev\b/u.test(version)) return 'dev';
+  return /-(beta|rc)\b/u.test(version) ? 'beta' : 'stable';
 }

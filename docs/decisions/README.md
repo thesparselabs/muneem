@@ -60,3 +60,4 @@ Template: Context → Decision → Consequences → Status.
 | [0053](0053-observability.md) | Observability: metrics, business-health probes, logs, alerts and crash reports |
 | [0054](0054-pilot-health-measures.md) | What "zero lost, zero unexplained" means for the pilot |
 | [0055](0055-windows-printing.md) | Windows printing: spooler RAW jobs, an image fallback, and ₹ and Indic text as raster lines |
+| [0056](0056-release-and-installer.md) | Release and installer: CI-built, Azure-signed, promoted between channels without a rebuild |

@@ -1,6 +1,8 @@
 import { UPDATE_CHANNELS, type UpdateChannel } from '@muneem/contracts';
 import { getMeta, setMeta, type Db } from '@muneem/db-sqlite';
 
+export { defaultChannelFor } from './version.js';
+
 export const DEFAULT_UPDATE_BASE_URL = 'https://updates.muneem.app';
 const CHANNEL_KEY = 'update_channel';
 
@@ -24,10 +26,4 @@ export function metaChannelStore(db: () => Db, fallback: UpdateChannel): Channel
     },
     set: (channel) => setMeta(db(), CHANNEL_KEY, channel),
   };
-}
-
-// A prerelease build starts on the channel its version names; everything else on stable.
-export function defaultChannelFor(version: string): UpdateChannel {
-  if (/-dev\b/u.test(version)) return 'dev';
-  return /-(beta|rc)\b/u.test(version) ? 'beta' : 'stable';
 }

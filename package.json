@@ -15,7 +15,10 @@
     "schema-lint": "tsx scripts/schema-lint.ts",
     "diff-fuzz": "tsx scripts/diff-fuzz.ts",
     "e2e:cloud": "bash scripts/e2e-cloud.sh",
-    "gen:preload": "tsx scripts/gen-preload.ts"
+    "gen:preload": "tsx scripts/gen-preload.ts",
+    "release:version": "tsx scripts/release-version.ts",
+    "release:manifest": "tsx scripts/release-manifest.ts",
+    "release:promote": "tsx scripts/release-promote.ts"
   },
   "devDependencies": {
     "@types/node": "^24.0.0",

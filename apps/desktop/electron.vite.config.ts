@@ -3,12 +3,15 @@ import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 import { resolve } from 'node:path';
 
+// A release build keeps source maps for crash symbolication without linking them; electron-builder leaves them out.
+const sourcemap = process.env.MUNEEM_SOURCEMAPS === '1' ? 'hidden' : false;
+
 export default defineConfig({
   main: {
     // Native + workspace deps stay external: better-sqlite3 / @node-rs/argon2 are loaded from node_modules at runtime.
     plugins: [externalizeDepsPlugin()],
     // The sync utility process (7d) is a second entry, emitted beside index.js as sync-worker.js.
-    build: { rollupOptions: { input: { index: resolve(__dirname, 'src/main/index.ts'), 'sync-worker': resolve(__dirname, 'src/sync-worker/index.ts') }, output: { format: 'es' } } },
+    build: { sourcemap, rollupOptions: { input: { index: resolve(__dirname, 'src/main/index.ts'), 'sync-worker': resolve(__dirname, 'src/sync-worker/index.ts') }, output: { format: 'es' } } },
   },
   preload: {
     plugins: [externalizeDepsPlugin()],
@@ -18,7 +21,7 @@ export default defineConfig({
   renderer: {
     root: resolve(__dirname, 'src/renderer'),
     plugins: [react(), tailwindcss()],
-    build: { rollupOptions: { input: resolve(__dirname, 'src/renderer/index.html') } },
+    build: { sourcemap, rollupOptions: { input: resolve(__dirname, 'src/renderer/index.html') } },
     resolve: { alias: { '@': resolve(__dirname, 'src/renderer/src') } },
   },
 });
