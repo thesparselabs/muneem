@@ -40,3 +40,4 @@ Template: Context → Decision → Consequences → Status.
 | [0033](0033-posting-dates-periods-late-postings.md) | Posting dates, periods and late postings |
 | [0034](0034-tie-outs-backfill-integrity.md) | Tie-outs, backfill and integrity |
 | [0035](0035-manual-journals-and-control-accounts.md) | Manual journals and control accounts |
+| [0036](0036-statements-read-the-balance-cache.md) | Statements read the balance cache for whole months |

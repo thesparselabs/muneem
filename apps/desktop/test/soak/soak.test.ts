@@ -65,7 +65,7 @@ describe(`Stage 6 exit: the books on ${DAYS} days of seeded trading`, () => {
     expect(unpostedDocuments(db, businessId)).toEqual([]);
     expect(journalsNotMatchingLines(db, businessId)).toBe(0);
     expect(balanceDrift(db, businessId)).toBe(0);
-  });
+  }, DAYS > 31 ? 120_000 : undefined);
 
   it('documents dated into locked months posted late', () => {
     expect(run.app.periods.latePostings().length).toBeGreaterThan(0);

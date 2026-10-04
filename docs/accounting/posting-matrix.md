@@ -134,6 +134,11 @@ accountant reclassifies it, for example to Drawings or an expense.
 
 Cash that moves for a payment or an expense posts with that document, not here.
 
+**Opening a register posts nothing.** The float comes from cash the business already holds, and 1100 is all the
+business's cash, in the drawer and out of it. The cash a shop starts with is recorded once, as a manual journal:
+Dr 1100 Cash, Cr 3400 Opening Balance Equity. Until it is, 1100 shows only what has moved since, and can read below
+zero even though the drawer holds money.
+
 ## Not posted yet
 
 - **Year end:** the closing and opening journals come in Stage 8. Until then, retained earnings are computed on the

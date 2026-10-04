@@ -126,6 +126,45 @@ All notable changes, newest first. Each entry records **what** changed and **why
     balances.
 - **Helpers and checking:** the journal form, statement layout and chart grouping have node tests. The screens are
   checked by typecheck and build, with a manual checklist in the plan.
+- **6f details written into the plan;** at the user's request, 6f was built by three agents in parallel worktrees and
+  integrated by the lead.
+- **Soak generator and exit test (6f-A).** A seeded, deterministic generator drives the real services day by day through
+  a controllable clock. It covers:
+  - openings on both sides and opening stock;
+  - cash, UPI, split and credit sales, including audited limit overrides;
+  - purchases with freight, inter-state and ITC-ineligible lines;
+  - debit notes;
+  - receipts and supplier payments, auto and chosen, including advances;
+  - cash, bank and credit expenses with and without GST;
+  - adjustments and stock takes;
+  - register close with variance, and cash in/out;
+  - cancels, write-offs, card settlements and drawings;
+  - month-end locks with backdated late postings.
+
+  **The exit test** checks that the Trial Balance balances (today and at each month end) and the Balance Sheet
+  balances. Each year's P&L equals the Balance Sheet's profit for the year, and P&L over the run equals the change in
+  equity apart from the owner's own money. Every tie-out holds, the party ledgers reconcile, replay = projection, and
+  no document is without a journal. CI runs 14 days (840 sales, crossing a month lock and 1 April); `pnpm soak` runs a
+  year locally.
+- **The 365-day soak passes** (Stage 6 exit): 98,550 sales, 106,379 journals, 624,710 lines and 54 late postings in
+  23 minutes, with every check green. The full-check test now has 2 minutes on runs longer than a month. Its 6.8 s of
+  checks had overrun the 5 s default, so the first run reported a timeout, not a wrong figure.
+- **Statements read the balance cache for whole months** (6f-B, ADR-0036).
+  - **Before:** at a year of data (983,831 journal lines) the Balance Sheet took 5.1 s, the Trial Balance 1.8 s and a
+    ledger page about 1 s.
+  - **The change:** whole months now come from `account_balance` and only part-month edges from the lines. Ledgers
+    walk the journal by date through a new index (migration `0013_accounting_indexes`).
+  - **After:** the Trial Balance takes under 50 ms, the P&L under 200 ms, the Balance Sheet 160–490 ms, and ledger and
+    day-book pages under 10 ms.
+  - **Unchanged results:** proved on 120 random ranges and 60 paged ledgers against the old implementation.
+  - **Not covered:** branch-filtered whole-year statements are still line-based (1–5 s) with no budget yet.
+  - **Sales speed:** `sales.complete` p95 with the journal step is 12 ms.
+- **The golden flows check the books (6f-C).** Both end with the Trial Balance and Balance Sheet balanced, profit
+  agreeing, every tie-out holding, and the key account balances pinned. A wrong comment in the Stage 5 flow (it said
+  the bill was ₹735; it is ₹700 including GST) is corrected.
+- **Opening cash is documented.** Opening a register posts nothing, because the float comes from cash the business
+  already holds. The cash a shop starts with is recorded once by manual journal (Dr 1100, Cr 3400); until then 1100
+  can read below zero. Noted in the posting matrix after the golden flow showed it.
 
 ### Fixed — Stage 5
 - **Cheap items were over-costed when sold** (ADR-0027, amends ADR-0018). An issue was costed at the average rounded

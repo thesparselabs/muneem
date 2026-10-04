@@ -34,7 +34,7 @@ describe('golden flow, parties, offline', () => {
     });
     expect(purchase.lines[0]).toMatchObject({ landedValuePaise: 110_000, unitCostPaise: 5500 });
 
-    // A customer buys 10 bags (₹735) and pays ₹235 cash, ₹500 on credit.
+    // A customer buys 10 bags at ₹70 including 5% GST (₹700) and pays ₹200 cash, ₹500 on credit.
     await call('pos.openRegister', { openingCashPaise: 100_000 });
     const meena = await call<Customer>('customers.create', { name: 'Meena', creditDays: 15 });
     await call('customers.setCreditLimit', { id: meena.id, version: meena.version, limitPaise: 100_000 });

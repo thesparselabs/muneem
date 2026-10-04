@@ -403,6 +403,46 @@ build and helper tests only):
 - **Golden flows:** extended to check the statements.
 - **Docs close-out:** build-stages, architecture, CHANGELOG, and the plan's "As built".
 
+6f details (drafted 2026-10-04; built by three parallel agents in separate worktrees, integrated by the lead, as the
+user asked):
+
+- **6f-A — Soak generator and exit test** (`apps/desktop/test/soak/`).
+  - **Driving it:** a seeded, deterministic generator drives the real services day by day through a controllable
+    clock (`testApp({ now })`), so documents carry their own business dates.
+  - **What it generates:**
+    - opening balances and opening stock on day one;
+    - every day: cash, UPI, split and credit sales; purchases with freight (some inter-state, some lines without ITC);
+      debit notes; receipts and supplier payments, auto and chosen; cash and credit expenses with and without GST;
+      adjustments and stock takes; register open and close with variance; cash in/out;
+    - now and then: cancels (payments, expenses, purchases), write-offs, manual journals (card settlement, drawings);
+    - at each month end: the previous month is locked, and a few documents are backdated into it to make late
+      postings.
+  - **Exit test,** checked after generation (`soak.test.ts`):
+    - the Trial Balance balances;
+    - the Balance Sheet balances;
+    - P&L for each FY equals that FY's "profit for the year", and over the whole run P&L = Δ equity excluding opening,
+      capital and drawings;
+    - every tie-out holds; the party ledgers reconcile; replay = projection;
+    - no document is without a journal, no journal differs from its lines, and the balance cache has no drift.
+  - **Size:** CI runs about 14 days. `MUNEEM_SOAK_DAYS=365` with about 270 sales a day (~100k sales) runs locally
+    through a `soak` script.
+- **6f-B — Speed** (`apps/desktop/test/perf/accounting.perf.test.ts`).
+  - **Data:** a year of journal volume (~1M lines), written in bulk through `postJournal`.
+  - **Budgets:** Trial Balance, P&L and Balance Sheet under 1 s each; an account ledger page and a day book page under
+    50 ms.
+  - **If the statements miss the budget,** their queries are optimised (for example, whole months read from
+    `account_balance`) while results stay identical, as the 6d tests prove.
+  - **Sales:** `sales.complete` p95 with the journal step stays under 250 ms (the existing sales perf test, measured
+    again).
+- **6f-C — Golden flows.** Both golden flows (Stage 3–4 billing and Stage 5 parties) also check the statements: the
+  Trial Balance and Balance Sheet balance, 1400 equals the valuation, and their key account balances are pinned.
+- **Lead:** merges the three branches, reruns the whole suite and the local year-long soak on one tree, and closes the
+  docs:
+  - build-stages: Stage 6 → Done with the evidence;
+  - architecture: an Accounting section and the new invariants;
+  - this plan's "As built";
+  - the CHANGELOG.
+
 ## Verification
 
 - **CI and checks:** `pnpm turbo run gen build typecheck lint test`, `pnpm schema-lint`, the Go job.
@@ -427,3 +467,26 @@ build and helper tests only):
   - multiple bank accounts in the payment forms (accounts can be added; payment screens use 1200);
   - card/UPI settlement entries (done by manual journal until a settlement screen exists);
   - cost centres.
+
+## As built (2026-10-04)
+
+- **Journals in each document's transaction,** built from the stored document by one builder per type, so the
+  backfill posts exactly what live posting does.
+- **Additions to the LLD:**
+  - **Sources:** journal sources gain `write_off`, `register_close` and `cash_movement`.
+  - **Uniqueness:** `ux_je_ref` includes `is_reversal_of`.
+  - **Accounts:** the `account` table gains `role` and `is_group`.
+- **The chart is seeded with the business,** not on first posting, so a first sale does not carry 47 audit rows.
+- **Purchases post on the supplier's bill date** (ADR-0033), which settles the Stage 5 FY question.
+- **Manual journals** never touch control accounts and are refused in locked months (ADR-0035, added in 6d).
+- **Statements read the balance cache for whole months** (ADR-0036, added in 6f, migration 0013), after the
+  year-of-data test showed the line-based queries missing their budgets.
+- **Opening a register posts nothing.** Opening cash is a manual journal (posting matrix note, found by the golden
+  flow).
+- **The ageing speed test times a median of five** (6b), because single calls caught garbage-collection pauses of the
+  test process.
+- **Not clicked through yet:** the screens are checked by typecheck, build and helper tests; the 6e manual checklist
+  is still to run.
+- **Built by agents:** 6f was built by three agents in parallel worktrees and integrated by the lead, as the user asked.
+- **Exit evidence:** the 365-day soak passes (98,550 sales, 106,379 journals, 624,710 lines, 54 late postings). Its
+  full-check test has 2 minutes on long runs, because 6.8 s of checks overran the 5 s default.
