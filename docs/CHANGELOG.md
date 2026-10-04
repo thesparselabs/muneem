@@ -12,6 +12,22 @@ All notable changes, newest first. Each entry records **what** changed and **why
   - **Before the pilot:** USB/Windows printing with ₹ and Indic text.
   - **Scale bar:** 500k transactions, 20k SKUs and 50k customers against the strict LLD §18 budgets.
   - **Monitoring:** self-hosted Prometheus, Loki and Grafana, with a self-hosted crash collector.
+- **Observability (9c, ADR-0053).** Why: production must be measurable and must alert before a shop notices, using
+  the self-hosted stack the user chose.
+  - **Cloud metrics:** on an internal port only. They cover requests and latency per route, ingest outcomes, dead
+    letters, jobs, readiness and the database pool.
+  - **Business-health probes:** they run every minute, through Go migration 0008's security-definer functions, so the
+    RLS-bound API role sees counts but no tenant rows. They cover silent devices, outbox depth and age, negative
+    stock, dead letters, audit breaks, rejections, backup age and unbalanced journals.
+  - **Push heartbeat:** each push carries one. Each device's nightly integrity report (tie-outs, replay, audit chain,
+    journal totals) is compared with the cloud's journals, which gives ADR-0054 its data.
+  - **Monitoring stack:** `deploy/monitoring` provisions Prometheus, Loki, Alloy and Grafana. Dashboards and 19 alert
+    rules are files, and each rule has a runbook in `docs/runbooks/`.
+  - **Crash collector:** self-hosted and Sentry-compatible (`muneem-api crash-collector`), with no extra database to
+    run.
+  - **Desktop crash reports (NFR-025):** opt-in per business and owner-controlled, with allow-list scrubbing (no
+    names, phones, GSTINs, amounts or free text). Minidumps stay on the machine.
+  - **Docs:** HLD §11 now says traces are deferred.
 - **Windows printing (9d, ADR-0055).** Why: pilot shops use USB printers installed through Windows.
   - **RAW mode:** receipts print on any installed Windows printer as RAW ESC/POS, through a fixed PowerShell
     `WritePrinter` helper. There is no shell, the name must be one Windows lists, and size and time are bounded.
