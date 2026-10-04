@@ -31,7 +31,7 @@ import {
 } from './accounting.js';
 import { CompleteSaleInput, CompleteSaleResult, HeldBill, HoldBillInput, Sale, SaleDraft, SaleListInput, SalePage, SaleQuote } from './sales.js';
 import { CancelSaleInput, CompleteReturnInput, CompleteReturnResult, CreditNote, CreditNoteListInput, CreditNotePage, ReturnDraft, ReturnQuote } from './returns.js';
-import { PrintJobSummary, PrinterConfig, ReceiptDoc } from './print.js';
+import { InstalledPrinter, PrintJobSummary, PrinterConfig, ReceiptDoc } from './print.js';
 import { SETTING_KEYS } from './settings.js';
 import { CloudBusiness, HydrationStartInput, HydrationStatus } from './hydration.js';
 import { Dashboard, ExportReportInput, ExportReportResult, ReportDefinitionView, ReportResult, RunReportInput } from './reports.js';
@@ -189,6 +189,7 @@ export const contract = {
 
   'printer.getConfig': spec({ input: Empty, output: PrinterConfig, permission: 'pos.view', rateLimit: { perSec: 5 } }),
   'printer.setConfig': spec({ input: PrinterConfig, output: PrinterConfig, permission: 'settings.manage', rateLimit: { perSec: 2 }, audit: true }),
+  'printer.listInstalled': spec({ input: Empty, output: z.array(InstalledPrinter), permission: 'pos.view', rateLimit: { perSec: 2 } }),
   'printer.testPrint': spec({ input: Empty, output: Ok, permission: 'pos.view', rateLimit: { perSec: 1 } }),
   'printer.getQueue': spec({ input: z.object({ limit: z.number().int().min(1).max(100).default(20) }), output: z.array(PrintJobSummary), permission: 'pos.view', rateLimit: { perSec: 5 } }),
   'printer.retryJob': spec({ input: z.object({ jobId: Ulid }), output: Ok, permission: 'pos.create', rateLimit: { perSec: 2 } }),

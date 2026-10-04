@@ -1,13 +1,16 @@
-import { AppError, type PrintJobSummary, type ReceiptDoc } from '@muneem/contracts';
+import { AppError, type InstalledPrinter, type PrintJobSummary, type PrinterConfig, type ReceiptDoc } from '@muneem/contracts';
 import { newUlid } from '@muneem/domain';
 import {
   firstPrintJobFor, getPrintJob, insertPrintJob, listPrintJobs, markPrintJob, nextCopyNo, unfinishedPrintJobs, type Db,
 } from '@muneem/db-sqlite';
 import type { Logger } from '../../infra/logger.js';
-import { drawerOnly, encodeEscPos } from './escpos.js';
-import { layoutReceipt, renderText } from './layout.js';
+import { renderEscPos } from './escpos.js';
+import { layoutReceipt, renderText, rupeeText, type PrintLine } from './layout.js';
 import type { PrinterConfigStore } from './printerConfig.js';
-import { printerFor, type ReceiptPrinter } from './printers.js';
+import { printerFor, type ReceiptJob, type ReceiptPrinter } from './printers.js';
+import type { LineRasteriser } from './raster.js';
+import { receiptHtml } from './receiptHtml.js';
+import { noSpooler, type SpoolerTransport } from './spooler.js';
 
 export interface PrintQueueDeps {
   db: () => Db;
@@ -15,10 +18,21 @@ export interface PrintQueueDeps {
   receiptsDir: string;
   log: Logger;
   timeoutMs?: number;
-  printer?: (config: ReturnType<PrinterConfigStore['get']>) => ReceiptPrinter;
+  deadlineMs?: number;
+  spooler?: SpoolerTransport;
+  rasteriser?: LineRasteriser;
+  printer?: (config: PrinterConfig) => ReceiptPrinter;
 }
 
 const DEFAULT_TIMEOUT_MS = 5000;
+// Every transport has its own timeout; this outer bound catches one that hangs anyway, so the queue always moves on.
+const DEFAULT_DEADLINE_MS = 30_000;
+
+function withDeadline<T>(work: Promise<T>, ms: number, message: string): Promise<T> {
+  let timer: NodeJS.Timeout | undefined;
+  const late = new Promise<never>((_, reject) => { timer = setTimeout(() => reject(new Error(message)), ms); });
+  return Promise.race([work, late]).finally(() => clearTimeout(timer));
+}
 
 // Jobs print one at a time, after the sale has committed; every outcome is recorded on the job and nothing is thrown back.
 export class PrintQueue {
@@ -62,20 +76,46 @@ export class PrintQueue {
 
   list(businessId: string, limit: number): PrintJobSummary[] { return listPrintJobs(this.d.db(), businessId, limit); }
 
+  installedPrinters(): Promise<InstalledPrinter[]> {
+    return withDeadline((this.d.spooler ?? noSpooler).list(), this.deadline(), 'Windows did not list its printers in time');
+  }
+
   async openDrawer(): Promise<void> {
-    await this.printer().send(drawerOnly(), '[drawer]', `drawer-${newUlid()}`);
+    await withDeadline(this.printer().kickDrawer(), this.deadline(), 'The printer did not open the drawer in time');
     this.d.log.info('drawer opened on request');
   }
 
+  // Shows on paper whether ₹ and Indic text come out right on this printer.
   async testPrint(): Promise<void> {
     const config = this.d.config.get();
-    const lines = [{ text: 'Muneem test print', align: 'center' as const, bold: true }, { text: `Width ${config.widthChars} columns`, align: 'center' as const }];
-    await this.printer().send(encodeEscPos(lines, { openDrawer: false, cut: true }), renderText(lines, config.widthChars), `test-${newUlid()}`);
+    const lines: PrintLine[] = [
+      { text: 'Muneem test print', align: 'center', bold: true },
+      { text: `Width ${config.widthChars} columns`, align: 'center' },
+      { text: `Rupee: ${rupeeText(config.rupee)} 1,234.50`, align: 'left' },
+      { text: 'हिंदी: नमस्ते, धन्यवाद', align: 'left' },
+      { text: 'தமிழ்: வணக்கம்', align: 'left' },
+    ];
+    await withDeadline(this.printer().print(this.job(lines, `test-${newUlid()}`, false, config)), this.deadline(), 'The printer did not respond in time');
   }
+
+  private deadline(): number { return this.d.deadlineMs ?? DEFAULT_DEADLINE_MS; }
 
   private printer(): ReceiptPrinter {
     const config = this.d.config.get();
-    return this.d.printer ? this.d.printer(config) : printerFor(config, this.d.receiptsDir, this.d.timeoutMs ?? DEFAULT_TIMEOUT_MS);
+    if (this.d.printer) return this.d.printer(config);
+    return printerFor(config, {
+      receiptsDir: this.d.receiptsDir, timeoutMs: this.d.timeoutMs ?? DEFAULT_TIMEOUT_MS, ...(this.d.spooler && { spooler: this.d.spooler }),
+      onDrawerError: (e) => this.d.log.warn({ err: e instanceof Error ? e.message : String(e) }, 'receipt printed but the drawer did not open'),
+    });
+  }
+
+  private job(lines: PrintLine[], name: string, openDrawer: boolean, config: PrinterConfig): ReceiptJob {
+    return {
+      name, openDrawer, text: renderText(lines, config.widthChars),
+      escpos: () => renderEscPos(lines, config.widthChars, { openDrawer, cut: true, rupee: config.rupee }, this.d.rasteriser,
+        (e) => this.d.log.warn({ err: e instanceof Error ? e.message : String(e) }, 'could not draw a receipt line as an image; it prints as plain text')),
+      page: () => receiptHtml(lines, config.widthChars),
+    };
   }
 
   private async process(jobId: string): Promise<void> {
@@ -93,10 +133,11 @@ export class PrintQueue {
     markPrintJob(db, jobId, 'printing');
     const config = this.d.config.get();
     try {
-      const lines = layoutReceipt(job.doc as ReceiptDoc, config.widthChars);
-      const firstAttempt = job.attemptCount === 0;
-      const bytes = encodeEscPos(lines, { openDrawer: job.openDrawer && firstAttempt && config.openDrawer, cut: true });
-      await this.printer().send(bytes, renderText(lines, config.widthChars), `${(job.doc as ReceiptDoc).docNumber.replace(/\//gu, '-')}-copy${job.copyNo}`);
+      const doc = job.doc as ReceiptDoc;
+      const lines = layoutReceipt(doc, config.widthChars, config.rupee);
+      const openDrawer = job.openDrawer && job.attemptCount === 0 && config.openDrawer;
+      const receipt = this.job(lines, `${doc.docNumber.replace(/\//gu, '-')}-copy${job.copyNo}`, openDrawer, config);
+      await withDeadline(this.printer().print(receipt), this.deadline(), 'The printer did not respond in time; check the paper before retrying');
       markPrintJob(db, jobId, 'done');
       this.d.log.info({ jobId, copyNo: job.copyNo }, 'receipt printed');
     } catch (e) {

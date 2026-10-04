@@ -7,6 +7,10 @@ files:
   - out/**
   - native/**
   - package.json
+# Receipt fonts for ₹ and Indic raster lines (OFL 1.1, licence beside them; ADR-0055).
+extraResources:
+  - from: resources/fonts
+    to: fonts
 asarUnpack:
   - native/**
   - "**/*.node"

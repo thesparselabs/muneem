@@ -18,6 +18,9 @@ import { registerIpc } from './ipc/gateway.js';
 import { currentSchemaVersion, restoreDatabaseFile, type Db } from '@muneem/db-sqlite';
 import { rmSync } from 'node:fs';
 import { startSyncWorker } from './sync/syncWorker.js';
+import { ElectronPagePrinter, ElectronPrinterDirectory, ElectronRasteriser, HiddenPrintPage, receiptFontsDir } from './infra/printSurface.js';
+import { PowerShellRawJob } from './services/print/rawSpoolJob.js';
+import { WindowsSpooler } from './services/print/spooler.js';
 
 app.setName('Muneem'); // userData → %APPDATA%/Muneem (before 'ready')
 const isDev = !app.isPackaged;
@@ -35,6 +38,8 @@ let mainWindow: BrowserWindow | null = null;
 let muneem: App | null = null;
 let db: Db | null = null;
 let stopSyncWorker: (() => void) | null = null;
+let printPage: HiddenPrintPage | null = null;
+const SPOOLER_TIMEOUT_MS = 20_000; // a cold PowerShell compiles its P/Invoke helper first
 
 const UPDATE_CHECK_EVERY_MS = 4 * 3600_000;
 const FIRST_UPDATE_CHECK_MS = 2 * 60_000;
@@ -49,6 +54,17 @@ function updateSource(loggers: Loggers): { updater: Updater | null; baseUrl: str
     onInstall: (installer) => { loggers.app.warn({ installer }, 'dev update feed: an installer would run here'); dialog.showErrorBox('Muneem (dev)', `A packaged build would now run:\n${installer}`); },
   });
   return { updater, baseUrl: pathToFileURL(dir).href };
+}
+
+// ADR-0055: ₹ and Indic lines are drawn everywhere; installed-printer (spooler) jobs exist only on Windows.
+function printing(loggers: Loggers) {
+  printPage = new HiddenPrintPage(receiptFontsDir(app.isPackaged, here), loggers.hardware);
+  const lineRasteriser = new ElectronRasteriser(printPage, 10_000);
+  if (process.platform !== 'win32') return { lineRasteriser };
+  const printSpooler = new WindowsSpooler({
+    directory: new ElectronPrinterDirectory(printPage), raw: new PowerShellRawJob({ timeoutMs: SPOOLER_TIMEOUT_MS }), pages: new ElectronPagePrinter(SPOOLER_TIMEOUT_MS),
+  });
+  return { lineRasteriser, printSpooler };
 }
 
 function nativeBindingPath(): string | undefined {
@@ -109,6 +125,7 @@ async function boot(): Promise<void> {
     db: () => db!, dbFile: paths.file, receiptsDir: join(userData, 'receipts'), backupsDir: paths.backups, bundlesDir: join(userData, 'support-bundles'), secrets, loggers,
     hydrationDir: join(userData, 'hydration'),
     saveFile: electronSaveFile(() => mainWindow), pdfRenderer: electronHtmlToPdf,
+    ...printing(loggers),
     apiBaseUrl, appVersion: app.getVersion(), platform: process.platform,
     isTrustedSender: (id) => mainWindow?.webContents.id === id,
     // 8f: a restore closes everything, swaps the database file and relaunches; the IPC reply goes out first.
@@ -190,7 +207,7 @@ function createWindow(): void {
     const allowed = process.env.ELECTRON_RENDERER_URL ? url.startsWith(process.env.ELECTRON_RENDERER_URL) : url.startsWith('file://');
     if (!allowed) e.preventDefault();
   });
-  mainWindow.on('closed', () => { mainWindow = null; });
+  mainWindow.on('closed', () => { mainWindow = null; printPage?.close(); });
   if (isDev && process.env.ELECTRON_RENDERER_URL) void mainWindow.loadURL(process.env.ELECTRON_RENDERER_URL);
   else void mainWindow.loadFile(RENDERER_INDEX);
 }

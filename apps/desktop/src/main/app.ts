@@ -21,6 +21,8 @@ import { CatalogContext } from './services/catalogContext.js';
 import { ImportService } from './services/import/importService.js';
 import { PrintQueue } from './services/print/printQueue.js';
 import { PrinterConfigStore } from './services/print/printerConfig.js';
+import type { LineRasteriser } from './services/print/raster.js';
+import type { SpoolerTransport } from './services/print/spooler.js';
 import { PreviewStore } from './services/import/previewStore.js';
 import { PricingService } from './services/pricing.js';
 import { CustomerService } from './services/pos/customers.js';
@@ -112,6 +114,8 @@ export interface AppConfig {
   updater?: Updater | null;
   updateBaseUrl?: string;
   registerIdleMs?: number;
+  printSpooler?: SpoolerTransport;
+  lineRasteriser?: LineRasteriser;
 }
 
 export function createApp(cfg: AppConfig) {
@@ -176,7 +180,10 @@ export function createApp(cfg: AppConfig) {
   const inventory = new InventoryService(posCtx);
   const openingImport = new OpeningImportService(posCtx, inventory, new PreviewStore(cfg.now ?? (() => Date.now())));
   const printerConfig = new PrinterConfigStore(cfg.db);
-  const printQueue = new PrintQueue({ db: cfg.db, config: printerConfig, receiptsDir: cfg.receiptsDir, log: cfg.loggers.hardware });
+  const printQueue = new PrintQueue({
+    db: cfg.db, config: printerConfig, receiptsDir: cfg.receiptsDir, log: cfg.loggers.hardware,
+    ...(cfg.printSpooler && { spooler: cfg.printSpooler }), ...(cfg.lineRasteriser && { rasteriser: cfg.lineRasteriser }),
+  });
   const sales = new SaleService(posCtx, new SalePricing(posCtx), register, () => session.require().user.name, (r) => printQueue.enqueue(r.printJobId));
   const returns = new ReturnService(posCtx, () => session.require().user.name, (r) => printQueue.enqueue(r.printJobId));
   const productImport = new ImportService(catalogCtx, new PreviewStore(cfg.now ?? (() => Date.now())), invalidateSearch);
@@ -401,6 +408,7 @@ export function createApp(cfg: AppConfig) {
     'returns.reprint': (i) => { returns.get(i.creditNoteId); return { jobId: printQueue.reprint(i.creditNoteId, posCtx.userId()) }; },
     'printer.getConfig': () => printerConfig.get(),
     'printer.setConfig': (i) => printerConfig.set(i),
+    'printer.listInstalled': () => printQueue.installedPrinters(),
     'printer.testPrint': async () => { await printQueue.testPrint(); return { ok: true as const }; },
     'printer.getQueue': (i) => printQueue.list(posCtx.businessId(), i.limit),
     'printer.retryJob': (i) => { printQueue.retry(i.jobId, posCtx.businessId()); return { ok: true as const }; },

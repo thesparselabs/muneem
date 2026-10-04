@@ -3,7 +3,7 @@ import { getMeta, setMeta, type Db } from '@muneem/db-sqlite';
 
 const KEY = 'printer.config';
 // No printer yet means receipts go to files, so billing and reprints can be checked end to end.
-export const DEFAULT_PRINTER: PrinterConfig = { kind: 'simulator', port: 9100, widthChars: 42, openDrawer: true };
+export const DEFAULT_PRINTER: PrinterConfig = { kind: 'simulator', port: 9100, mode: 'escpos', rupee: 'Rs', widthChars: 42, openDrawer: true };
 
 // Device-local: each till has its own printer, so this lives in app_meta and never syncs (ADR-0015).
 export class PrinterConfigStore {
