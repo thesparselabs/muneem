@@ -230,13 +230,17 @@ gzipped.
   An unknown entity type is permanent-but-retryable after an upgrade (FR-105). It is treated as `transient` with a
   long backoff.
 
-**Payloads keep their current shapes.** Shops already hold outbox rows with today's payloads, so version 1 of the wire
-*is* those shapes. Every one gets a zod schema in `src/sync/payloads.ts`:
+**Payloads keep their current shapes, plus what sync needs.** No shop runs the app yet (the pilot is Stage 9), so
+payloads can gain fields freely, and old development databases are reset rather than migrated. Every payload gets a
+zod schema in `src/sync/payloads.ts`:
 - **Fields:** the known fields are typed, and unknown fields pass through.
-- **Gaps:** fields an apply path needs but a payload lacks are added from now on. The apply path tolerates their
-  absence in older rows by reading from the document's other fields.
-- **Census test:** a desktop test runs the golden flows and a short soak, and every outbox payload must parse with
-  its schema.
+- **Gaps closed in 7a:**
+  - a journal payload also carries `source`, `refType`, `refId`, `docDate`, `narration`, `branchId`, `terminalId`,
+    `latePosting` and `reversalOf`;
+  - a movement carries `occurredAt` and `warehouseId`.
+- **Gaps found later:** the device agent closes any gaps 7e uncovers.
+- **Census test:** a desktop test runs a short soak and the golden flows, and every outbox payload must parse with its
+  schema.
 
 **Protocol fixtures** (`packages/contracts/fixtures/sync/`): JSON request/response pairs for:
 - push applied;
@@ -249,14 +253,23 @@ gzipped.
 
 The TS reference server (7d) and the Go server (7b/7c) both load and pass them.
 
-**Decisions:** ADRs 0038–0042, as in Design. ADR-0040 adds that `postJournal` stays the only journal writer, gaining a
-synced mode with a given id, number and entry date.
+**Decisions:** ADRs 0038–0042, as in Design. ADR-0040 adds two rules:
+- **The journal writer:** `postJournal` stays the only journal writer, gaining a synced mode with a given id, number
+  and entry date.
+- **Natural keys:** rows each device makes on demand under its own ids are matched by natural key, not id:
+  - periods by month;
+  - accounts by code;
+  - units, categories and expense categories by code;
+  - the default price list by kind.
+
+  So a pulled journal finds this device's period for its month, and seeding never duplicates a row that came from
+  the cloud.
 
 ### 7b — Cloud ingest (agent "cloud")
 
 - **Migration `0002_sync`:** as in Schema, with RLS like 0001's. `change_log.seq` is one `BIGSERIAL` shared across
   businesses; monotonic per business is enough.
-- **The push handler** (`internal/sync/push.go`, service + store split like `business/`):
+- **The push handler** (`internal/devicesync/push.go`, service + store split like `business/`):
   - **Per operation, in its own transaction:**
     1. idempotency;
     2. dependency check: `dependsOn` must be applied, and so must any referenced party, session or document the
@@ -269,7 +282,7 @@ synced mode with a given id, number and entry date.
   - **Business created offline:** a `business` create from a device whose user belongs to the payload's organization
     creates the business and the owner membership. Anything else for an unknown business gets `BUSINESS_UNKNOWN`.
   - **Device bookkeeping:** `device.last_push_seq` and `clock_skew_ms` are updated.
-- **Verification** (`internal/sync/verify/`):
+- **Verification** (`internal/devicesync/verify/`):
   - **Sales and purchases:** each line's GST is recomputed with the Go `gst` port from the payload's line inputs. The
     totals must equal Σ lines ± round-off, and tenders must equal total + change.
   - **Every journal:** debits = credits. For each document type, the tax heads, party control line and stock lines
@@ -350,7 +363,7 @@ synced mode with a given id, number and entry date.
 
 ### 7f — Hydration (agent "cloud" for the builder; the lead or the "device" agent for the import)
 
-- **The cloud builder** (`internal/sync/snapshot/`):
+- **The cloud builder** (`internal/devicesync/snapshot/`):
   - **Contents:** the latest `entity_state` per entity as change records, in stream order then seq, written as gzipped
     NDJSON. A header line holds `{format, version: 1, businessId, asOfSeq, counts}`.
   - **Delivery:** uploaded to S3-compatible storage (`minio` added to docker-compose; `MUNEEM_S3_*` env), then a

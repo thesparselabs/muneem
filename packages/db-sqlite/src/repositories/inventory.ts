@@ -70,7 +70,7 @@ export interface MovementInput {
 
 export interface PostedMovement {
   id: string; productId: string; type: MovementType; qtyMilli: number; valuePaise: number; unitCostPaise: number; provisional: boolean;
-  refType: RefType; refId: string; refLineId: string | null; reasonCode: ReasonCode | null;
+  refType: RefType; refId: string; refLineId: string | null; reasonCode: ReasonCode | null; warehouseId: string; occurredAt: string;
 }
 
 function insertMovement(db: Db, m: PostedMovement, businessId: string, warehouseId: string, note: string | null, actor: Actor, at: string): void {
@@ -89,7 +89,7 @@ export function postMovement(db: Db, input: MovementInput, actor: Actor): Posted
   const at = nowIso();
   const before = stockState(db, input.businessId, input.warehouseId, input.productId);
   const base = {
-    productId: input.productId, type: input.type, qtyMilli: input.qtyMilli, refType: input.refType, refId: input.refId,
+    warehouseId: input.warehouseId, occurredAt: at, productId: input.productId, type: input.type, qtyMilli: input.qtyMilli, refType: input.refType, refId: input.refId,
     refLineId: input.refLineId ?? null, reasonCode: input.reasonCode ?? null,
   };
   const posted: PostedMovement[] = [];
@@ -99,7 +99,7 @@ export function postMovement(db: Db, input: MovementInput, actor: Actor): Posted
     posted.push({ ...base, id: newUlid(), valuePaise: r.receiptDeltaPaise, unitCostPaise: r.state.lastUnitCostPaise, provisional: false });
     if (r.correctionPaise !== 0) {
       posted.push({
-        id: newUlid(), productId: input.productId, type: 'cost_correction', qtyMilli: 0, valuePaise: r.correctionPaise, unitCostPaise: 0,
+        id: newUlid(), warehouseId: input.warehouseId, occurredAt: at, productId: input.productId, type: 'cost_correction', qtyMilli: 0, valuePaise: r.correctionPaise, unitCostPaise: 0,
         provisional: false, refType: 'correction', refId: posted[0]!.id, refLineId: null, reasonCode: null,
       });
     }
@@ -109,7 +109,7 @@ export function postMovement(db: Db, input: MovementInput, actor: Actor): Posted
     posted.push({ ...base, id: newUlid(), valuePaise: r.returnDeltaPaise, unitCostPaise: r.unitCostPaise, provisional: r.provisional });
     if (r.correctionPaise !== 0) {
       posted.push({
-        id: newUlid(), productId: input.productId, type: 'cost_correction', qtyMilli: 0, valuePaise: r.correctionPaise, unitCostPaise: 0,
+        id: newUlid(), warehouseId: input.warehouseId, occurredAt: at, productId: input.productId, type: 'cost_correction', qtyMilli: 0, valuePaise: r.correctionPaise, unitCostPaise: 0,
         provisional: false, refType: 'correction', refId: posted[0]!.id, refLineId: null, reasonCode: null,
       });
     }
@@ -191,12 +191,12 @@ export const rebuildStockLevels = (db: Db, businessId: string, productIds?: read
   rewriteLevels(db, businessId, stockKeys(db, businessId, productIds));
 
 export function movementsForRef(db: Db, businessId: string, refType: RefType, refId: string): PostedMovement[] {
-  return (stmt(db, `SELECT id, product_id, movement_type, signed_qty_milli, value_paise, unit_cost_paise, cost_provisional, ref_type, ref_id, ref_line_id, reason_code
-    FROM stock_movement WHERE business_id = ? AND ref_type = ? AND ref_id = ? ORDER BY rowid`).all(businessId, refType, refId) as {
-    id: string; product_id: string; movement_type: MovementType; signed_qty_milli: number; value_paise: number; unit_cost_paise: number;
-    cost_provisional: number; ref_type: RefType; ref_id: string; ref_line_id: string | null; reason_code: ReasonCode | null;
+  return (stmt(db, `SELECT id, warehouse_id, occurred_at, product_id, movement_type, signed_qty_milli, value_paise, unit_cost_paise, cost_provisional, ref_type, ref_id,
+      ref_line_id, reason_code FROM stock_movement WHERE business_id = ? AND ref_type = ? AND ref_id = ? ORDER BY rowid`).all(businessId, refType, refId) as {
+    id: string; warehouse_id: string; occurred_at: string; product_id: string; movement_type: MovementType; signed_qty_milli: number; value_paise: number;
+    unit_cost_paise: number; cost_provisional: number; ref_type: RefType; ref_id: string; ref_line_id: string | null; reason_code: ReasonCode | null;
   }[]).map((r) => ({
-    id: r.id, productId: r.product_id, type: r.movement_type, qtyMilli: r.signed_qty_milli, valuePaise: r.value_paise, unitCostPaise: r.unit_cost_paise,
+    id: r.id, warehouseId: r.warehouse_id, occurredAt: r.occurred_at, productId: r.product_id, type: r.movement_type, qtyMilli: r.signed_qty_milli, valuePaise: r.value_paise, unitCostPaise: r.unit_cost_paise,
     provisional: r.cost_provisional === 1, refType: r.ref_type, refId: r.ref_id, refLineId: r.ref_line_id, reasonCode: r.reason_code,
   }));
 }

@@ -14,6 +14,7 @@ import (
 	"github.com/sparselabs/muneem/cloud/internal/auth"
 	"github.com/sparselabs/muneem/cloud/internal/business"
 	"github.com/sparselabs/muneem/cloud/internal/device"
+	"github.com/sparselabs/muneem/cloud/internal/devicesync"
 	"github.com/sparselabs/muneem/cloud/internal/httpx"
 	"github.com/sparselabs/muneem/cloud/internal/store"
 )
@@ -22,11 +23,13 @@ import (
 type authHandler = auth.Handler
 type deviceHandler = device.Handler
 type businessHandler = business.Handler
+type syncHandler = devicesync.Handler
 
 type handlers struct {
 	*authHandler
 	*deviceHandler
 	*businessHandler
+	*syncHandler
 	httpx.Health
 }
 
@@ -66,6 +69,7 @@ func main() {
 		authHandler:     &auth.Handler{DB: db, Signer: signer},
 		deviceHandler:   &device.Handler{DB: db, Verifier: verifier},
 		businessHandler: &business.Handler{DB: db},
+		syncHandler:     &devicesync.Handler{},
 	}
 	e := httpx.New(httpx.Deps{Handlers: h, RequireAuth: signer.Require, DeviceVerifier: verifier.Middleware, Logger: log})
 	port := os.Getenv("PORT")

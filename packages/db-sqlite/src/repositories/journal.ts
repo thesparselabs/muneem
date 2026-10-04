@@ -20,7 +20,12 @@ export interface JournalInput {
   entryNo?: string;            // the document's own number; otherwise a J number from the terminal's journal series
   docDate: string; narration?: string | null; lines: readonly JournalLine[];
 }
-export interface PostedJournal { id: string; entryNo: string; entryDate: string; periodId: string; lines: readonly JournalLine[] }
+// Everything another device needs to store the same journal (Stage 7a).
+export interface PostedJournal {
+  id: string; entryNo: string; entryDate: string; periodId: string; lines: readonly JournalLine[];
+  source: JournalSource; refType: string; refId: string; docDate: string; narration: string | null; branchId: string | null; terminalId: string | null;
+  latePosting: boolean; reversalOf: string | null;
+}
 
 // ADR-0033: a document dated into a locked month posts into the earliest open month after it, on that month's first day.
 function postingPeriod(db: Db, businessId: string, docDate: string, actor: Actor): { periodId: string; entryDate: string; late: boolean } {
@@ -104,7 +109,10 @@ export function postJournal(db: Db, j: JournalInput, actor: Actor, reversalOf: s
     line.run(newUlid(), id, j.businessId, i + 1, accountIds[i], l.debitPaise, l.creditPaise, l.party?.partyType ?? null, l.party?.partyId ?? null);
     balance.run(j.businessId, accountIds[i], periodId, l.debitPaise, l.creditPaise);
   });
-  return { id, entryNo, entryDate, periodId, lines: j.lines };
+  return {
+    id, entryNo, entryDate, periodId, lines: j.lines, source: j.source, refType: j.refType, refId: j.refId, docDate: j.docDate, narration: j.narration ?? null,
+    branchId: j.branchId ?? null, terminalId: j.terminalId ?? null, latePosting: late, reversalOf,
+  };
 }
 
 type LineRow = { debit_paise: number; credit_paise: number; party_type: 'customer' | 'supplier' | null; party_id: string | null; code: string; role: string | null };

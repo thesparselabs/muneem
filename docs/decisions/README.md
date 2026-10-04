@@ -42,3 +42,8 @@ Template: Context → Decision → Consequences → Status.
 | [0035](0035-manual-journals-and-control-accounts.md) | Manual journals and control accounts |
 | [0036](0036-statements-read-the-balance-cache.md) | Statements read the balance cache for whole months |
 | [0037](0037-who-numbers-a-journal.md) | Who numbers a journal, and when a terminal is needed |
+| [0038](0038-cloud-storage-for-synced-entities.md) | Cloud storage for synced entities |
+| [0039](0039-device-identity-on-the-wire.md) | Device identity on the wire, and businesses created offline |
+| [0040](0040-applying-pulled-documents.md) | Applying another terminal's documents |
+| [0041](0041-conflict-matrix-as-built.md) | The conflict matrix as built |
+| [0042](0042-how-sync-is-tested.md) | How sync is tested |

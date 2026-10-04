@@ -14,3 +14,5 @@ export * from './ipc/accounting.js';
 export * from './ipc/registry.js';
 export * from './sync/types.js';
 export * from './http/index.js';
+export * from './sync/protocol.js';
+export * from './sync/payloads.js';

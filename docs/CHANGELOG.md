@@ -13,6 +13,19 @@ All notable changes, newest first. Each entry records **what** changed and **why
   - **Hydration:** NDJSON bundles via S3-compatible storage.
 
   Build stages now show Stage 6 merged (PR #7) and Stage 7 in progress.
+- **Sync protocol and payloads (7a).**
+  - **The wire:** `POST /sync/push`, `GET /sync/pull` and `POST|GET /sync/bootstrap` in the OpenAPI spec, the zod
+    wire types in `@muneem/contracts` (`protocol.ts`), and a fixed stream per entity type. The Go server answers 501
+    until 7b.
+  - **Payload schemas:** every outbox payload has a schema (`payloads.ts`). A census test checks every payload a
+    seeded run records against its schema.
+  - **What payloads gained:** journals carry their source, reference, document date, narration, branch, terminal,
+    late flag and reversal; movements carry their warehouse and time. Another device needs these to store the same
+    rows.
+  - **Protocol fixtures** (`packages/contracts/fixtures/sync`) were recorded from a real flow: applied and duplicate,
+    a tampered total, a missing dependency, another device's pull, and a price conflict. Both servers must pass them.
+  - **Decisions:** ADRs 0038–0042 cover cloud storage, device identity, applying pulled documents, the conflict
+    matrix and the test approach.
 
 ### Added — Stage 6 accounting
 - **Stage 6 plan (`docs/plans/stage-6-accounting.md`).** Decided with the user:
