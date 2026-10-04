@@ -1,0 +1,2643 @@
+{
+ "version": 1,
+ "cases": [
+  {
+   "name": "HAND IGST credit is used up first even when CGST and SGST credit could pay",
+   "liability": {
+    "igstPaise": 1000,
+    "cgstPaise": 500,
+    "sgstPaise": 500,
+    "cessPaise": 50
+   },
+   "credit": {
+    "igstPaise": 2000,
+    "cgstPaise": 800,
+    "sgstPaise": 800,
+    "cessPaise": 80
+   },
+   "expected": {
+    "liability": {
+     "igstPaise": 1000,
+     "cgstPaise": 500,
+     "sgstPaise": 500,
+     "cessPaise": 50
+    },
+    "credit": {
+     "igstPaise": 2000,
+     "cgstPaise": 800,
+     "sgstPaise": 800,
+     "cessPaise": 80
+    },
+    "utilisation": {
+     "igstToIgstPaise": 1000,
+     "igstToCgstPaise": 500,
+     "igstToSgstPaise": 500,
+     "cgstToCgstPaise": 0,
+     "cgstToIgstPaise": 0,
+     "sgstToSgstPaise": 0,
+     "sgstToIgstPaise": 0,
+     "cessToCessPaise": 50
+    },
+    "creditUsed": {
+     "igstPaise": 2000,
+     "cgstPaise": 0,
+     "sgstPaise": 0,
+     "cessPaise": 50
+    },
+    "creditLeft": {
+     "igstPaise": 0,
+     "cgstPaise": 800,
+     "sgstPaise": 800,
+     "cessPaise": 30
+    },
+    "cash": {
+     "igstPaise": 0,
+     "cgstPaise": 0,
+     "sgstPaise": 0,
+     "cessPaise": 0
+    }
+   }
+  },
+  {
+   "name": "HAND IGST credit pays IGST, then the CGST and SGST their own credit cannot cover",
+   "liability": {
+    "igstPaise": 1000,
+    "cgstPaise": 900,
+    "sgstPaise": 900,
+    "cessPaise": 0
+   },
+   "credit": {
+    "igstPaise": 1600,
+    "cgstPaise": 600,
+    "sgstPaise": 900,
+    "cessPaise": 0
+   },
+   "expected": {
+    "liability": {
+     "igstPaise": 1000,
+     "cgstPaise": 900,
+     "sgstPaise": 900,
+     "cessPaise": 0
+    },
+    "credit": {
+     "igstPaise": 1600,
+     "cgstPaise": 600,
+     "sgstPaise": 900,
+     "cessPaise": 0
+    },
+    "utilisation": {
+     "igstToIgstPaise": 1000,
+     "igstToCgstPaise": 600,
+     "igstToSgstPaise": 0,
+     "cgstToCgstPaise": 300,
+     "cgstToIgstPaise": 0,
+     "sgstToSgstPaise": 900,
+     "sgstToIgstPaise": 0,
+     "cessToCessPaise": 0
+    },
+    "creditUsed": {
+     "igstPaise": 1600,
+     "cgstPaise": 300,
+     "sgstPaise": 900,
+     "cessPaise": 0
+    },
+    "creditLeft": {
+     "igstPaise": 0,
+     "cgstPaise": 300,
+     "sgstPaise": 0,
+     "cessPaise": 0
+    },
+    "cash": {
+     "igstPaise": 0,
+     "cgstPaise": 0,
+     "sgstPaise": 0,
+     "cessPaise": 0
+    }
+   }
+  },
+  {
+   "name": "HAND CGST credit never pays SGST",
+   "liability": {
+    "igstPaise": 0,
+    "cgstPaise": 0,
+    "sgstPaise": 1000,
+    "cessPaise": 0
+   },
+   "credit": {
+    "igstPaise": 0,
+    "cgstPaise": 5000,
+    "sgstPaise": 0,
+    "cessPaise": 0
+   },
+   "expected": {
+    "liability": {
+     "igstPaise": 0,
+     "cgstPaise": 0,
+     "sgstPaise": 1000,
+     "cessPaise": 0
+    },
+    "credit": {
+     "igstPaise": 0,
+     "cgstPaise": 5000,
+     "sgstPaise": 0,
+     "cessPaise": 0
+    },
+    "utilisation": {
+     "igstToIgstPaise": 0,
+     "igstToCgstPaise": 0,
+     "igstToSgstPaise": 0,
+     "cgstToCgstPaise": 0,
+     "cgstToIgstPaise": 0,
+     "sgstToSgstPaise": 0,
+     "sgstToIgstPaise": 0,
+     "cessToCessPaise": 0
+    },
+    "creditUsed": {
+     "igstPaise": 0,
+     "cgstPaise": 0,
+     "sgstPaise": 0,
+     "cessPaise": 0
+    },
+    "creditLeft": {
+     "igstPaise": 0,
+     "cgstPaise": 5000,
+     "sgstPaise": 0,
+     "cessPaise": 0
+    },
+    "cash": {
+     "igstPaise": 0,
+     "cgstPaise": 0,
+     "sgstPaise": 1000,
+     "cessPaise": 0
+    }
+   }
+  },
+  {
+   "name": "HAND SGST credit pays IGST after SGST",
+   "liability": {
+    "igstPaise": 1000,
+    "cgstPaise": 0,
+    "sgstPaise": 200,
+    "cessPaise": 0
+   },
+   "credit": {
+    "igstPaise": 0,
+    "cgstPaise": 0,
+    "sgstPaise": 900,
+    "cessPaise": 0
+   },
+   "expected": {
+    "liability": {
+     "igstPaise": 1000,
+     "cgstPaise": 0,
+     "sgstPaise": 200,
+     "cessPaise": 0
+    },
+    "credit": {
+     "igstPaise": 0,
+     "cgstPaise": 0,
+     "sgstPaise": 900,
+     "cessPaise": 0
+    },
+    "utilisation": {
+     "igstToIgstPaise": 0,
+     "igstToCgstPaise": 0,
+     "igstToSgstPaise": 0,
+     "cgstToCgstPaise": 0,
+     "cgstToIgstPaise": 0,
+     "sgstToSgstPaise": 200,
+     "sgstToIgstPaise": 700,
+     "cessToCessPaise": 0
+    },
+    "creditUsed": {
+     "igstPaise": 0,
+     "cgstPaise": 0,
+     "sgstPaise": 900,
+     "cessPaise": 0
+    },
+    "creditLeft": {
+     "igstPaise": 0,
+     "cgstPaise": 0,
+     "sgstPaise": 0,
+     "cessPaise": 0
+    },
+    "cash": {
+     "igstPaise": 300,
+     "cgstPaise": 0,
+     "sgstPaise": 0,
+     "cessPaise": 0
+    }
+   }
+  },
+  {
+   "name": "HAND cess pays only cess",
+   "liability": {
+    "igstPaise": 100,
+    "cgstPaise": 0,
+    "sgstPaise": 0,
+    "cessPaise": 500
+   },
+   "credit": {
+    "igstPaise": 0,
+    "cgstPaise": 0,
+    "sgstPaise": 0,
+    "cessPaise": 2000
+   },
+   "expected": {
+    "liability": {
+     "igstPaise": 100,
+     "cgstPaise": 0,
+     "sgstPaise": 0,
+     "cessPaise": 500
+    },
+    "credit": {
+     "igstPaise": 0,
+     "cgstPaise": 0,
+     "sgstPaise": 0,
+     "cessPaise": 2000
+    },
+    "utilisation": {
+     "igstToIgstPaise": 0,
+     "igstToCgstPaise": 0,
+     "igstToSgstPaise": 0,
+     "cgstToCgstPaise": 0,
+     "cgstToIgstPaise": 0,
+     "sgstToSgstPaise": 0,
+     "sgstToIgstPaise": 0,
+     "cessToCessPaise": 500
+    },
+    "creditUsed": {
+     "igstPaise": 0,
+     "cgstPaise": 0,
+     "sgstPaise": 0,
+     "cessPaise": 500
+    },
+    "creditLeft": {
+     "igstPaise": 0,
+     "cgstPaise": 0,
+     "sgstPaise": 0,
+     "cessPaise": 1500
+    },
+    "cash": {
+     "igstPaise": 100,
+     "cgstPaise": 0,
+     "sgstPaise": 0,
+     "cessPaise": 0
+    }
+   }
+  },
+  {
+   "name": "HAND nothing to set off",
+   "liability": {
+    "igstPaise": 0,
+    "cgstPaise": 0,
+    "sgstPaise": 0,
+    "cessPaise": 0
+   },
+   "credit": {
+    "igstPaise": 0,
+    "cgstPaise": 0,
+    "sgstPaise": 0,
+    "cessPaise": 0
+   },
+   "expected": {
+    "liability": {
+     "igstPaise": 0,
+     "cgstPaise": 0,
+     "sgstPaise": 0,
+     "cessPaise": 0
+    },
+    "credit": {
+     "igstPaise": 0,
+     "cgstPaise": 0,
+     "sgstPaise": 0,
+     "cessPaise": 0
+    },
+    "utilisation": {
+     "igstToIgstPaise": 0,
+     "igstToCgstPaise": 0,
+     "igstToSgstPaise": 0,
+     "cgstToCgstPaise": 0,
+     "cgstToIgstPaise": 0,
+     "sgstToSgstPaise": 0,
+     "sgstToIgstPaise": 0,
+     "cessToCessPaise": 0
+    },
+    "creditUsed": {
+     "igstPaise": 0,
+     "cgstPaise": 0,
+     "sgstPaise": 0,
+     "cessPaise": 0
+    },
+    "creditLeft": {
+     "igstPaise": 0,
+     "cgstPaise": 0,
+     "sgstPaise": 0,
+     "cessPaise": 0
+    },
+    "cash": {
+     "igstPaise": 0,
+     "cgstPaise": 0,
+     "sgstPaise": 0,
+     "cessPaise": 0
+    }
+   }
+  },
+  {
+   "name": "HAND negative liability refused",
+   "liability": {
+    "igstPaise": -1,
+    "cgstPaise": 0,
+    "sgstPaise": 0,
+    "cessPaise": 0
+   },
+   "credit": {
+    "igstPaise": 0,
+    "cgstPaise": 0,
+    "sgstPaise": 0,
+    "cessPaise": 0
+   },
+   "error": "INVALID_INPUT"
+  },
+  {
+   "name": "GEN 1",
+   "liability": {
+    "igstPaise": 250,
+    "cgstPaise": 397,
+    "sgstPaise": 218,
+    "cessPaise": 248
+   },
+   "credit": {
+    "igstPaise": 5253266,
+    "cgstPaise": 9289720,
+    "sgstPaise": 559378,
+    "cessPaise": 9274143
+   },
+   "expected": {
+    "liability": {
+     "igstPaise": 250,
+     "cgstPaise": 397,
+     "sgstPaise": 218,
+     "cessPaise": 248
+    },
+    "credit": {
+     "igstPaise": 5253266,
+     "cgstPaise": 9289720,
+     "sgstPaise": 559378,
+     "cessPaise": 9274143
+    },
+    "utilisation": {
+     "igstToIgstPaise": 250,
+     "igstToCgstPaise": 397,
+     "igstToSgstPaise": 218,
+     "cgstToCgstPaise": 0,
+     "cgstToIgstPaise": 0,
+     "sgstToSgstPaise": 0,
+     "sgstToIgstPaise": 0,
+     "cessToCessPaise": 248
+    },
+    "creditUsed": {
+     "igstPaise": 865,
+     "cgstPaise": 0,
+     "sgstPaise": 0,
+     "cessPaise": 248
+    },
+    "creditLeft": {
+     "igstPaise": 5252401,
+     "cgstPaise": 9289720,
+     "sgstPaise": 559378,
+     "cessPaise": 9273895
+    },
+    "cash": {
+     "igstPaise": 0,
+     "cgstPaise": 0,
+     "sgstPaise": 0,
+     "cessPaise": 0
+    }
+   }
+  },
+  {
+   "name": "GEN 2",
+   "liability": {
+    "igstPaise": 2763952,
+    "cgstPaise": 4069356,
+    "sgstPaise": 1112490,
+    "cessPaise": 2170473
+   },
+   "credit": {
+    "igstPaise": 2035298,
+    "cgstPaise": 663839,
+    "sgstPaise": 1231194,
+    "cessPaise": 1442368
+   },
+   "expected": {
+    "liability": {
+     "igstPaise": 2763952,
+     "cgstPaise": 4069356,
+     "sgstPaise": 1112490,
+     "cessPaise": 2170473
+    },
+    "credit": {
+     "igstPaise": 2035298,
+     "cgstPaise": 663839,
+     "sgstPaise": 1231194,
+     "cessPaise": 1442368
+    },
+    "utilisation": {
+     "igstToIgstPaise": 2035298,
+     "igstToCgstPaise": 0,
+     "igstToSgstPaise": 0,
+     "cgstToCgstPaise": 663839,
+     "cgstToIgstPaise": 0,
+     "sgstToSgstPaise": 1112490,
+     "sgstToIgstPaise": 118704,
+     "cessToCessPaise": 1442368
+    },
+    "creditUsed": {
+     "igstPaise": 2035298,
+     "cgstPaise": 663839,
+     "sgstPaise": 1231194,
+     "cessPaise": 1442368
+    },
+    "creditLeft": {
+     "igstPaise": 0,
+     "cgstPaise": 0,
+     "sgstPaise": 0,
+     "cessPaise": 0
+    },
+    "cash": {
+     "igstPaise": 609950,
+     "cgstPaise": 3405517,
+     "sgstPaise": 0,
+     "cessPaise": 728105
+    }
+   }
+  },
+  {
+   "name": "GEN 3",
+   "liability": {
+    "igstPaise": 2355035,
+    "cgstPaise": 2876839,
+    "sgstPaise": 1728403,
+    "cessPaise": 2651230
+   },
+   "credit": {
+    "igstPaise": 950769,
+    "cgstPaise": 1790579,
+    "sgstPaise": 1020535,
+    "cessPaise": 535422
+   },
+   "expected": {
+    "liability": {
+     "igstPaise": 2355035,
+     "cgstPaise": 2876839,
+     "sgstPaise": 1728403,
+     "cessPaise": 2651230
+    },
+    "credit": {
+     "igstPaise": 950769,
+     "cgstPaise": 1790579,
+     "sgstPaise": 1020535,
+     "cessPaise": 535422
+    },
+    "utilisation": {
+     "igstToIgstPaise": 950769,
+     "igstToCgstPaise": 0,
+     "igstToSgstPaise": 0,
+     "cgstToCgstPaise": 1790579,
+     "cgstToIgstPaise": 0,
+     "sgstToSgstPaise": 1020535,
+     "sgstToIgstPaise": 0,
+     "cessToCessPaise": 535422
+    },
+    "creditUsed": {
+     "igstPaise": 950769,
+     "cgstPaise": 1790579,
+     "sgstPaise": 1020535,
+     "cessPaise": 535422
+    },
+    "creditLeft": {
+     "igstPaise": 0,
+     "cgstPaise": 0,
+     "sgstPaise": 0,
+     "cessPaise": 0
+    },
+    "cash": {
+     "igstPaise": 1404266,
+     "cgstPaise": 1086260,
+     "sgstPaise": 707868,
+     "cessPaise": 2115808
+    }
+   }
+  },
+  {
+   "name": "GEN 4",
+   "liability": {
+    "igstPaise": 54086,
+    "cgstPaise": 255858,
+    "sgstPaise": 2807605,
+    "cessPaise": 2217993
+   },
+   "credit": {
+    "igstPaise": 7676781,
+    "cgstPaise": 3552000,
+    "sgstPaise": 8765760,
+    "cessPaise": 0
+   },
+   "expected": {
+    "liability": {
+     "igstPaise": 54086,
+     "cgstPaise": 255858,
+     "sgstPaise": 2807605,
+     "cessPaise": 2217993
+    },
+    "credit": {
+     "igstPaise": 7676781,
+     "cgstPaise": 3552000,
+     "sgstPaise": 8765760,
+     "cessPaise": 0
+    },
+    "utilisation": {
+     "igstToIgstPaise": 54086,
+     "igstToCgstPaise": 255858,
+     "igstToSgstPaise": 2807605,
+     "cgstToCgstPaise": 0,
+     "cgstToIgstPaise": 0,
+     "sgstToSgstPaise": 0,
+     "sgstToIgstPaise": 0,
+     "cessToCessPaise": 0
+    },
+    "creditUsed": {
+     "igstPaise": 3117549,
+     "cgstPaise": 0,
+     "sgstPaise": 0,
+     "cessPaise": 0
+    },
+    "creditLeft": {
+     "igstPaise": 4559232,
+     "cgstPaise": 3552000,
+     "sgstPaise": 8765760,
+     "cessPaise": 0
+    },
+    "cash": {
+     "igstPaise": 0,
+     "cgstPaise": 0,
+     "sgstPaise": 0,
+     "cessPaise": 2217993
+    }
+   }
+  },
+  {
+   "name": "GEN 5",
+   "liability": {
+    "igstPaise": 772,
+    "cgstPaise": 252,
+    "sgstPaise": 277,
+    "cessPaise": 439
+   },
+   "credit": {
+    "igstPaise": 983464,
+    "cgstPaise": 1037028,
+    "sgstPaise": 566425,
+    "cessPaise": 0
+   },
+   "expected": {
+    "liability": {
+     "igstPaise": 772,
+     "cgstPaise": 252,
+     "sgstPaise": 277,
+     "cessPaise": 439
+    },
+    "credit": {
+     "igstPaise": 983464,
+     "cgstPaise": 1037028,
+     "sgstPaise": 566425,
+     "cessPaise": 0
+    },
+    "utilisation": {
+     "igstToIgstPaise": 772,
+     "igstToCgstPaise": 252,
+     "igstToSgstPaise": 277,
+     "cgstToCgstPaise": 0,
+     "cgstToIgstPaise": 0,
+     "sgstToSgstPaise": 0,
+     "sgstToIgstPaise": 0,
+     "cessToCessPaise": 0
+    },
+    "creditUsed": {
+     "igstPaise": 1301,
+     "cgstPaise": 0,
+     "sgstPaise": 0,
+     "cessPaise": 0
+    },
+    "creditLeft": {
+     "igstPaise": 982163,
+     "cgstPaise": 1037028,
+     "sgstPaise": 566425,
+     "cessPaise": 0
+    },
+    "cash": {
+     "igstPaise": 0,
+     "cgstPaise": 0,
+     "sgstPaise": 0,
+     "cessPaise": 439
+    }
+   }
+  },
+  {
+   "name": "GEN 6",
+   "liability": {
+    "igstPaise": 3854889,
+    "cgstPaise": 934753,
+    "sgstPaise": 4712956,
+    "cessPaise": 320314
+   },
+   "credit": {
+    "igstPaise": 2915585,
+    "cgstPaise": 2939108,
+    "sgstPaise": 369450,
+    "cessPaise": 0
+   },
+   "expected": {
+    "liability": {
+     "igstPaise": 3854889,
+     "cgstPaise": 934753,
+     "sgstPaise": 4712956,
+     "cessPaise": 320314
+    },
+    "credit": {
+     "igstPaise": 2915585,
+     "cgstPaise": 2939108,
+     "sgstPaise": 369450,
+     "cessPaise": 0
+    },
+    "utilisation": {
+     "igstToIgstPaise": 2915585,
+     "igstToCgstPaise": 0,
+     "igstToSgstPaise": 0,
+     "cgstToCgstPaise": 934753,
+     "cgstToIgstPaise": 939304,
+     "sgstToSgstPaise": 369450,
+     "sgstToIgstPaise": 0,
+     "cessToCessPaise": 0
+    },
+    "creditUsed": {
+     "igstPaise": 2915585,
+     "cgstPaise": 1874057,
+     "sgstPaise": 369450,
+     "cessPaise": 0
+    },
+    "creditLeft": {
+     "igstPaise": 0,
+     "cgstPaise": 1065051,
+     "sgstPaise": 0,
+     "cessPaise": 0
+    },
+    "cash": {
+     "igstPaise": 0,
+     "cgstPaise": 0,
+     "sgstPaise": 4343506,
+     "cessPaise": 320314
+    }
+   }
+  },
+  {
+   "name": "GEN 7",
+   "liability": {
+    "igstPaise": 940236,
+    "cgstPaise": 870753,
+    "sgstPaise": 3695082,
+    "cessPaise": 0
+   },
+   "credit": {
+    "igstPaise": 5012112,
+    "cgstPaise": 6284625,
+    "sgstPaise": 1072308,
+    "cessPaise": 0
+   },
+   "expected": {
+    "liability": {
+     "igstPaise": 940236,
+     "cgstPaise": 870753,
+     "sgstPaise": 3695082,
+     "cessPaise": 0
+    },
+    "credit": {
+     "igstPaise": 5012112,
+     "cgstPaise": 6284625,
+     "sgstPaise": 1072308,
+     "cessPaise": 0
+    },
+    "utilisation": {
+     "igstToIgstPaise": 940236,
+     "igstToCgstPaise": 870753,
+     "igstToSgstPaise": 3201123,
+     "cgstToCgstPaise": 0,
+     "cgstToIgstPaise": 0,
+     "sgstToSgstPaise": 493959,
+     "sgstToIgstPaise": 0,
+     "cessToCessPaise": 0
+    },
+    "creditUsed": {
+     "igstPaise": 5012112,
+     "cgstPaise": 0,
+     "sgstPaise": 493959,
+     "cessPaise": 0
+    },
+    "creditLeft": {
+     "igstPaise": 0,
+     "cgstPaise": 6284625,
+     "sgstPaise": 578349,
+     "cessPaise": 0
+    },
+    "cash": {
+     "igstPaise": 0,
+     "cgstPaise": 0,
+     "sgstPaise": 0,
+     "cessPaise": 0
+    }
+   }
+  },
+  {
+   "name": "GEN 8",
+   "liability": {
+    "igstPaise": 535728,
+    "cgstPaise": 242429,
+    "sgstPaise": 3168002,
+    "cessPaise": 3462784
+   },
+   "credit": {
+    "igstPaise": 771349,
+    "cgstPaise": 1163939,
+    "sgstPaise": 1594698,
+    "cessPaise": 1857047
+   },
+   "expected": {
+    "liability": {
+     "igstPaise": 535728,
+     "cgstPaise": 242429,
+     "sgstPaise": 3168002,
+     "cessPaise": 3462784
+    },
+    "credit": {
+     "igstPaise": 771349,
+     "cgstPaise": 1163939,
+     "sgstPaise": 1594698,
+     "cessPaise": 1857047
+    },
+    "utilisation": {
+     "igstToIgstPaise": 535728,
+     "igstToCgstPaise": 0,
+     "igstToSgstPaise": 235621,
+     "cgstToCgstPaise": 242429,
+     "cgstToIgstPaise": 0,
+     "sgstToSgstPaise": 1594698,
+     "sgstToIgstPaise": 0,
+     "cessToCessPaise": 1857047
+    },
+    "creditUsed": {
+     "igstPaise": 771349,
+     "cgstPaise": 242429,
+     "sgstPaise": 1594698,
+     "cessPaise": 1857047
+    },
+    "creditLeft": {
+     "igstPaise": 0,
+     "cgstPaise": 921510,
+     "sgstPaise": 0,
+     "cessPaise": 0
+    },
+    "cash": {
+     "igstPaise": 0,
+     "cgstPaise": 0,
+     "sgstPaise": 1337683,
+     "cessPaise": 1605737
+    }
+   }
+  },
+  {
+   "name": "GEN 9",
+   "liability": {
+    "igstPaise": 925,
+    "cgstPaise": 109,
+    "sgstPaise": 453,
+    "cessPaise": 60
+   },
+   "credit": {
+    "igstPaise": 68198,
+    "cgstPaise": 2654749,
+    "sgstPaise": 41465,
+    "cessPaise": 464533
+   },
+   "expected": {
+    "liability": {
+     "igstPaise": 925,
+     "cgstPaise": 109,
+     "sgstPaise": 453,
+     "cessPaise": 60
+    },
+    "credit": {
+     "igstPaise": 68198,
+     "cgstPaise": 2654749,
+     "sgstPaise": 41465,
+     "cessPaise": 464533
+    },
+    "utilisation": {
+     "igstToIgstPaise": 925,
+     "igstToCgstPaise": 109,
+     "igstToSgstPaise": 453,
+     "cgstToCgstPaise": 0,
+     "cgstToIgstPaise": 0,
+     "sgstToSgstPaise": 0,
+     "sgstToIgstPaise": 0,
+     "cessToCessPaise": 60
+    },
+    "creditUsed": {
+     "igstPaise": 1487,
+     "cgstPaise": 0,
+     "sgstPaise": 0,
+     "cessPaise": 60
+    },
+    "creditLeft": {
+     "igstPaise": 66711,
+     "cgstPaise": 2654749,
+     "sgstPaise": 41465,
+     "cessPaise": 464473
+    },
+    "cash": {
+     "igstPaise": 0,
+     "cgstPaise": 0,
+     "sgstPaise": 0,
+     "cessPaise": 0
+    }
+   }
+  },
+  {
+   "name": "GEN 10",
+   "liability": {
+    "igstPaise": 395689,
+    "cgstPaise": 1392268,
+    "sgstPaise": 2443226,
+    "cessPaise": 0
+   },
+   "credit": {
+    "igstPaise": 6351401,
+    "cgstPaise": 5921358,
+    "sgstPaise": 9703397,
+    "cessPaise": 374938
+   },
+   "expected": {
+    "liability": {
+     "igstPaise": 395689,
+     "cgstPaise": 1392268,
+     "sgstPaise": 2443226,
+     "cessPaise": 0
+    },
+    "credit": {
+     "igstPaise": 6351401,
+     "cgstPaise": 5921358,
+     "sgstPaise": 9703397,
+     "cessPaise": 374938
+    },
+    "utilisation": {
+     "igstToIgstPaise": 395689,
+     "igstToCgstPaise": 1392268,
+     "igstToSgstPaise": 2443226,
+     "cgstToCgstPaise": 0,
+     "cgstToIgstPaise": 0,
+     "sgstToSgstPaise": 0,
+     "sgstToIgstPaise": 0,
+     "cessToCessPaise": 0
+    },
+    "creditUsed": {
+     "igstPaise": 4231183,
+     "cgstPaise": 0,
+     "sgstPaise": 0,
+     "cessPaise": 0
+    },
+    "creditLeft": {
+     "igstPaise": 2120218,
+     "cgstPaise": 5921358,
+     "sgstPaise": 9703397,
+     "cessPaise": 374938
+    },
+    "cash": {
+     "igstPaise": 0,
+     "cgstPaise": 0,
+     "sgstPaise": 0,
+     "cessPaise": 0
+    }
+   }
+  },
+  {
+   "name": "GEN 11",
+   "liability": {
+    "igstPaise": 4650167,
+    "cgstPaise": 1674099,
+    "sgstPaise": 2329608,
+    "cessPaise": 3809585
+   },
+   "credit": {
+    "igstPaise": 264630,
+    "cgstPaise": 2611215,
+    "sgstPaise": 2209043,
+    "cessPaise": 1170140
+   },
+   "expected": {
+    "liability": {
+     "igstPaise": 4650167,
+     "cgstPaise": 1674099,
+     "sgstPaise": 2329608,
+     "cessPaise": 3809585
+    },
+    "credit": {
+     "igstPaise": 264630,
+     "cgstPaise": 2611215,
+     "sgstPaise": 2209043,
+     "cessPaise": 1170140
+    },
+    "utilisation": {
+     "igstToIgstPaise": 264630,
+     "igstToCgstPaise": 0,
+     "igstToSgstPaise": 0,
+     "cgstToCgstPaise": 1674099,
+     "cgstToIgstPaise": 937116,
+     "sgstToSgstPaise": 2209043,
+     "sgstToIgstPaise": 0,
+     "cessToCessPaise": 1170140
+    },
+    "creditUsed": {
+     "igstPaise": 264630,
+     "cgstPaise": 2611215,
+     "sgstPaise": 2209043,
+     "cessPaise": 1170140
+    },
+    "creditLeft": {
+     "igstPaise": 0,
+     "cgstPaise": 0,
+     "sgstPaise": 0,
+     "cessPaise": 0
+    },
+    "cash": {
+     "igstPaise": 3448421,
+     "cgstPaise": 0,
+     "sgstPaise": 120565,
+     "cessPaise": 2639445
+    }
+   }
+  },
+  {
+   "name": "GEN 12",
+   "liability": {
+    "igstPaise": 3117313,
+    "cgstPaise": 862898,
+    "sgstPaise": 2733931,
+    "cessPaise": 3407797
+   },
+   "credit": {
+    "igstPaise": 2739663,
+    "cgstPaise": 950606,
+    "sgstPaise": 441280,
+    "cessPaise": 2321691
+   },
+   "expected": {
+    "liability": {
+     "igstPaise": 3117313,
+     "cgstPaise": 862898,
+     "sgstPaise": 2733931,
+     "cessPaise": 3407797
+    },
+    "credit": {
+     "igstPaise": 2739663,
+     "cgstPaise": 950606,
+     "sgstPaise": 441280,
+     "cessPaise": 2321691
+    },
+    "utilisation": {
+     "igstToIgstPaise": 2739663,
+     "igstToCgstPaise": 0,
+     "igstToSgstPaise": 0,
+     "cgstToCgstPaise": 862898,
+     "cgstToIgstPaise": 87708,
+     "sgstToSgstPaise": 441280,
+     "sgstToIgstPaise": 0,
+     "cessToCessPaise": 2321691
+    },
+    "creditUsed": {
+     "igstPaise": 2739663,
+     "cgstPaise": 950606,
+     "sgstPaise": 441280,
+     "cessPaise": 2321691
+    },
+    "creditLeft": {
+     "igstPaise": 0,
+     "cgstPaise": 0,
+     "sgstPaise": 0,
+     "cessPaise": 0
+    },
+    "cash": {
+     "igstPaise": 289942,
+     "cgstPaise": 0,
+     "sgstPaise": 2292651,
+     "cessPaise": 1086106
+    }
+   }
+  },
+  {
+   "name": "GEN 13",
+   "liability": {
+    "igstPaise": 122,
+    "cgstPaise": 332,
+    "sgstPaise": 143,
+    "cessPaise": 0
+   },
+   "credit": {
+    "igstPaise": 4895488,
+    "cgstPaise": 5079596,
+    "sgstPaise": 4070717,
+    "cessPaise": 931000
+   },
+   "expected": {
+    "liability": {
+     "igstPaise": 122,
+     "cgstPaise": 332,
+     "sgstPaise": 143,
+     "cessPaise": 0
+    },
+    "credit": {
+     "igstPaise": 4895488,
+     "cgstPaise": 5079596,
+     "sgstPaise": 4070717,
+     "cessPaise": 931000
+    },
+    "utilisation": {
+     "igstToIgstPaise": 122,
+     "igstToCgstPaise": 332,
+     "igstToSgstPaise": 143,
+     "cgstToCgstPaise": 0,
+     "cgstToIgstPaise": 0,
+     "sgstToSgstPaise": 0,
+     "sgstToIgstPaise": 0,
+     "cessToCessPaise": 0
+    },
+    "creditUsed": {
+     "igstPaise": 597,
+     "cgstPaise": 0,
+     "sgstPaise": 0,
+     "cessPaise": 0
+    },
+    "creditLeft": {
+     "igstPaise": 4894891,
+     "cgstPaise": 5079596,
+     "sgstPaise": 4070717,
+     "cessPaise": 931000
+    },
+    "cash": {
+     "igstPaise": 0,
+     "cgstPaise": 0,
+     "sgstPaise": 0,
+     "cessPaise": 0
+    }
+   }
+  },
+  {
+   "name": "GEN 14",
+   "liability": {
+    "igstPaise": 3068386,
+    "cgstPaise": 1302646,
+    "sgstPaise": 1303273,
+    "cessPaise": 1207131
+   },
+   "credit": {
+    "igstPaise": 2074887,
+    "cgstPaise": 2170004,
+    "sgstPaise": 1026987,
+    "cessPaise": 0
+   },
+   "expected": {
+    "liability": {
+     "igstPaise": 3068386,
+     "cgstPaise": 1302646,
+     "sgstPaise": 1303273,
+     "cessPaise": 1207131
+    },
+    "credit": {
+     "igstPaise": 2074887,
+     "cgstPaise": 2170004,
+     "sgstPaise": 1026987,
+     "cessPaise": 0
+    },
+    "utilisation": {
+     "igstToIgstPaise": 2074887,
+     "igstToCgstPaise": 0,
+     "igstToSgstPaise": 0,
+     "cgstToCgstPaise": 1302646,
+     "cgstToIgstPaise": 867358,
+     "sgstToSgstPaise": 1026987,
+     "sgstToIgstPaise": 0,
+     "cessToCessPaise": 0
+    },
+    "creditUsed": {
+     "igstPaise": 2074887,
+     "cgstPaise": 2170004,
+     "sgstPaise": 1026987,
+     "cessPaise": 0
+    },
+    "creditLeft": {
+     "igstPaise": 0,
+     "cgstPaise": 0,
+     "sgstPaise": 0,
+     "cessPaise": 0
+    },
+    "cash": {
+     "igstPaise": 126141,
+     "cgstPaise": 0,
+     "sgstPaise": 276286,
+     "cessPaise": 1207131
+    }
+   }
+  },
+  {
+   "name": "GEN 15",
+   "liability": {
+    "igstPaise": 489619,
+    "cgstPaise": 585467,
+    "sgstPaise": 2315078,
+    "cessPaise": 1774035
+   },
+   "credit": {
+    "igstPaise": 2748173,
+    "cgstPaise": 2703841,
+    "sgstPaise": 2059223,
+    "cessPaise": 0
+   },
+   "expected": {
+    "liability": {
+     "igstPaise": 489619,
+     "cgstPaise": 585467,
+     "sgstPaise": 2315078,
+     "cessPaise": 1774035
+    },
+    "credit": {
+     "igstPaise": 2748173,
+     "cgstPaise": 2703841,
+     "sgstPaise": 2059223,
+     "cessPaise": 0
+    },
+    "utilisation": {
+     "igstToIgstPaise": 489619,
+     "igstToCgstPaise": 585467,
+     "igstToSgstPaise": 1673087,
+     "cgstToCgstPaise": 0,
+     "cgstToIgstPaise": 0,
+     "sgstToSgstPaise": 641991,
+     "sgstToIgstPaise": 0,
+     "cessToCessPaise": 0
+    },
+    "creditUsed": {
+     "igstPaise": 2748173,
+     "cgstPaise": 0,
+     "sgstPaise": 641991,
+     "cessPaise": 0
+    },
+    "creditLeft": {
+     "igstPaise": 0,
+     "cgstPaise": 2703841,
+     "sgstPaise": 1417232,
+     "cessPaise": 0
+    },
+    "cash": {
+     "igstPaise": 0,
+     "cgstPaise": 0,
+     "sgstPaise": 0,
+     "cessPaise": 1774035
+    }
+   }
+  },
+  {
+   "name": "GEN 16",
+   "liability": {
+    "igstPaise": 3765765,
+    "cgstPaise": 2475611,
+    "sgstPaise": 228005,
+    "cessPaise": 0
+   },
+   "credit": {
+    "igstPaise": 272752,
+    "cgstPaise": 3171525,
+    "sgstPaise": 5017531,
+    "cessPaise": 5503503
+   },
+   "expected": {
+    "liability": {
+     "igstPaise": 3765765,
+     "cgstPaise": 2475611,
+     "sgstPaise": 228005,
+     "cessPaise": 0
+    },
+    "credit": {
+     "igstPaise": 272752,
+     "cgstPaise": 3171525,
+     "sgstPaise": 5017531,
+     "cessPaise": 5503503
+    },
+    "utilisation": {
+     "igstToIgstPaise": 272752,
+     "igstToCgstPaise": 0,
+     "igstToSgstPaise": 0,
+     "cgstToCgstPaise": 2475611,
+     "cgstToIgstPaise": 695914,
+     "sgstToSgstPaise": 228005,
+     "sgstToIgstPaise": 2797099,
+     "cessToCessPaise": 0
+    },
+    "creditUsed": {
+     "igstPaise": 272752,
+     "cgstPaise": 3171525,
+     "sgstPaise": 3025104,
+     "cessPaise": 0
+    },
+    "creditLeft": {
+     "igstPaise": 0,
+     "cgstPaise": 0,
+     "sgstPaise": 1992427,
+     "cessPaise": 5503503
+    },
+    "cash": {
+     "igstPaise": 0,
+     "cgstPaise": 0,
+     "sgstPaise": 0,
+     "cessPaise": 0
+    }
+   }
+  },
+  {
+   "name": "GEN 17",
+   "liability": {
+    "igstPaise": 268,
+    "cgstPaise": 264,
+    "sgstPaise": 203,
+    "cessPaise": 0
+   },
+   "credit": {
+    "igstPaise": 2995200,
+    "cgstPaise": 93124,
+    "sgstPaise": 2809228,
+    "cessPaise": 0
+   },
+   "expected": {
+    "liability": {
+     "igstPaise": 268,
+     "cgstPaise": 264,
+     "sgstPaise": 203,
+     "cessPaise": 0
+    },
+    "credit": {
+     "igstPaise": 2995200,
+     "cgstPaise": 93124,
+     "sgstPaise": 2809228,
+     "cessPaise": 0
+    },
+    "utilisation": {
+     "igstToIgstPaise": 268,
+     "igstToCgstPaise": 264,
+     "igstToSgstPaise": 203,
+     "cgstToCgstPaise": 0,
+     "cgstToIgstPaise": 0,
+     "sgstToSgstPaise": 0,
+     "sgstToIgstPaise": 0,
+     "cessToCessPaise": 0
+    },
+    "creditUsed": {
+     "igstPaise": 735,
+     "cgstPaise": 0,
+     "sgstPaise": 0,
+     "cessPaise": 0
+    },
+    "creditLeft": {
+     "igstPaise": 2994465,
+     "cgstPaise": 93124,
+     "sgstPaise": 2809228,
+     "cessPaise": 0
+    },
+    "cash": {
+     "igstPaise": 0,
+     "cgstPaise": 0,
+     "sgstPaise": 0,
+     "cessPaise": 0
+    }
+   }
+  },
+  {
+   "name": "GEN 18",
+   "liability": {
+    "igstPaise": 3995112,
+    "cgstPaise": 4462793,
+    "sgstPaise": 1868240,
+    "cessPaise": 4149911
+   },
+   "credit": {
+    "igstPaise": 1542133,
+    "cgstPaise": 2819157,
+    "sgstPaise": 886459,
+    "cessPaise": 1746727
+   },
+   "expected": {
+    "liability": {
+     "igstPaise": 3995112,
+     "cgstPaise": 4462793,
+     "sgstPaise": 1868240,
+     "cessPaise": 4149911
+    },
+    "credit": {
+     "igstPaise": 1542133,
+     "cgstPaise": 2819157,
+     "sgstPaise": 886459,
+     "cessPaise": 1746727
+    },
+    "utilisation": {
+     "igstToIgstPaise": 1542133,
+     "igstToCgstPaise": 0,
+     "igstToSgstPaise": 0,
+     "cgstToCgstPaise": 2819157,
+     "cgstToIgstPaise": 0,
+     "sgstToSgstPaise": 886459,
+     "sgstToIgstPaise": 0,
+     "cessToCessPaise": 1746727
+    },
+    "creditUsed": {
+     "igstPaise": 1542133,
+     "cgstPaise": 2819157,
+     "sgstPaise": 886459,
+     "cessPaise": 1746727
+    },
+    "creditLeft": {
+     "igstPaise": 0,
+     "cgstPaise": 0,
+     "sgstPaise": 0,
+     "cessPaise": 0
+    },
+    "cash": {
+     "igstPaise": 2452979,
+     "cgstPaise": 1643636,
+     "sgstPaise": 981781,
+     "cessPaise": 2403184
+    }
+   }
+  },
+  {
+   "name": "GEN 19",
+   "liability": {
+    "igstPaise": 326164,
+    "cgstPaise": 851376,
+    "sgstPaise": 4791706,
+    "cessPaise": 1229512
+   },
+   "credit": {
+    "igstPaise": 637160,
+    "cgstPaise": 4342268,
+    "sgstPaise": 2665469,
+    "cessPaise": 2043071
+   },
+   "expected": {
+    "liability": {
+     "igstPaise": 326164,
+     "cgstPaise": 851376,
+     "sgstPaise": 4791706,
+     "cessPaise": 1229512
+    },
+    "credit": {
+     "igstPaise": 637160,
+     "cgstPaise": 4342268,
+     "sgstPaise": 2665469,
+     "cessPaise": 2043071
+    },
+    "utilisation": {
+     "igstToIgstPaise": 326164,
+     "igstToCgstPaise": 0,
+     "igstToSgstPaise": 310996,
+     "cgstToCgstPaise": 851376,
+     "cgstToIgstPaise": 0,
+     "sgstToSgstPaise": 2665469,
+     "sgstToIgstPaise": 0,
+     "cessToCessPaise": 1229512
+    },
+    "creditUsed": {
+     "igstPaise": 637160,
+     "cgstPaise": 851376,
+     "sgstPaise": 2665469,
+     "cessPaise": 1229512
+    },
+    "creditLeft": {
+     "igstPaise": 0,
+     "cgstPaise": 3490892,
+     "sgstPaise": 0,
+     "cessPaise": 813559
+    },
+    "cash": {
+     "igstPaise": 0,
+     "cgstPaise": 0,
+     "sgstPaise": 1815241,
+     "cessPaise": 0
+    }
+   }
+  },
+  {
+   "name": "GEN 20",
+   "liability": {
+    "igstPaise": 1884578,
+    "cgstPaise": 1273988,
+    "sgstPaise": 4242676,
+    "cessPaise": 0
+   },
+   "credit": {
+    "igstPaise": 1176568,
+    "cgstPaise": 782778,
+    "sgstPaise": 502763,
+    "cessPaise": 2041386
+   },
+   "expected": {
+    "liability": {
+     "igstPaise": 1884578,
+     "cgstPaise": 1273988,
+     "sgstPaise": 4242676,
+     "cessPaise": 0
+    },
+    "credit": {
+     "igstPaise": 1176568,
+     "cgstPaise": 782778,
+     "sgstPaise": 502763,
+     "cessPaise": 2041386
+    },
+    "utilisation": {
+     "igstToIgstPaise": 1176568,
+     "igstToCgstPaise": 0,
+     "igstToSgstPaise": 0,
+     "cgstToCgstPaise": 782778,
+     "cgstToIgstPaise": 0,
+     "sgstToSgstPaise": 502763,
+     "sgstToIgstPaise": 0,
+     "cessToCessPaise": 0
+    },
+    "creditUsed": {
+     "igstPaise": 1176568,
+     "cgstPaise": 782778,
+     "sgstPaise": 502763,
+     "cessPaise": 0
+    },
+    "creditLeft": {
+     "igstPaise": 0,
+     "cgstPaise": 0,
+     "sgstPaise": 0,
+     "cessPaise": 2041386
+    },
+    "cash": {
+     "igstPaise": 708010,
+     "cgstPaise": 491210,
+     "sgstPaise": 3739913,
+     "cessPaise": 0
+    }
+   }
+  },
+  {
+   "name": "GEN 21",
+   "liability": {
+    "igstPaise": 144,
+    "cgstPaise": 589,
+    "sgstPaise": 545,
+    "cessPaise": 0
+   },
+   "credit": {
+    "igstPaise": 1877470,
+    "cgstPaise": 1529023,
+    "sgstPaise": 2271996,
+    "cessPaise": 2558926
+   },
+   "expected": {
+    "liability": {
+     "igstPaise": 144,
+     "cgstPaise": 589,
+     "sgstPaise": 545,
+     "cessPaise": 0
+    },
+    "credit": {
+     "igstPaise": 1877470,
+     "cgstPaise": 1529023,
+     "sgstPaise": 2271996,
+     "cessPaise": 2558926
+    },
+    "utilisation": {
+     "igstToIgstPaise": 144,
+     "igstToCgstPaise": 589,
+     "igstToSgstPaise": 545,
+     "cgstToCgstPaise": 0,
+     "cgstToIgstPaise": 0,
+     "sgstToSgstPaise": 0,
+     "sgstToIgstPaise": 0,
+     "cessToCessPaise": 0
+    },
+    "creditUsed": {
+     "igstPaise": 1278,
+     "cgstPaise": 0,
+     "sgstPaise": 0,
+     "cessPaise": 0
+    },
+    "creditLeft": {
+     "igstPaise": 1876192,
+     "cgstPaise": 1529023,
+     "sgstPaise": 2271996,
+     "cessPaise": 2558926
+    },
+    "cash": {
+     "igstPaise": 0,
+     "cgstPaise": 0,
+     "sgstPaise": 0,
+     "cessPaise": 0
+    }
+   }
+  },
+  {
+   "name": "GEN 22",
+   "liability": {
+    "igstPaise": 790148,
+    "cgstPaise": 265925,
+    "sgstPaise": 3286741,
+    "cessPaise": 517971
+   },
+   "credit": {
+    "igstPaise": 826194,
+    "cgstPaise": 9274399,
+    "sgstPaise": 4825401,
+    "cessPaise": 0
+   },
+   "expected": {
+    "liability": {
+     "igstPaise": 790148,
+     "cgstPaise": 265925,
+     "sgstPaise": 3286741,
+     "cessPaise": 517971
+    },
+    "credit": {
+     "igstPaise": 826194,
+     "cgstPaise": 9274399,
+     "sgstPaise": 4825401,
+     "cessPaise": 0
+    },
+    "utilisation": {
+     "igstToIgstPaise": 790148,
+     "igstToCgstPaise": 36046,
+     "igstToSgstPaise": 0,
+     "cgstToCgstPaise": 229879,
+     "cgstToIgstPaise": 0,
+     "sgstToSgstPaise": 3286741,
+     "sgstToIgstPaise": 0,
+     "cessToCessPaise": 0
+    },
+    "creditUsed": {
+     "igstPaise": 826194,
+     "cgstPaise": 229879,
+     "sgstPaise": 3286741,
+     "cessPaise": 0
+    },
+    "creditLeft": {
+     "igstPaise": 0,
+     "cgstPaise": 9044520,
+     "sgstPaise": 1538660,
+     "cessPaise": 0
+    },
+    "cash": {
+     "igstPaise": 0,
+     "cgstPaise": 0,
+     "sgstPaise": 0,
+     "cessPaise": 517971
+    }
+   }
+  },
+  {
+   "name": "GEN 23",
+   "liability": {
+    "igstPaise": 3147954,
+    "cgstPaise": 2578318,
+    "sgstPaise": 552697,
+    "cessPaise": 0
+   },
+   "credit": {
+    "igstPaise": 1813889,
+    "cgstPaise": 2150174,
+    "sgstPaise": 545892,
+    "cessPaise": 0
+   },
+   "expected": {
+    "liability": {
+     "igstPaise": 3147954,
+     "cgstPaise": 2578318,
+     "sgstPaise": 552697,
+     "cessPaise": 0
+    },
+    "credit": {
+     "igstPaise": 1813889,
+     "cgstPaise": 2150174,
+     "sgstPaise": 545892,
+     "cessPaise": 0
+    },
+    "utilisation": {
+     "igstToIgstPaise": 1813889,
+     "igstToCgstPaise": 0,
+     "igstToSgstPaise": 0,
+     "cgstToCgstPaise": 2150174,
+     "cgstToIgstPaise": 0,
+     "sgstToSgstPaise": 545892,
+     "sgstToIgstPaise": 0,
+     "cessToCessPaise": 0
+    },
+    "creditUsed": {
+     "igstPaise": 1813889,
+     "cgstPaise": 2150174,
+     "sgstPaise": 545892,
+     "cessPaise": 0
+    },
+    "creditLeft": {
+     "igstPaise": 0,
+     "cgstPaise": 0,
+     "sgstPaise": 0,
+     "cessPaise": 0
+    },
+    "cash": {
+     "igstPaise": 1334065,
+     "cgstPaise": 428144,
+     "sgstPaise": 6805,
+     "cessPaise": 0
+    }
+   }
+  },
+  {
+   "name": "GEN 24",
+   "liability": {
+    "igstPaise": 262542,
+    "cgstPaise": 1590059,
+    "sgstPaise": 3744853,
+    "cessPaise": 1528918
+   },
+   "credit": {
+    "igstPaise": 1638110,
+    "cgstPaise": 1174599,
+    "sgstPaise": 474412,
+    "cessPaise": 308084
+   },
+   "expected": {
+    "liability": {
+     "igstPaise": 262542,
+     "cgstPaise": 1590059,
+     "sgstPaise": 3744853,
+     "cessPaise": 1528918
+    },
+    "credit": {
+     "igstPaise": 1638110,
+     "cgstPaise": 1174599,
+     "sgstPaise": 474412,
+     "cessPaise": 308084
+    },
+    "utilisation": {
+     "igstToIgstPaise": 262542,
+     "igstToCgstPaise": 415460,
+     "igstToSgstPaise": 960108,
+     "cgstToCgstPaise": 1174599,
+     "cgstToIgstPaise": 0,
+     "sgstToSgstPaise": 474412,
+     "sgstToIgstPaise": 0,
+     "cessToCessPaise": 308084
+    },
+    "creditUsed": {
+     "igstPaise": 1638110,
+     "cgstPaise": 1174599,
+     "sgstPaise": 474412,
+     "cessPaise": 308084
+    },
+    "creditLeft": {
+     "igstPaise": 0,
+     "cgstPaise": 0,
+     "sgstPaise": 0,
+     "cessPaise": 0
+    },
+    "cash": {
+     "igstPaise": 0,
+     "cgstPaise": 0,
+     "sgstPaise": 2310333,
+     "cessPaise": 1220834
+    }
+   }
+  },
+  {
+   "name": "GEN 25",
+   "liability": {
+    "igstPaise": 614,
+    "cgstPaise": 915,
+    "sgstPaise": 439,
+    "cessPaise": 938
+   },
+   "credit": {
+    "igstPaise": 4455998,
+    "cgstPaise": 9701538,
+    "sgstPaise": 326826,
+    "cessPaise": 7697131
+   },
+   "expected": {
+    "liability": {
+     "igstPaise": 614,
+     "cgstPaise": 915,
+     "sgstPaise": 439,
+     "cessPaise": 938
+    },
+    "credit": {
+     "igstPaise": 4455998,
+     "cgstPaise": 9701538,
+     "sgstPaise": 326826,
+     "cessPaise": 7697131
+    },
+    "utilisation": {
+     "igstToIgstPaise": 614,
+     "igstToCgstPaise": 915,
+     "igstToSgstPaise": 439,
+     "cgstToCgstPaise": 0,
+     "cgstToIgstPaise": 0,
+     "sgstToSgstPaise": 0,
+     "sgstToIgstPaise": 0,
+     "cessToCessPaise": 938
+    },
+    "creditUsed": {
+     "igstPaise": 1968,
+     "cgstPaise": 0,
+     "sgstPaise": 0,
+     "cessPaise": 938
+    },
+    "creditLeft": {
+     "igstPaise": 4454030,
+     "cgstPaise": 9701538,
+     "sgstPaise": 326826,
+     "cessPaise": 7696193
+    },
+    "cash": {
+     "igstPaise": 0,
+     "cgstPaise": 0,
+     "sgstPaise": 0,
+     "cessPaise": 0
+    }
+   }
+  },
+  {
+   "name": "GEN 26",
+   "liability": {
+    "igstPaise": 222822,
+    "cgstPaise": 2815250,
+    "sgstPaise": 4785490,
+    "cessPaise": 0
+   },
+   "credit": {
+    "igstPaise": 257055,
+    "cgstPaise": 1248899,
+    "sgstPaise": 2836674,
+    "cessPaise": 2054573
+   },
+   "expected": {
+    "liability": {
+     "igstPaise": 222822,
+     "cgstPaise": 2815250,
+     "sgstPaise": 4785490,
+     "cessPaise": 0
+    },
+    "credit": {
+     "igstPaise": 257055,
+     "cgstPaise": 1248899,
+     "sgstPaise": 2836674,
+     "cessPaise": 2054573
+    },
+    "utilisation": {
+     "igstToIgstPaise": 222822,
+     "igstToCgstPaise": 34233,
+     "igstToSgstPaise": 0,
+     "cgstToCgstPaise": 1248899,
+     "cgstToIgstPaise": 0,
+     "sgstToSgstPaise": 2836674,
+     "sgstToIgstPaise": 0,
+     "cessToCessPaise": 0
+    },
+    "creditUsed": {
+     "igstPaise": 257055,
+     "cgstPaise": 1248899,
+     "sgstPaise": 2836674,
+     "cessPaise": 0
+    },
+    "creditLeft": {
+     "igstPaise": 0,
+     "cgstPaise": 0,
+     "sgstPaise": 0,
+     "cessPaise": 2054573
+    },
+    "cash": {
+     "igstPaise": 0,
+     "cgstPaise": 1532118,
+     "sgstPaise": 1948816,
+     "cessPaise": 0
+    }
+   }
+  },
+  {
+   "name": "GEN 27",
+   "liability": {
+    "igstPaise": 2002612,
+    "cgstPaise": 1839197,
+    "sgstPaise": 2471244,
+    "cessPaise": 1464424
+   },
+   "credit": {
+    "igstPaise": 2668810,
+    "cgstPaise": 1705841,
+    "sgstPaise": 965833,
+    "cessPaise": 1526590
+   },
+   "expected": {
+    "liability": {
+     "igstPaise": 2002612,
+     "cgstPaise": 1839197,
+     "sgstPaise": 2471244,
+     "cessPaise": 1464424
+    },
+    "credit": {
+     "igstPaise": 2668810,
+     "cgstPaise": 1705841,
+     "sgstPaise": 965833,
+     "cessPaise": 1526590
+    },
+    "utilisation": {
+     "igstToIgstPaise": 2002612,
+     "igstToCgstPaise": 133356,
+     "igstToSgstPaise": 532842,
+     "cgstToCgstPaise": 1705841,
+     "cgstToIgstPaise": 0,
+     "sgstToSgstPaise": 965833,
+     "sgstToIgstPaise": 0,
+     "cessToCessPaise": 1464424
+    },
+    "creditUsed": {
+     "igstPaise": 2668810,
+     "cgstPaise": 1705841,
+     "sgstPaise": 965833,
+     "cessPaise": 1464424
+    },
+    "creditLeft": {
+     "igstPaise": 0,
+     "cgstPaise": 0,
+     "sgstPaise": 0,
+     "cessPaise": 62166
+    },
+    "cash": {
+     "igstPaise": 0,
+     "cgstPaise": 0,
+     "sgstPaise": 972569,
+     "cessPaise": 0
+    }
+   }
+  },
+  {
+   "name": "GEN 28",
+   "liability": {
+    "igstPaise": 1909050,
+    "cgstPaise": 2211176,
+    "sgstPaise": 2586608,
+    "cessPaise": 0
+   },
+   "credit": {
+    "igstPaise": 2031206,
+    "cgstPaise": 7965173,
+    "sgstPaise": 7504557,
+    "cessPaise": 7922289
+   },
+   "expected": {
+    "liability": {
+     "igstPaise": 1909050,
+     "cgstPaise": 2211176,
+     "sgstPaise": 2586608,
+     "cessPaise": 0
+    },
+    "credit": {
+     "igstPaise": 2031206,
+     "cgstPaise": 7965173,
+     "sgstPaise": 7504557,
+     "cessPaise": 7922289
+    },
+    "utilisation": {
+     "igstToIgstPaise": 1909050,
+     "igstToCgstPaise": 122156,
+     "igstToSgstPaise": 0,
+     "cgstToCgstPaise": 2089020,
+     "cgstToIgstPaise": 0,
+     "sgstToSgstPaise": 2586608,
+     "sgstToIgstPaise": 0,
+     "cessToCessPaise": 0
+    },
+    "creditUsed": {
+     "igstPaise": 2031206,
+     "cgstPaise": 2089020,
+     "sgstPaise": 2586608,
+     "cessPaise": 0
+    },
+    "creditLeft": {
+     "igstPaise": 0,
+     "cgstPaise": 5876153,
+     "sgstPaise": 4917949,
+     "cessPaise": 7922289
+    },
+    "cash": {
+     "igstPaise": 0,
+     "cgstPaise": 0,
+     "sgstPaise": 0,
+     "cessPaise": 0
+    }
+   }
+  },
+  {
+   "name": "GEN 29",
+   "liability": {
+    "igstPaise": 497,
+    "cgstPaise": 988,
+    "sgstPaise": 551,
+    "cessPaise": 0
+   },
+   "credit": {
+    "igstPaise": 2927909,
+    "cgstPaise": 2867013,
+    "sgstPaise": 14410,
+    "cessPaise": 0
+   },
+   "expected": {
+    "liability": {
+     "igstPaise": 497,
+     "cgstPaise": 988,
+     "sgstPaise": 551,
+     "cessPaise": 0
+    },
+    "credit": {
+     "igstPaise": 2927909,
+     "cgstPaise": 2867013,
+     "sgstPaise": 14410,
+     "cessPaise": 0
+    },
+    "utilisation": {
+     "igstToIgstPaise": 497,
+     "igstToCgstPaise": 988,
+     "igstToSgstPaise": 551,
+     "cgstToCgstPaise": 0,
+     "cgstToIgstPaise": 0,
+     "sgstToSgstPaise": 0,
+     "sgstToIgstPaise": 0,
+     "cessToCessPaise": 0
+    },
+    "creditUsed": {
+     "igstPaise": 2036,
+     "cgstPaise": 0,
+     "sgstPaise": 0,
+     "cessPaise": 0
+    },
+    "creditLeft": {
+     "igstPaise": 2925873,
+     "cgstPaise": 2867013,
+     "sgstPaise": 14410,
+     "cessPaise": 0
+    },
+    "cash": {
+     "igstPaise": 0,
+     "cgstPaise": 0,
+     "sgstPaise": 0,
+     "cessPaise": 0
+    }
+   }
+  },
+  {
+   "name": "GEN 30",
+   "liability": {
+    "igstPaise": 2121298,
+    "cgstPaise": 2360114,
+    "sgstPaise": 4358655,
+    "cessPaise": 0
+   },
+   "credit": {
+    "igstPaise": 1614850,
+    "cgstPaise": 2190820,
+    "sgstPaise": 2881320,
+    "cessPaise": 1631264
+   },
+   "expected": {
+    "liability": {
+     "igstPaise": 2121298,
+     "cgstPaise": 2360114,
+     "sgstPaise": 4358655,
+     "cessPaise": 0
+    },
+    "credit": {
+     "igstPaise": 1614850,
+     "cgstPaise": 2190820,
+     "sgstPaise": 2881320,
+     "cessPaise": 1631264
+    },
+    "utilisation": {
+     "igstToIgstPaise": 1614850,
+     "igstToCgstPaise": 0,
+     "igstToSgstPaise": 0,
+     "cgstToCgstPaise": 2190820,
+     "cgstToIgstPaise": 0,
+     "sgstToSgstPaise": 2881320,
+     "sgstToIgstPaise": 0,
+     "cessToCessPaise": 0
+    },
+    "creditUsed": {
+     "igstPaise": 1614850,
+     "cgstPaise": 2190820,
+     "sgstPaise": 2881320,
+     "cessPaise": 0
+    },
+    "creditLeft": {
+     "igstPaise": 0,
+     "cgstPaise": 0,
+     "sgstPaise": 0,
+     "cessPaise": 1631264
+    },
+    "cash": {
+     "igstPaise": 506448,
+     "cgstPaise": 169294,
+     "sgstPaise": 1477335,
+     "cessPaise": 0
+    }
+   }
+  },
+  {
+   "name": "GEN 31",
+   "liability": {
+    "igstPaise": 1690553,
+    "cgstPaise": 3068896,
+    "sgstPaise": 2146919,
+    "cessPaise": 848978
+   },
+   "credit": {
+    "igstPaise": 4904124,
+    "cgstPaise": 9884453,
+    "sgstPaise": 1490076,
+    "cessPaise": 0
+   },
+   "expected": {
+    "liability": {
+     "igstPaise": 1690553,
+     "cgstPaise": 3068896,
+     "sgstPaise": 2146919,
+     "cessPaise": 848978
+    },
+    "credit": {
+     "igstPaise": 4904124,
+     "cgstPaise": 9884453,
+     "sgstPaise": 1490076,
+     "cessPaise": 0
+    },
+    "utilisation": {
+     "igstToIgstPaise": 1690553,
+     "igstToCgstPaise": 2556728,
+     "igstToSgstPaise": 656843,
+     "cgstToCgstPaise": 512168,
+     "cgstToIgstPaise": 0,
+     "sgstToSgstPaise": 1490076,
+     "sgstToIgstPaise": 0,
+     "cessToCessPaise": 0
+    },
+    "creditUsed": {
+     "igstPaise": 4904124,
+     "cgstPaise": 512168,
+     "sgstPaise": 1490076,
+     "cessPaise": 0
+    },
+    "creditLeft": {
+     "igstPaise": 0,
+     "cgstPaise": 9372285,
+     "sgstPaise": 0,
+     "cessPaise": 0
+    },
+    "cash": {
+     "igstPaise": 0,
+     "cgstPaise": 0,
+     "sgstPaise": 0,
+     "cessPaise": 848978
+    }
+   }
+  },
+  {
+   "name": "GEN 32",
+   "liability": {
+    "igstPaise": 3199026,
+    "cgstPaise": 4935731,
+    "sgstPaise": 4273987,
+    "cessPaise": 895903
+   },
+   "credit": {
+    "igstPaise": 471102,
+    "cgstPaise": 21951,
+    "sgstPaise": 749639,
+    "cessPaise": 11416
+   },
+   "expected": {
+    "liability": {
+     "igstPaise": 3199026,
+     "cgstPaise": 4935731,
+     "sgstPaise": 4273987,
+     "cessPaise": 895903
+    },
+    "credit": {
+     "igstPaise": 471102,
+     "cgstPaise": 21951,
+     "sgstPaise": 749639,
+     "cessPaise": 11416
+    },
+    "utilisation": {
+     "igstToIgstPaise": 471102,
+     "igstToCgstPaise": 0,
+     "igstToSgstPaise": 0,
+     "cgstToCgstPaise": 21951,
+     "cgstToIgstPaise": 0,
+     "sgstToSgstPaise": 749639,
+     "sgstToIgstPaise": 0,
+     "cessToCessPaise": 11416
+    },
+    "creditUsed": {
+     "igstPaise": 471102,
+     "cgstPaise": 21951,
+     "sgstPaise": 749639,
+     "cessPaise": 11416
+    },
+    "creditLeft": {
+     "igstPaise": 0,
+     "cgstPaise": 0,
+     "sgstPaise": 0,
+     "cessPaise": 0
+    },
+    "cash": {
+     "igstPaise": 2727924,
+     "cgstPaise": 4913780,
+     "sgstPaise": 3524348,
+     "cessPaise": 884487
+    }
+   }
+  },
+  {
+   "name": "GEN 33",
+   "liability": {
+    "igstPaise": 790,
+    "cgstPaise": 481,
+    "sgstPaise": 577,
+    "cessPaise": 200
+   },
+   "credit": {
+    "igstPaise": 375782,
+    "cgstPaise": 35023,
+    "sgstPaise": 2409885,
+    "cessPaise": 0
+   },
+   "expected": {
+    "liability": {
+     "igstPaise": 790,
+     "cgstPaise": 481,
+     "sgstPaise": 577,
+     "cessPaise": 200
+    },
+    "credit": {
+     "igstPaise": 375782,
+     "cgstPaise": 35023,
+     "sgstPaise": 2409885,
+     "cessPaise": 0
+    },
+    "utilisation": {
+     "igstToIgstPaise": 790,
+     "igstToCgstPaise": 481,
+     "igstToSgstPaise": 577,
+     "cgstToCgstPaise": 0,
+     "cgstToIgstPaise": 0,
+     "sgstToSgstPaise": 0,
+     "sgstToIgstPaise": 0,
+     "cessToCessPaise": 0
+    },
+    "creditUsed": {
+     "igstPaise": 1848,
+     "cgstPaise": 0,
+     "sgstPaise": 0,
+     "cessPaise": 0
+    },
+    "creditLeft": {
+     "igstPaise": 373934,
+     "cgstPaise": 35023,
+     "sgstPaise": 2409885,
+     "cessPaise": 0
+    },
+    "cash": {
+     "igstPaise": 0,
+     "cgstPaise": 0,
+     "sgstPaise": 0,
+     "cessPaise": 200
+    }
+   }
+  },
+  {
+   "name": "GEN 34",
+   "liability": {
+    "igstPaise": 4459417,
+    "cgstPaise": 3129560,
+    "sgstPaise": 2521178,
+    "cessPaise": 3662665
+   },
+   "credit": {
+    "igstPaise": 7731026,
+    "cgstPaise": 2238011,
+    "sgstPaise": 5030214,
+    "cessPaise": 0
+   },
+   "expected": {
+    "liability": {
+     "igstPaise": 4459417,
+     "cgstPaise": 3129560,
+     "sgstPaise": 2521178,
+     "cessPaise": 3662665
+    },
+    "credit": {
+     "igstPaise": 7731026,
+     "cgstPaise": 2238011,
+     "sgstPaise": 5030214,
+     "cessPaise": 0
+    },
+    "utilisation": {
+     "igstToIgstPaise": 4459417,
+     "igstToCgstPaise": 3129560,
+     "igstToSgstPaise": 142049,
+     "cgstToCgstPaise": 0,
+     "cgstToIgstPaise": 0,
+     "sgstToSgstPaise": 2379129,
+     "sgstToIgstPaise": 0,
+     "cessToCessPaise": 0
+    },
+    "creditUsed": {
+     "igstPaise": 7731026,
+     "cgstPaise": 0,
+     "sgstPaise": 2379129,
+     "cessPaise": 0
+    },
+    "creditLeft": {
+     "igstPaise": 0,
+     "cgstPaise": 2238011,
+     "sgstPaise": 2651085,
+     "cessPaise": 0
+    },
+    "cash": {
+     "igstPaise": 0,
+     "cgstPaise": 0,
+     "sgstPaise": 0,
+     "cessPaise": 3662665
+    }
+   }
+  },
+  {
+   "name": "GEN 35",
+   "liability": {
+    "igstPaise": 733787,
+    "cgstPaise": 1136689,
+    "sgstPaise": 395143,
+    "cessPaise": 3538431
+   },
+   "credit": {
+    "igstPaise": 1037092,
+    "cgstPaise": 795600,
+    "sgstPaise": 846098,
+    "cessPaise": 2225743
+   },
+   "expected": {
+    "liability": {
+     "igstPaise": 733787,
+     "cgstPaise": 1136689,
+     "sgstPaise": 395143,
+     "cessPaise": 3538431
+    },
+    "credit": {
+     "igstPaise": 1037092,
+     "cgstPaise": 795600,
+     "sgstPaise": 846098,
+     "cessPaise": 2225743
+    },
+    "utilisation": {
+     "igstToIgstPaise": 733787,
+     "igstToCgstPaise": 303305,
+     "igstToSgstPaise": 0,
+     "cgstToCgstPaise": 795600,
+     "cgstToIgstPaise": 0,
+     "sgstToSgstPaise": 395143,
+     "sgstToIgstPaise": 0,
+     "cessToCessPaise": 2225743
+    },
+    "creditUsed": {
+     "igstPaise": 1037092,
+     "cgstPaise": 795600,
+     "sgstPaise": 395143,
+     "cessPaise": 2225743
+    },
+    "creditLeft": {
+     "igstPaise": 0,
+     "cgstPaise": 0,
+     "sgstPaise": 450955,
+     "cessPaise": 0
+    },
+    "cash": {
+     "igstPaise": 0,
+     "cgstPaise": 37784,
+     "sgstPaise": 0,
+     "cessPaise": 1312688
+    }
+   }
+  },
+  {
+   "name": "GEN 36",
+   "liability": {
+    "igstPaise": 3153194,
+    "cgstPaise": 440288,
+    "sgstPaise": 1385392,
+    "cessPaise": 0
+   },
+   "credit": {
+    "igstPaise": 1429340,
+    "cgstPaise": 1085643,
+    "sgstPaise": 27528,
+    "cessPaise": 1822663
+   },
+   "expected": {
+    "liability": {
+     "igstPaise": 3153194,
+     "cgstPaise": 440288,
+     "sgstPaise": 1385392,
+     "cessPaise": 0
+    },
+    "credit": {
+     "igstPaise": 1429340,
+     "cgstPaise": 1085643,
+     "sgstPaise": 27528,
+     "cessPaise": 1822663
+    },
+    "utilisation": {
+     "igstToIgstPaise": 1429340,
+     "igstToCgstPaise": 0,
+     "igstToSgstPaise": 0,
+     "cgstToCgstPaise": 440288,
+     "cgstToIgstPaise": 645355,
+     "sgstToSgstPaise": 27528,
+     "sgstToIgstPaise": 0,
+     "cessToCessPaise": 0
+    },
+    "creditUsed": {
+     "igstPaise": 1429340,
+     "cgstPaise": 1085643,
+     "sgstPaise": 27528,
+     "cessPaise": 0
+    },
+    "creditLeft": {
+     "igstPaise": 0,
+     "cgstPaise": 0,
+     "sgstPaise": 0,
+     "cessPaise": 1822663
+    },
+    "cash": {
+     "igstPaise": 1078499,
+     "cgstPaise": 0,
+     "sgstPaise": 1357864,
+     "cessPaise": 0
+    }
+   }
+  },
+  {
+   "name": "GEN 37",
+   "liability": {
+    "igstPaise": 438,
+    "cgstPaise": 43,
+    "sgstPaise": 688,
+    "cessPaise": 423
+   },
+   "credit": {
+    "igstPaise": 6258550,
+    "cgstPaise": 6831695,
+    "sgstPaise": 971257,
+    "cessPaise": 8997885
+   },
+   "expected": {
+    "liability": {
+     "igstPaise": 438,
+     "cgstPaise": 43,
+     "sgstPaise": 688,
+     "cessPaise": 423
+    },
+    "credit": {
+     "igstPaise": 6258550,
+     "cgstPaise": 6831695,
+     "sgstPaise": 971257,
+     "cessPaise": 8997885
+    },
+    "utilisation": {
+     "igstToIgstPaise": 438,
+     "igstToCgstPaise": 43,
+     "igstToSgstPaise": 688,
+     "cgstToCgstPaise": 0,
+     "cgstToIgstPaise": 0,
+     "sgstToSgstPaise": 0,
+     "sgstToIgstPaise": 0,
+     "cessToCessPaise": 423
+    },
+    "creditUsed": {
+     "igstPaise": 1169,
+     "cgstPaise": 0,
+     "sgstPaise": 0,
+     "cessPaise": 423
+    },
+    "creditLeft": {
+     "igstPaise": 6257381,
+     "cgstPaise": 6831695,
+     "sgstPaise": 971257,
+     "cessPaise": 8997462
+    },
+    "cash": {
+     "igstPaise": 0,
+     "cgstPaise": 0,
+     "sgstPaise": 0,
+     "cessPaise": 0
+    }
+   }
+  },
+  {
+   "name": "GEN 38",
+   "liability": {
+    "igstPaise": 445047,
+    "cgstPaise": 2544777,
+    "sgstPaise": 4252973,
+    "cessPaise": 3340804
+   },
+   "credit": {
+    "igstPaise": 2935571,
+    "cgstPaise": 845992,
+    "sgstPaise": 1624837,
+    "cessPaise": 2344974
+   },
+   "expected": {
+    "liability": {
+     "igstPaise": 445047,
+     "cgstPaise": 2544777,
+     "sgstPaise": 4252973,
+     "cessPaise": 3340804
+    },
+    "credit": {
+     "igstPaise": 2935571,
+     "cgstPaise": 845992,
+     "sgstPaise": 1624837,
+     "cessPaise": 2344974
+    },
+    "utilisation": {
+     "igstToIgstPaise": 445047,
+     "igstToCgstPaise": 1698785,
+     "igstToSgstPaise": 791739,
+     "cgstToCgstPaise": 845992,
+     "cgstToIgstPaise": 0,
+     "sgstToSgstPaise": 1624837,
+     "sgstToIgstPaise": 0,
+     "cessToCessPaise": 2344974
+    },
+    "creditUsed": {
+     "igstPaise": 2935571,
+     "cgstPaise": 845992,
+     "sgstPaise": 1624837,
+     "cessPaise": 2344974
+    },
+    "creditLeft": {
+     "igstPaise": 0,
+     "cgstPaise": 0,
+     "sgstPaise": 0,
+     "cessPaise": 0
+    },
+    "cash": {
+     "igstPaise": 0,
+     "cgstPaise": 0,
+     "sgstPaise": 1836397,
+     "cessPaise": 995830
+    }
+   }
+  },
+  {
+   "name": "GEN 39",
+   "liability": {
+    "igstPaise": 4789087,
+    "cgstPaise": 1349030,
+    "sgstPaise": 3052831,
+    "cessPaise": 0
+   },
+   "credit": {
+    "igstPaise": 2962595,
+    "cgstPaise": 1448715,
+    "sgstPaise": 1328917,
+    "cessPaise": 1231133
+   },
+   "expected": {
+    "liability": {
+     "igstPaise": 4789087,
+     "cgstPaise": 1349030,
+     "sgstPaise": 3052831,
+     "cessPaise": 0
+    },
+    "credit": {
+     "igstPaise": 2962595,
+     "cgstPaise": 1448715,
+     "sgstPaise": 1328917,
+     "cessPaise": 1231133
+    },
+    "utilisation": {
+     "igstToIgstPaise": 2962595,
+     "igstToCgstPaise": 0,
+     "igstToSgstPaise": 0,
+     "cgstToCgstPaise": 1349030,
+     "cgstToIgstPaise": 99685,
+     "sgstToSgstPaise": 1328917,
+     "sgstToIgstPaise": 0,
+     "cessToCessPaise": 0
+    },
+    "creditUsed": {
+     "igstPaise": 2962595,
+     "cgstPaise": 1448715,
+     "sgstPaise": 1328917,
+     "cessPaise": 0
+    },
+    "creditLeft": {
+     "igstPaise": 0,
+     "cgstPaise": 0,
+     "sgstPaise": 0,
+     "cessPaise": 1231133
+    },
+    "cash": {
+     "igstPaise": 1726807,
+     "cgstPaise": 0,
+     "sgstPaise": 1723914,
+     "cessPaise": 0
+    }
+   }
+  },
+  {
+   "name": "GEN 40",
+   "liability": {
+    "igstPaise": 3292120,
+    "cgstPaise": 4003606,
+    "sgstPaise": 1896161,
+    "cessPaise": 4585202
+   },
+   "credit": {
+    "igstPaise": 5710199,
+    "cgstPaise": 7694599,
+    "sgstPaise": 623724,
+    "cessPaise": 3293130
+   },
+   "expected": {
+    "liability": {
+     "igstPaise": 3292120,
+     "cgstPaise": 4003606,
+     "sgstPaise": 1896161,
+     "cessPaise": 4585202
+    },
+    "credit": {
+     "igstPaise": 5710199,
+     "cgstPaise": 7694599,
+     "sgstPaise": 623724,
+     "cessPaise": 3293130
+    },
+    "utilisation": {
+     "igstToIgstPaise": 3292120,
+     "igstToCgstPaise": 1145642,
+     "igstToSgstPaise": 1272437,
+     "cgstToCgstPaise": 2857964,
+     "cgstToIgstPaise": 0,
+     "sgstToSgstPaise": 623724,
+     "sgstToIgstPaise": 0,
+     "cessToCessPaise": 3293130
+    },
+    "creditUsed": {
+     "igstPaise": 5710199,
+     "cgstPaise": 2857964,
+     "sgstPaise": 623724,
+     "cessPaise": 3293130
+    },
+    "creditLeft": {
+     "igstPaise": 0,
+     "cgstPaise": 4836635,
+     "sgstPaise": 0,
+     "cessPaise": 0
+    },
+    "cash": {
+     "igstPaise": 0,
+     "cgstPaise": 0,
+     "sgstPaise": 0,
+     "cessPaise": 1292072
+    }
+   }
+  }
+ ]
+}

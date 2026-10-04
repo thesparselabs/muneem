@@ -143,6 +143,25 @@ export const REGISTER_VARIANCE_RULE: PostingRule<RegisterVarianceFacts> = [
   { side: 'cr', account: account('cash'), amount: (f) => -f.variancePaise, when: (f) => f.variancePaise < 0 },
 ];
 
+// GST set-off (ADR-0044): each output head is cleared in full — by the input credit used against it, the rest to GST
+// Payable; input tax leaves only by the credit used. No party, stock or receivable account is touched (ADR-0035).
+export interface GstSetoffFacts { liability: TaxHeads; creditUsed: TaxHeads; cashPaise: number }
+export const GST_SETOFF_RULE: PostingRule<GstSetoffFacts> = [
+  { side: 'dr', account: account('output_igst'), amount: (f) => f.liability.igstPaise },
+  { side: 'dr', account: account('output_cgst'), amount: (f) => f.liability.cgstPaise },
+  { side: 'dr', account: account('output_sgst'), amount: (f) => f.liability.sgstPaise },
+  { side: 'dr', account: account('output_cess'), amount: (f) => f.liability.cessPaise },
+  ...inputTax<GstSetoffFacts>('cr', (f) => f.creditUsed),
+  { side: 'cr', account: account('gst_payable'), amount: (f) => f.cashPaise },
+];
+
+// GST paid by challan clears GST Payable from the bank.
+export interface GstPaymentFacts { totalPaise: number }
+export const GST_PAYMENT_RULE: PostingRule<GstPaymentFacts> = [
+  { side: 'dr', account: account('gst_payable'), amount: (f) => f.totalPaise },
+  { side: 'cr', account: account('bank'), amount: (f) => f.totalPaise },
+];
+
 // Cash put into or taken out of the drawer without a document: the accountant classifies it later (ADR-0032).
 export interface CashMovementFacts { direction: 'in' | 'out'; amountPaise: number }
 export const CASH_MOVEMENT_RULE: PostingRule<CashMovementFacts> = [
