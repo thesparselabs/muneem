@@ -66,3 +66,10 @@ Postgres table now would double the schema work, and it would have to change whe
 - **Storage:** an S3-compatible bucket behind `snapshot.ObjectStore` (Put, PresignGet), using `minio-go`. Locally
   this is MinIO in docker-compose (`bitnamilegacy/minio`, because `minio/minio` is no longer on Docker Hub). Objects
   are not yet deleted after they expire; a bucket lifecycle rule is an operations task.
+
+## As built (7h)
+- **A document's later version** (a cancel, or a register close) is stored as the whole document with the operation's
+  payload under its type (`cancel` or `update`), as the reference server and the device apply path expect. The first
+  end-to-end hydration against Go found that the cloud stored the cancel payload alone, which a device could not
+  apply. A protocol fixture (`document-cancel-version`) now holds both servers to the same shape.
+- **Bootstrap bodies** are read through the same gzip-aware reader as pushes.

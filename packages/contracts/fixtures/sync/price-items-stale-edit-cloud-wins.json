@@ -14,196 +14,196 @@
    "device": "A",
    "call": "push",
    "request": {
-    "businessId": "01M43JQBH7WE52W6EMRBZBFP7Z",
+    "businessId": "01M43QAXKXG58YZF2DJP7Y1QRN",
     "protocol": 1,
     "schemaVersion": 14,
     "clientTime": "2026-10-04T10:00:00.000Z",
     "operations": [
      {
-      "operationId": "01M43JQBH8N4QK7FXM719H070S",
+      "operationId": "01M43QAXKYBRQWD2TZ5BY1G49W",
       "seq": 1,
       "entityType": "business",
-      "entityId": "01M43JQBH7WE52W6EMRBZBFP7Z",
+      "entityId": "01M43QAXKXG58YZF2DJP7Y1QRN",
       "operationType": "create",
       "dependsOn": null,
-      "payloadHash": "sha256:f9eb318f56b892200b0678f1449efb57947fb809c9e9b7ebbcd8e0432ee3748b",
+      "payloadHash": "sha256:96b61f3093db0c467068339465d8f15205e67efad68e2602f7bbe95f8a4f77d9",
       "payload": {
        "businessType": "retail",
-       "createdAt": "2026-10-04T13:47:45.575Z",
+       "createdAt": "2026-10-04T15:08:20.989Z",
        "fyStartMonth": 4,
-       "id": "01M43JQBH7WE52W6EMRBZBFP7Z",
+       "id": "01M43QAXKXG58YZF2DJP7Y1QRN",
        "name": "Sharma Store",
        "organizationId": "01J00000000000000000000B01",
        "stateCode": "07",
        "taxScheme": "regular",
-       "updatedAt": "2026-10-04T13:47:45.575Z",
+       "updatedAt": "2026-10-04T15:08:20.989Z",
        "version": 1
       }
      },
      {
-      "operationId": "01M43JQBHA0Q135X05HTS0T2NZ",
+      "operationId": "01M43QAXKZHKS975DNQHR0G7M3",
       "seq": 2,
       "entityType": "uom",
-      "entityId": "01M43JQBH9VPFCNY420XKM4N3K",
+      "entityId": "01M43QAXKZHKS975DNQHR0G7M1",
       "operationType": "create",
       "dependsOn": null,
-      "payloadHash": "sha256:bf680b24a3f2e6770c0d5ea562d74d9a46b55204a7d7771cce32ae4ddbdd0b13",
+      "payloadHash": "sha256:a52befd7a0560b45ce6d4bab3c355184ed1e8e29ce0893dae437cb7acbda8e5f",
       "payload": {
-       "businessId": "01M43JQBH7WE52W6EMRBZBFP7Z",
+       "businessId": "01M43QAXKXG58YZF2DJP7Y1QRN",
        "code": "PCS",
        "decimals": 0,
-       "id": "01M43JQBH9VPFCNY420XKM4N3K",
+       "id": "01M43QAXKZHKS975DNQHR0G7M1",
        "name": "Pieces",
        "version": 1
       }
      },
      {
-      "operationId": "01M43JQBHB52531WNM1JRV0SQ6",
+      "operationId": "01M43QAXM0Q57WCQHDD31HEQCD",
       "seq": 3,
       "entityType": "uom",
-      "entityId": "01M43JQBHA0Q135X05HTS0T2P0",
+      "entityId": "01M43QAXKZHKS975DNQHR0G7M4",
       "operationType": "create",
       "dependsOn": null,
-      "payloadHash": "sha256:43aa324c67f4a08639803d910e57c0d0c9488f92aea162f33cce24a1f49723a3",
+      "payloadHash": "sha256:b1bc7d0d05714ed245bd20c8a4b99241e6a9fe05da1291ab17e90d5d5faf30e5",
       "payload": {
-       "businessId": "01M43JQBH7WE52W6EMRBZBFP7Z",
+       "businessId": "01M43QAXKXG58YZF2DJP7Y1QRN",
        "code": "KG",
        "decimals": 3,
-       "id": "01M43JQBHA0Q135X05HTS0T2P0",
+       "id": "01M43QAXKZHKS975DNQHR0G7M4",
        "name": "Kilogram",
        "version": 1
       }
      },
      {
-      "operationId": "01M43JQBHB52531WNM1JRV0SQ9",
+      "operationId": "01M43QAXM0Q57WCQHDD31HEQCG",
       "seq": 4,
       "entityType": "uom",
-      "entityId": "01M43JQBHB52531WNM1JRV0SQ7",
+      "entityId": "01M43QAXM0Q57WCQHDD31HEQCE",
       "operationType": "create",
       "dependsOn": null,
-      "payloadHash": "sha256:1c22fc2ff16e3197f3a34eb64ecb50d40263068a0b4925ade8c23d73ffb45a00",
+      "payloadHash": "sha256:ee13512ddfe78c1388054fe71ebf22a154f5c215af606930d214c364948bfb27",
       "payload": {
-       "businessId": "01M43JQBH7WE52W6EMRBZBFP7Z",
+       "businessId": "01M43QAXKXG58YZF2DJP7Y1QRN",
        "code": "G",
        "decimals": 0,
-       "id": "01M43JQBHB52531WNM1JRV0SQ7",
+       "id": "01M43QAXM0Q57WCQHDD31HEQCE",
        "name": "Gram",
        "version": 1
       }
      },
      {
-      "operationId": "01M43JQBHCEPRTNCFJFJAW28EQ",
+      "operationId": "01M43QAXM0Q57WCQHDD31HEQCK",
       "seq": 5,
       "entityType": "uom",
-      "entityId": "01M43JQBHB52531WNM1JRV0SQA",
+      "entityId": "01M43QAXM0Q57WCQHDD31HEQCH",
       "operationType": "create",
       "dependsOn": null,
-      "payloadHash": "sha256:15d415eb73495a2b1cac34cb9c00e0baab7e8278a04bd71138243056ba6aa324",
+      "payloadHash": "sha256:82c6b4b33e1bab9d2e71b958aed232f9348f9201c3dc1cea5b4e5c49f7e7583a",
       "payload": {
-       "businessId": "01M43JQBH7WE52W6EMRBZBFP7Z",
+       "businessId": "01M43QAXKXG58YZF2DJP7Y1QRN",
        "code": "L",
        "decimals": 3,
-       "id": "01M43JQBHB52531WNM1JRV0SQA",
+       "id": "01M43QAXM0Q57WCQHDD31HEQCH",
        "name": "Litre",
        "version": 1
       }
      },
      {
-      "operationId": "01M43JQBHCEPRTNCFJFJAW28ET",
+      "operationId": "01M43QAXM13AM1VAXB772524F2",
       "seq": 6,
       "entityType": "uom",
-      "entityId": "01M43JQBHCEPRTNCFJFJAW28ER",
+      "entityId": "01M43QAXM0Q57WCQHDD31HEQCM",
       "operationType": "create",
       "dependsOn": null,
-      "payloadHash": "sha256:1da1a8e8a34e21de7b1f631d84adb72d2a7fe86521b0d0d3683d59dcf45cd11d",
+      "payloadHash": "sha256:2b6ea82191d9eeec6f11219da07097d425d8330ccf001e26bb85b657b94763a7",
       "payload": {
-       "businessId": "01M43JQBH7WE52W6EMRBZBFP7Z",
+       "businessId": "01M43QAXKXG58YZF2DJP7Y1QRN",
        "code": "ML",
        "decimals": 0,
-       "id": "01M43JQBHCEPRTNCFJFJAW28ER",
+       "id": "01M43QAXM0Q57WCQHDD31HEQCM",
        "name": "Millilitre",
        "version": 1
       }
      },
      {
-      "operationId": "01M43JQBHCEPRTNCFJFJAW28EX",
+      "operationId": "01M43QAXM13AM1VAXB772524F5",
       "seq": 7,
       "entityType": "uom",
-      "entityId": "01M43JQBHCEPRTNCFJFJAW28EV",
+      "entityId": "01M43QAXM13AM1VAXB772524F3",
       "operationType": "create",
       "dependsOn": null,
-      "payloadHash": "sha256:91fc30adb9f77f2b05452dfaf1c49e456e4af89ce67c944c1f1a7046754a94fb",
+      "payloadHash": "sha256:af34a8acea5968e98d232c6149ca02bcc44f9dfd98682c456cb3566dfa6b88f8",
       "payload": {
-       "businessId": "01M43JQBH7WE52W6EMRBZBFP7Z",
+       "businessId": "01M43QAXKXG58YZF2DJP7Y1QRN",
        "code": "M",
        "decimals": 3,
-       "id": "01M43JQBHCEPRTNCFJFJAW28EV",
+       "id": "01M43QAXM13AM1VAXB772524F3",
        "name": "Metre",
        "version": 1
       }
      },
      {
-      "operationId": "01M43JQBHDW71H216HMRQ6A0GP",
+      "operationId": "01M43QAXM13AM1VAXB772524F8",
       "seq": 8,
       "entityType": "uom",
-      "entityId": "01M43JQBHDW71H216HMRQ6A0GM",
+      "entityId": "01M43QAXM13AM1VAXB772524F6",
       "operationType": "create",
       "dependsOn": null,
-      "payloadHash": "sha256:4f27c53db632263c0d7f5b91d03ed3cb966980f9b980828212453b09ec676213",
+      "payloadHash": "sha256:79f5c4a190341efca11e04b92d2f9be1aa1184be02239d2d1218dfcbe460faeb",
       "payload": {
-       "businessId": "01M43JQBH7WE52W6EMRBZBFP7Z",
+       "businessId": "01M43QAXKXG58YZF2DJP7Y1QRN",
        "code": "DOZ",
        "decimals": 0,
-       "id": "01M43JQBHDW71H216HMRQ6A0GM",
+       "id": "01M43QAXM13AM1VAXB772524F6",
        "name": "Dozen",
        "version": 1
       }
      },
      {
-      "operationId": "01M43JQBHDW71H216HMRQ6A0GS",
+      "operationId": "01M43QAXM13AM1VAXB772524FB",
       "seq": 9,
       "entityType": "uom",
-      "entityId": "01M43JQBHDW71H216HMRQ6A0GQ",
+      "entityId": "01M43QAXM13AM1VAXB772524F9",
       "operationType": "create",
       "dependsOn": null,
-      "payloadHash": "sha256:ad49aec2d2923de1c39fb0bb43d25d956e6f4153824f965c053bcf887c669c3f",
+      "payloadHash": "sha256:aa255b12d0b6ac5cfb51cd0d3c8b3e3ef3674401adf79348f04b26e5592c8eca",
       "payload": {
-       "businessId": "01M43JQBH7WE52W6EMRBZBFP7Z",
+       "businessId": "01M43QAXKXG58YZF2DJP7Y1QRN",
        "code": "BOX",
        "decimals": 0,
-       "id": "01M43JQBHDW71H216HMRQ6A0GQ",
+       "id": "01M43QAXM13AM1VAXB772524F9",
        "name": "Box",
        "version": 1
       }
      },
      {
-      "operationId": "01M43JQBHE7JHR13W0K2GSTXAC",
+      "operationId": "01M43QAXM2KX3NZ3R25V7B7KKM",
       "seq": 10,
       "entityType": "uom",
-      "entityId": "01M43JQBHDW71H216HMRQ6A0GT",
+      "entityId": "01M43QAXM13AM1VAXB772524FC",
       "operationType": "create",
       "dependsOn": null,
-      "payloadHash": "sha256:f052e4db8ff53b1573522882970c8d77d496c7a8f5d96fb03093ea52e8383462",
+      "payloadHash": "sha256:eebcea2db962ef46b401ecee70fc041d40e1cc87e49940176aa06ab6ec4cf5cd",
       "payload": {
-       "businessId": "01M43JQBH7WE52W6EMRBZBFP7Z",
+       "businessId": "01M43QAXKXG58YZF2DJP7Y1QRN",
        "code": "CASE",
        "decimals": 0,
-       "id": "01M43JQBHDW71H216HMRQ6A0GT",
+       "id": "01M43QAXM13AM1VAXB772524FC",
        "name": "Case",
        "version": 1
       }
      },
      {
-      "operationId": "01M43JQBHFWXK8T089HPVS5TPY",
+      "operationId": "01M43QAXM2KX3NZ3R25V7B7KKQ",
       "seq": 11,
       "entityType": "price_list",
-      "entityId": "01M43JQBHE7JHR13W0K2GSTXAD",
+      "entityId": "01M43QAXM2KX3NZ3R25V7B7KKN",
       "operationType": "create",
       "dependsOn": null,
-      "payloadHash": "sha256:c40ee0b19c3274fee184930ed56fa4b5562f49014e2348a0e32c110c657ae894",
+      "payloadHash": "sha256:e202d1c84b07c04ac21284220ee34ddba10d38e025ae64a410fd872f033d07ba",
       "payload": {
-       "businessId": "01M43JQBH7WE52W6EMRBZBFP7Z",
-       "id": "01M43JQBHE7JHR13W0K2GSTXAD",
+       "businessId": "01M43QAXKXG58YZF2DJP7Y1QRN",
+       "id": "01M43QAXM2KX3NZ3R25V7B7KKN",
        "isDefault": true,
        "kind": "retail",
        "name": "Retail",
@@ -211,16 +211,16 @@
       }
      },
      {
-      "operationId": "01M43JQBHGWY6B40HSYVEMN0K5",
+      "operationId": "01M43QAXM3SF6VTD23HRHPMSFA",
       "seq": 12,
       "entityType": "account",
-      "entityId": "01M43JQBHFWXK8T089HPVS5TPZ",
+      "entityId": "01M43QAXM3SF6VTD23HRHPMSF8",
       "operationType": "create",
       "dependsOn": null,
-      "payloadHash": "sha256:d2af76208f6772935ee6e40337cfeb34cce537bd58d80ce1bac19aed19309cb0",
+      "payloadHash": "sha256:db76b1ec704e9e91b3056a7c29a75e08c9fd0af656d2d78c908fde8a55416622",
       "payload": {
        "code": "1000",
-       "id": "01M43JQBHFWXK8T089HPVS5TPZ",
+       "id": "01M43QAXM3SF6VTD23HRHPMSF8",
        "isGroup": true,
        "isSystem": true,
        "name": "Assets",
@@ -230,244 +230,244 @@
       }
      },
      {
-      "operationId": "01M43JQBHGWY6B40HSYVEMN0K8",
+      "operationId": "01M43QAXM47MR6Y4972FB7VV9P",
       "seq": 13,
       "entityType": "account",
-      "entityId": "01M43JQBHGWY6B40HSYVEMN0K6",
+      "entityId": "01M43QAXM3SF6VTD23HRHPMSFB",
       "operationType": "create",
       "dependsOn": null,
-      "payloadHash": "sha256:59027dab09763e1748bedd34c66d440fe7575649d0743ae2426c3ab608a5bd2f",
+      "payloadHash": "sha256:0fd41ce5b24e925b335f613aeb9e8582ba6dcb95be1e566f6f21f84c6e8d4ac0",
       "payload": {
        "code": "1100",
-       "id": "01M43JQBHGWY6B40HSYVEMN0K6",
+       "id": "01M43QAXM3SF6VTD23HRHPMSFB",
        "isGroup": false,
        "isSystem": true,
        "name": "Cash in Hand",
-       "parentId": "01M43JQBHFWXK8T089HPVS5TPZ",
+       "parentId": "01M43QAXM3SF6VTD23HRHPMSF8",
        "role": "cash",
        "type": "asset"
       }
      },
      {
-      "operationId": "01M43JQBHGWY6B40HSYVEMN0KB",
+      "operationId": "01M43QAXM47MR6Y4972FB7VV9S",
       "seq": 14,
       "entityType": "account",
-      "entityId": "01M43JQBHGWY6B40HSYVEMN0K9",
+      "entityId": "01M43QAXM47MR6Y4972FB7VV9Q",
       "operationType": "create",
       "dependsOn": null,
-      "payloadHash": "sha256:4105bc5b5e8177825d055d89c534dc4861ed4268e2bf4168bffcb30f836bb10d",
+      "payloadHash": "sha256:e91cca7d2241b50d76a1a32c3da020c71db769eed4904b5ceb20b29ff85a252e",
       "payload": {
        "code": "1110",
-       "id": "01M43JQBHGWY6B40HSYVEMN0K9",
+       "id": "01M43QAXM47MR6Y4972FB7VV9Q",
        "isGroup": false,
        "isSystem": true,
        "name": "Petty Cash",
-       "parentId": "01M43JQBHFWXK8T089HPVS5TPZ",
+       "parentId": "01M43QAXM3SF6VTD23HRHPMSF8",
        "role": "petty_cash",
        "type": "asset"
       }
      },
      {
-      "operationId": "01M43JQBHHAPW443K41TB93NZQ",
+      "operationId": "01M43QAXM47MR6Y4972FB7VV9W",
       "seq": 15,
       "entityType": "account",
-      "entityId": "01M43JQBHGWY6B40HSYVEMN0KC",
+      "entityId": "01M43QAXM47MR6Y4972FB7VV9T",
       "operationType": "create",
       "dependsOn": null,
-      "payloadHash": "sha256:6b0684f94247d2ae4e79480c9c46cfbec0332a515ec5430609b2aab6eb96196b",
+      "payloadHash": "sha256:87ca5902875979ac8e5dcb873527cafcd696bd095c2a5ddd4bac5ff93b856b18",
       "payload": {
        "code": "1199",
-       "id": "01M43JQBHGWY6B40HSYVEMN0KC",
+       "id": "01M43QAXM47MR6Y4972FB7VV9T",
        "isGroup": false,
        "isSystem": true,
        "name": "Cash to classify",
-       "parentId": "01M43JQBHFWXK8T089HPVS5TPZ",
+       "parentId": "01M43QAXM3SF6VTD23HRHPMSF8",
        "role": "cash_to_classify",
        "type": "asset"
       }
      },
      {
-      "operationId": "01M43JQBHHAPW443K41TB93NZT",
+      "operationId": "01M43QAXM47MR6Y4972FB7VV9Z",
       "seq": 16,
       "entityType": "account",
-      "entityId": "01M43JQBHHAPW443K41TB93NZR",
+      "entityId": "01M43QAXM47MR6Y4972FB7VV9X",
       "operationType": "create",
       "dependsOn": null,
-      "payloadHash": "sha256:9d2be89de1450e66f48bd6a8a7ea593470e1c0f2e8867348daad3553a3eff833",
+      "payloadHash": "sha256:f3704abc325692af21dcc880da099ae2bae865fbcf3d30dfe5ae0ad00529dfaf",
       "payload": {
        "code": "1200",
-       "id": "01M43JQBHHAPW443K41TB93NZR",
+       "id": "01M43QAXM47MR6Y4972FB7VV9X",
        "isGroup": false,
        "isSystem": true,
        "name": "Bank Accounts",
-       "parentId": "01M43JQBHFWXK8T089HPVS5TPZ",
+       "parentId": "01M43QAXM3SF6VTD23HRHPMSF8",
        "role": "bank",
        "type": "asset"
       }
      },
      {
-      "operationId": "01M43JQBHHAPW443K41TB93NZX",
+      "operationId": "01M43QAXM47MR6Y4972FB7VVA2",
       "seq": 17,
       "entityType": "account",
-      "entityId": "01M43JQBHHAPW443K41TB93NZV",
+      "entityId": "01M43QAXM47MR6Y4972FB7VVA0",
       "operationType": "create",
       "dependsOn": null,
-      "payloadHash": "sha256:fd7d80fcda50b2a85e839b7d0c86a12f86c7eb702e4264846bf24dd62d717f50",
+      "payloadHash": "sha256:27fe1f0b0393251a020874a2d6fe378054658c5677e26696fe204adce7091ecc",
       "payload": {
        "code": "1250",
-       "id": "01M43JQBHHAPW443K41TB93NZV",
+       "id": "01M43QAXM47MR6Y4972FB7VVA0",
        "isGroup": false,
        "isSystem": true,
        "name": "Card/UPI Settlement Clearing",
-       "parentId": "01M43JQBHFWXK8T089HPVS5TPZ",
+       "parentId": "01M43QAXM3SF6VTD23HRHPMSF8",
        "role": "clearing",
        "type": "asset"
       }
      },
      {
-      "operationId": "01M43JQBHHAPW443K41TB93P00",
+      "operationId": "01M43QAXM47MR6Y4972FB7VVA5",
       "seq": 18,
       "entityType": "account",
-      "entityId": "01M43JQBHHAPW443K41TB93NZY",
+      "entityId": "01M43QAXM47MR6Y4972FB7VVA3",
       "operationType": "create",
       "dependsOn": null,
-      "payloadHash": "sha256:ea5c2f5ea07af851aba0a74404cc59ce9b7e47d42d716b6f18f226736cd0e277",
+      "payloadHash": "sha256:1d889622a3bffe56ce5a2da6e97e0a76bf23c11f08a19889e21f754526d47e58",
       "payload": {
        "code": "1300",
-       "id": "01M43JQBHHAPW443K41TB93NZY",
+       "id": "01M43QAXM47MR6Y4972FB7VVA3",
        "isGroup": false,
        "isSystem": true,
        "name": "Accounts Receivable",
-       "parentId": "01M43JQBHFWXK8T089HPVS5TPZ",
+       "parentId": "01M43QAXM3SF6VTD23HRHPMSF8",
        "role": "ar",
        "type": "asset"
       }
      },
      {
-      "operationId": "01M43JQBHHAPW443K41TB93P03",
+      "operationId": "01M43QAXM47MR6Y4972FB7VVA8",
       "seq": 19,
       "entityType": "account",
-      "entityId": "01M43JQBHHAPW443K41TB93P01",
+      "entityId": "01M43QAXM47MR6Y4972FB7VVA6",
       "operationType": "create",
       "dependsOn": null,
-      "payloadHash": "sha256:d456277fc390e1ab3ed37b06c0dc97cb1fdfa7193a00e1a780164aa54b7d92b7",
+      "payloadHash": "sha256:43f5aa266ddb8518e7257d4bbb33d62a29e02ca5c8eff2355717ddd7c6873647",
       "payload": {
        "code": "1400",
-       "id": "01M43JQBHHAPW443K41TB93P01",
+       "id": "01M43QAXM47MR6Y4972FB7VVA6",
        "isGroup": false,
        "isSystem": true,
        "name": "Inventory",
-       "parentId": "01M43JQBHFWXK8T089HPVS5TPZ",
+       "parentId": "01M43QAXM3SF6VTD23HRHPMSF8",
        "role": "inventory",
        "type": "asset"
       }
      },
      {
-      "operationId": "01M43JQBHJAHD5KACC2NVDRH3J",
+      "operationId": "01M43QAXM5HTYGCP9ZASJD1F5S",
       "seq": 20,
       "entityType": "account",
-      "entityId": "01M43JQBHJAHD5KACC2NVDRH3G",
+      "entityId": "01M43QAXM47MR6Y4972FB7VVA9",
       "operationType": "create",
       "dependsOn": null,
-      "payloadHash": "sha256:5878e5825f28e62450c86744a57ad39a510e0759a46c708cc2475850e4a1da68",
+      "payloadHash": "sha256:bbceb00b3bcd3e0c150c6ead4053d46f7686ef4906a1512adcc6823d92156a3f",
       "payload": {
        "code": "1510",
-       "id": "01M43JQBHJAHD5KACC2NVDRH3G",
+       "id": "01M43QAXM47MR6Y4972FB7VVA9",
        "isGroup": false,
        "isSystem": true,
        "name": "Input CGST",
-       "parentId": "01M43JQBHFWXK8T089HPVS5TPZ",
+       "parentId": "01M43QAXM3SF6VTD23HRHPMSF8",
        "role": "input_cgst",
        "type": "asset"
       }
      },
      {
-      "operationId": "01M43JQBHJAHD5KACC2NVDRH3N",
+      "operationId": "01M43QAXM5HTYGCP9ZASJD1F5W",
       "seq": 21,
       "entityType": "account",
-      "entityId": "01M43JQBHJAHD5KACC2NVDRH3K",
+      "entityId": "01M43QAXM5HTYGCP9ZASJD1F5T",
       "operationType": "create",
       "dependsOn": null,
-      "payloadHash": "sha256:cbdfb23adfbc3b6d5f3e1e29ee58a52da156fd69773d7d0bd37a005fa4e1d6fb",
+      "payloadHash": "sha256:7d014a9447719ff29ca68f84d294def5386df900f3fecaac8015dcdb5aed3f6e",
       "payload": {
        "code": "1520",
-       "id": "01M43JQBHJAHD5KACC2NVDRH3K",
+       "id": "01M43QAXM5HTYGCP9ZASJD1F5T",
        "isGroup": false,
        "isSystem": true,
        "name": "Input SGST/UTGST",
-       "parentId": "01M43JQBHFWXK8T089HPVS5TPZ",
+       "parentId": "01M43QAXM3SF6VTD23HRHPMSF8",
        "role": "input_sgst",
        "type": "asset"
       }
      },
      {
-      "operationId": "01M43JQBHJAHD5KACC2NVDRH3R",
+      "operationId": "01M43QAXM5HTYGCP9ZASJD1F5Z",
       "seq": 22,
       "entityType": "account",
-      "entityId": "01M43JQBHJAHD5KACC2NVDRH3P",
+      "entityId": "01M43QAXM5HTYGCP9ZASJD1F5X",
       "operationType": "create",
       "dependsOn": null,
-      "payloadHash": "sha256:fb457bb8a06eb5cc79a7049ff8149981159ba6ea0230d87396e31e9e22730c85",
+      "payloadHash": "sha256:3f6c68c597d9b19f14402685851b06405c2a343edb28f1a6ece0abc86b4059b5",
       "payload": {
        "code": "1530",
-       "id": "01M43JQBHJAHD5KACC2NVDRH3P",
+       "id": "01M43QAXM5HTYGCP9ZASJD1F5X",
        "isGroup": false,
        "isSystem": true,
        "name": "Input IGST",
-       "parentId": "01M43JQBHFWXK8T089HPVS5TPZ",
+       "parentId": "01M43QAXM3SF6VTD23HRHPMSF8",
        "role": "input_igst",
        "type": "asset"
       }
      },
      {
-      "operationId": "01M43JQBHJAHD5KACC2NVDRH3V",
+      "operationId": "01M43QAXM5HTYGCP9ZASJD1F62",
       "seq": 23,
       "entityType": "account",
-      "entityId": "01M43JQBHJAHD5KACC2NVDRH3S",
+      "entityId": "01M43QAXM5HTYGCP9ZASJD1F60",
       "operationType": "create",
       "dependsOn": null,
-      "payloadHash": "sha256:bf92d15944ea35611aea1ad5a4473838858e50ce671c06ed727b766b72d2b746",
+      "payloadHash": "sha256:a15418e05e51619f390ad0e43c0ccf9dc256ac4b07c668adde21fb5a816ab6f7",
       "payload": {
        "code": "1540",
-       "id": "01M43JQBHJAHD5KACC2NVDRH3S",
+       "id": "01M43QAXM5HTYGCP9ZASJD1F60",
        "isGroup": false,
        "isSystem": true,
        "name": "Input Cess",
-       "parentId": "01M43JQBHFWXK8T089HPVS5TPZ",
+       "parentId": "01M43QAXM3SF6VTD23HRHPMSF8",
        "role": "input_cess",
        "type": "asset"
       }
      },
      {
-      "operationId": "01M43JQBHJAHD5KACC2NVDRH3Y",
+      "operationId": "01M43QAXM5HTYGCP9ZASJD1F65",
       "seq": 24,
       "entityType": "account",
-      "entityId": "01M43JQBHJAHD5KACC2NVDRH3W",
+      "entityId": "01M43QAXM5HTYGCP9ZASJD1F63",
       "operationType": "create",
       "dependsOn": null,
-      "payloadHash": "sha256:37eaebeccc871f9701759756ac2fa19cf44098174ce74cc75bfea06e82d11e27",
+      "payloadHash": "sha256:96774c608c461ff57fce3d55928f8c0e1a37d9aaba5c8a8239355dc73e51f59b",
       "payload": {
        "code": "1600",
-       "id": "01M43JQBHJAHD5KACC2NVDRH3W",
+       "id": "01M43QAXM5HTYGCP9ZASJD1F63",
        "isGroup": false,
        "isSystem": true,
        "name": "GST Credit Ledger",
-       "parentId": "01M43JQBHFWXK8T089HPVS5TPZ",
+       "parentId": "01M43QAXM3SF6VTD23HRHPMSF8",
        "role": "gst_credit",
        "type": "asset"
       }
      },
      {
-      "operationId": "01M43JQBHK65ADX8F6FJWD5JPC",
+      "operationId": "01M43QAXM5HTYGCP9ZASJD1F68",
       "seq": 25,
       "entityType": "account",
-      "entityId": "01M43JQBHJAHD5KACC2NVDRH3Z",
+      "entityId": "01M43QAXM5HTYGCP9ZASJD1F66",
       "operationType": "create",
       "dependsOn": null,
-      "payloadHash": "sha256:ad4e3ca5a4d15fd64eaf4af767df722655706d474393da75b3b1f24e7184f429",
+      "payloadHash": "sha256:a9c04c60f63bb2a9e60ce72d1447f0850f175ad6f039f7537f7ff7eafc344518",
       "payload": {
        "code": "2000",
-       "id": "01M43JQBHJAHD5KACC2NVDRH3Z",
+       "id": "01M43QAXM5HTYGCP9ZASJD1F66",
        "isGroup": true,
        "isSystem": true,
        "name": "Liabilities",
@@ -477,149 +477,149 @@
       }
      },
      {
-      "operationId": "01M43JQBHK65ADX8F6FJWD5JPF",
+      "operationId": "01M43QAXM5HTYGCP9ZASJD1F6B",
       "seq": 26,
       "entityType": "account",
-      "entityId": "01M43JQBHK65ADX8F6FJWD5JPD",
+      "entityId": "01M43QAXM5HTYGCP9ZASJD1F69",
       "operationType": "create",
       "dependsOn": null,
-      "payloadHash": "sha256:7da0e5f87d7062fea72fd3faccea97de24d5b89957441e7f6ba09bd37ec1ea65",
+      "payloadHash": "sha256:6f39696951613130c90fce77a99f283d825aabac3e08583fdf8a25d04d6c261c",
       "payload": {
        "code": "2100",
-       "id": "01M43JQBHK65ADX8F6FJWD5JPD",
+       "id": "01M43QAXM5HTYGCP9ZASJD1F69",
        "isGroup": false,
        "isSystem": true,
        "name": "Accounts Payable",
-       "parentId": "01M43JQBHJAHD5KACC2NVDRH3Z",
+       "parentId": "01M43QAXM5HTYGCP9ZASJD1F66",
        "role": "ap",
        "type": "liability"
       }
      },
      {
-      "operationId": "01M43JQBHK65ADX8F6FJWD5JPJ",
+      "operationId": "01M43QAXM5HTYGCP9ZASJD1F6E",
       "seq": 27,
       "entityType": "account",
-      "entityId": "01M43JQBHK65ADX8F6FJWD5JPG",
+      "entityId": "01M43QAXM5HTYGCP9ZASJD1F6C",
       "operationType": "create",
       "dependsOn": null,
-      "payloadHash": "sha256:f269686384508f5a123d2851a4426747f941dd455e7f1a23298aeccb09d514ed",
+      "payloadHash": "sha256:248c8263f1dfee372e22f76b50c601a9b6d05ab47dba92eb873b1d11170b21dc",
       "payload": {
        "code": "2210",
-       "id": "01M43JQBHK65ADX8F6FJWD5JPG",
+       "id": "01M43QAXM5HTYGCP9ZASJD1F6C",
        "isGroup": false,
        "isSystem": true,
        "name": "Output CGST",
-       "parentId": "01M43JQBHJAHD5KACC2NVDRH3Z",
+       "parentId": "01M43QAXM5HTYGCP9ZASJD1F66",
        "role": "output_cgst",
        "type": "liability"
       }
      },
      {
-      "operationId": "01M43JQBHK65ADX8F6FJWD5JPN",
+      "operationId": "01M43QAXM5HTYGCP9ZASJD1F6H",
       "seq": 28,
       "entityType": "account",
-      "entityId": "01M43JQBHK65ADX8F6FJWD5JPK",
+      "entityId": "01M43QAXM5HTYGCP9ZASJD1F6F",
       "operationType": "create",
       "dependsOn": null,
-      "payloadHash": "sha256:923ebdb043c564fee6bfea1e2aa1f7c5ed0b3e0c99cde415e6f865b5b87a5134",
+      "payloadHash": "sha256:03f8bcd15f60af9194ecb6200ca0c8a23beb3c14985cd8af6deab83f04e31658",
       "payload": {
        "code": "2220",
-       "id": "01M43JQBHK65ADX8F6FJWD5JPK",
+       "id": "01M43QAXM5HTYGCP9ZASJD1F6F",
        "isGroup": false,
        "isSystem": true,
        "name": "Output SGST/UTGST",
-       "parentId": "01M43JQBHJAHD5KACC2NVDRH3Z",
+       "parentId": "01M43QAXM5HTYGCP9ZASJD1F66",
        "role": "output_sgst",
        "type": "liability"
       }
      },
      {
-      "operationId": "01M43JQBHK65ADX8F6FJWD5JPR",
+      "operationId": "01M43QAXM6357BG8GBGE15C94M",
       "seq": 29,
       "entityType": "account",
-      "entityId": "01M43JQBHK65ADX8F6FJWD5JPP",
+      "entityId": "01M43QAXM5HTYGCP9ZASJD1F6J",
       "operationType": "create",
       "dependsOn": null,
-      "payloadHash": "sha256:82a8c0d3569e95d8217554888b07c73c4ce7a57d609a8234f9de4d05cc820e7b",
+      "payloadHash": "sha256:5864757ff1168380f77c0560655644c7c60cad08f9c8150b97db59f2bfd68532",
       "payload": {
        "code": "2230",
-       "id": "01M43JQBHK65ADX8F6FJWD5JPP",
+       "id": "01M43QAXM5HTYGCP9ZASJD1F6J",
        "isGroup": false,
        "isSystem": true,
        "name": "Output IGST",
-       "parentId": "01M43JQBHJAHD5KACC2NVDRH3Z",
+       "parentId": "01M43QAXM5HTYGCP9ZASJD1F66",
        "role": "output_igst",
        "type": "liability"
       }
      },
      {
-      "operationId": "01M43JQBHK65ADX8F6FJWD5JPV",
+      "operationId": "01M43QAXM6357BG8GBGE15C94Q",
       "seq": 30,
       "entityType": "account",
-      "entityId": "01M43JQBHK65ADX8F6FJWD5JPS",
+      "entityId": "01M43QAXM6357BG8GBGE15C94N",
       "operationType": "create",
       "dependsOn": null,
-      "payloadHash": "sha256:4976903303a2ade90c19335114359a01c2035752b879211eff409756c6a12ec1",
+      "payloadHash": "sha256:9b82a754412449939090b84decea8d4f4096934a71a82a7505380c89ca19ea29",
       "payload": {
        "code": "2240",
-       "id": "01M43JQBHK65ADX8F6FJWD5JPS",
+       "id": "01M43QAXM6357BG8GBGE15C94N",
        "isGroup": false,
        "isSystem": true,
        "name": "Output Cess",
-       "parentId": "01M43JQBHJAHD5KACC2NVDRH3Z",
+       "parentId": "01M43QAXM5HTYGCP9ZASJD1F66",
        "role": "output_cess",
        "type": "liability"
       }
      },
      {
-      "operationId": "01M43JQBHK65ADX8F6FJWD5JPY",
+      "operationId": "01M43QAXM6357BG8GBGE15C94T",
       "seq": 31,
       "entityType": "account",
-      "entityId": "01M43JQBHK65ADX8F6FJWD5JPW",
+      "entityId": "01M43QAXM6357BG8GBGE15C94R",
       "operationType": "create",
       "dependsOn": null,
-      "payloadHash": "sha256:be51b1f4c690cab7d2c20578b05b73f9a9f8f79527b696cee40989a0880f8a1e",
+      "payloadHash": "sha256:55ac33780f22fcfe6c7a7af734c550c9a5f31daf99aacb3c531b68607053ff2a",
       "payload": {
        "code": "2300",
-       "id": "01M43JQBHK65ADX8F6FJWD5JPW",
+       "id": "01M43QAXM6357BG8GBGE15C94R",
        "isGroup": false,
        "isSystem": true,
        "name": "GST Payable",
-       "parentId": "01M43JQBHJAHD5KACC2NVDRH3Z",
+       "parentId": "01M43QAXM5HTYGCP9ZASJD1F66",
        "role": "gst_payable",
        "type": "liability"
       }
      },
      {
-      "operationId": "01M43JQBHK65ADX8F6FJWD5JQ1",
+      "operationId": "01M43QAXM6357BG8GBGE15C94X",
       "seq": 32,
       "entityType": "account",
-      "entityId": "01M43JQBHK65ADX8F6FJWD5JPZ",
+      "entityId": "01M43QAXM6357BG8GBGE15C94V",
       "operationType": "create",
       "dependsOn": null,
-      "payloadHash": "sha256:bcdf4cecaa5186b7c839df3bf29fe43a5c645a00ebf1225138709ef77b994fb7",
+      "payloadHash": "sha256:774406449d962d6cbb3aa8d92a03a4cc1d3a3eabe06a8d83e6cf885efe85f64c",
       "payload": {
        "code": "2400",
-       "id": "01M43JQBHK65ADX8F6FJWD5JPZ",
+       "id": "01M43QAXM6357BG8GBGE15C94V",
        "isGroup": false,
        "isSystem": true,
        "name": "Advances from Customers",
-       "parentId": "01M43JQBHJAHD5KACC2NVDRH3Z",
+       "parentId": "01M43QAXM5HTYGCP9ZASJD1F66",
        "role": "customer_advances",
        "type": "liability"
       }
      },
      {
-      "operationId": "01M43JQBHM4H82KEX4E9BGKD1S",
+      "operationId": "01M43QAXM6357BG8GBGE15C950",
       "seq": 33,
       "entityType": "account",
-      "entityId": "01M43JQBHM4H82KEX4E9BGKD1Q",
+      "entityId": "01M43QAXM6357BG8GBGE15C94Y",
       "operationType": "create",
       "dependsOn": null,
-      "payloadHash": "sha256:8733dd32b524c23283de24120308fcc6923b6bf33c440154444ba966690a6378",
+      "payloadHash": "sha256:cabbec67dd8ded61b3e6ec7857f53d3601b461112ea81965b4c50721e4722b8c",
       "payload": {
        "code": "3000",
-       "id": "01M43JQBHM4H82KEX4E9BGKD1Q",
+       "id": "01M43QAXM6357BG8GBGE15C94Y",
        "isGroup": true,
        "isSystem": true,
        "name": "Equity",
@@ -629,92 +629,92 @@
       }
      },
      {
-      "operationId": "01M43JQBHM4H82KEX4E9BGKD1W",
+      "operationId": "01M43QAXM6357BG8GBGE15C953",
       "seq": 34,
       "entityType": "account",
-      "entityId": "01M43JQBHM4H82KEX4E9BGKD1T",
+      "entityId": "01M43QAXM6357BG8GBGE15C951",
       "operationType": "create",
       "dependsOn": null,
-      "payloadHash": "sha256:679fa72f359cfa7356a083ae631581b89099be0d4ce6dfcb1f7330279773f9de",
+      "payloadHash": "sha256:325d0a0e06f382d4118ef9905f3c3fd0886f58b49e12018af1e4b8fa36a413f9",
       "payload": {
        "code": "3100",
-       "id": "01M43JQBHM4H82KEX4E9BGKD1T",
+       "id": "01M43QAXM6357BG8GBGE15C951",
        "isGroup": false,
        "isSystem": true,
        "name": "Owner's Capital",
-       "parentId": "01M43JQBHM4H82KEX4E9BGKD1Q",
+       "parentId": "01M43QAXM6357BG8GBGE15C94Y",
        "role": "capital",
        "type": "equity"
       }
      },
      {
-      "operationId": "01M43JQBHM4H82KEX4E9BGKD1Z",
+      "operationId": "01M43QAXM6357BG8GBGE15C956",
       "seq": 35,
       "entityType": "account",
-      "entityId": "01M43JQBHM4H82KEX4E9BGKD1X",
+      "entityId": "01M43QAXM6357BG8GBGE15C954",
       "operationType": "create",
       "dependsOn": null,
-      "payloadHash": "sha256:bf9f65da8a8e9b28cb569e1ecb09387627b9675a1c30c499f86a3f6e9f7c5fbe",
+      "payloadHash": "sha256:0a6c16768da8549eca37b384d6d6e16c9be42d74e29bfd6e34b26da5b8da8d54",
       "payload": {
        "code": "3200",
-       "id": "01M43JQBHM4H82KEX4E9BGKD1X",
+       "id": "01M43QAXM6357BG8GBGE15C954",
        "isGroup": false,
        "isSystem": true,
        "name": "Drawings",
-       "parentId": "01M43JQBHM4H82KEX4E9BGKD1Q",
+       "parentId": "01M43QAXM6357BG8GBGE15C94Y",
        "role": "drawings",
        "type": "equity"
       }
      },
      {
-      "operationId": "01M43JQBHM4H82KEX4E9BGKD22",
+      "operationId": "01M43QAXM6357BG8GBGE15C959",
       "seq": 36,
       "entityType": "account",
-      "entityId": "01M43JQBHM4H82KEX4E9BGKD20",
+      "entityId": "01M43QAXM6357BG8GBGE15C957",
       "operationType": "create",
       "dependsOn": null,
-      "payloadHash": "sha256:a2a1ec151016c95f6636c93649c003c6e4e40d02bbb832e7d9783bcce5fd56e4",
+      "payloadHash": "sha256:e34e6739e42050697047066b3347761b6a549d844441b6dee9f237eaea7fadac",
       "payload": {
        "code": "3300",
-       "id": "01M43JQBHM4H82KEX4E9BGKD20",
+       "id": "01M43QAXM6357BG8GBGE15C957",
        "isGroup": false,
        "isSystem": true,
        "name": "Retained Earnings",
-       "parentId": "01M43JQBHM4H82KEX4E9BGKD1Q",
+       "parentId": "01M43QAXM6357BG8GBGE15C94Y",
        "role": "retained_earnings",
        "type": "equity"
       }
      },
      {
-      "operationId": "01M43JQBHM4H82KEX4E9BGKD25",
+      "operationId": "01M43QAXM6357BG8GBGE15C95C",
       "seq": 37,
       "entityType": "account",
-      "entityId": "01M43JQBHM4H82KEX4E9BGKD23",
+      "entityId": "01M43QAXM6357BG8GBGE15C95A",
       "operationType": "create",
       "dependsOn": null,
-      "payloadHash": "sha256:a0cb19f71c32f33f56e5f079098c1c5f45716b70b81fc79381c33f52683ed085",
+      "payloadHash": "sha256:8785adda0d43d652ed19aa634e4314b9429430f3edf5ccce0e070170369f50d1",
       "payload": {
        "code": "3400",
-       "id": "01M43JQBHM4H82KEX4E9BGKD23",
+       "id": "01M43QAXM6357BG8GBGE15C95A",
        "isGroup": false,
        "isSystem": true,
        "name": "Opening Balance Equity",
-       "parentId": "01M43JQBHM4H82KEX4E9BGKD1Q",
+       "parentId": "01M43QAXM6357BG8GBGE15C94Y",
        "role": "opening_equity",
        "type": "equity"
       }
      },
      {
-      "operationId": "01M43JQBHM4H82KEX4E9BGKD28",
+      "operationId": "01M43QAXM6357BG8GBGE15C95F",
       "seq": 38,
       "entityType": "account",
-      "entityId": "01M43JQBHM4H82KEX4E9BGKD26",
+      "entityId": "01M43QAXM6357BG8GBGE15C95D",
       "operationType": "create",
       "dependsOn": null,
-      "payloadHash": "sha256:788d597e6c8ed87481c6ba2fc00699bbec736fff184fd73e5cf86644cabcbad9",
+      "payloadHash": "sha256:a449fcf712a7c0cb909607a70116c7a42d66c84c2c4febfccee6dc932b426f2a",
       "payload": {
        "code": "4000",
-       "id": "01M43JQBHM4H82KEX4E9BGKD26",
+       "id": "01M43QAXM6357BG8GBGE15C95D",
        "isGroup": true,
        "isSystem": true,
        "name": "Income",
@@ -724,130 +724,130 @@
       }
      },
      {
-      "operationId": "01M43JQBHM4H82KEX4E9BGKD2B",
+      "operationId": "01M43QAXM6357BG8GBGE15C95J",
       "seq": 39,
       "entityType": "account",
-      "entityId": "01M43JQBHM4H82KEX4E9BGKD29",
+      "entityId": "01M43QAXM6357BG8GBGE15C95G",
       "operationType": "create",
       "dependsOn": null,
-      "payloadHash": "sha256:1a15996411e9b5b7771fe3d91d848a0d0c99c6928a19fdd77a3c30d44f0a7955",
+      "payloadHash": "sha256:0fe40b3bad0dafba4cb47711cd070eb96c1f005a93b0098bf87eccc9c1ef4a80",
       "payload": {
        "code": "4100",
-       "id": "01M43JQBHM4H82KEX4E9BGKD29",
+       "id": "01M43QAXM6357BG8GBGE15C95G",
        "isGroup": false,
        "isSystem": true,
        "name": "Sales — Goods",
-       "parentId": "01M43JQBHM4H82KEX4E9BGKD26",
+       "parentId": "01M43QAXM6357BG8GBGE15C95D",
        "role": "sales_goods",
        "type": "income"
       }
      },
      {
-      "operationId": "01M43JQBHN7ZXGQJX8AHTNEMAP",
+      "operationId": "01M43QAXM76Y0AN9K7X2GP0V1P",
       "seq": 40,
       "entityType": "account",
-      "entityId": "01M43JQBHM4H82KEX4E9BGKD2C",
+      "entityId": "01M43QAXM76Y0AN9K7X2GP0V1M",
       "operationType": "create",
       "dependsOn": null,
-      "payloadHash": "sha256:fb7b130fcc09f0614f05322ae0b7b1a9cf8f063682e0868649c84eb26e6d4749",
+      "payloadHash": "sha256:51668113c495297272f00f1da33b80a967808097bbae8bda497dd285708c49bd",
       "payload": {
        "code": "4110",
-       "id": "01M43JQBHM4H82KEX4E9BGKD2C",
+       "id": "01M43QAXM76Y0AN9K7X2GP0V1M",
        "isGroup": false,
        "isSystem": true,
        "name": "Sales — Services",
-       "parentId": "01M43JQBHM4H82KEX4E9BGKD26",
+       "parentId": "01M43QAXM6357BG8GBGE15C95D",
        "role": "sales_services",
        "type": "income"
       }
      },
      {
-      "operationId": "01M43JQBHN7ZXGQJX8AHTNEMAS",
+      "operationId": "01M43QAXM76Y0AN9K7X2GP0V1S",
       "seq": 41,
       "entityType": "account",
-      "entityId": "01M43JQBHN7ZXGQJX8AHTNEMAQ",
+      "entityId": "01M43QAXM76Y0AN9K7X2GP0V1Q",
       "operationType": "create",
       "dependsOn": null,
-      "payloadHash": "sha256:92d0d3a8cd3be604c87b1cd7262ea98397d0e8cc78f5fc48aa838f7b9be86f89",
+      "payloadHash": "sha256:966e0b73f89b63b33e6af9b8bb6773e24b195513d07789378d1ed720c3245ac8",
       "payload": {
        "code": "4200",
-       "id": "01M43JQBHN7ZXGQJX8AHTNEMAQ",
+       "id": "01M43QAXM76Y0AN9K7X2GP0V1Q",
        "isGroup": false,
        "isSystem": true,
        "name": "Discount Allowed",
-       "parentId": "01M43JQBHM4H82KEX4E9BGKD26",
+       "parentId": "01M43QAXM6357BG8GBGE15C95D",
        "role": "discount_allowed",
        "type": "income"
       }
      },
      {
-      "operationId": "01M43JQBHN7ZXGQJX8AHTNEMAW",
+      "operationId": "01M43QAXM76Y0AN9K7X2GP0V1W",
       "seq": 42,
       "entityType": "account",
-      "entityId": "01M43JQBHN7ZXGQJX8AHTNEMAT",
+      "entityId": "01M43QAXM76Y0AN9K7X2GP0V1T",
       "operationType": "create",
       "dependsOn": null,
-      "payloadHash": "sha256:6dbc94e085761e92a4cddc9b3850abb4055d38bd3573ad0a761b01c6867795f7",
+      "payloadHash": "sha256:675933de1fb0456db13428e9009f1a20574bfe8f0a68cb4d568a816449dddc3f",
       "payload": {
        "code": "4300",
-       "id": "01M43JQBHN7ZXGQJX8AHTNEMAT",
+       "id": "01M43QAXM76Y0AN9K7X2GP0V1T",
        "isGroup": false,
        "isSystem": true,
        "name": "Other Income",
-       "parentId": "01M43JQBHM4H82KEX4E9BGKD26",
+       "parentId": "01M43QAXM6357BG8GBGE15C95D",
        "role": "cash_over",
        "type": "income"
       }
      },
      {
-      "operationId": "01M43JQBHN7ZXGQJX8AHTNEMAZ",
+      "operationId": "01M43QAXM76Y0AN9K7X2GP0V1Z",
       "seq": 43,
       "entityType": "account",
-      "entityId": "01M43JQBHN7ZXGQJX8AHTNEMAX",
+      "entityId": "01M43QAXM76Y0AN9K7X2GP0V1X",
       "operationType": "create",
       "dependsOn": null,
-      "payloadHash": "sha256:314399c2fa7b8aa10c77297cad1c461f040086e1f8ad36ad0efff51ae35d5735",
+      "payloadHash": "sha256:d642aa5f83c3bb538733b9ee788d0b00e0828da033ed7f5df4a030daf6186588",
       "payload": {
        "code": "4400",
-       "id": "01M43JQBHN7ZXGQJX8AHTNEMAX",
+       "id": "01M43QAXM76Y0AN9K7X2GP0V1X",
        "isGroup": false,
        "isSystem": true,
        "name": "Inventory Gain",
-       "parentId": "01M43JQBHM4H82KEX4E9BGKD26",
+       "parentId": "01M43QAXM6357BG8GBGE15C95D",
        "role": "inventory_gain",
        "type": "income"
       }
      },
      {
-      "operationId": "01M43JQBHN7ZXGQJX8AHTNEMB2",
+      "operationId": "01M43QAXM76Y0AN9K7X2GP0V22",
       "seq": 44,
       "entityType": "account",
-      "entityId": "01M43JQBHN7ZXGQJX8AHTNEMB0",
+      "entityId": "01M43QAXM76Y0AN9K7X2GP0V20",
       "operationType": "create",
       "dependsOn": null,
-      "payloadHash": "sha256:0be47795ad989ee08b8c6e69a9185fb2a870862446a974a3a3db05fcfa012283",
+      "payloadHash": "sha256:bc8cb34de174364b29a2464982b59a3b38ae07ea36600cdf8a3ff97f1a5eefd3",
       "payload": {
        "code": "4900",
-       "id": "01M43JQBHN7ZXGQJX8AHTNEMB0",
+       "id": "01M43QAXM76Y0AN9K7X2GP0V20",
        "isGroup": false,
        "isSystem": true,
        "name": "Round Off",
-       "parentId": "01M43JQBHM4H82KEX4E9BGKD26",
+       "parentId": "01M43QAXM6357BG8GBGE15C95D",
        "role": "round_off",
        "type": "income"
       }
      },
      {
-      "operationId": "01M43JQBHN7ZXGQJX8AHTNEMB5",
+      "operationId": "01M43QAXM76Y0AN9K7X2GP0V25",
       "seq": 45,
       "entityType": "account",
-      "entityId": "01M43JQBHN7ZXGQJX8AHTNEMB3",
+      "entityId": "01M43QAXM76Y0AN9K7X2GP0V23",
       "operationType": "create",
       "dependsOn": null,
-      "payloadHash": "sha256:272a62243c964d9d35899c3c14be00a9e4d4ec838e7d602b4e9a0ebdc2ac01a2",
+      "payloadHash": "sha256:947956c56141a579fafd01776ab10fa2085fddd78eb017543cd391f2186f5a59",
       "payload": {
        "code": "5000",
-       "id": "01M43JQBHN7ZXGQJX8AHTNEMB3",
+       "id": "01M43QAXM76Y0AN9K7X2GP0V23",
        "isGroup": true,
        "isSystem": true,
        "name": "Expenses",
@@ -857,265 +857,265 @@
       }
      },
      {
-      "operationId": "01M43JQBHN7ZXGQJX8AHTNEMB8",
+      "operationId": "01M43QAXM76Y0AN9K7X2GP0V28",
       "seq": 46,
       "entityType": "account",
-      "entityId": "01M43JQBHN7ZXGQJX8AHTNEMB6",
+      "entityId": "01M43QAXM76Y0AN9K7X2GP0V26",
       "operationType": "create",
       "dependsOn": null,
-      "payloadHash": "sha256:0ac06b7a359eca5e3a49ae0f28dc9b67b2b2856101a47f368c9f93800fd4c7e3",
+      "payloadHash": "sha256:81a4bf6995da98d3bf292db4dfedaef5715f73ab5340165f9be6270de7f48095",
       "payload": {
        "code": "5100",
-       "id": "01M43JQBHN7ZXGQJX8AHTNEMB6",
+       "id": "01M43QAXM76Y0AN9K7X2GP0V26",
        "isGroup": false,
        "isSystem": true,
        "name": "Cost of Goods Sold",
-       "parentId": "01M43JQBHN7ZXGQJX8AHTNEMB3",
+       "parentId": "01M43QAXM76Y0AN9K7X2GP0V23",
        "role": "cogs",
        "type": "expense"
       }
      },
      {
-      "operationId": "01M43JQBHN7ZXGQJX8AHTNEMBB",
+      "operationId": "01M43QAXM76Y0AN9K7X2GP0V2B",
       "seq": 47,
       "entityType": "account",
-      "entityId": "01M43JQBHN7ZXGQJX8AHTNEMB9",
+      "entityId": "01M43QAXM76Y0AN9K7X2GP0V29",
       "operationType": "create",
       "dependsOn": null,
-      "payloadHash": "sha256:5416d9ad1ae53ffb4836378c2ceafe286e06c7458e3765091042f58a03cccda5",
+      "payloadHash": "sha256:07b52e55cd9eb95e0e2df2e7b82971bad4f67396931b1a089036e0730d9216d0",
       "payload": {
        "code": "5110",
-       "id": "01M43JQBHN7ZXGQJX8AHTNEMB9",
+       "id": "01M43QAXM76Y0AN9K7X2GP0V29",
        "isGroup": false,
        "isSystem": true,
        "name": "Purchase-return Losses",
-       "parentId": "01M43JQBHN7ZXGQJX8AHTNEMB3",
+       "parentId": "01M43QAXM76Y0AN9K7X2GP0V23",
        "role": "purchase_return_loss",
        "type": "expense"
       }
      },
      {
-      "operationId": "01M43JQBHN7ZXGQJX8AHTNEMBE",
+      "operationId": "01M43QAXM76Y0AN9K7X2GP0V2E",
       "seq": 48,
       "entityType": "account",
-      "entityId": "01M43JQBHN7ZXGQJX8AHTNEMBC",
+      "entityId": "01M43QAXM76Y0AN9K7X2GP0V2C",
       "operationType": "create",
       "dependsOn": null,
-      "payloadHash": "sha256:2968a316aef725e30d5a3c71855ec62e61e25737934b69525b66749c15fd9517",
+      "payloadHash": "sha256:b8e2362b9892b604f02954e904ff26611bc479c5ec8e24662ddaf5564e7824e8",
       "payload": {
        "code": "5200",
-       "id": "01M43JQBHN7ZXGQJX8AHTNEMBC",
+       "id": "01M43QAXM76Y0AN9K7X2GP0V2C",
        "isGroup": false,
        "isSystem": true,
        "name": "Inventory Shrinkage/Write-off",
-       "parentId": "01M43JQBHN7ZXGQJX8AHTNEMB3",
+       "parentId": "01M43QAXM76Y0AN9K7X2GP0V23",
        "role": "shrinkage",
        "type": "expense"
       }
      },
      {
-      "operationId": "01M43JQBHPTQ1Z5HS3RSSP3Q4J",
+      "operationId": "01M43QAXM76Y0AN9K7X2GP0V2H",
       "seq": 49,
       "entityType": "account",
-      "entityId": "01M43JQBHPTQ1Z5HS3RSSP3Q4G",
+      "entityId": "01M43QAXM76Y0AN9K7X2GP0V2F",
       "operationType": "create",
       "dependsOn": null,
-      "payloadHash": "sha256:8a5c6bb68f16077644114de82428427e2f07314a429b3dcec7194bda15a6b899",
+      "payloadHash": "sha256:fe59438890bbd307594c9e63dd71b90e79cc2d2fcfbbfa802042764cfcd4e8a8",
       "payload": {
        "code": "5300",
-       "id": "01M43JQBHPTQ1Z5HS3RSSP3Q4G",
+       "id": "01M43QAXM76Y0AN9K7X2GP0V2F",
        "isGroup": false,
        "isSystem": true,
        "name": "Discount Given",
-       "parentId": "01M43JQBHN7ZXGQJX8AHTNEMB3",
+       "parentId": "01M43QAXM76Y0AN9K7X2GP0V23",
        "role": "discount_given",
        "type": "expense"
       }
      },
      {
-      "operationId": "01M43JQBHPTQ1Z5HS3RSSP3Q4N",
+      "operationId": "01M43QAXM8GW1Z9W36C0ZKCGC4",
       "seq": 50,
       "entityType": "account",
-      "entityId": "01M43JQBHPTQ1Z5HS3RSSP3Q4K",
+      "entityId": "01M43QAXM8GW1Z9W36C0ZKCGC2",
       "operationType": "create",
       "dependsOn": null,
-      "payloadHash": "sha256:ec4e4294ec7ce3098588eb860b06a9d890109d10c245894f2563979438f6b57a",
+      "payloadHash": "sha256:558668de05ce5137f5f09d7b0d7d6ae279b75025165fd5640357118deb3e3d0f",
       "payload": {
        "code": "5400",
-       "id": "01M43JQBHPTQ1Z5HS3RSSP3Q4K",
+       "id": "01M43QAXM8GW1Z9W36C0ZKCGC2",
        "isGroup": false,
        "isSystem": true,
        "name": "Rent",
-       "parentId": "01M43JQBHN7ZXGQJX8AHTNEMB3",
+       "parentId": "01M43QAXM76Y0AN9K7X2GP0V23",
        "role": null,
        "type": "expense"
       }
      },
      {
-      "operationId": "01M43JQBHPTQ1Z5HS3RSSP3Q4R",
+      "operationId": "01M43QAXM8GW1Z9W36C0ZKCGC7",
       "seq": 51,
       "entityType": "account",
-      "entityId": "01M43JQBHPTQ1Z5HS3RSSP3Q4P",
+      "entityId": "01M43QAXM8GW1Z9W36C0ZKCGC5",
       "operationType": "create",
       "dependsOn": null,
-      "payloadHash": "sha256:a30c8e6b8ed260b6351d15c4ce2cbd42d5c4ce7918b1ecc4e730120d5768c7f3",
+      "payloadHash": "sha256:706102ff1268b87816cb87884e27c7770889cf27e2ab13fd7663b57e6fc30245",
       "payload": {
        "code": "5410",
-       "id": "01M43JQBHPTQ1Z5HS3RSSP3Q4P",
+       "id": "01M43QAXM8GW1Z9W36C0ZKCGC5",
        "isGroup": false,
        "isSystem": true,
        "name": "Salaries",
-       "parentId": "01M43JQBHN7ZXGQJX8AHTNEMB3",
+       "parentId": "01M43QAXM76Y0AN9K7X2GP0V23",
        "role": null,
        "type": "expense"
       }
      },
      {
-      "operationId": "01M43JQBHPTQ1Z5HS3RSSP3Q4V",
+      "operationId": "01M43QAXM8GW1Z9W36C0ZKCGCA",
       "seq": 52,
       "entityType": "account",
-      "entityId": "01M43JQBHPTQ1Z5HS3RSSP3Q4S",
+      "entityId": "01M43QAXM8GW1Z9W36C0ZKCGC8",
       "operationType": "create",
       "dependsOn": null,
-      "payloadHash": "sha256:d82d84657a8c0b7b97dcd938984b4debcd01c519506b0d75637399692e420fd5",
+      "payloadHash": "sha256:22aa3c6bc2193289a5b29cdb81c32b2bc1ab6e3fd1c63417ce157a6258eb6387",
       "payload": {
        "code": "5420",
-       "id": "01M43JQBHPTQ1Z5HS3RSSP3Q4S",
+       "id": "01M43QAXM8GW1Z9W36C0ZKCGC8",
        "isGroup": false,
        "isSystem": true,
        "name": "Electricity",
-       "parentId": "01M43JQBHN7ZXGQJX8AHTNEMB3",
+       "parentId": "01M43QAXM76Y0AN9K7X2GP0V23",
        "role": null,
        "type": "expense"
       }
      },
      {
-      "operationId": "01M43JQBHPTQ1Z5HS3RSSP3Q4Y",
+      "operationId": "01M43QAXM8GW1Z9W36C0ZKCGCD",
       "seq": 53,
       "entityType": "account",
-      "entityId": "01M43JQBHPTQ1Z5HS3RSSP3Q4W",
+      "entityId": "01M43QAXM8GW1Z9W36C0ZKCGCB",
       "operationType": "create",
       "dependsOn": null,
-      "payloadHash": "sha256:9985da9342edf3d3f66c732ed49a23576b014d319c2b437a43ffd44e04d4b392",
+      "payloadHash": "sha256:dc85357e38afe089c566405988892d57c9883860f09d587c2b8415da89fec6a6",
       "payload": {
        "code": "5430",
-       "id": "01M43JQBHPTQ1Z5HS3RSSP3Q4W",
+       "id": "01M43QAXM8GW1Z9W36C0ZKCGCB",
        "isGroup": false,
        "isSystem": true,
        "name": "Transport",
-       "parentId": "01M43JQBHN7ZXGQJX8AHTNEMB3",
+       "parentId": "01M43QAXM76Y0AN9K7X2GP0V23",
        "role": null,
        "type": "expense"
       }
      },
      {
-      "operationId": "01M43JQBHPTQ1Z5HS3RSSP3Q51",
+      "operationId": "01M43QAXM8GW1Z9W36C0ZKCGCG",
       "seq": 54,
       "entityType": "account",
-      "entityId": "01M43JQBHPTQ1Z5HS3RSSP3Q4Z",
+      "entityId": "01M43QAXM8GW1Z9W36C0ZKCGCE",
       "operationType": "create",
       "dependsOn": null,
-      "payloadHash": "sha256:8c880bf37b16f554ae2824f25c54a3c8275164560913a6a5c4a6a3081b1a2776",
+      "payloadHash": "sha256:954bb19b738b430a3dabc4ae7df09e3af3c618cfd9251b45719da2e7a792e52a",
       "payload": {
        "code": "5440",
-       "id": "01M43JQBHPTQ1Z5HS3RSSP3Q4Z",
+       "id": "01M43QAXM8GW1Z9W36C0ZKCGCE",
        "isGroup": false,
        "isSystem": true,
        "name": "Internet",
-       "parentId": "01M43JQBHN7ZXGQJX8AHTNEMB3",
+       "parentId": "01M43QAXM76Y0AN9K7X2GP0V23",
        "role": null,
        "type": "expense"
       }
      },
      {
-      "operationId": "01M43JQBHPTQ1Z5HS3RSSP3Q54",
+      "operationId": "01M43QAXM8GW1Z9W36C0ZKCGCK",
       "seq": 55,
       "entityType": "account",
-      "entityId": "01M43JQBHPTQ1Z5HS3RSSP3Q52",
+      "entityId": "01M43QAXM8GW1Z9W36C0ZKCGCH",
       "operationType": "create",
       "dependsOn": null,
-      "payloadHash": "sha256:807af61fde397bef45e766095a3daed534967fffa3451dc2a3cf02860463a4b3",
+      "payloadHash": "sha256:a20027e2aef1954e387ec167d02916020eea612cc04a83d0fd38081b8899d7e1",
       "payload": {
        "code": "5450",
-       "id": "01M43JQBHPTQ1Z5HS3RSSP3Q52",
+       "id": "01M43QAXM8GW1Z9W36C0ZKCGCH",
        "isGroup": false,
        "isSystem": true,
        "name": "Repairs",
-       "parentId": "01M43JQBHN7ZXGQJX8AHTNEMB3",
+       "parentId": "01M43QAXM76Y0AN9K7X2GP0V23",
        "role": null,
        "type": "expense"
       }
      },
      {
-      "operationId": "01M43JQBHQCVGYFG87EFH5RWE9",
+      "operationId": "01M43QAXM8GW1Z9W36C0ZKCGCP",
       "seq": 56,
       "entityType": "account",
-      "entityId": "01M43JQBHPTQ1Z5HS3RSSP3Q55",
+      "entityId": "01M43QAXM8GW1Z9W36C0ZKCGCM",
       "operationType": "create",
       "dependsOn": null,
-      "payloadHash": "sha256:79f3766d5c588d489898dbb7a3a278770708a7f98b3b7ed785951d1836222822",
+      "payloadHash": "sha256:dc41b428d348f69c97763fa04ba0eb00049acf118556d6cb5861bac790936dfc",
       "payload": {
        "code": "5460",
-       "id": "01M43JQBHPTQ1Z5HS3RSSP3Q55",
+       "id": "01M43QAXM8GW1Z9W36C0ZKCGCM",
        "isGroup": false,
        "isSystem": true,
        "name": "Bank Charges",
-       "parentId": "01M43JQBHN7ZXGQJX8AHTNEMB3",
+       "parentId": "01M43QAXM76Y0AN9K7X2GP0V23",
        "role": null,
        "type": "expense"
       }
      },
      {
-      "operationId": "01M43JQBHQCVGYFG87EFH5RWEC",
+      "operationId": "01M43QAXM8GW1Z9W36C0ZKCGCS",
       "seq": 57,
       "entityType": "account",
-      "entityId": "01M43JQBHQCVGYFG87EFH5RWEA",
+      "entityId": "01M43QAXM8GW1Z9W36C0ZKCGCQ",
       "operationType": "create",
       "dependsOn": null,
-      "payloadHash": "sha256:3036111a43688ea12118c582162b7a05f0168ee8ff1d87b594fd2cc9dff65a87",
+      "payloadHash": "sha256:d21ea7af22b6caaac0d8648a31c7a433daa6bfac1ea679009ae98a81f9c5a217",
       "payload": {
        "code": "5470",
-       "id": "01M43JQBHQCVGYFG87EFH5RWEA",
+       "id": "01M43QAXM8GW1Z9W36C0ZKCGCQ",
        "isGroup": false,
        "isSystem": true,
        "name": "Bad Debts",
-       "parentId": "01M43JQBHN7ZXGQJX8AHTNEMB3",
+       "parentId": "01M43QAXM76Y0AN9K7X2GP0V23",
        "role": "bad_debts",
        "type": "expense"
       }
      },
      {
-      "operationId": "01M43JQBHQCVGYFG87EFH5RWEF",
+      "operationId": "01M43QAXM8GW1Z9W36C0ZKCGCW",
       "seq": 58,
       "entityType": "account",
-      "entityId": "01M43JQBHQCVGYFG87EFH5RWED",
+      "entityId": "01M43QAXM8GW1Z9W36C0ZKCGCT",
       "operationType": "create",
       "dependsOn": null,
-      "payloadHash": "sha256:925fba0de13b108fb571cf6bda34d3652dc381e66ab39c83c7844d648f76e2da",
+      "payloadHash": "sha256:ba474926b6dda474a679e66cb9688fbd85524708ce271e7e8f97471ab7995469",
       "payload": {
        "code": "5900",
-       "id": "01M43JQBHQCVGYFG87EFH5RWED",
+       "id": "01M43QAXM8GW1Z9W36C0ZKCGCT",
        "isGroup": false,
        "isSystem": true,
        "name": "Other Expenses",
-       "parentId": "01M43JQBHN7ZXGQJX8AHTNEMB3",
+       "parentId": "01M43QAXM76Y0AN9K7X2GP0V23",
        "role": "cash_short",
        "type": "expense"
       }
      },
      {
-      "operationId": "01M43JQBHW4XZK94XMHDB88EEX",
+      "operationId": "01M43QAXMDQ72QC4PWW8G0Q672",
       "seq": 59,
       "entityType": "branch",
-      "entityId": "01M43JQBHVMX72KJRAJS0070C5",
+      "entityId": "01M43QAXMDQ72QC4PWW8G0Q670",
       "operationType": "create",
       "dependsOn": null,
-      "payloadHash": "sha256:d3ae4811ddec4c40f371c2f75f880e8245c82ba51721e60b93d2ac56b31c5837",
+      "payloadHash": "sha256:c88726c9e55a3e2e7aa7fd6bd5591b45e8cb8028fdba4ca967ebe6824d44dbac",
       "payload": {
-       "businessId": "01M43JQBH7WE52W6EMRBZBFP7Z",
+       "businessId": "01M43QAXKXG58YZF2DJP7Y1QRN",
        "code": "DEL1",
-       "createdAt": "2026-10-04T13:47:45.595Z",
-       "id": "01M43JQBHVMX72KJRAJS0070C5",
+       "createdAt": "2026-10-04T15:08:21.005Z",
+       "id": "01M43QAXMDQ72QC4PWW8G0Q670",
        "isDefault": true,
        "name": "Main",
        "stateCode": "07",
@@ -1123,57 +1123,57 @@
       }
      },
      {
-      "operationId": "01M43JQBHZBQ3XBW33CWX39BWC",
+      "operationId": "01M43QAXMJ32BXG0CDGM2QP0RE",
       "seq": 60,
       "entityType": "terminal",
-      "entityId": "01M43JQBHY1GCY52R1V93F76VX",
+      "entityId": "01M43QAXMGC607EVR49DP2F3R5",
       "operationType": "create",
       "dependsOn": null,
-      "payloadHash": "sha256:cb310c4dc367b44146c695c44ae59f339df87f0c901da3b6c6b485c2dc1f2363",
+      "payloadHash": "sha256:21f71e3e93f2216e6d7f449b3d5e2d4621a5ffa53ba8ff9847ce06462e81226a",
       "payload": {
-       "branchId": "01M43JQBHVMX72KJRAJS0070C5",
-       "businessId": "01M43JQBH7WE52W6EMRBZBFP7Z",
+       "branchId": "01M43QAXMDQ72QC4PWW8G0Q670",
+       "businessId": "01M43QAXKXG58YZF2DJP7Y1QRN",
        "code": "T01",
-       "createdAt": "2026-10-04T13:47:45.598Z",
+       "createdAt": "2026-10-04T15:08:21.008Z",
        "deviceId": null,
-       "id": "01M43JQBHY1GCY52R1V93F76VX",
+       "id": "01M43QAXMGC607EVR49DP2F3R5",
        "invoicePrefix": "DE01",
        "name": "Till 1",
        "version": 1
       }
      },
      {
-      "operationId": "01M43JQBJ230VWDZW668E49V8D",
+      "operationId": "01M43QAXMMJ0TKVPJDJFH41BKH",
       "seq": 61,
       "entityType": "terminal",
-      "entityId": "01M43JQBHY1GCY52R1V93F76VX",
+      "entityId": "01M43QAXMGC607EVR49DP2F3R5",
       "operationType": "update",
       "dependsOn": null,
-      "payloadHash": "sha256:b7404f58f572e5d98668567c16d3d6bb89c34a97a7ab756c63734b6c4cf77412",
+      "payloadHash": "sha256:fa6704db2acbdf26b014b24d871810230718e6bfe1822e559fe0ba548ad3f12e",
       "payload": {
-       "branchId": "01M43JQBHVMX72KJRAJS0070C5",
-       "businessId": "01M43JQBH7WE52W6EMRBZBFP7Z",
+       "branchId": "01M43QAXMDQ72QC4PWW8G0Q670",
+       "businessId": "01M43QAXKXG58YZF2DJP7Y1QRN",
        "code": "T01",
-       "createdAt": "2026-10-04T13:47:45.598Z",
-       "deviceId": "01M43JQBDKFZWRXKMMG3GS0A8S",
-       "id": "01M43JQBHY1GCY52R1V93F76VX",
+       "createdAt": "2026-10-04T15:08:21.008Z",
+       "deviceId": "01M43QAXJP77GPWNE2Q74XKSSR",
+       "id": "01M43QAXMGC607EVR49DP2F3R5",
        "invoicePrefix": "DE01",
        "name": "Till 1",
        "version": 2
       }
      },
      {
-      "operationId": "01M43JQBJ78YBTRGN3BDEZWES3",
+      "operationId": "01M43QAXMWT1VQTNPTYBJ97408",
       "seq": 62,
       "entityType": "product",
-      "entityId": "01M43JQBJ6C4BX7N98MRNAJ7V6",
+      "entityId": "01M43QAXMTSQ8DEWYYEJPGB3N3",
       "operationType": "create",
       "dependsOn": null,
-      "payloadHash": "sha256:187c6a4818a5b74e98197f7d9f3a3644cc2085884a8befbecd2f3339b3396f12",
+      "payloadHash": "sha256:35c3639471bdf67322a437417103f54acb5aaf2431e9abce79c0e2055b5b4af5",
       "payload": {
        "allow_negative_stock": null,
        "barcodes": [],
-       "base_uom_id": "01M43JQBH9VPFCNY420XKM4N3K",
+       "base_uom_id": "01M43QAXKZHKS975DNQHR0G7M1",
        "brand_id": null,
        "category_id": null,
        "cess_per_unit_paise": 0,
@@ -1181,7 +1181,7 @@
        "conversions": [],
        "gst_rate_bp": 1800,
        "hsn_code": null,
-       "id": "01M43JQBJ6C4BX7N98MRNAJ7V6",
+       "id": "01M43QAXMTSQ8DEWYYEJPGB3N3",
        "mrp_paise": null,
        "name": "Soap",
        "name_norm": "soap",
@@ -1191,58 +1191,58 @@
        "sellingPricePaise": 11800,
        "sku": null,
        "tax_treatment": "taxable",
-       "updatedAt": "2026-10-04T13:47:45.606Z",
+       "updatedAt": "2026-10-04T15:08:21.018Z",
        "version": 1
       }
      },
      {
-      "operationId": "01M43JQBJ9RDK4SKT707XA51ZX",
+      "operationId": "01M43QAXMXBTVXQ2P1JGGJZNAQ",
       "seq": 63,
       "entityType": "price_list_item",
-      "entityId": "01M43JQBJ6C4BX7N98MRNAJ7V6",
+      "entityId": "01M43QAXMTSQ8DEWYYEJPGB3N3",
       "operationType": "update",
-      "dependsOn": "01M43JQBJ78YBTRGN3BDEZWES3",
-      "payloadHash": "sha256:031ddec2fcd2a23c990aacf5d1f7705e1eb4b30852228e1c9893d4e4d0751c53",
+      "dependsOn": "01M43QAXMWT1VQTNPTYBJ97408",
+      "payloadHash": "sha256:ce04bb72f40b4edd123d24ba62800948b8afcdac81880885e7920f09f4f6dac1",
       "payload": {
        "items": [
         {
          "effectiveFrom": "2026-10-04",
-         "id": "01M43JQBJ8FVV19B1F651GTZ6A",
+         "id": "01M43QAXMXBTVXQ2P1JGGJZNAP",
          "isInclusive": true,
          "minQtyMilli": 0,
-         "priceListId": "01M43JQBHE7JHR13W0K2GSTXAD",
+         "priceListId": "01M43QAXM2KX3NZ3R25V7B7KKN",
          "pricePaise": 11800,
-         "productId": "01M43JQBJ6C4BX7N98MRNAJ7V6",
-         "uomId": "01M43JQBH9VPFCNY420XKM4N3K"
+         "productId": "01M43QAXMTSQ8DEWYYEJPGB3N3",
+         "uomId": "01M43QAXKZHKS975DNQHR0G7M1"
         }
        ],
-       "priceListId": "01M43JQBHE7JHR13W0K2GSTXAD",
-       "productId": "01M43JQBJ6C4BX7N98MRNAJ7V6",
+       "priceListId": "01M43QAXM2KX3NZ3R25V7B7KKN",
+       "productId": "01M43QAXMTSQ8DEWYYEJPGB3N3",
        "retired": []
       }
      },
      {
-      "operationId": "01M43JQBJCZMX8M425APVR9ZCS",
+      "operationId": "01M43QAXN2AK6E1C97QMNXXP3B",
       "seq": 64,
       "entityType": "customer",
-      "entityId": "01M43JQBJCZMX8M425APVR9ZCQ",
+      "entityId": "01M43QAXN2AK6E1C97QMNXXP39",
       "operationType": "create",
       "dependsOn": null,
-      "payloadHash": "sha256:0012e36bc098e1dfe8a3fe441ab67563a165681db0e4746bdc64a916e33df772",
+      "payloadHash": "sha256:73d1456ec84caa8992d3e9062cbadd11ac2c9a5996f6108ad4db798c50dcfecc",
       "payload": {
-       "businessId": "01M43JQBH7WE52W6EMRBZBFP7Z",
+       "businessId": "01M43QAXKXG58YZF2DJP7Y1QRN",
        "creditDays": 0,
        "creditLimitPaise": null,
-       "id": "01M43JQBJCZMX8M425APVR9ZCQ",
+       "id": "01M43QAXN2AK6E1C97QMNXXP39",
        "name": "Ravi",
        "version": 1
       }
      },
      {
-      "operationId": "01M43JQBJDP2DXE65B555FJ0TZ",
+      "operationId": "01M43QAXN3G3MAHFYX8X4PH4H4",
       "seq": 65,
       "entityType": "customer_credit_limit",
-      "entityId": "01M43JQBJCZMX8M425APVR9ZCQ",
+      "entityId": "01M43QAXN2AK6E1C97QMNXXP39",
       "operationType": "update",
       "dependsOn": null,
       "payloadHash": "sha256:075ce10a01a036fc20fea2e885517a5431a9a82a564e81e6510a34cfca2ffbde",
@@ -1252,93 +1252,93 @@
       }
      },
      {
-      "operationId": "01M43JQBJF85BS3R1PX6DM5N6H",
+      "operationId": "01M43QAXN585QBSGY96FZA39W6",
       "seq": 66,
       "entityType": "pos_session",
-      "entityId": "01M43JQBJEV5KD0Q9EQRAQ8HNH",
+      "entityId": "01M43QAXN4NPB5NQ6PG9DBDJJR",
       "operationType": "create",
       "dependsOn": null,
-      "payloadHash": "sha256:718ee9c5a65a1b5d7ca4aa403477700fd92833af57e2231b1bb255801767691d",
+      "payloadHash": "sha256:0b581d8acb42441f3ed08e21fd478cb2f1ed370dec1ace9449b0eb5b57b6b588",
       "payload": {
-       "id": "01M43JQBJEV5KD0Q9EQRAQ8HNH",
-       "openedAt": "2026-10-04T13:47:45.614Z",
+       "id": "01M43QAXN4NPB5NQ6PG9DBDJJR",
+       "openedAt": "2026-10-04T15:08:21.028Z",
        "openedBy": "01J00000000000000000000A01",
        "openingCashPaise": 10000,
        "sessionNo": 1,
        "status": "open",
-       "terminalId": "01M43JQBHY1GCY52R1V93F76VX"
+       "terminalId": "01M43QAXMGC607EVR49DP2F3R5"
       }
      },
      {
-      "operationId": "01M43JQBJSMCT68GXRDT38X4S2",
+      "operationId": "01M43QAXNEH2A2D0SNMXQHGEMF",
       "seq": 67,
       "entityType": "doc_series",
-      "entityId": "01M43JQBJR4G6W8YYF93SXHDBX",
+      "entityId": "01M43QAXNEH2A2D0SNMXQHGEMD",
       "operationType": "create",
       "dependsOn": null,
-      "payloadHash": "sha256:6906394326ff0d171984090582159ba87c27a578aff92caf8229b8321f613c30",
+      "payloadHash": "sha256:c5cc4c7731d59b25a0bda8e5e80bf1d15a1d0300fbdadfb6ac9c49d340238acf",
       "payload": {
-       "branchId": "01M43JQBHVMX72KJRAJS0070C5",
-       "businessId": "01M43JQBH7WE52W6EMRBZBFP7Z",
+       "branchId": "01M43QAXMDQ72QC4PWW8G0Q670",
+       "businessId": "01M43QAXKXG58YZF2DJP7Y1QRN",
        "docType": "tax_invoice",
        "fy": "2026-27",
-       "id": "01M43JQBJR4G6W8YYF93SXHDBX",
+       "id": "01M43QAXNEH2A2D0SNMXQHGEMD",
        "nextSeq": 1,
        "padWidth": 6,
        "prefix": "DE01",
-       "terminalId": "01M43JQBHY1GCY52R1V93F76VX"
+       "terminalId": "01M43QAXMGC607EVR49DP2F3R5"
       }
      },
      {
-      "operationId": "01M43JQBJTHCEMCN4MV6JNNGRW",
+      "operationId": "01M43QAXNF9HYA1T62MAT690S5",
       "seq": 68,
       "entityType": "warehouse",
-      "entityId": "01M43JQBJTHCEMCN4MV6JNNGRT",
+      "entityId": "01M43QAXNF9HYA1T62MAT690S3",
       "operationType": "create",
       "dependsOn": null,
-      "payloadHash": "sha256:cc32e5815145b8cae724d497c275dfb4998034f99baf7c94ec64d8384f123dde",
+      "payloadHash": "sha256:20a67db13de90fa928231d37df0ea2ac7677d5f2a1bab4111b3a009831f55215",
       "payload": {
-       "branchId": "01M43JQBHVMX72KJRAJS0070C5",
-       "businessId": "01M43JQBH7WE52W6EMRBZBFP7Z",
+       "branchId": "01M43QAXMDQ72QC4PWW8G0Q670",
+       "businessId": "01M43QAXKXG58YZF2DJP7Y1QRN",
        "code": "DEL1",
-       "id": "01M43JQBJTHCEMCN4MV6JNNGRT",
+       "id": "01M43QAXNF9HYA1T62MAT690S3",
        "name": "Main store"
       }
      },
      {
-      "operationId": "01M43JQBK9H1GP14NJQFFFDMPN",
+      "operationId": "01M43QAXNTZ8B8AGFF8R5CSPCW",
       "seq": 69,
       "entityType": "sale",
-      "entityId": "01M43JQBJQ7MMDD0XECKE3913M",
+      "entityId": "01M43QAXNDKS2PARY61EQ5XZTM",
       "operationType": "create",
       "dependsOn": null,
-      "payloadHash": "sha256:d65928e804c880881b1e3d0c822bab502352e0678d8e5cf459f7afeb0fac6ad0",
+      "payloadHash": "sha256:e7ca5b0af2c9ab986e8f639676dd0f478641e72351a8da569f9bfa1839e77b1b",
       "payload": {
-       "branchId": "01M43JQBHVMX72KJRAJS0070C5",
-       "businessId": "01M43JQBH7WE52W6EMRBZBFP7Z",
+       "branchId": "01M43QAXMDQ72QC4PWW8G0Q670",
+       "businessId": "01M43QAXKXG58YZF2DJP7Y1QRN",
        "changePaise": 0,
-       "commandId": "01M43JQBJGVBF3KYDV3J2TC4Y9",
-       "createdAt": "2026-10-04T13:47:45.628Z",
+       "commandId": "01M43QAXN6KR4Y5Q7AC4W1BYV6",
+       "createdAt": "2026-10-04T15:08:21.040Z",
        "createdBy": "01J00000000000000000000A01",
        "creditPaise": 23600,
        "customer": {
         "name": "Ravi",
         "walkIn": false
        },
-       "customerId": "01M43JQBJCZMX8M425APVR9ZCQ",
+       "customerId": "01M43QAXN2AK6E1C97QMNXXP39",
        "docDate": "2026-10-04",
        "docNumber": "DE01/2627/000001",
        "docSeq": 1,
        "docType": "tax_invoice",
        "dueDate": "2026-10-04",
        "fy": "2026-27",
-       "id": "01M43JQBJQ7MMDD0XECKE3913M",
+       "id": "01M43QAXNDKS2PARY61EQ5XZTM",
        "journal": {
-        "branchId": "01M43JQBHVMX72KJRAJS0070C5",
+        "branchId": "01M43QAXMDQ72QC4PWW8G0Q670",
         "docDate": "2026-10-04",
         "entryDate": "2026-10-04",
         "entryNo": "DE01/2627/000001",
-        "id": "01M43JQBK1THNFZYM6KDWWA1RK",
+        "id": "01M43QAXNNTBMGY83SBM9BY3T6",
         "latePosting": false,
         "lines": [
          {
@@ -1348,7 +1348,7 @@
           "creditPaise": 0,
           "debitPaise": 23600,
           "party": {
-           "partyId": "01M43JQBJCZMX8M425APVR9ZCQ",
+           "partyId": "01M43QAXN2AK6E1C97QMNXXP39",
            "partyType": "customer"
           }
          },
@@ -1375,12 +1375,12 @@
          }
         ],
         "narration": null,
-        "periodId": "01M43JQBK1THNFZYM6KDWWA1RJ",
-        "refId": "01M43JQBJQ7MMDD0XECKE3913M",
+        "periodId": "01M43QAXNM3AANAZW1XZ5KV1QT",
+        "refId": "01M43QAXNDKS2PARY61EQ5XZTM",
         "refType": "sale",
         "reversalOf": null,
         "source": "sale",
-        "terminalId": "01M43JQBHY1GCY52R1V93F76VX"
+        "terminalId": "01M43QAXMGC607EVR49DP2F3R5"
        },
        "lines": [
         {
@@ -1401,7 +1401,7 @@
          "lineNo": 1,
          "name": "Soap",
          "priceIsInclusive": true,
-         "productId": "01M43JQBJ6C4BX7N98MRNAJ7V6",
+         "productId": "01M43QAXMTSQ8DEWYYEJPGB3N3",
          "qtyMilli": 2000,
          "sgstPaise": 1800,
          "taxTreatment": "taxable",
@@ -1409,44 +1409,44 @@
          "totalPaise": 23600,
          "unitPricePaise": 11800,
          "uomCode": "PCS",
-         "uomId": "01M43JQBH9VPFCNY420XKM4N3K"
+         "uomId": "01M43QAXKZHKS975DNQHR0G7M1"
         }
        ],
        "movements": [
         {
-         "deviceId": "01M43JQBDKFZWRXKMMG3GS0A8S",
-         "id": "01M43JQBJXRDY162Q9WMFNAA1R",
-         "occurredAt": "2026-10-04T13:47:45.629Z",
-         "productId": "01M43JQBJ6C4BX7N98MRNAJ7V6",
+         "deviceId": "01M43QAXJP77GPWNE2Q74XKSSR",
+         "id": "01M43QAXNJ055G1TR2A1W6D07F",
+         "occurredAt": "2026-10-04T15:08:21.042Z",
+         "productId": "01M43QAXMTSQ8DEWYYEJPGB3N3",
          "provisional": true,
          "qtyMilli": -2000,
          "reasonCode": null,
-         "refId": "01M43JQBJQ7MMDD0XECKE3913M",
-         "refLineId": "01M43JQBJQ7MMDD0XECKE3913M-001",
+         "refId": "01M43QAXNDKS2PARY61EQ5XZTM",
+         "refLineId": "01M43QAXNDKS2PARY61EQ5XZTM-001",
          "refType": "sale",
          "type": "sale",
          "unitCostPaise": 0,
          "valuePaise": 0,
-         "warehouseId": "01M43JQBJTHCEMCN4MV6JNNGRT"
+         "warehouseId": "01M43QAXNF9HYA1T62MAT690S3"
         }
        ],
        "paidPaise": 0,
        "partyEntry": {
         "amountPaise": 23600,
-        "businessId": "01M43JQBH7WE52W6EMRBZBFP7Z",
+        "businessId": "01M43QAXKXG58YZF2DJP7Y1QRN",
         "docDate": "2026-10-04",
         "dueDate": "2026-10-04",
-        "id": "01M43JQBJZRWD99YTTZZ08E8VH",
+        "id": "01M43QAXNK92N4EC50EAWFC007",
         "kind": "post",
-        "partyId": "01M43JQBJCZMX8M425APVR9ZCQ",
+        "partyId": "01M43QAXN2AK6E1C97QMNXXP39",
         "partyType": "customer",
-        "refId": "01M43JQBJQ7MMDD0XECKE3913M",
+        "refId": "01M43QAXNDKS2PARY61EQ5XZTM",
         "refType": "sale"
        },
        "placeOfSupplyReason": null,
-       "priceListId": "01M43JQBHE7JHR13W0K2GSTXAD",
-       "seriesId": "01M43JQBJR4G6W8YYF93SXHDBX",
-       "sessionId": "01M43JQBJEV5KD0Q9EQRAQ8HNH",
+       "priceListId": "01M43QAXM2KX3NZ3R25V7B7KKN",
+       "seriesId": "01M43QAXNEH2A2D0SNMXQHGEMD",
+       "sessionId": "01M43QAXN4NPB5NQ6PG9DBDJJR",
        "status": "posted",
        "taxScheme": "regular",
        "tenders": [
@@ -1456,7 +1456,7 @@
          "method": "credit"
         }
        ],
-       "terminalId": "01M43JQBHY1GCY52R1V93F76VX",
+       "terminalId": "01M43QAXMGC607EVR49DP2F3R5",
        "totals": {
         "billDiscountPaise": 0,
         "cessPaise": 0,
@@ -1478,49 +1478,49 @@
       }
      },
      {
-      "operationId": "01M43JQBKC9VEFQV4DMXW3ZW1C",
+      "operationId": "01M43QAXNW2QNKG2NK8Q3WKB48",
       "seq": 70,
       "entityType": "doc_series",
-      "entityId": "01M43JQBKC9VEFQV4DMXW3ZW1A",
+      "entityId": "01M43QAXNVDHXECHW8VN8WGETP",
       "operationType": "create",
       "dependsOn": null,
-      "payloadHash": "sha256:edee9430d548ccd2acc9dcf0e2dce014ea3e215bfe8192402e4f481d58a949f4",
+      "payloadHash": "sha256:fdb981680c69c5972ac16c004bc23472cd1e2042d1ce230743738124dd80e383",
       "payload": {
-       "branchId": "01M43JQBHVMX72KJRAJS0070C5",
-       "businessId": "01M43JQBH7WE52W6EMRBZBFP7Z",
+       "branchId": "01M43QAXMDQ72QC4PWW8G0Q670",
+       "businessId": "01M43QAXKXG58YZF2DJP7Y1QRN",
        "docType": "receipt",
        "fy": "2026-27",
-       "id": "01M43JQBKC9VEFQV4DMXW3ZW1A",
+       "id": "01M43QAXNVDHXECHW8VN8WGETP",
        "nextSeq": 1,
        "padWidth": 5,
        "prefix": "DE01R",
-       "terminalId": "01M43JQBHY1GCY52R1V93F76VX"
+       "terminalId": "01M43QAXMGC607EVR49DP2F3R5"
       }
      },
      {
-      "operationId": "01M43JQBKMPSCBHM0C9B32FYDJ",
+      "operationId": "01M43QAXP1K4WYZ8XMWN4CEWF7",
       "seq": 71,
       "entityType": "payment",
-      "entityId": "01M43JQBKDV992CMR5QB9RGP5S",
+      "entityId": "01M43QAXNW2QNKG2NK8Q3WKB49",
       "operationType": "create",
       "dependsOn": null,
-      "payloadHash": "sha256:7a3269d33eda8fe092541887159eadaa790e8b57b2230521a79106e1b9afd02b",
+      "payloadHash": "sha256:8193d4df808af7dc2f0c9d5813531dacc26b80eacb1778f5a286d197e960b1d4",
       "payload": {
        "allocatedPaise": 10000,
        "allocations": [
         {
          "allocatedOn": "2026-10-04",
          "amountPaise": 10000,
-         "id": "01M43JQBKF6R6JYD28A29NT06E",
-         "targetId": "01M43JQBJQ7MMDD0XECKE3913M",
+         "id": "01M43QAXNYAZX3X54Y0W0KBBAW",
+         "targetId": "01M43QAXNDKS2PARY61EQ5XZTM",
          "targetType": "sale"
         }
        ],
        "amountPaise": 10000,
-       "branchId": "01M43JQBHVMX72KJRAJS0070C5",
-       "businessId": "01M43JQBH7WE52W6EMRBZBFP7Z",
-       "commandId": "01M43JQBKAKJFB9NJGFB1FTPTM",
-       "createdAt": "2026-10-04T13:47:45.645Z",
+       "branchId": "01M43QAXMDQ72QC4PWW8G0Q670",
+       "businessId": "01M43QAXKXG58YZF2DJP7Y1QRN",
+       "commandId": "01M43QAXNTZ8B8AGFF8R5CSPCX",
+       "createdAt": "2026-10-04T15:08:21.052Z",
        "createdBy": "01J00000000000000000000A01",
        "direction": "in",
        "docNumber": "DE01R/2627/00001",
@@ -1528,34 +1528,34 @@
        "drawerMovements": [
         {
          "amountPaise": 10000,
-         "createdAt": "2026-10-04T13:47:45.648Z",
-         "id": "01M43JQBKG5PFB0BKS1J77461N",
+         "createdAt": "2026-10-04T15:08:21.054Z",
+         "id": "01M43QAXNYAZX3X54Y0W0KBBAX",
          "kind": "cash_in",
          "reason": "DE01R/2627/00001 Ravi",
-         "sessionId": "01M43JQBJEV5KD0Q9EQRAQ8HNH"
+         "sessionId": "01M43QAXN4NPB5NQ6PG9DBDJJR"
         }
        ],
-       "drawerSessionId": "01M43JQBJEV5KD0Q9EQRAQ8HNH",
+       "drawerSessionId": "01M43QAXN4NPB5NQ6PG9DBDJJR",
        "entry": {
         "amountPaise": -10000,
-        "businessId": "01M43JQBH7WE52W6EMRBZBFP7Z",
+        "businessId": "01M43QAXKXG58YZF2DJP7Y1QRN",
         "docDate": "2026-10-04",
         "dueDate": null,
-        "id": "01M43JQBKDV992CMR5QB9RGP5T",
+        "id": "01M43QAXNXC1ZKSJFZHVT3KZ2C",
         "kind": "post",
-        "partyId": "01M43JQBJCZMX8M425APVR9ZCQ",
+        "partyId": "01M43QAXN2AK6E1C97QMNXXP39",
         "partyType": "customer",
-        "refId": "01M43JQBKDV992CMR5QB9RGP5S",
+        "refId": "01M43QAXNW2QNKG2NK8Q3WKB49",
         "refType": "payment"
        },
        "fy": "2026-27",
-       "id": "01M43JQBKDV992CMR5QB9RGP5S",
+       "id": "01M43QAXNW2QNKG2NK8Q3WKB49",
        "journal": {
-        "branchId": "01M43JQBHVMX72KJRAJS0070C5",
+        "branchId": "01M43QAXMDQ72QC4PWW8G0Q670",
         "docDate": "2026-10-04",
         "entryDate": "2026-10-04",
         "entryNo": "DE01R/2627/00001",
-        "id": "01M43JQBKHSSYMH54NHBF6M6M6",
+        "id": "01M43QAXNZVTDERE0MS3VE6TCS",
         "latePosting": false,
         "lines": [
          {
@@ -1572,30 +1572,30 @@
           "creditPaise": 10000,
           "debitPaise": 0,
           "party": {
-           "partyId": "01M43JQBJCZMX8M425APVR9ZCQ",
+           "partyId": "01M43QAXN2AK6E1C97QMNXXP39",
            "partyType": "customer"
           }
          }
         ],
         "narration": null,
-        "periodId": "01M43JQBK1THNFZYM6KDWWA1RJ",
-        "refId": "01M43JQBKDV992CMR5QB9RGP5S",
+        "periodId": "01M43QAXNM3AANAZW1XZ5KV1QT",
+        "refId": "01M43QAXNW2QNKG2NK8Q3WKB49",
         "refType": "payment",
         "reversalOf": null,
         "source": "receipt",
-        "terminalId": "01M43JQBHY1GCY52R1V93F76VX"
+        "terminalId": "01M43QAXMGC607EVR49DP2F3R5"
        },
        "method": "cash",
        "note": null,
-       "partyId": "01M43JQBJCZMX8M425APVR9ZCQ",
+       "partyId": "01M43QAXN2AK6E1C97QMNXXP39",
        "partyName": "Ravi",
        "partyType": "customer",
        "paymentDate": "2026-10-04",
        "reference": null,
-       "seriesId": "01M43JQBKC9VEFQV4DMXW3ZW1A",
-       "sessionId": "01M43JQBJEV5KD0Q9EQRAQ8HNH",
+       "seriesId": "01M43QAXNVDHXECHW8VN8WGETP",
+       "sessionId": "01M43QAXN4NPB5NQ6PG9DBDJJR",
        "status": "posted",
-       "terminalId": "01M43JQBHY1GCY52R1V93F76VX"
+       "terminalId": "01M43QAXMGC607EVR49DP2F3R5"
       }
      }
     ]
@@ -1603,287 +1603,287 @@
    "expect": {
     "results": [
      {
-      "operationId": "01M43JQBH8N4QK7FXM719H070S",
+      "operationId": "01M43QAXKYBRQWD2TZ5BY1G49W",
       "status": "applied"
      },
      {
-      "operationId": "01M43JQBHA0Q135X05HTS0T2NZ",
+      "operationId": "01M43QAXKZHKS975DNQHR0G7M3",
       "status": "applied"
      },
      {
-      "operationId": "01M43JQBHB52531WNM1JRV0SQ6",
+      "operationId": "01M43QAXM0Q57WCQHDD31HEQCD",
       "status": "applied"
      },
      {
-      "operationId": "01M43JQBHB52531WNM1JRV0SQ9",
+      "operationId": "01M43QAXM0Q57WCQHDD31HEQCG",
       "status": "applied"
      },
      {
-      "operationId": "01M43JQBHCEPRTNCFJFJAW28EQ",
+      "operationId": "01M43QAXM0Q57WCQHDD31HEQCK",
       "status": "applied"
      },
      {
-      "operationId": "01M43JQBHCEPRTNCFJFJAW28ET",
+      "operationId": "01M43QAXM13AM1VAXB772524F2",
       "status": "applied"
      },
      {
-      "operationId": "01M43JQBHCEPRTNCFJFJAW28EX",
+      "operationId": "01M43QAXM13AM1VAXB772524F5",
       "status": "applied"
      },
      {
-      "operationId": "01M43JQBHDW71H216HMRQ6A0GP",
+      "operationId": "01M43QAXM13AM1VAXB772524F8",
       "status": "applied"
      },
      {
-      "operationId": "01M43JQBHDW71H216HMRQ6A0GS",
+      "operationId": "01M43QAXM13AM1VAXB772524FB",
       "status": "applied"
      },
      {
-      "operationId": "01M43JQBHE7JHR13W0K2GSTXAC",
+      "operationId": "01M43QAXM2KX3NZ3R25V7B7KKM",
       "status": "applied"
      },
      {
-      "operationId": "01M43JQBHFWXK8T089HPVS5TPY",
+      "operationId": "01M43QAXM2KX3NZ3R25V7B7KKQ",
       "status": "applied"
      },
      {
-      "operationId": "01M43JQBHGWY6B40HSYVEMN0K5",
+      "operationId": "01M43QAXM3SF6VTD23HRHPMSFA",
       "status": "applied"
      },
      {
-      "operationId": "01M43JQBHGWY6B40HSYVEMN0K8",
+      "operationId": "01M43QAXM47MR6Y4972FB7VV9P",
       "status": "applied"
      },
      {
-      "operationId": "01M43JQBHGWY6B40HSYVEMN0KB",
+      "operationId": "01M43QAXM47MR6Y4972FB7VV9S",
       "status": "applied"
      },
      {
-      "operationId": "01M43JQBHHAPW443K41TB93NZQ",
+      "operationId": "01M43QAXM47MR6Y4972FB7VV9W",
       "status": "applied"
      },
      {
-      "operationId": "01M43JQBHHAPW443K41TB93NZT",
+      "operationId": "01M43QAXM47MR6Y4972FB7VV9Z",
       "status": "applied"
      },
      {
-      "operationId": "01M43JQBHHAPW443K41TB93NZX",
+      "operationId": "01M43QAXM47MR6Y4972FB7VVA2",
       "status": "applied"
      },
      {
-      "operationId": "01M43JQBHHAPW443K41TB93P00",
+      "operationId": "01M43QAXM47MR6Y4972FB7VVA5",
       "status": "applied"
      },
      {
-      "operationId": "01M43JQBHHAPW443K41TB93P03",
+      "operationId": "01M43QAXM47MR6Y4972FB7VVA8",
       "status": "applied"
      },
      {
-      "operationId": "01M43JQBHJAHD5KACC2NVDRH3J",
+      "operationId": "01M43QAXM5HTYGCP9ZASJD1F5S",
       "status": "applied"
      },
      {
-      "operationId": "01M43JQBHJAHD5KACC2NVDRH3N",
+      "operationId": "01M43QAXM5HTYGCP9ZASJD1F5W",
       "status": "applied"
      },
      {
-      "operationId": "01M43JQBHJAHD5KACC2NVDRH3R",
+      "operationId": "01M43QAXM5HTYGCP9ZASJD1F5Z",
       "status": "applied"
      },
      {
-      "operationId": "01M43JQBHJAHD5KACC2NVDRH3V",
+      "operationId": "01M43QAXM5HTYGCP9ZASJD1F62",
       "status": "applied"
      },
      {
-      "operationId": "01M43JQBHJAHD5KACC2NVDRH3Y",
+      "operationId": "01M43QAXM5HTYGCP9ZASJD1F65",
       "status": "applied"
      },
      {
-      "operationId": "01M43JQBHK65ADX8F6FJWD5JPC",
+      "operationId": "01M43QAXM5HTYGCP9ZASJD1F68",
       "status": "applied"
      },
      {
-      "operationId": "01M43JQBHK65ADX8F6FJWD5JPF",
+      "operationId": "01M43QAXM5HTYGCP9ZASJD1F6B",
       "status": "applied"
      },
      {
-      "operationId": "01M43JQBHK65ADX8F6FJWD5JPJ",
+      "operationId": "01M43QAXM5HTYGCP9ZASJD1F6E",
       "status": "applied"
      },
      {
-      "operationId": "01M43JQBHK65ADX8F6FJWD5JPN",
+      "operationId": "01M43QAXM5HTYGCP9ZASJD1F6H",
       "status": "applied"
      },
      {
-      "operationId": "01M43JQBHK65ADX8F6FJWD5JPR",
+      "operationId": "01M43QAXM6357BG8GBGE15C94M",
       "status": "applied"
      },
      {
-      "operationId": "01M43JQBHK65ADX8F6FJWD5JPV",
+      "operationId": "01M43QAXM6357BG8GBGE15C94Q",
       "status": "applied"
      },
      {
-      "operationId": "01M43JQBHK65ADX8F6FJWD5JPY",
+      "operationId": "01M43QAXM6357BG8GBGE15C94T",
       "status": "applied"
      },
      {
-      "operationId": "01M43JQBHK65ADX8F6FJWD5JQ1",
+      "operationId": "01M43QAXM6357BG8GBGE15C94X",
       "status": "applied"
      },
      {
-      "operationId": "01M43JQBHM4H82KEX4E9BGKD1S",
+      "operationId": "01M43QAXM6357BG8GBGE15C950",
       "status": "applied"
      },
      {
-      "operationId": "01M43JQBHM4H82KEX4E9BGKD1W",
+      "operationId": "01M43QAXM6357BG8GBGE15C953",
       "status": "applied"
      },
      {
-      "operationId": "01M43JQBHM4H82KEX4E9BGKD1Z",
+      "operationId": "01M43QAXM6357BG8GBGE15C956",
       "status": "applied"
      },
      {
-      "operationId": "01M43JQBHM4H82KEX4E9BGKD22",
+      "operationId": "01M43QAXM6357BG8GBGE15C959",
       "status": "applied"
      },
      {
-      "operationId": "01M43JQBHM4H82KEX4E9BGKD25",
+      "operationId": "01M43QAXM6357BG8GBGE15C95C",
       "status": "applied"
      },
      {
-      "operationId": "01M43JQBHM4H82KEX4E9BGKD28",
+      "operationId": "01M43QAXM6357BG8GBGE15C95F",
       "status": "applied"
      },
      {
-      "operationId": "01M43JQBHM4H82KEX4E9BGKD2B",
+      "operationId": "01M43QAXM6357BG8GBGE15C95J",
       "status": "applied"
      },
      {
-      "operationId": "01M43JQBHN7ZXGQJX8AHTNEMAP",
+      "operationId": "01M43QAXM76Y0AN9K7X2GP0V1P",
       "status": "applied"
      },
      {
-      "operationId": "01M43JQBHN7ZXGQJX8AHTNEMAS",
+      "operationId": "01M43QAXM76Y0AN9K7X2GP0V1S",
       "status": "applied"
      },
      {
-      "operationId": "01M43JQBHN7ZXGQJX8AHTNEMAW",
+      "operationId": "01M43QAXM76Y0AN9K7X2GP0V1W",
       "status": "applied"
      },
      {
-      "operationId": "01M43JQBHN7ZXGQJX8AHTNEMAZ",
+      "operationId": "01M43QAXM76Y0AN9K7X2GP0V1Z",
       "status": "applied"
      },
      {
-      "operationId": "01M43JQBHN7ZXGQJX8AHTNEMB2",
+      "operationId": "01M43QAXM76Y0AN9K7X2GP0V22",
       "status": "applied"
      },
      {
-      "operationId": "01M43JQBHN7ZXGQJX8AHTNEMB5",
+      "operationId": "01M43QAXM76Y0AN9K7X2GP0V25",
       "status": "applied"
      },
      {
-      "operationId": "01M43JQBHN7ZXGQJX8AHTNEMB8",
+      "operationId": "01M43QAXM76Y0AN9K7X2GP0V28",
       "status": "applied"
      },
      {
-      "operationId": "01M43JQBHN7ZXGQJX8AHTNEMBB",
+      "operationId": "01M43QAXM76Y0AN9K7X2GP0V2B",
       "status": "applied"
      },
      {
-      "operationId": "01M43JQBHN7ZXGQJX8AHTNEMBE",
+      "operationId": "01M43QAXM76Y0AN9K7X2GP0V2E",
       "status": "applied"
      },
      {
-      "operationId": "01M43JQBHPTQ1Z5HS3RSSP3Q4J",
+      "operationId": "01M43QAXM76Y0AN9K7X2GP0V2H",
       "status": "applied"
      },
      {
-      "operationId": "01M43JQBHPTQ1Z5HS3RSSP3Q4N",
+      "operationId": "01M43QAXM8GW1Z9W36C0ZKCGC4",
       "status": "applied"
      },
      {
-      "operationId": "01M43JQBHPTQ1Z5HS3RSSP3Q4R",
+      "operationId": "01M43QAXM8GW1Z9W36C0ZKCGC7",
       "status": "applied"
      },
      {
-      "operationId": "01M43JQBHPTQ1Z5HS3RSSP3Q4V",
+      "operationId": "01M43QAXM8GW1Z9W36C0ZKCGCA",
       "status": "applied"
      },
      {
-      "operationId": "01M43JQBHPTQ1Z5HS3RSSP3Q4Y",
+      "operationId": "01M43QAXM8GW1Z9W36C0ZKCGCD",
       "status": "applied"
      },
      {
-      "operationId": "01M43JQBHPTQ1Z5HS3RSSP3Q51",
+      "operationId": "01M43QAXM8GW1Z9W36C0ZKCGCG",
       "status": "applied"
      },
      {
-      "operationId": "01M43JQBHPTQ1Z5HS3RSSP3Q54",
+      "operationId": "01M43QAXM8GW1Z9W36C0ZKCGCK",
       "status": "applied"
      },
      {
-      "operationId": "01M43JQBHQCVGYFG87EFH5RWE9",
+      "operationId": "01M43QAXM8GW1Z9W36C0ZKCGCP",
       "status": "applied"
      },
      {
-      "operationId": "01M43JQBHQCVGYFG87EFH5RWEC",
+      "operationId": "01M43QAXM8GW1Z9W36C0ZKCGCS",
       "status": "applied"
      },
      {
-      "operationId": "01M43JQBHQCVGYFG87EFH5RWEF",
+      "operationId": "01M43QAXM8GW1Z9W36C0ZKCGCW",
       "status": "applied"
      },
      {
-      "operationId": "01M43JQBHW4XZK94XMHDB88EEX",
+      "operationId": "01M43QAXMDQ72QC4PWW8G0Q672",
       "status": "applied"
      },
      {
-      "operationId": "01M43JQBHZBQ3XBW33CWX39BWC",
+      "operationId": "01M43QAXMJ32BXG0CDGM2QP0RE",
       "status": "applied"
      },
      {
-      "operationId": "01M43JQBJ230VWDZW668E49V8D",
+      "operationId": "01M43QAXMMJ0TKVPJDJFH41BKH",
       "status": "applied"
      },
      {
-      "operationId": "01M43JQBJ78YBTRGN3BDEZWES3",
+      "operationId": "01M43QAXMWT1VQTNPTYBJ97408",
       "status": "applied"
      },
      {
-      "operationId": "01M43JQBJ9RDK4SKT707XA51ZX",
+      "operationId": "01M43QAXMXBTVXQ2P1JGGJZNAQ",
       "status": "applied"
      },
      {
-      "operationId": "01M43JQBJCZMX8M425APVR9ZCS",
+      "operationId": "01M43QAXN2AK6E1C97QMNXXP3B",
       "status": "applied"
      },
      {
-      "operationId": "01M43JQBJDP2DXE65B555FJ0TZ",
+      "operationId": "01M43QAXN3G3MAHFYX8X4PH4H4",
       "status": "applied"
      },
      {
-      "operationId": "01M43JQBJF85BS3R1PX6DM5N6H",
+      "operationId": "01M43QAXN585QBSGY96FZA39W6",
       "status": "applied"
      },
      {
-      "operationId": "01M43JQBJSMCT68GXRDT38X4S2",
+      "operationId": "01M43QAXNEH2A2D0SNMXQHGEMF",
       "status": "applied"
      },
      {
-      "operationId": "01M43JQBJTHCEMCN4MV6JNNGRW",
+      "operationId": "01M43QAXNF9HYA1T62MAT690S5",
       "status": "applied"
      },
      {
-      "operationId": "01M43JQBK9H1GP14NJQFFFDMPN",
+      "operationId": "01M43QAXNTZ8B8AGFF8R5CSPCW",
       "status": "applied"
      },
      {
-      "operationId": "01M43JQBKC9VEFQV4DMXW3ZW1C",
+      "operationId": "01M43QAXNW2QNKG2NK8Q3WKB48",
       "status": "applied"
      },
      {
-      "operationId": "01M43JQBKMPSCBHM0C9B32FYDJ",
+      "operationId": "01M43QAXP1K4WYZ8XMWN4CEWF7",
       "status": "applied"
      }
     ]
@@ -1893,36 +1893,36 @@
    "device": "A",
    "call": "push",
    "request": {
-    "businessId": "01M43JQBH7WE52W6EMRBZBFP7Z",
+    "businessId": "01M43QAXKXG58YZF2DJP7Y1QRN",
     "protocol": 1,
     "schemaVersion": 14,
     "clientTime": "2026-10-04T10:00:00.000Z",
     "operations": [
      {
-      "operationId": "01M43JQBKPR33VSA4P3EKBBV29",
+      "operationId": "01M43QAXP5QWMBMK6SE1MMBRZT",
       "seq": 2063,
       "entityType": "price_list_item",
-      "entityId": "01M43JQBJ6C4BX7N98MRNAJ7V6",
+      "entityId": "01M43QAXMTSQ8DEWYYEJPGB3N3",
       "operationType": "update",
       "dependsOn": null,
-      "payloadHash": "sha256:e72c8aacd66b470b9e2202eb636c0ac7bfeb2a8ce0143d535ccb1c0b66313bcd",
+      "payloadHash": "sha256:c05fbde41dce49fab568b7fa03a0bce3c33c7d2d43184c562e231ec44f53b3cc",
       "payload": {
        "items": [
         {
          "effectiveFrom": "2026-10-04",
-         "id": "01M43JQBKPR33VSA4P3EKBBV28",
+         "id": "01M43QAXP5QWMBMK6SE1MMBRZS",
          "isInclusive": true,
          "minQtyMilli": 0,
-         "priceListId": "01M43JQBHE7JHR13W0K2GSTXAD",
+         "priceListId": "01M43QAXM2KX3NZ3R25V7B7KKN",
          "pricePaise": 12500,
-         "productId": "01M43JQBJ6C4BX7N98MRNAJ7V6",
-         "uomId": "01M43JQBH9VPFCNY420XKM4N3K"
+         "productId": "01M43QAXMTSQ8DEWYYEJPGB3N3",
+         "uomId": "01M43QAXKZHKS975DNQHR0G7M1"
         }
        ],
-       "priceListId": "01M43JQBHE7JHR13W0K2GSTXAD",
-       "productId": "01M43JQBJ6C4BX7N98MRNAJ7V6",
+       "priceListId": "01M43QAXM2KX3NZ3R25V7B7KKN",
+       "productId": "01M43QAXMTSQ8DEWYYEJPGB3N3",
        "retired": [
-        "01M43JQBJ8FVV19B1F651GTZ6A"
+        "01M43QAXMXBTVXQ2P1JGGJZNAP"
        ]
       }
      }
@@ -1931,7 +1931,7 @@
    "expect": {
     "results": [
      {
-      "operationId": "01M43JQBKPR33VSA4P3EKBBV29",
+      "operationId": "01M43QAXP5QWMBMK6SE1MMBRZT",
       "status": "applied"
      }
     ]
@@ -1941,36 +1941,36 @@
    "device": "B",
    "call": "push",
    "request": {
-    "businessId": "01M43JQBH7WE52W6EMRBZBFP7Z",
+    "businessId": "01M43QAXKXG58YZF2DJP7Y1QRN",
     "protocol": 1,
     "schemaVersion": 14,
     "clientTime": "2026-10-04T10:00:00.000Z",
     "operations": [
      {
-      "operationId": "01M43JQBKPR33VSA4P3EKBBV2B",
+      "operationId": "01M43QAXP5QWMBMK6SE1MMBRZW",
       "seq": 2064,
       "entityType": "price_list_item",
-      "entityId": "01M43JQBJ6C4BX7N98MRNAJ7V6",
+      "entityId": "01M43QAXMTSQ8DEWYYEJPGB3N3",
       "operationType": "update",
       "dependsOn": null,
-      "payloadHash": "sha256:b82ec71e86de85fd25e83eeccacf8d50f56e528abb3f6aa266435eab4e48e5d1",
+      "payloadHash": "sha256:8791f3f7e0649523b19f773d2b8b258fc4bde4e8618f6ad6faed0df63cddc6e3",
       "payload": {
        "items": [
         {
          "effectiveFrom": "2026-10-04",
-         "id": "01M43JQBKPR33VSA4P3EKBBV2A",
+         "id": "01M43QAXP5QWMBMK6SE1MMBRZV",
          "isInclusive": true,
          "minQtyMilli": 0,
-         "priceListId": "01M43JQBHE7JHR13W0K2GSTXAD",
+         "priceListId": "01M43QAXM2KX3NZ3R25V7B7KKN",
          "pricePaise": 9900,
-         "productId": "01M43JQBJ6C4BX7N98MRNAJ7V6",
-         "uomId": "01M43JQBH9VPFCNY420XKM4N3K"
+         "productId": "01M43QAXMTSQ8DEWYYEJPGB3N3",
+         "uomId": "01M43QAXKZHKS975DNQHR0G7M1"
         }
        ],
-       "priceListId": "01M43JQBHE7JHR13W0K2GSTXAD",
-       "productId": "01M43JQBJ6C4BX7N98MRNAJ7V6",
+       "priceListId": "01M43QAXM2KX3NZ3R25V7B7KKN",
+       "productId": "01M43QAXMTSQ8DEWYYEJPGB3N3",
        "retired": [
-        "01M43JQBJ8FVV19B1F651GTZ6A"
+        "01M43QAXMXBTVXQ2P1JGGJZNAP"
        ]
       }
      }
@@ -1979,7 +1979,7 @@
    "expect": {
     "results": [
      {
-      "operationId": "01M43JQBKPR33VSA4P3EKBBV2B",
+      "operationId": "01M43QAXP5QWMBMK6SE1MMBRZW",
       "status": "applied"
      }
     ]
@@ -1989,7 +1989,7 @@
    "device": "B",
    "call": "pull",
    "request": {
-    "businessId": "01M43JQBH7WE52W6EMRBZBFP7Z",
+    "businessId": "01M43QAXKXG58YZF2DJP7Y1QRN",
     "stream": "masters",
     "since": 0,
     "limit": 500
@@ -1997,12 +1997,12 @@
    "expect": {
     "lastChangeFor": {
      "entityType": "price_list_item",
-     "entityId": "01M43JQBJ6C4BX7N98MRNAJ7V6",
+     "entityId": "01M43QAXMTSQ8DEWYYEJPGB3N3",
      "originDeviceId": null,
      "payload": {
       "items": [
        {
-        "id": "01M43JQBKPR33VSA4P3EKBBV28",
+        "id": "01M43QAXP5QWMBMK6SE1MMBRZS",
         "pricePaise": 12500
        }
       ]

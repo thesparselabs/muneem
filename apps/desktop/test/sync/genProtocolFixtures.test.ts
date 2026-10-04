@@ -24,12 +24,15 @@ describe('sync protocol fixtures', () => {
     await app.register.open(10_000);
     const draft = SaleDraft.parse({ lines: [{ productId: soap.id, uomId: pcs, qtyMilli: 2000 }], customerId: ravi.id });
     app.sales.complete(CompleteSaleInput.parse({ ...draft, commandId: newUlid(), expectedTotalPaise: 23_600, tenders: [{ method: 'credit', amountPaise: 23_600 }] }));
-    app.payments.create(PaymentInput.parse({ partyType: 'customer', partyId: ravi.id, amountPaise: 10_000, method: 'cash', commandId: newUlid() }));
-    const ops = (db.prepare('SELECT * FROM sync_outbox WHERE business_id = ? ORDER BY seq').all(businessId) as Record<string, unknown>[]).map((r): PushOperation => ({
+    const receipt = app.payments.create(PaymentInput.parse({ partyType: 'customer', partyId: ravi.id, amountPaise: 10_000, method: 'cash', commandId: newUlid() }));
+    const outbox = (sql: string) => (db.prepare(sql).all(businessId) as Record<string, unknown>[]).map((r): PushOperation => ({
       operationId: r.operation_id as string, seq: r.seq as number, entityType: r.entity_type as string, entityId: r.entity_id as string,
       operationType: r.operation_type as PushOperation['operationType'], dependsOn: (r.depends_on_operation_id as string | null) ?? null,
       payloadHash: r.payload_hash as string, payload: JSON.parse(r.payload_json as string) as Record<string, unknown>,
     }));
+    const ops = outbox('SELECT * FROM sync_outbox WHERE business_id = ? ORDER BY seq');
+    app.payments.cancel(receipt.id, 'bounced');
+    const cancelOps = outbox('SELECT * FROM sync_outbox WHERE business_id = ? ORDER BY seq').filter((o) => o.seq > ops.at(-1)!.seq);
     const push = (operations: PushOperation[]) => ({ businessId, protocol: 1, schemaVersion: 14, clientTime: CLIENT_TIME, operations });
     const applied = (o: PushOperation[]) => ({ results: o.map((x) => ({ operationId: x.operationId, status: 'applied' })) });
     const sale = ops.find((o) => o.entityType === 'sale')!;
@@ -109,6 +112,17 @@ describe('sync protocol fixtures', () => {
           { device: 'B', call: 'pull', request: { businessId, stream: 'masters', since: 0, limit: 500 },
             expect: { lastChangeFor: { entityType: 'price_list_item', entityId: prices.entityId, originDeviceId: null,
               payload: { items: [{ id: (pricesFromA.payload.items as { id: string }[])[0]!.id, pricePaise: 12_500 }] } } } },
+        ],
+      },
+      'document-cancel-version': {
+        description: "A cancels a receipt: the cloud stores the cancel as the document's next version, the create payload with the cancel under `cancel`; B pulls it; the same cancel again is a duplicate.",
+        setup, steps: [
+          { device: 'A', call: 'push', request: push(ops), expect: applied(ops) },
+          { device: 'A', call: 'push', request: push(cancelOps), expect: applied(cancelOps) },
+          { device: 'A', call: 'push', request: push(cancelOps), expect: { results: cancelOps.map((x) => ({ operationId: x.operationId, status: 'duplicate' })) } },
+          { device: 'B', call: 'pull', request: { businessId, stream: 'documents', since: 0, limit: 500 },
+            expect: { lastChangeFor: { entityType: 'payment', entityId: payment.entityId, originDeviceId: 'A',
+              payload: { docNumber: payment.payload.docNumber, status: 'posted', cancel: { status: 'cancelled', reason: 'bounced' } } } } },
         ],
       },
       'master-conflict-cloud-wins-price': {

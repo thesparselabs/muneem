@@ -1,6 +1,6 @@
 {
- "name": "master-conflict-cloud-wins-price",
- "description": "A changes the price, then B changes it from an older version: the cloud keeps A's price, logs the conflict, keeps B's name edit, and sends the merge back to B.",
+ "name": "document-cancel-version",
+ "description": "A cancels a receipt: the cloud stores the cancel as the document's next version, the create payload with the cancel under `cancel`; B pulls it; the same cancel again is a duplicate.",
  "setup": {
   "organizationId": "01J00000000000000000000B01",
   "userId": "01J00000000000000000000A01",
@@ -1899,36 +1899,83 @@
     "clientTime": "2026-10-04T10:00:00.000Z",
     "operations": [
      {
-      "operationId": "01M43QAXP6GMGP9X3RTGH3HC42",
-      "seq": 1062,
-      "entityType": "product",
-      "entityId": "01M43QAXMTSQ8DEWYYEJPGB3N3",
-      "operationType": "update",
-      "dependsOn": "01M43QAXMWT1VQTNPTYBJ97408",
-      "payloadHash": "sha256:d0c1a507ee9ca92775b6c2c5544e2a4c4745981d0c3ed8c2d352485cbd8cca4e",
+      "operationId": "01M43QAXP4A3QX88CRP4HG0TH6",
+      "seq": 72,
+      "entityType": "payment",
+      "entityId": "01M43QAXNW2QNKG2NK8Q3WKB49",
+      "operationType": "cancel",
+      "dependsOn": null,
+      "payloadHash": "sha256:95f6f773e409b51b6f554b4ad5985c659df9a4e179a201980da27e85c880dc14",
       "payload": {
-       "allow_negative_stock": null,
-       "barcodes": [],
-       "base_uom_id": "01M43QAXKZHKS975DNQHR0G7M1",
-       "brand_id": null,
-       "category_id": null,
-       "cess_per_unit_paise": 0,
-       "cess_rate_bp": 0,
-       "conversions": [],
-       "gst_rate_bp": 1800,
-       "hsn_code": null,
-       "id": "01M43QAXMTSQ8DEWYYEJPGB3N3",
-       "mrp_paise": null,
-       "name": "Soap",
-       "name_norm": "soap",
-       "price_is_inclusive": 1,
-       "purchase_price_paise": null,
-       "reorder_level_milli": null,
-       "sellingPricePaise": 12500,
-       "sku": null,
-       "tax_treatment": "taxable",
-       "updatedAt": "2026-10-04T10:01:00.000Z",
-       "version": 2
+       "drawer": "reversed",
+       "drawerMovements": [
+        {
+         "amountPaise": 10000,
+         "createdAt": "2026-10-04T15:08:21.054Z",
+         "id": "01M43QAXNYAZX3X54Y0W0KBBAX",
+         "kind": "cash_in",
+         "reason": "DE01R/2627/00001 Ravi",
+         "sessionId": "01M43QAXN4NPB5NQ6PG9DBDJJR"
+        },
+        {
+         "amountPaise": 10000,
+         "createdAt": "2026-10-04T15:08:21.059Z",
+         "id": "01M43QAXP31XY5CVXECCDJ53E0",
+         "kind": "cash_out",
+         "reason": "Cancelled DE01R/2627/00001",
+         "sessionId": "01M43QAXN4NPB5NQ6PG9DBDJJR"
+        }
+       ],
+       "entry": {
+        "amountPaise": 10000,
+        "businessId": "01M43QAXKXG58YZF2DJP7Y1QRN",
+        "docDate": "2026-10-04",
+        "dueDate": null,
+        "id": "01M43QAXP31XY5CVXECCDJ53DZ",
+        "kind": "cancel",
+        "partyId": "01M43QAXN2AK6E1C97QMNXXP39",
+        "partyType": "customer",
+        "refId": "01M43QAXNW2QNKG2NK8Q3WKB49",
+        "refType": "payment"
+       },
+       "id": "01M43QAXNW2QNKG2NK8Q3WKB49",
+       "journal": {
+        "branchId": "01M43QAXMDQ72QC4PWW8G0Q670",
+        "docDate": "2026-10-04",
+        "entryDate": "2026-10-04",
+        "entryNo": "DE01R/2627/00001 (rev)",
+        "id": "01M43QAXP4A3QX88CRP4HG0TH4",
+        "latePosting": false,
+        "lines": [
+         {
+          "account": {
+           "code": "1100"
+          },
+          "creditPaise": 10000,
+          "debitPaise": 0
+         },
+         {
+          "account": {
+           "code": "1300"
+          },
+          "creditPaise": 0,
+          "debitPaise": 10000,
+          "party": {
+           "partyId": "01M43QAXN2AK6E1C97QMNXXP39",
+           "partyType": "customer"
+          }
+         }
+        ],
+        "narration": "Cancelled",
+        "periodId": "01M43QAXNM3AANAZW1XZ5KV1QT",
+        "refId": "01M43QAXNW2QNKG2NK8Q3WKB49",
+        "refType": "payment",
+        "reversalOf": "01M43QAXNZVTDERE0MS3VE6TCS",
+        "source": "receipt",
+        "terminalId": "01M43QAXMGC607EVR49DP2F3R5"
+       },
+       "reason": "bounced",
+       "status": "cancelled"
       }
      }
     ]
@@ -1936,14 +1983,14 @@
    "expect": {
     "results": [
      {
-      "operationId": "01M43QAXP6GMGP9X3RTGH3HC42",
+      "operationId": "01M43QAXP4A3QX88CRP4HG0TH6",
       "status": "applied"
      }
     ]
    }
   },
   {
-   "device": "B",
+   "device": "A",
    "call": "push",
    "request": {
     "businessId": "01M43QAXKXG58YZF2DJP7Y1QRN",
@@ -1952,69 +1999,83 @@
     "clientTime": "2026-10-04T10:00:00.000Z",
     "operations": [
      {
-      "operationId": "01M43QAXP5QWMBMK6SE1MMBRZX",
-      "seq": 1062,
-      "entityType": "product",
-      "entityId": "01M43QAXMTSQ8DEWYYEJPGB3N3",
-      "operationType": "update",
-      "dependsOn": "01M43QAXMWT1VQTNPTYBJ97408",
-      "payloadHash": "sha256:c94c3b6e678334b08c2c1a97763ef9b8b87233b490686d178dbaf349e8aa04f5",
+      "operationId": "01M43QAXP4A3QX88CRP4HG0TH6",
+      "seq": 72,
+      "entityType": "payment",
+      "entityId": "01M43QAXNW2QNKG2NK8Q3WKB49",
+      "operationType": "cancel",
+      "dependsOn": null,
+      "payloadHash": "sha256:95f6f773e409b51b6f554b4ad5985c659df9a4e179a201980da27e85c880dc14",
       "payload": {
-       "allow_negative_stock": null,
-       "barcodes": [],
-       "base_uom_id": "01M43QAXKZHKS975DNQHR0G7M1",
-       "brand_id": null,
-       "category_id": null,
-       "cess_per_unit_paise": 0,
-       "cess_rate_bp": 0,
-       "conversions": [],
-       "gst_rate_bp": 1800,
-       "hsn_code": null,
-       "id": "01M43QAXMTSQ8DEWYYEJPGB3N3",
-       "mrp_paise": null,
-       "name": "Soap",
-       "name_norm": "soap",
-       "price_is_inclusive": 1,
-       "purchase_price_paise": null,
-       "reorder_level_milli": null,
-       "sellingPricePaise": 9900,
-       "sku": null,
-       "tax_treatment": "taxable",
-       "updatedAt": "2026-10-04T10:02:00.000Z",
-       "version": 2
-      }
-     },
-     {
-      "operationId": "01M43QAXP6GMGP9X3RTGH3HC43",
-      "seq": 1063,
-      "entityType": "product",
-      "entityId": "01M43QAXMTSQ8DEWYYEJPGB3N3",
-      "operationType": "update",
-      "dependsOn": "01M43QAXMWT1VQTNPTYBJ97408",
-      "payloadHash": "sha256:4847eff3eb987d5e8adfb427c38db395231e6ba462e6def8f707907a2aab587e",
-      "payload": {
-       "allow_negative_stock": null,
-       "barcodes": [],
-       "base_uom_id": "01M43QAXKZHKS975DNQHR0G7M1",
-       "brand_id": null,
-       "category_id": null,
-       "cess_per_unit_paise": 0,
-       "cess_rate_bp": 0,
-       "conversions": [],
-       "gst_rate_bp": 1800,
-       "hsn_code": null,
-       "id": "01M43QAXMTSQ8DEWYYEJPGB3N3",
-       "mrp_paise": null,
-       "name": "Soap Bar",
-       "name_norm": "soap",
-       "price_is_inclusive": 1,
-       "purchase_price_paise": null,
-       "reorder_level_milli": null,
-       "sellingPricePaise": 11800,
-       "sku": null,
-       "tax_treatment": "taxable",
-       "updatedAt": "2026-10-04T10:03:00.000Z",
-       "version": 2
+       "drawer": "reversed",
+       "drawerMovements": [
+        {
+         "amountPaise": 10000,
+         "createdAt": "2026-10-04T15:08:21.054Z",
+         "id": "01M43QAXNYAZX3X54Y0W0KBBAX",
+         "kind": "cash_in",
+         "reason": "DE01R/2627/00001 Ravi",
+         "sessionId": "01M43QAXN4NPB5NQ6PG9DBDJJR"
+        },
+        {
+         "amountPaise": 10000,
+         "createdAt": "2026-10-04T15:08:21.059Z",
+         "id": "01M43QAXP31XY5CVXECCDJ53E0",
+         "kind": "cash_out",
+         "reason": "Cancelled DE01R/2627/00001",
+         "sessionId": "01M43QAXN4NPB5NQ6PG9DBDJJR"
+        }
+       ],
+       "entry": {
+        "amountPaise": 10000,
+        "businessId": "01M43QAXKXG58YZF2DJP7Y1QRN",
+        "docDate": "2026-10-04",
+        "dueDate": null,
+        "id": "01M43QAXP31XY5CVXECCDJ53DZ",
+        "kind": "cancel",
+        "partyId": "01M43QAXN2AK6E1C97QMNXXP39",
+        "partyType": "customer",
+        "refId": "01M43QAXNW2QNKG2NK8Q3WKB49",
+        "refType": "payment"
+       },
+       "id": "01M43QAXNW2QNKG2NK8Q3WKB49",
+       "journal": {
+        "branchId": "01M43QAXMDQ72QC4PWW8G0Q670",
+        "docDate": "2026-10-04",
+        "entryDate": "2026-10-04",
+        "entryNo": "DE01R/2627/00001 (rev)",
+        "id": "01M43QAXP4A3QX88CRP4HG0TH4",
+        "latePosting": false,
+        "lines": [
+         {
+          "account": {
+           "code": "1100"
+          },
+          "creditPaise": 10000,
+          "debitPaise": 0
+         },
+         {
+          "account": {
+           "code": "1300"
+          },
+          "creditPaise": 0,
+          "debitPaise": 10000,
+          "party": {
+           "partyId": "01M43QAXN2AK6E1C97QMNXXP39",
+           "partyType": "customer"
+          }
+         }
+        ],
+        "narration": "Cancelled",
+        "periodId": "01M43QAXNM3AANAZW1XZ5KV1QT",
+        "refId": "01M43QAXNW2QNKG2NK8Q3WKB49",
+        "refType": "payment",
+        "reversalOf": "01M43QAXNZVTDERE0MS3VE6TCS",
+        "source": "receipt",
+        "terminalId": "01M43QAXMGC607EVR49DP2F3R5"
+       },
+       "reason": "bounced",
+       "status": "cancelled"
       }
      }
     ]
@@ -2022,12 +2083,8 @@
    "expect": {
     "results": [
      {
-      "operationId": "01M43QAXP5QWMBMK6SE1MMBRZX",
-      "status": "applied"
-     },
-     {
-      "operationId": "01M43QAXP6GMGP9X3RTGH3HC43",
-      "status": "applied"
+      "operationId": "01M43QAXP4A3QX88CRP4HG0TH6",
+      "status": "duplicate"
      }
     ]
    }
@@ -2037,18 +2094,22 @@
    "call": "pull",
    "request": {
     "businessId": "01M43QAXKXG58YZF2DJP7Y1QRN",
-    "stream": "masters",
+    "stream": "documents",
     "since": 0,
     "limit": 500
    },
    "expect": {
     "lastChangeFor": {
-     "entityType": "product",
-     "entityId": "01M43QAXMTSQ8DEWYYEJPGB3N3",
-     "originDeviceId": null,
+     "entityType": "payment",
+     "entityId": "01M43QAXNW2QNKG2NK8Q3WKB49",
+     "originDeviceId": "A",
      "payload": {
-      "sellingPricePaise": 12500,
-      "name": "Soap Bar"
+      "docNumber": "DE01R/2627/00001",
+      "status": "posted",
+      "cancel": {
+       "status": "cancelled",
+       "reason": "bounced"
+      }
      }
     }
    }

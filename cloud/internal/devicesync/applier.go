@@ -224,14 +224,31 @@ func (a *applier) document(cur *entityRow) (*stored, error) {
 	if a.op.OperationType == "cancel" && cancelled(cur.Payload) {
 		return nil, nil
 	}
-	return a.stored(cur.Version+1, a.op.Payload, false, a.origin()), a.lateArrivals()
+	next, err := laterVersion(cur.Payload, a.op.OperationType, a.op.Payload)
+	if err != nil {
+		return nil, &verify.Failure{Code: CodePayloadInvalid, Detail: err.Error()}
+	}
+	return a.stored(cur.Version+1, next, false, a.origin()), a.lateArrivals()
+}
+
+// A document's later version keeps the whole document and carries the operation under its type (ADR-0040 as built).
+func laterVersion(current json.RawMessage, operationType string, op json.RawMessage) (json.RawMessage, error) {
+	var doc map[string]json.RawMessage
+	if err := json.Unmarshal(current, &doc); err != nil {
+		return nil, err
+	}
+	doc[operationType] = op
+	return json.Marshal(doc)
 }
 
 func cancelled(payload json.RawMessage) bool {
 	var p struct {
 		Status string `json:"status"`
+		Cancel *struct {
+			Status string `json:"status"`
+		} `json:"cancel"`
 	}
-	return json.Unmarshal(payload, &p) == nil && p.Status == "cancelled"
+	return json.Unmarshal(payload, &p) == nil && (p.Status == "cancelled" || (p.Cancel != nil && p.Cancel.Status == "cancelled"))
 }
 
 // A journal dated in a month the business has locked is stored as sent and listed for review (ADR-0040).

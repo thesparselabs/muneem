@@ -13,10 +13,14 @@ describe('sync simulation (7h, ADR-0042)', () => {
 
   it(`${SEEDS} seeds: no loss, no duplicates, every device converges on the same books`, async () => {
     vi.useFakeTimers({ toFake: ['Date'] });
+    let cancelled = 0;
     for (let seed = 1; seed <= SEEDS; seed++) {
       const cloud = referenceHarness(seed, START);
-      await expectConverged(seed, cloud, await simulate(seed, cloud));
+      const run = await simulate(seed, cloud);
+      await expectConverged(seed, cloud, run);
+      cancelled += run.devices[0]!.db.prepare("SELECT COUNT(*) FROM payment WHERE business_id = ? AND status = 'cancelled'").pluck().get(run.businessId) as number;
     }
+    expect(cancelled, 'the workload cancelled receipts, so later document versions were synced').toBeGreaterThan(0);
   }, 900_000);
 
   it('the same seed gives the same conflict outcomes', async () => {

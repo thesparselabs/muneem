@@ -107,6 +107,21 @@ All notable changes, newest first. Each entry records **what** changed and **why
   - **New IPC:** `sync.listCloudBusinesses`, `sync.hydrationStart` and `sync.hydrationStatus` check the session and
     the membership themselves, because a device being added has no business open yet.
   - **Managers** gain `sync.manage` on the cloud as well.
+- **Sync runs end to end against the real Go cloud** (`pnpm e2e:cloud`, CI job `e2e-cloud`). Why: ADR-0042 requires the
+  exit to pass against the real server, not only the reference one.
+  - **Tests:** the §37 scenario, a faulty-network simulation, a skewed clock, and a new device hydrating from the Go
+    bundle in MinIO all run against the Go API, Postgres and MinIO.
+  - **Cloud Trial Balance:** computed from `journal_line`, it equals every device's.
+  - **Shared steps:** the same steps and assertions also run against the reference server.
+- **Fixed: a document cancel synced from the Go cloud could not be applied.** The cloud stored the cancel payload
+  alone. It now stores the whole document with the cancel under `cancel`, as the reference server and the device
+  expect. Hydrating a new device against Go found it, a new protocol fixture covers it, and the simulation now
+  cancels receipts.
+- **Fixed: the Go bootstrap endpoint refused the device's gzipped request.** It now reads bodies like push does.
+- **Fixed: a sync refused for clock skew no longer refreshes the access token.** Every tick had rotated the refresh
+  token for nothing, risking a reuse revocation.
+- **Fixed (tests): simulated devices keep their keychain across restarts.** The §37 step where an answer is lost and
+  the device is killed had silently not run. It now runs and is asserted.
 - **Sync screens (7g).**
   - **The status badge** shows the FR-068 states, the lag and why sync is blocked, and opens Diagnostics.
   - **The POS** shows when stock was last updated once another terminal exists.

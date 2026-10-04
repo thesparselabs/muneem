@@ -5,6 +5,7 @@ import (
 	"compress/gzip"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"strings"
@@ -90,7 +91,11 @@ func (h *Handler) SyncBootstrap(c echo.Context) error {
 		return err
 	}
 	var body api.SyncBootstrapJSONRequestBody
-	if err := json.NewDecoder(io.LimitReader(c.Request().Body, 4096)).Decode(&body); err != nil || body.BusinessId == "" {
+	raw, err := readBody(c.Request(), 4096)
+	if err == nil {
+		err = json.Unmarshal(raw, &body)
+	}
+	if err != nil || body.BusinessId == "" {
 		return httpx.Validation(c, "businessId is required")
 	}
 	snap, err := h.Snapshots.Request(c.Request().Context(), caller, body.BusinessId)
@@ -130,8 +135,8 @@ func snapshotReply(c echo.Context, snap *Snapshot, err error) error {
 	return c.JSON(http.StatusOK, snap)
 }
 
-// decodePush reads a gzipped or plain body, refusing more than 2 MB once inflated.
-func decodePush(r *http.Request) (*PushRequest, error) {
+// readBody reads a gzipped or plain body, refusing more than limit bytes once inflated.
+func readBody(r *http.Request, limit int) ([]byte, error) {
 	var body io.Reader = r.Body
 	if strings.EqualFold(r.Header.Get("Content-Encoding"), "gzip") {
 		gz, err := gzip.NewReader(r.Body)
@@ -141,12 +146,20 @@ func decodePush(r *http.Request) (*PushRequest, error) {
 		defer gz.Close()
 		body = gz
 	}
-	raw, err := io.ReadAll(io.LimitReader(body, PushMaxBytes+1))
+	raw, err := io.ReadAll(io.LimitReader(body, int64(limit)+1))
 	if err != nil {
 		return nil, errors.New("unreadable body")
 	}
-	if len(raw) > PushMaxBytes {
-		return nil, errors.New("a push may carry at most 2 MB")
+	if len(raw) > limit {
+		return nil, fmt.Errorf("the body may be at most %d bytes", limit)
+	}
+	return raw, nil
+}
+
+func decodePush(r *http.Request) (*PushRequest, error) {
+	raw, err := readBody(r, PushMaxBytes)
+	if err != nil {
+		return nil, err
 	}
 	var req PushRequest
 	if err := json.Unmarshal(raw, &req); err != nil {

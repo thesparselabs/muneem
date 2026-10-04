@@ -1,7 +1,7 @@
 import { expect } from 'vitest';
 import { newUlid } from '@muneem/domain';
 import { CompleteSaleInput, CustomerInput, PaymentInput, ProductInput, ProductUpdate, SaleDraft } from '@muneem/contracts';
-import type { Db } from '@muneem/db-sqlite';
+import { getMeta, META_KEYS, type Db } from '@muneem/db-sqlite';
 import { Prng } from '../soak/generator.js';
 import type { App } from '../../src/main/app.js';
 import type { CloudHarness, FaultRates } from './cloudHarness.js';
@@ -65,6 +65,10 @@ export async function simulate(seed: number, cloud: CloudHarness, shape: Simulat
     } else if (roll < 0.92) {
       const c = d.app.customers.create(CustomerInput.parse({ name: `${d.name} customer ${rng.int(1, 1_000_000)}`, creditDays: 15 }));
       d.app.customers.setCreditLimit({ id: c.id, version: c.version, limitPaise: 1_000_000 });
+    } else if (roll < 0.96) {
+      const own = d.db.prepare("SELECT id FROM payment WHERE business_id = ? AND status = 'posted' AND device_id = ? ORDER BY id")
+        .pluck().all(businessId, getMeta(d.db, META_KEYS.installationId)) as string[];
+      if (own.length > 0) d.app.payments.cancel(rng.pick(own), 'bounced');
     } else {
       d.app.inventory.adjust({ lines: [{ productId: rng.pick(products), qtyMilli: -1000, reason: 'damage' }] });
     }
