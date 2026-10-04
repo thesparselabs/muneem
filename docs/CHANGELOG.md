@@ -5,6 +5,16 @@ All notable changes, newest first. Each entry records **what** changed and **why
 
 ## [Unreleased]
 
+### Added — Stage 6 accounting
+- **Stage 6 plan (`docs/plans/stage-6-accounting.md`).** Decided with the user:
+  - **Journals:** written in each document's own transaction, with a one-time backfill for documents saved before
+    Stage 6.
+  - **Periods:** monthly periods with lock and late postings now; the year-end closing journals in Stage 8.
+  - **Soak data:** a seeded generator — about two weeks in CI and a year locally.
+  - **Reports:** the core statements, account ledger, day book, cash and bank books, and manual journals.
+
+  Build stages now show Stage 5 merged (PR #6) and Stage 6 in progress.
+
 ### Fixed — Stage 5
 - **Cheap items were over-costed when sold** (ADR-0027, amends ADR-0018). An issue was costed at the average rounded
   to whole paise per unit: 1,000 units bought for ₹15 were costed at 2 paise each, so selling 999 booked ₹19.98 and
