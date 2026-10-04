@@ -12,6 +12,22 @@ All notable changes, newest first. Each entry records **what** changed and **why
   - **Before the pilot:** USB/Windows printing with ₹ and Indic text.
   - **Scale bar:** 500k transactions, 20k SKUs and 50k customers against the strict LLD §18 budgets.
   - **Monitoring:** self-hosted Prometheus, Loki and Grafana, with a self-hosted crash collector.
+- **Fixed: per-unit cess on an MRP (tax-inclusive) item was billed on top of the MRP (9h, ADR-0059).** A ₹150 pack with
+  ₹10 per-unit cess billed ₹160. The per-unit cess now comes out of the gross before the back-calculation, in both
+  the TypeScript and Go engines, with a HAND golden vector and a property test, and LLD §3.1 is updated. The golden
+  scenario suite found it. Both engines had agreed on the wrong answer, so the cloud's check could not.
+- **Fixed: the composition declaration now prints at the top of the bill of supply (9h),** as CGST rule 5(1)(g)
+  requires. It used to print at the bottom.
+- **Golden tax scenario suite (9h).** Why: the GST, returns and posting treatment is pinned before the CA reviews it.
+  - **Scenarios:** 12 hand-checked business days, covering intra- and inter-state; B2B, B2CS and B2CL; composition;
+    exempt, nil and non-GST lines mixed on one bill; rounding and bill discounts; cess; four kinds of credit note;
+    purchases with eligible and blocked ITC; debit notes; expenses; a rule-88A set-off; and a year-end close.
+  - **What is checked:** HSN = Σ invoice lines, GSTR-1 = invoices − credit notes, GSTR-3B ties to the tax accounts,
+    and every journal balances.
+  - **Go** reproduces the invoices, credit notes and set-offs from the same file.
+- **CA review pack (9h).** `docs/compliance/ca-review-pack.md` puts 29 yes/no or choose-one questions to the CA, each
+  with our current choice, plus a sign-off section. The posting tables and a scenario workbook are generated from the
+  code, and a drift test keeps the pack from going stale.
 - **Operator tooling (9i, ADR-0057).** Why: during the pilot, operators must see and fix shops without raw SQL, and
   every action must be audited.
   - **API and page:** a cross-shop operator API (`/v1/admin`) and a plain server-rendered admin page (`/admin/`) on a
