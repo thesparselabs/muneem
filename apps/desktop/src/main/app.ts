@@ -53,6 +53,7 @@ import { setMeta, META_KEYS, currentSchemaVersion } from '@muneem/db-sqlite';
 import { HttpTransport } from './sync/httpTransport.js';
 import { SyncEngine } from './sync/syncEngine.js';
 import { SyncScheduler } from './sync/scheduler.js';
+import { syncScreenHandlers } from './sync/screens.js';
 import type { Credentials, Transport } from './sync/transport.js';
 
 export interface AppConfig {
@@ -283,6 +284,9 @@ export function createApp(cfg: AppConfig) {
     'inventory.importOpeningCommit': (i) => openingImport.commit(i.importId, i.commandId),
     'sync.getStatus': () => syncStatus(),
     'sync.retry': () => { void sync.retry(); return syncStatus(); },
+    ...syncScreenHandlers({
+      db: cfg.db, businessId: () => posCtx.businessId(), userId: () => posCtx.userId(), localDeviceId: () => device.localDeviceId(), onResent: () => { void sync.retry(); },
+    }),
     'diagnostics.getHealth': () => diagnostics.getHealth(),
     'diagnostics.integrityCheck': () => diagnostics.integrityCheck(),
     'diagnostics.backupNow': () => diagnostics.backupNow('manual'),

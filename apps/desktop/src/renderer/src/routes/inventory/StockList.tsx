@@ -21,6 +21,7 @@ export default function StockList() {
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold">Inventory</h1>
         <div className="flex gap-2">
+          <Link to="/inventory/reconciliation" className="btn-secondary">Reconciliation</Link>
           <Link to="/inventory/opening" className="btn-secondary">Opening stock</Link>
           <Link to="/inventory/adjust" className="btn-secondary">Adjust stock</Link>
           <Link to="/inventory/stock-take" className="btn-primary">Stock take</Link>
