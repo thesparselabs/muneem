@@ -23,6 +23,8 @@ type Deps struct {
 	RequireAuth    echo.MiddlewareFunc
 	DeviceVerifier echo.MiddlewareFunc
 	Logger         *slog.Logger
+	// Protocols accepted on /v1/sync/*; the zero value means DefaultProtocols.
+	Protocols Protocols
 }
 
 // New builds the Echo instance with the middleware pipeline:
@@ -45,6 +47,7 @@ func New(d Deps) *echo.Echo {
 	}))
 
 	authLimit := RateLimit(20, 5)
+	protocolGate := SyncProtocolGate(d.Protocols)
 	// Route-level middleware: public auth routes get a rate limit; everything else needs a bearer token
 	// and, when a device is involved, a valid request signature.
 	protect := func(next echo.HandlerFunc) echo.HandlerFunc {
@@ -55,6 +58,8 @@ func New(d Deps) *echo.Echo {
 				return next(c)
 			case strings.Contains(p, "/auth/register"), strings.Contains(p, "/auth/login"), strings.Contains(p, "/auth/refresh"):
 				return authLimit(next)(c)
+			case strings.HasPrefix(p, "/v1/sync/"):
+				return protocolGate(d.RequireAuth(d.DeviceVerifier(next)))(c)
 			default:
 				return d.RequireAuth(d.DeviceVerifier(next))(c)
 			}

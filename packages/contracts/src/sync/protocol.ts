@@ -2,6 +2,8 @@ import { z } from 'zod';
 import type { OutboxEntityType, PushStream, SyncStream } from './types.js';
 
 export const SYNC_PROTOCOL = 1;
+// ADR-0049: the oldest protocol a current server still accepts by default (N−1, never below 1).
+export const SYNC_MIN_PROTOCOL = Math.max(1, SYNC_PROTOCOL - 1);
 export const PUSH_MAX_OPERATIONS = 200;
 export const PUSH_MAX_BYTES = 2 * 1024 * 1024;
 export const PULL_MAX_LIMIT = 500;
@@ -40,7 +42,8 @@ export const PushOperation = z.object({
 export type PushOperation = z.infer<typeof PushOperation>;
 
 export const PushRequest = z.object({
-  businessId: Ulid, protocol: z.literal(SYNC_PROTOCOL), schemaVersion: z.number().int().nonnegative(), clientTime: Iso,
+  // Servers accept a range (ADR-0049: N and N−1), so the schema takes any protocol and the server decides.
+  businessId: Ulid, protocol: z.number().int().nonnegative(), schemaVersion: z.number().int().nonnegative(), clientTime: Iso,
   operations: z.array(PushOperation).min(1).max(PUSH_MAX_OPERATIONS),
 });
 export type PushRequest = z.infer<typeof PushRequest>;

@@ -46,7 +46,6 @@ var classOf = map[string]string{
 }
 
 const (
-	Protocol          = 1
 	PushMaxOperations = 200
 	PushMaxBytes      = 2 * 1024 * 1024
 	PullMaxLimit      = 500

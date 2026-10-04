@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/labstack/echo/v4"
@@ -21,6 +22,8 @@ type Handler struct {
 	Ingest    *Ingest
 	Feed      *Feed
 	Snapshots Snapshots
+	// Protocols a push body may name; the zero value means httpx.DefaultProtocols.
+	Protocols httpx.Protocols
 }
 
 func callerOf(c echo.Context) Caller {
@@ -46,8 +49,8 @@ func (h *Handler) SyncPush(c echo.Context) error {
 	if err != nil {
 		return httpx.Validation(c, err.Error())
 	}
-	if req.Protocol != Protocol {
-		return httpx.Fail(c, http.StatusUpgradeRequired, CodeVersionUnsupported, api.Transient, "this server speaks sync protocol 1")
+	if !h.Protocols.Accepts(req.Protocol) {
+		return httpx.RefuseProtocol(c, h.Protocols, strconv.Itoa(req.Protocol))
 	}
 	if err := validatePush(req); err != nil {
 		return httpx.Validation(c, err.Error())

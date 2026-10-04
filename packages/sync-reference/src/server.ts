@@ -1,5 +1,5 @@
 import {
-  AuditEntryPayload, PULL_MAX_LIMIT, PUSH_MAX_BYTES, PushRequest, STREAM_OF, SYNC_ERROR_CODES, payloadSchema, type Change, type OutboxEntityType, type PullResponse,
+  AuditEntryPayload, PULL_MAX_LIMIT, PUSH_MAX_BYTES, PushRequest, STREAM_OF, SYNC_ERROR_CODES, SYNC_MIN_PROTOCOL, SYNC_PROTOCOL, payloadSchema, type Change, type OutboxEntityType, type PullResponse,
   type PushOperation, type PushResponse, type PushResult, type Snapshot, type SyncError, type SyncErrorCode, type SyncStream,
 } from '@muneem/contracts';
 import { payloadHash } from './canonical.js';
@@ -27,7 +27,8 @@ export interface BundleObject { status: 200 | 206 | 404 | 416; body: Buffer; tot
 interface StoredSnapshot { snapshotId: string; businessId: string; deviceId: string; asOfSeq: number; bytes: Buffer }
 
 interface Device { userId: string; revoked: boolean }
-export interface ReferenceServerOptions { now?: () => Date; minSchemaVersion?: number }
+// protocol/minProtocol mirror the Go server's Protocols (MUNEEM_SYNC_MIN_PROTOCOL); defaults are N and N−1.
+export interface ReferenceServerOptions { now?: () => Date; minSchemaVersion?: number; protocol?: number; minProtocol?: number }
 
 const error = (code: SyncErrorCode, detail: string): SyncError => ({ code, class: SYNC_ERROR_CODES[code], detail });
 
@@ -74,6 +75,8 @@ export class ReferenceServer implements SyncServer {
     if (Buffer.byteLength(JSON.stringify(body), 'utf8') > PUSH_MAX_BYTES) throw new ServerError(413, 'PAYLOAD_TOO_LARGE');
     const parsed = PushRequest.safeParse(body);
     if (!parsed.success) throw new ServerError(400, 'PAYLOAD_INVALID', parsed.error.issues[0]?.message);
+    const { protocol } = parsed.data;
+    if (protocol < (this.opts.minProtocol ?? SYNC_MIN_PROTOCOL) || protocol > (this.opts.protocol ?? SYNC_PROTOCOL)) throw new ServerError(426, 'VERSION_UNSUPPORTED', `protocol ${protocol} is not accepted`);
     if (parsed.data.schemaVersion < (this.opts.minSchemaVersion ?? 0)) throw new ServerError(426, 'VERSION_UNSUPPORTED');
     const results = parsed.data.operations.map((op) => this.pushOne(deviceId, parsed.data.businessId, op));
     return { serverTime: this.now().toISOString(), nextPullSeq: this.seq, results };

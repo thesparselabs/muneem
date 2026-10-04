@@ -1,0 +1,476 @@
+{
+ "name": "push-audit-chain",
+ "description": "Audit rows apply in seq order; a gap waits, a resend (same or new operation id) is a duplicate, an edited row or a second row at a held seq is AUDIT_CHAIN_BROKEN, and the chain carries on.",
+ "setup": {
+  "organizationId": "01J00000000000000000000B01",
+  "userId": "01J00000000000000000000A01",
+  "devices": [
+   "A",
+   "B"
+  ]
+ },
+ "steps": [
+  {
+   "device": "A",
+   "call": "push",
+   "request": {
+    "businessId": "01M43YCCJSTVFKXPZKMNCA0NY4",
+    "protocol": 1,
+    "schemaVersion": 14,
+    "clientTime": "2026-10-04T10:00:00.000Z",
+    "operations": [
+     {
+      "operationId": "01M43YCCJTXHVJZZCZE7JT873B",
+      "seq": 1,
+      "entityType": "business",
+      "entityId": "01M43YCCJSTVFKXPZKMNCA0NY4",
+      "operationType": "create",
+      "dependsOn": null,
+      "payloadHash": "sha256:8312be9fa3036939922594712e0a243cf30679bae5df5502bfc4c8e9c7b3f2a7",
+      "payload": {
+       "businessType": "retail",
+       "createdAt": "2026-10-04T17:11:29.113Z",
+       "fyStartMonth": 4,
+       "id": "01M43YCCJSTVFKXPZKMNCA0NY4",
+       "name": "Sharma Store",
+       "organizationId": "01J00000000000000000000B01",
+       "stateCode": "07",
+       "taxScheme": "regular",
+       "updatedAt": "2026-10-04T17:11:29.113Z",
+       "version": 1
+      }
+     },
+     {
+      "operationId": "01M43YCCJVKNH6J7FZGE121GF7",
+      "seq": 2,
+      "entityType": "audit_entry",
+      "entityId": "01M43YCCJVKNH6J7FZGE121GF6",
+      "operationType": "create",
+      "dependsOn": null,
+      "payloadHash": "sha256:9f50ea7714f1be19fe8fedfed93077ae9edc4011b8a9e1e79ca85621d7d3a120",
+      "payload": {
+       "action": "business.create",
+       "after_json": "{\"businessType\":\"retail\",\"createdAt\":\"2026-10-04T17:11:29.113Z\",\"fyStartMonth\":4,\"id\":\"01M43YCCJSTVFKXPZKMNCA0NY4\",\"name\":\"Sharma Store\",\"organizationId\":\"01J00000000000000000000B01\",\"stateCode\":\"07\",\"taxScheme\":\"regular\",\"updatedAt\":\"2026-10-04T17:11:29.113Z\",\"version\":1}",
+       "before_json": null,
+       "business_id": "01M43YCCJSTVFKXPZKMNCA0NY4",
+       "device_id": "01M43YCCGFMY6FEKQ9FMBG12H4",
+       "entity_id": "01M43YCCJSTVFKXPZKMNCA0NY4",
+       "entity_type": "business",
+       "hash": "40c3f441c71371933cac9b01218a4a5fbe20588dcbc24937862e1d483d7c1080",
+       "id": "01M43YCCJVKNH6J7FZGE121GF6",
+       "occurred_at": "2026-10-04T17:11:29.115Z",
+       "prev_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+       "reason": null,
+       "seq": 1,
+       "terminal_id": null,
+       "user_id": "01J00000000000000000000A01"
+      }
+     },
+     {
+      "operationId": "01M43YCCJY092ZDRETJ3B04DWD",
+      "seq": 3,
+      "entityType": "audit_entry",
+      "entityId": "01M43YCCJX4JSNMK2FJKWFGYRE",
+      "operationType": "create",
+      "dependsOn": "01M43YCCJVKNH6J7FZGE121GF7",
+      "payloadHash": "sha256:50f1f7031439c87810c92848ff9233d0a7588c0d036f2970e318ba0722a21a6a",
+      "payload": {
+       "action": "uom.create",
+       "after_json": "{\"businessId\":\"01M43YCCJSTVFKXPZKMNCA0NY4\",\"code\":\"PCS\",\"decimals\":0,\"id\":\"01M43YCCJW7EH45VZ7P163B8DG\",\"name\":\"Pieces\",\"version\":1}",
+       "before_json": null,
+       "business_id": "01M43YCCJSTVFKXPZKMNCA0NY4",
+       "device_id": "01M43YCCGFMY6FEKQ9FMBG12H4",
+       "entity_id": "01M43YCCJW7EH45VZ7P163B8DG",
+       "entity_type": "uom",
+       "hash": "b8c93cf176086519299e27e9d9d799307412caa6808103bb1803c6f676d0c4e4",
+       "id": "01M43YCCJX4JSNMK2FJKWFGYRE",
+       "occurred_at": "2026-10-04T17:11:29.117Z",
+       "prev_hash": "40c3f441c71371933cac9b01218a4a5fbe20588dcbc24937862e1d483d7c1080",
+       "reason": null,
+       "seq": 2,
+       "terminal_id": null,
+       "user_id": "01J00000000000000000000A01"
+      }
+     }
+    ]
+   },
+   "expect": {
+    "results": [
+     {
+      "operationId": "01M43YCCJTXHVJZZCZE7JT873B",
+      "status": "applied"
+     },
+     {
+      "operationId": "01M43YCCJVKNH6J7FZGE121GF7",
+      "status": "applied"
+     },
+     {
+      "operationId": "01M43YCCJY092ZDRETJ3B04DWD",
+      "status": "applied"
+     }
+    ]
+   }
+  },
+  {
+   "device": "A",
+   "call": "push",
+   "request": {
+    "businessId": "01M43YCCJSTVFKXPZKMNCA0NY4",
+    "protocol": 1,
+    "schemaVersion": 14,
+    "clientTime": "2026-10-04T10:00:00.000Z",
+    "operations": [
+     {
+      "operationId": "01M43YCCK00AJBYVAAMTP3MP9H",
+      "seq": 7,
+      "entityType": "audit_entry",
+      "entityId": "01M43YCCK00AJBYVAAMTP3MP9G",
+      "operationType": "create",
+      "dependsOn": "01M43YCCJZQ8NJDYXA6SX1B5JH",
+      "payloadHash": "sha256:e2d98c091afb4d907819d1364fcccf191dcab0e314036505a6e7c464f0c7ed17",
+      "payload": {
+       "action": "uom.create",
+       "after_json": "{\"businessId\":\"01M43YCCJSTVFKXPZKMNCA0NY4\",\"code\":\"G\",\"decimals\":0,\"id\":\"01M43YCCJZQ8NJDYXA6SX1B5JK\",\"name\":\"Gram\",\"version\":1}",
+       "before_json": null,
+       "business_id": "01M43YCCJSTVFKXPZKMNCA0NY4",
+       "device_id": "01M43YCCGFMY6FEKQ9FMBG12H4",
+       "entity_id": "01M43YCCJZQ8NJDYXA6SX1B5JK",
+       "entity_type": "uom",
+       "hash": "02e2f3513af1368d88f1dd5cd81d44fe1fe2e6876afad160ff41c0aa0a6ac20a",
+       "id": "01M43YCCK00AJBYVAAMTP3MP9G",
+       "occurred_at": "2026-10-04T17:11:29.120Z",
+       "prev_hash": "2b3e92983842211880bb981bfb9067ed62409e5072e2804bc50fd8f298104819",
+       "reason": null,
+       "seq": 4,
+       "terminal_id": null,
+       "user_id": "01J00000000000000000000A01"
+      }
+     }
+    ]
+   },
+   "expect": {
+    "results": [
+     {
+      "operationId": "01M43YCCK00AJBYVAAMTP3MP9H",
+      "status": "deferred",
+      "error": {
+       "code": "DEPENDENCY_MISSING",
+       "class": "dependency"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "device": "A",
+   "call": "push",
+   "request": {
+    "businessId": "01M43YCCJSTVFKXPZKMNCA0NY4",
+    "protocol": 1,
+    "schemaVersion": 14,
+    "clientTime": "2026-10-04T10:00:00.000Z",
+    "operations": [
+     {
+      "operationId": "01M43YCCJZQ8NJDYXA6SX1B5JH",
+      "seq": 5,
+      "entityType": "audit_entry",
+      "entityId": "01M43YCCJZQ8NJDYXA6SX1B5JG",
+      "operationType": "create",
+      "dependsOn": "01M43YCCJY092ZDRETJ3B04DWD",
+      "payloadHash": "sha256:3267443ec69f80b42a3c1813e3e49e250f8f9181674d7bec39024e3750df5b0f",
+      "payload": {
+       "action": "uom.create",
+       "after_json": "{\"businessId\":\"01M43YCCJSTVFKXPZKMNCA0NY4\",\"code\":\"KG\",\"decimals\":3,\"id\":\"01M43YCCJY092ZDRETJ3B04DWF\",\"name\":\"Kilogram\",\"version\":1}",
+       "before_json": null,
+       "business_id": "01M43YCCJSTVFKXPZKMNCA0NY4",
+       "device_id": "01M43YCCGFMY6FEKQ9FMBG12H4",
+       "entity_id": "01M43YCCJY092ZDRETJ3B04DWF",
+       "entity_type": "uom",
+       "hash": "2b3e92983842211880bb981bfb9067ed62409e5072e2804bc50fd8f298104819",
+       "id": "01M43YCCJZQ8NJDYXA6SX1B5JG",
+       "occurred_at": "2026-10-04T17:11:29.119Z",
+       "prev_hash": "b8c93cf176086519299e27e9d9d799307412caa6808103bb1803c6f676d0c4e4",
+       "reason": null,
+       "seq": 3,
+       "terminal_id": null,
+       "user_id": "01J00000000000000000000A01"
+      }
+     },
+     {
+      "operationId": "01M43YCCK00AJBYVAAMTP3MP9H",
+      "seq": 7,
+      "entityType": "audit_entry",
+      "entityId": "01M43YCCK00AJBYVAAMTP3MP9G",
+      "operationType": "create",
+      "dependsOn": "01M43YCCJZQ8NJDYXA6SX1B5JH",
+      "payloadHash": "sha256:e2d98c091afb4d907819d1364fcccf191dcab0e314036505a6e7c464f0c7ed17",
+      "payload": {
+       "action": "uom.create",
+       "after_json": "{\"businessId\":\"01M43YCCJSTVFKXPZKMNCA0NY4\",\"code\":\"G\",\"decimals\":0,\"id\":\"01M43YCCJZQ8NJDYXA6SX1B5JK\",\"name\":\"Gram\",\"version\":1}",
+       "before_json": null,
+       "business_id": "01M43YCCJSTVFKXPZKMNCA0NY4",
+       "device_id": "01M43YCCGFMY6FEKQ9FMBG12H4",
+       "entity_id": "01M43YCCJZQ8NJDYXA6SX1B5JK",
+       "entity_type": "uom",
+       "hash": "02e2f3513af1368d88f1dd5cd81d44fe1fe2e6876afad160ff41c0aa0a6ac20a",
+       "id": "01M43YCCK00AJBYVAAMTP3MP9G",
+       "occurred_at": "2026-10-04T17:11:29.120Z",
+       "prev_hash": "2b3e92983842211880bb981bfb9067ed62409e5072e2804bc50fd8f298104819",
+       "reason": null,
+       "seq": 4,
+       "terminal_id": null,
+       "user_id": "01J00000000000000000000A01"
+      }
+     }
+    ]
+   },
+   "expect": {
+    "results": [
+     {
+      "operationId": "01M43YCCJZQ8NJDYXA6SX1B5JH",
+      "status": "applied"
+     },
+     {
+      "operationId": "01M43YCCK00AJBYVAAMTP3MP9H",
+      "status": "applied"
+     }
+    ]
+   }
+  },
+  {
+   "device": "A",
+   "call": "push",
+   "request": {
+    "businessId": "01M43YCCJSTVFKXPZKMNCA0NY4",
+    "protocol": 1,
+    "schemaVersion": 14,
+    "clientTime": "2026-10-04T10:00:00.000Z",
+    "operations": [
+     {
+      "operationId": "01M43YCCJVKNH6J7FZGE121GF7",
+      "seq": 2,
+      "entityType": "audit_entry",
+      "entityId": "01M43YCCJVKNH6J7FZGE121GF6",
+      "operationType": "create",
+      "dependsOn": null,
+      "payloadHash": "sha256:9f50ea7714f1be19fe8fedfed93077ae9edc4011b8a9e1e79ca85621d7d3a120",
+      "payload": {
+       "action": "business.create",
+       "after_json": "{\"businessType\":\"retail\",\"createdAt\":\"2026-10-04T17:11:29.113Z\",\"fyStartMonth\":4,\"id\":\"01M43YCCJSTVFKXPZKMNCA0NY4\",\"name\":\"Sharma Store\",\"organizationId\":\"01J00000000000000000000B01\",\"stateCode\":\"07\",\"taxScheme\":\"regular\",\"updatedAt\":\"2026-10-04T17:11:29.113Z\",\"version\":1}",
+       "before_json": null,
+       "business_id": "01M43YCCJSTVFKXPZKMNCA0NY4",
+       "device_id": "01M43YCCGFMY6FEKQ9FMBG12H4",
+       "entity_id": "01M43YCCJSTVFKXPZKMNCA0NY4",
+       "entity_type": "business",
+       "hash": "40c3f441c71371933cac9b01218a4a5fbe20588dcbc24937862e1d483d7c1080",
+       "id": "01M43YCCJVKNH6J7FZGE121GF6",
+       "occurred_at": "2026-10-04T17:11:29.115Z",
+       "prev_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+       "reason": null,
+       "seq": 1,
+       "terminal_id": null,
+       "user_id": "01J00000000000000000000A01"
+      }
+     },
+     {
+      "operationId": "01M43YCCJY092ZDRETJ3B04DWD",
+      "seq": 3,
+      "entityType": "audit_entry",
+      "entityId": "01M43YCCJX4JSNMK2FJKWFGYRE",
+      "operationType": "create",
+      "dependsOn": "01M43YCCJVKNH6J7FZGE121GF7",
+      "payloadHash": "sha256:50f1f7031439c87810c92848ff9233d0a7588c0d036f2970e318ba0722a21a6a",
+      "payload": {
+       "action": "uom.create",
+       "after_json": "{\"businessId\":\"01M43YCCJSTVFKXPZKMNCA0NY4\",\"code\":\"PCS\",\"decimals\":0,\"id\":\"01M43YCCJW7EH45VZ7P163B8DG\",\"name\":\"Pieces\",\"version\":1}",
+       "before_json": null,
+       "business_id": "01M43YCCJSTVFKXPZKMNCA0NY4",
+       "device_id": "01M43YCCGFMY6FEKQ9FMBG12H4",
+       "entity_id": "01M43YCCJW7EH45VZ7P163B8DG",
+       "entity_type": "uom",
+       "hash": "b8c93cf176086519299e27e9d9d799307412caa6808103bb1803c6f676d0c4e4",
+       "id": "01M43YCCJX4JSNMK2FJKWFGYRE",
+       "occurred_at": "2026-10-04T17:11:29.117Z",
+       "prev_hash": "40c3f441c71371933cac9b01218a4a5fbe20588dcbc24937862e1d483d7c1080",
+       "reason": null,
+       "seq": 2,
+       "terminal_id": null,
+       "user_id": "01J00000000000000000000A01"
+      }
+     },
+     {
+      "operationId": "01M43YCCMEYPFR58ZTTS2WSK44",
+      "seq": 3,
+      "entityType": "audit_entry",
+      "entityId": "01M43YCCJX4JSNMK2FJKWFGYRE",
+      "operationType": "create",
+      "dependsOn": "01M43YCCJVKNH6J7FZGE121GF7",
+      "payloadHash": "sha256:50f1f7031439c87810c92848ff9233d0a7588c0d036f2970e318ba0722a21a6a",
+      "payload": {
+       "action": "uom.create",
+       "after_json": "{\"businessId\":\"01M43YCCJSTVFKXPZKMNCA0NY4\",\"code\":\"PCS\",\"decimals\":0,\"id\":\"01M43YCCJW7EH45VZ7P163B8DG\",\"name\":\"Pieces\",\"version\":1}",
+       "before_json": null,
+       "business_id": "01M43YCCJSTVFKXPZKMNCA0NY4",
+       "device_id": "01M43YCCGFMY6FEKQ9FMBG12H4",
+       "entity_id": "01M43YCCJW7EH45VZ7P163B8DG",
+       "entity_type": "uom",
+       "hash": "b8c93cf176086519299e27e9d9d799307412caa6808103bb1803c6f676d0c4e4",
+       "id": "01M43YCCJX4JSNMK2FJKWFGYRE",
+       "occurred_at": "2026-10-04T17:11:29.117Z",
+       "prev_hash": "40c3f441c71371933cac9b01218a4a5fbe20588dcbc24937862e1d483d7c1080",
+       "reason": null,
+       "seq": 2,
+       "terminal_id": null,
+       "user_id": "01J00000000000000000000A01"
+      }
+     }
+    ]
+   },
+   "expect": {
+    "results": [
+     {
+      "operationId": "01M43YCCJVKNH6J7FZGE121GF7",
+      "status": "duplicate"
+     },
+     {
+      "operationId": "01M43YCCJY092ZDRETJ3B04DWD",
+      "status": "duplicate"
+     },
+     {
+      "status": "duplicate"
+     }
+    ]
+   }
+  },
+  {
+   "device": "A",
+   "call": "push",
+   "request": {
+    "businessId": "01M43YCCJSTVFKXPZKMNCA0NY4",
+    "protocol": 1,
+    "schemaVersion": 14,
+    "clientTime": "2026-10-04T10:00:00.000Z",
+    "operations": [
+     {
+      "operationId": "01M43YCCMEYPFR58ZTTS2WSK42",
+      "seq": 9,
+      "entityType": "audit_entry",
+      "entityId": "01M43YCCK1R0PJ9JGW2YCWAVSQ",
+      "operationType": "create",
+      "dependsOn": "01M43YCCK00AJBYVAAMTP3MP9H",
+      "payloadHash": "sha256:a8b8a8499eebb7da332111f2ffc6a1a4f983ae44d9d3c8ccbaa63f12045c1486",
+      "payload": {
+       "action": "uom.create",
+       "after_json": "{\"tampered\":true}",
+       "before_json": null,
+       "business_id": "01M43YCCJSTVFKXPZKMNCA0NY4",
+       "device_id": "01M43YCCGFMY6FEKQ9FMBG12H4",
+       "entity_id": "01M43YCCK00AJBYVAAMTP3MP9K",
+       "entity_type": "uom",
+       "hash": "bc78d434e05ffc5de3a908c206a0ddadc4e324b15b5080dbb7e2645510586d8f",
+       "id": "01M43YCCK1R0PJ9JGW2YCWAVSQ",
+       "occurred_at": "2026-10-04T17:11:29.121Z",
+       "prev_hash": "02e2f3513af1368d88f1dd5cd81d44fe1fe2e6876afad160ff41c0aa0a6ac20a",
+       "reason": null,
+       "seq": 5,
+       "terminal_id": null,
+       "user_id": "01J00000000000000000000A01"
+      }
+     },
+     {
+      "operationId": "01M43YCCMEYPFR58ZTTS2WSK43",
+      "seq": 5,
+      "entityType": "audit_entry",
+      "entityId": "01M43YCCJZQ8NJDYXA6SX1B5JG",
+      "operationType": "create",
+      "dependsOn": "01M43YCCJY092ZDRETJ3B04DWD",
+      "payloadHash": "sha256:d0c066e9d3b763127aad91bd0df04959f701770f85b128cf0a55c9739c0f9974",
+      "payload": {
+       "action": "uom.create",
+       "after_json": "{\"businessId\":\"01M43YCCJSTVFKXPZKMNCA0NY4\",\"code\":\"KG\",\"decimals\":3,\"id\":\"01M43YCCJY092ZDRETJ3B04DWF\",\"name\":\"Kilogram\",\"version\":1}",
+       "before_json": null,
+       "business_id": "01M43YCCJSTVFKXPZKMNCA0NY4",
+       "device_id": "01M43YCCGFMY6FEKQ9FMBG12H4",
+       "entity_id": "01M43YCCJY092ZDRETJ3B04DWF",
+       "entity_type": "uom",
+       "hash": "64ccf795d7d8daf79c2826f3041cb20bf45e7c14550ee3cf5ffba0733494582c",
+       "id": "01M43YCCJZQ8NJDYXA6SX1B5JG",
+       "occurred_at": "2026-10-04T09:00:00.000Z",
+       "prev_hash": "b8c93cf176086519299e27e9d9d799307412caa6808103bb1803c6f676d0c4e4",
+       "reason": null,
+       "seq": 3,
+       "terminal_id": null,
+       "user_id": "01J00000000000000000000A01"
+      }
+     }
+    ]
+   },
+   "expect": {
+    "results": [
+     {
+      "operationId": "01M43YCCMEYPFR58ZTTS2WSK42",
+      "status": "rejected",
+      "error": {
+       "code": "AUDIT_CHAIN_BROKEN",
+       "class": "permanent"
+      }
+     },
+     {
+      "operationId": "01M43YCCMEYPFR58ZTTS2WSK43",
+      "status": "rejected",
+      "error": {
+       "code": "AUDIT_CHAIN_BROKEN",
+       "class": "permanent"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "device": "A",
+   "call": "push",
+   "request": {
+    "businessId": "01M43YCCJSTVFKXPZKMNCA0NY4",
+    "protocol": 1,
+    "schemaVersion": 14,
+    "clientTime": "2026-10-04T10:00:00.000Z",
+    "operations": [
+     {
+      "operationId": "01M43YCCK1R0PJ9JGW2YCWAVSR",
+      "seq": 9,
+      "entityType": "audit_entry",
+      "entityId": "01M43YCCK1R0PJ9JGW2YCWAVSQ",
+      "operationType": "create",
+      "dependsOn": "01M43YCCK00AJBYVAAMTP3MP9H",
+      "payloadHash": "sha256:f1a0454db4b4689d0756ce082a1482352f1cd2e58d3403ed1e7e1c2ec24dc994",
+      "payload": {
+       "action": "uom.create",
+       "after_json": "{\"businessId\":\"01M43YCCJSTVFKXPZKMNCA0NY4\",\"code\":\"L\",\"decimals\":3,\"id\":\"01M43YCCK00AJBYVAAMTP3MP9K\",\"name\":\"Litre\",\"version\":1}",
+       "before_json": null,
+       "business_id": "01M43YCCJSTVFKXPZKMNCA0NY4",
+       "device_id": "01M43YCCGFMY6FEKQ9FMBG12H4",
+       "entity_id": "01M43YCCK00AJBYVAAMTP3MP9K",
+       "entity_type": "uom",
+       "hash": "bc78d434e05ffc5de3a908c206a0ddadc4e324b15b5080dbb7e2645510586d8f",
+       "id": "01M43YCCK1R0PJ9JGW2YCWAVSQ",
+       "occurred_at": "2026-10-04T17:11:29.121Z",
+       "prev_hash": "02e2f3513af1368d88f1dd5cd81d44fe1fe2e6876afad160ff41c0aa0a6ac20a",
+       "reason": null,
+       "seq": 5,
+       "terminal_id": null,
+       "user_id": "01J00000000000000000000A01"
+      }
+     }
+    ]
+   },
+   "expect": {
+    "results": [
+     {
+      "operationId": "01M43YCCK1R0PJ9JGW2YCWAVSR",
+      "status": "applied"
+     }
+    ]
+   }
+  }
+ ]
+}

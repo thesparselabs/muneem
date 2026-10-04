@@ -62,9 +62,17 @@ type cloud struct {
 	objects testObjects
 	user    string
 	org     string
+	// protocol is the X-Sync-Protocol every request carries, unless noProtocolHeader.
+	protocol         int
+	noProtocolHeader bool
 }
 
 func newCloud(t *testing.T) *cloud {
+	return newCloudWith(t, httpx.DefaultProtocols())
+}
+
+// newCloudWith is the server configured to accept the given sync protocols.
+func newCloudWith(t *testing.T, protocols httpx.Protocols) *cloud {
 	db := testdb.Open(t)
 	testdb.Reset(t, db)
 	signer := auth.NewSigner("test-secret")
@@ -81,12 +89,12 @@ func newCloud(t *testing.T) *cloud {
 		authHandler:     &auth.Handler{DB: db, Signer: signer},
 		deviceHandler:   &device.Handler{DB: db, Verifier: verifier, Revocations: devicesync.Control{}},
 		businessHandler: &business.Handler{DB: db},
-		syncHandler:     &devicesync.Handler{Ingest: &devicesync.Ingest{DB: db, Log: log}, Feed: &devicesync.Feed{DB: db}, Snapshots: snaps},
+		syncHandler:     &devicesync.Handler{Ingest: &devicesync.Ingest{DB: db, Log: log}, Feed: &devicesync.Feed{DB: db}, Snapshots: snaps, Protocols: protocols},
 		backupHandler:   &backups.Handler{Service: backups.NewService(db, objects, wrapper, log, backups.DefaultOptions)},
 		reportHandler:   &reports.Handler{DB: db},
 	}
-	e := httpx.New(httpx.Deps{Handlers: h, RequireAuth: signer.Require, DeviceVerifier: verifier.Middleware, Logger: log})
-	return &cloud{t: t, db: db, e: e, signer: signer, snaps: snaps, objects: objects}
+	e := httpx.New(httpx.Deps{Handlers: h, RequireAuth: signer.Require, DeviceVerifier: verifier.Middleware, Logger: log, Protocols: protocols})
+	return &cloud{t: t, db: db, e: e, signer: signer, snaps: snaps, objects: objects, protocol: httpx.SyncProtocol}
 }
 
 // TestMasterKey wraps escrowed backup keys in tests (base64 of 32 bytes).
@@ -180,6 +188,9 @@ func (c *cloud) send(d *testDevice, method, path string, query url.Values, body 
 		req.Header.Set("Content-Encoding", encoding)
 	}
 	req.Header.Set("Authorization", "Bearer "+c.token(d))
+	if !c.noProtocolHeader {
+		req.Header.Set(httpx.HeaderSyncProtocol, strconv.Itoa(c.protocol))
+	}
 	req.Header.Set(device.HeaderDeviceID, d.id)
 	req.Header.Set(device.HeaderTimestamp, ts)
 	req.Header.Set(device.HeaderSignature, base64.StdEncoding.EncodeToString(ed25519.Sign(d.key, device.SigningString(method, path, ts, body))))

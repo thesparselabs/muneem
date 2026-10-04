@@ -71,6 +71,9 @@ func main() {
 	must(log, err)
 	defer db.Close()
 
+	protocols, err := httpx.ProtocolsFromEnv(os.Getenv)
+	must(log, err)
+	log.Info("sync protocols", "min", protocols.Min, "current", protocols.Current)
 	signer := auth.NewSigner(secret)
 	verifier := device.NewVerifier(db)
 	objects, err := newObjectStore(ctx, log)
@@ -85,11 +88,11 @@ func main() {
 		authHandler:     &auth.Handler{DB: db, Signer: signer},
 		deviceHandler:   &device.Handler{DB: db, Verifier: verifier, Revocations: devicesync.Control{}},
 		businessHandler: &business.Handler{DB: db},
-		syncHandler:     &devicesync.Handler{Ingest: &devicesync.Ingest{DB: db, Log: log}, Feed: &devicesync.Feed{DB: db}, Snapshots: snapshots},
+		syncHandler:     &devicesync.Handler{Ingest: &devicesync.Ingest{DB: db, Log: log}, Feed: &devicesync.Feed{DB: db}, Snapshots: snapshots, Protocols: protocols},
 		backupHandler:   &backups.Handler{Service: backupService},
 		reportHandler:   &reports.Handler{DB: db},
 	}
-	e := httpx.New(httpx.Deps{Handlers: h, RequireAuth: signer.Require, DeviceVerifier: verifier.Middleware, Logger: log})
+	e := httpx.New(httpx.Deps{Handlers: h, RequireAuth: signer.Require, DeviceVerifier: verifier.Middleware, Logger: log, Protocols: protocols})
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8080"
