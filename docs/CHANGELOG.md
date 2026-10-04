@@ -12,6 +12,28 @@ All notable changes, newest first. Each entry records **what** changed and **why
   - **Before the pilot:** USB/Windows printing with ₹ and Indic text.
   - **Scale bar:** 500k transactions, 20k SKUs and 50k customers against the strict LLD §18 budgets.
   - **Monitoring:** self-hosted Prometheus, Loki and Grafana, with a self-hosted crash collector.
+- **Chaos and fault suite (9g, ADR-0060).** Why: NFR-012, NFR-018 and NFR-019 must hold under real faults, not
+  only in the happy path.
+  - **What it covers:** disk full during commits and backups; power loss mid-commit for every posting command (returns,
+    purchases, payments, GST set-off, year end); clock jumps across 31 March; a printer unplugged, cut off or hanging;
+    the network flapping mid-sync; and the damaged-database journey.
+  - **Where it runs:** CI at 20 kills per kind. The nightly `chaos` job runs 100 kills per kind, §37 and a 200-seed
+    simulation. `docs/qa/chaos.md` lists each fault and what is asserted.
+- **Fixed by the chaos suite (9g):**
+  - **Disk full:** it now returns `DISK_FULL` with a clear message instead of "Something went wrong". LLD §17 gains
+    the row.
+  - **Damaged databases:** a damaged header, or pages so broken that `quick_check` itself throws, now reach the
+    restore dialog instead of crashing start-up.
+  - **Restoring an older backup:** after a device restores its own older backup (from Diagnostics or at start-up), the
+    next bill no longer fails on a duplicate number. Series are realigned after the catch-up pull, and start-up
+    restore now pulls back the device's own later work.
+  - **Start-up recovery:** it keeps the damaged file, carries over audit rows that still link, and offers "Start empty
+    and restore from the cloud".
+  - **Known gaps:**
+    - with a destroyed header, audit rows written after the backup cannot be recovered, so the cloud rejects that
+      device's next rows; "start empty" avoids this;
+    - NFR-018's date-window check is not built;
+    - a printer that hangs and then prints late prints twice if retried.
 - **Playwright + Electron UI suite (9j).** Why: the Stage 2–8 manual checklists had never been run, and unit tests
   cannot catch what only the built app does.
   - **How it runs:** `pnpm e2e:ui`, and the CI job `e2e-ui` under Xvfb. It drives the built app with a temp profile, a
