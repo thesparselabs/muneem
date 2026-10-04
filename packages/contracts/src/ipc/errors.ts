@@ -32,6 +32,7 @@ export const ERROR_CODES = {
   DRAWER_FAILED: 'hardware',
   SCALE_UNSTABLE: 'hardware',
   NETWORK_UNREACHABLE: 'transient',
+  DISK_FULL: 'transient',
   SERVER_BUSY: 'transient',
   DEPENDENCY_MISSING: 'transient',
   TOTAL_MISMATCH: 'permanent',

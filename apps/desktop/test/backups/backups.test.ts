@@ -210,6 +210,9 @@ describe('cloud backups with key escrow (8f)', () => {
     expect(getMeta(again.db, META_KEYS.restoreCatchUp)).toBeNull();
     expect(healthy(again.db, businessId)).toEqual(HEALTHY);
 
+    // 9g: the till bills on past the numbers it issued after the backup, which came back in the pull.
+    expect(Number(sell(again.app, p.id, p.uom).docNumber.split('/').at(-1))).toBe(Number((before.sales.at(-1) as { doc_number: string }).doc_number.split('/').at(-1)) + 1);
+
     // 8g: the audit rows written after the backup were carried over, so the chain on the cloud carries on unforked.
     again.app.syncEngine.recover();
     await syncUntilQuiet(again.app);

@@ -58,3 +58,17 @@ export function allocateDocNumber(db: Db, seriesId: string): { seq: number; numb
   if (r.changes !== 1) throw new Error('SERIES_CONTENTION');
   return { seq: s.next_seq, number };
 }
+
+const NUMBERED_DOCUMENTS = ['sale', 'credit_note', 'purchase', 'debit_note', 'payment', 'expense', 'gst_setoff', 'gst_payment'] as const;
+
+// A restore's catch-up pulls back documents this device numbered after its backup; each series then carries on past them.
+export function realignDocSeries(db: Db, businessId: string): number {
+  const issued = [
+    ...NUMBERED_DOCUMENTS.map((t) => `SELECT series_id, doc_seq FROM ${t} WHERE business_id = @businessId`),
+    `SELECT s.id, CAST(substr(j.entry_no, length(s.prefix) + 7) AS INTEGER) FROM journal_entry j JOIN doc_series s ON s.business_id = j.business_id
+      AND s.doc_type = 'journal' AND j.entry_no LIKE s.prefix || '/' || substr(s.fy, 3, 2) || substr(s.fy, 6, 2) || '/%' WHERE j.business_id = @businessId`,
+  ].join(' UNION ALL ');
+  return db.prepare(`WITH issued (series_id, seq) AS (${issued}), top AS (SELECT series_id, MAX(seq) AS seq FROM issued GROUP BY series_id)
+    UPDATE doc_series SET next_seq = (SELECT seq + 1 FROM top WHERE top.series_id = doc_series.id), updated_at = @t
+    WHERE business_id = @businessId AND next_seq <= (SELECT seq FROM top WHERE top.series_id = doc_series.id)`).run({ businessId, t: nowIso() }).changes;
+}

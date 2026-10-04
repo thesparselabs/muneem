@@ -1173,6 +1173,7 @@ type ErrorClass = 'validation' | 'permission' | 'business_rule' | 'conflict'
 | `LEDGER_IMBALANCE`, `STOCK_PROJECTION_DRIFT`, `AUDIT_CHAIN_BROKEN`, `DB_CORRUPT` | integrity | abort the transaction, alert, force Diagnostics; never "best effort" past these |
 | `PRINTER_OFFLINE`, `DRAWER_FAILED`, `SCALE_UNSTABLE` | hardware | banner only; never blocks a sale |
 | `NETWORK_UNREACHABLE`, `SERVER_BUSY`, `DEPENDENCY_MISSING` | transient | retry with backoff, silent |
+| `DISK_FULL` | transient | the commit rolled back whole; the user frees space and retries the same command (9g) |
 | `TOTAL_MISMATCH`, `SCHEMA_REJECTED`, `UPGRADE_REQUIRED` | permanent | dead-letter + support/alert path, device keeps working |
 
 Rule: **integrity errors fail loudly and stop the operation; hardware and transport errors never do.** Getting this inversion wrong in either direction is how POS software loses either money or trust.

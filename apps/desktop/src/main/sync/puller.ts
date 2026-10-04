@@ -1,5 +1,7 @@
 import { PULL_MAX_LIMIT, STREAM_ORDER, type SyncStream } from '@muneem/contracts';
-import { applyPullPage, deleteMeta, emptyPageResult, getBusiness, getCursor, getMeta, META_KEYS, type Db, type PageResult } from '@muneem/db-sqlite';
+import {
+  applyPullPage, deleteMeta, emptyPageResult, getBusiness, getCursor, getMeta, META_KEYS, realignDocSeries, withTransaction, type Db, type PageResult,
+} from '@muneem/db-sqlite';
 import type { Transport } from './transport.js';
 import { authorized, type WireIdentity } from './wire.js';
 
@@ -33,7 +35,10 @@ export class Puller {
         if (!page.hasMore || page.nextSeq <= since) break;
       }
     }
-    if (includeOwn) deleteMeta(this.d.db(), META_KEYS.restoreCatchUp);
+    if (includeOwn) {
+      const db = this.d.db();
+      withTransaction(db, () => { realignDocSeries(db, id.businessId); deleteMeta(db, META_KEYS.restoreCatchUp); });
+    }
     return total;
   }
 }

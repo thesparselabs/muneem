@@ -10,7 +10,7 @@ import { FolderUpdater } from './update/folderUpdater.js';
 import { DEFAULT_UPDATE_BASE_URL } from './update/channels.js';
 import type { Updater } from './update/updater.js';
 import type { Loggers } from './infra/logger.js';
-import { latestBackupFile, restoreBackupFile } from './backups/recovery.js';
+import { recoverCorruptDatabase, type CorruptDbChoice } from './backups/recovery.js';
 import { createLoggers } from './infra/logger.js';
 import { createElectronSecretStore } from './infra/secrets.js';
 import { electronHtmlToPdf, electronSaveFile } from './infra/files.js';
@@ -78,6 +78,19 @@ function nativeBindingPath(): string | undefined {
   return candidates.find((p) => existsSync(p));
 }
 
+// NFR-019: the damaged file is set aside either way; a fresh start is restored from the cloud after signing in.
+async function askCorruptChoice(backup: string | null): Promise<CorruptDbChoice> {
+  const all: [string, CorruptDbChoice][] = [['Restore latest backup', 'restore_local'], ['Start empty and restore from the cloud', 'start_fresh'], ['Quit', 'quit']];
+  const choices = backup ? all : all.slice(1);
+  const { response } = await dialog.showMessageBox({
+    type: 'error', title: 'Muneem — database problem', buttons: choices.map(([label]) => label), defaultId: 0, cancelId: choices.length - 1,
+    message: 'The local database failed its integrity check.',
+    detail: (backup ? `A verified backup is available:\n${backup}\n\nRestoring it brings back everything this computer synced after it.` : 'No local backup was found on this computer.')
+      + '\n\nOr start empty: sign in, then restore this business from its cloud backup. The damaged file is kept for support either way.',
+  });
+  return choices[response]?.[1] ?? 'quit';
+}
+
 async function boot(): Promise<void> {
   const userData = app.getPath('userData');
   const loggers = createLoggers(join(userData, 'logs'), isDev ? 'debug' : 'info');
@@ -104,21 +117,18 @@ async function boot(): Promise<void> {
     }
     if (e instanceof DbCorruptError) {
       loggers.app.error({ detail: e.detail }, 'DB_CORRUPT on open');
-      const backup = latestBackupFile(paths.backups);
-      const { response } = await dialog.showMessageBox({
-        type: 'error', title: 'Muneem — database problem', buttons: backup ? ['Restore latest backup', 'Quit'] : ['Quit'], defaultId: 0,
-        message: 'The local database failed its integrity check.',
-        detail: backup ? `A verified backup is available:\n${backup}\n\nRestore it? Transactions after the backup will need to be recovered from the cloud.` : 'No local backup was found. Please contact support with a support bundle.',
-      });
-      if (backup && response === 0) {
-        try {
-          await restoreBackupFile(backup, paths.file, secrets, nativeBindingPath());
-          loggers.app.warn({ backup }, 'restored database from backup; restarting');
+      try {
+        const nativeBinding = nativeBindingPath();
+        const r = await recoverCorruptDatabase({
+          dbFile: paths.file, backupsDir: paths.backups, secrets, now: () => Date.now(), choose: askCorruptChoice, ...(nativeBinding && { nativeBinding }),
+        });
+        if (r.choice !== 'quit') {
+          loggers.app.warn(r, 'database recovered after DB_CORRUPT; restarting');
           app.relaunch();
-        } catch (err) {
-          loggers.app.error({ backup, err: String(err) }, 'restoring the latest backup failed');
-          dialog.showErrorBox('Muneem — restore failed', `The backup could not be restored: ${String(err instanceof Error ? err.message : err)}`);
         }
+      } catch (err) {
+        loggers.app.error({ err: String(err) }, 'restoring the latest backup failed');
+        dialog.showErrorBox('Muneem — restore failed', `The backup could not be restored: ${String(err instanceof Error ? err.message : err)}`);
       }
       app.exit(1);
       return;

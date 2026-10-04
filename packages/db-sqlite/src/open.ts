@@ -31,23 +31,30 @@ export function openDatabase(path: string, opts: OpenOptions = {}): Db {
   if (opts.nativeBinding) dbOpts.nativeBinding = opts.nativeBinding;
   const db = new Database(path, dbOpts);
   if (opts.nativeBinding) nativeBindings.set(db, opts.nativeBinding);
-  db.pragma('journal_mode = WAL');
-  db.pragma('synchronous = FULL');
-  db.pragma('foreign_keys = ON');
-  db.pragma('busy_timeout = 5000');
-  db.pragma('temp_store = MEMORY');
-  db.pragma('mmap_size = 268435456');
-  db.pragma('cache_size = -65536');
-  if (opts.quickCheck !== false) {
-    const rows = db.pragma('quick_check') as { quick_check: string }[];
-    const detail = rows.map((r) => r.quick_check);
-    if (detail.length !== 1 || detail[0] !== 'ok') {
-      db.close();
-      throw new DbCorruptError(detail);
+  try {
+    db.pragma('journal_mode = WAL');
+    db.pragma('synchronous = FULL');
+    db.pragma('foreign_keys = ON');
+    db.pragma('busy_timeout = 5000');
+    db.pragma('temp_store = MEMORY');
+    db.pragma('mmap_size = 268435456');
+    db.pragma('cache_size = -65536');
+    if (opts.quickCheck !== false) {
+      const { ok, detail } = quickCheck(db);
+      if (!ok) throw new DbCorruptError(detail);
     }
+  } catch (e) {
+    db.close();
+    throw isCorruption(e) ? new DbCorruptError([(e as Error).message]) : e;
   }
   return db;
 }
+
+// A damaged header or a page too broken for quick_check to walk fails the pragma itself rather than reporting rows.
+const isCorruption = (e: unknown): boolean => {
+  const code = (e as { code?: unknown } | null)?.code;
+  return typeof code === 'string' && (code.startsWith('SQLITE_CORRUPT') || code === 'SQLITE_NOTADB');
+};
 
 export function quickCheck(db: Db): { ok: boolean; detail: string[] } {
   const rows = db.pragma('quick_check') as { quick_check: string }[];
