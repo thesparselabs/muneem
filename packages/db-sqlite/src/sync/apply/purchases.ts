@@ -5,9 +5,9 @@ import { insertPurchase, markPurchaseCancelled } from '../../repositories/purcha
 import { resolver } from './aliases.js';
 import type { ApplyContext, Payload } from './context.js';
 import { applyPartyEntry, statusIs, str, type DocumentApplier } from './documents.js';
-import { applyJournal, applyJournals } from './journals.js';
+import { applyJournal } from './journals.js';
 import { applyAllocations } from './settlements.js';
-import { applyMovements } from './stock.js';
+import { applyCorrections, applyMovements } from './stock.js';
 
 const num = (v: unknown): number => Number(v ?? 0);
 
@@ -25,7 +25,7 @@ function createPurchase(ctx: ApplyContext, p: Payload): void {
   applyMovements(ctx, p.movements);
   applyPartyEntry(ctx, p.entry);
   applyJournal(ctx, p.journal);
-  applyJournals(ctx, p.corrections);
+  applyCorrections(ctx, p);
 }
 
 // ADR-0024: the goods go back at the values the origin stored, with its reversal and corrections.
@@ -34,7 +34,7 @@ function cancelPurchase(ctx: ApplyContext, c: Payload): void {
   applyMovements(ctx, c.movements);
   applyPartyEntry(ctx, c.entry);
   applyJournal(ctx, c.journal);
-  applyJournals(ctx, c.corrections);
+  applyCorrections(ctx, c);
 }
 
 export const PURCHASE: DocumentApplier = { table: 'purchase', create: createPurchase, cancel: cancelPurchase, cancelled: statusIs('purchase', 'cancelled') };
@@ -55,7 +55,7 @@ function createDebitNote(ctx: ApplyContext, p: Payload): void {
   applyPartyEntry(ctx, p.entry);
   applyAllocations(ctx, { partyType: 'supplier', partyId: String(p.supplierId), sourceType: 'debit_note', sourceId: ctx.change.entityId }, p.allocations);
   applyJournal(ctx, p.journal);
-  applyJournals(ctx, p.corrections);
+  applyCorrections(ctx, p);
 }
 
 export const DEBIT_NOTE: DocumentApplier = { table: 'debit_note', create: createDebitNote };

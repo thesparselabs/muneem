@@ -5,6 +5,7 @@ import { resolver } from './aliases.js';
 import { hasUnsentEdit, type ApplyContext, type Payload } from './context.js';
 import { applyMaster, bool, type MasterSpec } from './master.js';
 import { exists, insertRow, pick, syncedColumns, updateRow, versioned, type Row } from './rows.js';
+import { cleared } from './uniqueClash.js';
 
 const one = (ctx: ApplyContext, sql: string, ...args: unknown[]): string | null =>
   (stmt(ctx.db, sql).pluck().get(...args) as string | undefined) ?? null;
@@ -63,6 +64,7 @@ export const PRODUCT: MasterSpec = {
     return row;
   },
   after: (ctx, id) => indexProduct(ctx.db, id),
+  unique: [{ column: 'sku', liveOnly: true, replacement: cleared }],
 };
 
 const liveBarcode = (ctx: ApplyContext, code: unknown): string | null =>

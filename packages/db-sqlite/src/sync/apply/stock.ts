@@ -26,6 +26,12 @@ export function applyMovements(ctx: ApplyContext, movements: unknown): void {
   }
 }
 
+// A receipt's cost corrections travel with it: their movements, then their journals (ADR-0040).
+export function applyCorrections(ctx: ApplyContext, p: Payload): void {
+  applyMovements(ctx, p.correctionMovements);
+  applyJournals(ctx, p.corrections);
+}
+
 // Opening stock, adjustments and stock takes: the header, the movements, the journal and any cost corrections.
 export function applyStockDocument(ctx: ApplyContext): void {
   const p = ctx.change.payload;
@@ -37,5 +43,5 @@ export function applyStockDocument(ctx: ApplyContext): void {
   }
   applyMovements(ctx, p.movements);
   applyJournal(ctx, p.journal);
-  applyJournals(ctx, (p as Payload).corrections);
+  applyCorrections(ctx, p);
 }

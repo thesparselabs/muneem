@@ -202,6 +202,13 @@ export function movementsForRef(db: Db, businessId: string, refType: RefType, re
   }));
 }
 
+// The cost corrections a receipt's movements made to later outflows (ADR-0040): they travel with the receipt, as facts.
+export function correctionMovementsFor(db: Db, businessId: string, refType: RefType, refId: string): PostedMovement[] {
+  const ids = stmt(db, `SELECT DISTINCT c.ref_id FROM stock_movement m JOIN stock_movement c ON c.business_id = m.business_id AND c.ref_type = 'correction' AND c.ref_id = m.id
+    WHERE m.business_id = ? AND m.ref_type = ? AND m.ref_id = ?`).pluck().all(businessId, refType, refId) as string[];
+  return ids.flatMap((id) => movementsForRef(db, businessId, 'correction', id));
+}
+
 export function insertAdjustmentHeader(
   db: Db, h: { id: string; businessId: string; warehouseId: string; kind: 'opening' | 'adjustment' | 'stock_take'; note: string | null }, actor: Actor,
 ): void {

@@ -5,6 +5,7 @@ import { resolver } from './aliases.js';
 import { hasUnsentEdit, type ApplyContext } from './context.js';
 import { bool, type MasterSpec } from './master.js';
 import { exists, insertRow, pick, syncedColumns, updateRow, versioned } from './rows.js';
+import { freeVariant } from './uniqueClash.js';
 
 const BUSINESS_COLUMNS = {
   name: 'name', legalName: 'legal_name', businessType: 'business_type', addressLine1: 'address_line1', addressLine2: 'address_line2', city: 'city',
@@ -31,12 +32,14 @@ export const BRANCH: MasterSpec = {
   inserted: (ctx, p) => ({
     is_default: p.isDefault && !stmt(ctx.db, 'SELECT 1 FROM branch WHERE business_id = ? AND is_default = 1 AND deleted_at IS NULL').get(ctx.businessId) ? 1 : 0,
   }),
+  unique: [{ column: 'code', replacement: freeVariant(8) }],
 };
 
 // The device a terminal is bound to is that device's own business; a pulled binding is kept as sent.
 export const TERMINAL: MasterSpec = {
   table: 'terminal',
   columns: (_ctx, p) => ({ ...pick(p, { branchId: 'branch_id', code: 'code', name: 'name', invoicePrefix: 'invoice_prefix', deviceId: 'device_id_bound' }, true) }),
+  unique: [{ column: 'code', within: ['branch_id'], replacement: freeVariant(6) }, { column: 'invoice_prefix', replacement: freeVariant(4) }],
 };
 
 export const DOC_SERIES: MasterSpec = {

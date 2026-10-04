@@ -1,6 +1,7 @@
 import { addAlias, localId, type AliasType } from './aliases.js';
 import { hasUnsentEdit, type ApplyContext, type Payload } from './context.js';
 import { exists, insertRow, syncedColumns, updateRow, versioned, type Row } from './rows.js';
+import { settleUniqueClashes, type UniqueField } from './uniqueClash.js';
 
 // How one master or config entity maps onto its table (ADR-0040/0041: upsert, natural keys, no outbox, no audit).
 export interface MasterSpec {
@@ -10,6 +11,7 @@ export interface MasterSpec {
   natural?: { alias: AliasType; find(ctx: ApplyContext, row: Row): string | null };
   after?(ctx: ApplyContext, id: string): void;
   softDelete?: boolean;
+  unique?: readonly UniqueField[];
 }
 
 export function applyMaster(spec: MasterSpec, ctx: ApplyContext): void {
@@ -22,6 +24,7 @@ export function applyMaster(spec: MasterSpec, ctx: ApplyContext): void {
     return;
   }
   const row = spec.columns(ctx, change.payload);
+  if (spec.unique) settleUniqueClashes(ctx, spec.table, id, row, spec.unique);
   if (exists(db, spec.table, id)) {
     updateRow(db, spec.table, id, { ...row, ...versioned(ctx), updated_at: syncedColumns(ctx, change.payload).updated_at });
   } else {

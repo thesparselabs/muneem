@@ -1,7 +1,7 @@
 import { AppError, type AdjustmentResult, type AdjustStockInput, type OpeningStockInput, type StockTakeInput } from '@muneem/contracts';
 import { averageCostPaise, divRound, newUlid } from '@muneem/domain';
 import {
-  ensureDefaultWarehouse, getProduct, hasOpening, insertAdjustmentHeader, movementsForRef, postCorrections, postDocumentJournal, postMovement,
+  ensureDefaultWarehouse, getProduct, hasOpening, insertAdjustmentHeader, correctionMovementsFor, movementsForRef, postCorrections, postDocumentJournal, postMovement,
   productFallbackCost, recordChange,
   stockState, withTransaction, type PostedMovement, type ReasonCode,
 } from '@muneem/db-sqlite';
@@ -113,7 +113,7 @@ export class InventoryService {
       const journal = postDocumentJournal(db, 'stock_document', id, till, actor, this.ctx.today());
       const corrections = postCorrections(db, businessId, refType, id, till, actor);
       recordChange(db, businessId, actor, {
-        action: `stock.${kind}`, entityType: 'stock_adjustment', entityId: id, operationType: 'create', after: { id, kind, warehouseId, note, movements, journal, corrections },
+        action: `stock.${kind}`, entityType: 'stock_adjustment', entityId: id, operationType: 'create', after: { id, kind, warehouseId, note, movements, journal, corrections, correctionMovements: correctionMovementsFor(db, businessId, refType, id) },
       });
       return {
         adjustmentId: id, kind, unchanged,

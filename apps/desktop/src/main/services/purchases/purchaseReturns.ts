@@ -2,7 +2,7 @@ import { AppError, type DebitNote, type Purchase, type ReturnPurchaseInput } fro
 import { cumulativeShare, docSeriesPrefix, financialYearOf, newUlid } from '@muneem/domain';
 import {
   allocateDocNumber, allocationsOfSource, appendAudit, debitNoteCount, debitNoteIdByCommand, documentKeys, findOrCreateSeries, getDebitNote, getProduct, getPurchase, getTerminal,
-  insertAllocation, insertDebitNote, markPurchaseCancelled, movementsForRef, postCorrections, postDocumentJournal, postMovement, postPartyEntry, recordChange,
+  insertAllocation, insertDebitNote, markPurchaseCancelled, correctionMovementsFor, movementsForRef, postCorrections, postDocumentJournal, postMovement, postPartyEntry, recordChange,
   returnedQtyByItem, reverseDocumentJournal,
   stockState, withTransaction, type StoredPurchase,
 } from '@muneem/db-sqlite';
@@ -45,7 +45,7 @@ export class PurchaseReturnService {
       const corrections = postCorrections(db, p.businessId, 'purchase_return', id, this.ctx.tillIfAny(), actor);
       recordChange(db, p.businessId, actor, {
         action: 'purchase.cancel', entityType: 'purchase', entityId: id, operationType: 'cancel',
-        after: { id, status: 'cancelled', reason, movements: movementsForRef(db, p.businessId, 'purchase_return', id), entry, journal, corrections },
+        after: { id, status: 'cancelled', reason, movements: movementsForRef(db, p.businessId, 'purchase_return', id), entry, journal, corrections, correctionMovements: correctionMovementsFor(db, p.businessId, 'purchase_return', id) },
       });
     });
     return this.purchase(id);
@@ -124,7 +124,7 @@ export class PurchaseReturnService {
     const corrections = postCorrections(db, p.businessId, 'purchase_return', id, till, actor);
     recordChange(db, p.businessId, actor, {
       action: 'debit_note.create', entityType: 'debit_note', entityId: id, operationType: 'create',
-      after: { ...getDebitNote(db, id), ...documentKeys(db, 'debit_note', id), allocations: allocationsOfSource(db, 'debit_note', id), movements: movementsForRef(db, p.businessId, 'purchase_return', id), entry, journal, corrections },
+      after: { ...getDebitNote(db, id), ...documentKeys(db, 'debit_note', id), allocations: allocationsOfSource(db, 'debit_note', id), movements: movementsForRef(db, p.businessId, 'purchase_return', id), entry, journal, corrections, correctionMovements: correctionMovementsFor(db, p.businessId, 'purchase_return', id) },
     });
     return id;
   }
