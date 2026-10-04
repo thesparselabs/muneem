@@ -81,6 +81,27 @@ All notable changes, newest first. Each entry records **what** changed and **why
   series, number, command id and place. Payments and expenses carry their drawer movements, movements their device,
   and allocations their date. The protocol fixtures are regenerated, plus a new one: a stale edit of a product's
   prices loses to the cloud's prices. The Go server gained that rule too.
+- **The catalog converges on every device.** The simulation found product prices that stayed different between
+  devices.
+  - **Cause:** a device skipped its own echo after a merged version from the cloud had overwritten its later edit.
+  - **Fix:** masters and config now apply their own echo, which also adopts the cloud's version. Documents still
+    skip theirs.
+  - **Failures no longer block:** a pulled change that fails to apply becomes a review item and the stream moves on.
+- **Sync screens (7g).**
+  - **The status badge** shows the FR-068 states, the lag and why sync is blocked, and opens Diagnostics.
+  - **The POS** shows when stock was last updated once another terminal exists.
+  - **Diagnostics → Sync** lists outbox counts, pull cursors, and failed and dead changes with a payload preview. A
+    manager can resend them (`sync.resend`; `sync.manage` added to the manager preset).
+  - **Settings → Review items** shows each conflict, tombstone, duplicate barcode and late arrival with both versions,
+    so a losing edit is visible rather than silent.
+  - **Inventory → Stock reconciliation** (FR-087) names the sales and terminals that took stock below zero.
+- **Simulation suite and exit scenarios (7h).** Why: the Stage 7 exit criteria.
+  - **The simulation:** three devices behind a seeded fault injector covering drops, lost answers, duplicates, 500s,
+    reordering, partitions and reclaimed in-flight rows. Over 20 seeds there is no loss and no duplicate, and every
+    device ends with the same books and catalog. The same seed gives the same conflict outcomes.
+  - **The §37 scenario** runs offline sales, a restart, a clock jump, a double submit, a kill mid-sync, and two
+    terminals selling the last unit, which stock reconciliation then names.
+  - **NFR-022:** 5,525 operations drain in about 40 s at 512 kbps, against a 10-minute window.
 
 ### Added — Stage 6 accounting
 - **Stage 6 plan (`docs/plans/stage-6-accounting.md`).** Decided with the user:

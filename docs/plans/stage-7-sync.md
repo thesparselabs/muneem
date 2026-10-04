@@ -394,6 +394,21 @@ The TS reference server (7d) and the Go server (7b/7c) both load and pass them.
   sync (FR-087).
 - **Checks:** helper tests, typecheck and build, and a manual checklist in this plan.
 
+**Manual checklist (7g), not yet run:**
+1. **Synced:** on a synced device the badge reads "✓ Synced · N min ago"; clicking it opens Diagnostics.
+2. **Offline:** go offline and make sales. The badge reads "⚠ N waiting · offline", then adds "· oldest N min" after a
+   minute. Back online, it drains to Synced.
+3. **A permanent reject:** the badge goes to degraded, then blocked after 12 tries. Diagnostics shows the error and a
+   payload preview. A manager's Resend sends it back to pending; a cashier sees no Resend button.
+4. **A revoked device:** revoke it in the cloud and the badge reads "✕ Needs attention · device removed".
+5. **Staleness:** a POS with one terminal shows no stock-staleness line; after a second terminal registers it shows
+   "Stock last updated N min ago".
+6. **A price conflict** between two devices appears under Review items → Field conflicts with both values. Mark
+   reviewed moves it to Reviewed.
+7. **Oversell:** two terminals sell the last unit offline, then sync. Inventory → Reconciliation lists both sales,
+   with the synced one tagged.
+8. **Sync now** in Diagnostics starts a sync, and the cursors show the last pull time.
+
 ### 7h — Simulation suite and exit (the lead)
 
 - **`apps/desktop/test/sync/simulation.test.ts`:**

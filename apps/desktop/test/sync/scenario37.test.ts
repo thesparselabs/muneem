@@ -2,7 +2,7 @@ import { join } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { newUlid } from '@muneem/domain';
 import { CompleteSaleInput, ProductInput, SaleDraft } from '@muneem/contracts';
-import { getMeta, META_KEYS, verifyAuditChain, type Db } from '@muneem/db-sqlite';
+import { getMeta, META_KEYS, stockReconciliation, verifyAuditChain, type Db } from '@muneem/db-sqlite';
 import { FaultInjector } from '@muneem/sync-reference';
 import type { App } from '../../src/main/app.js';
 import { caller, ownerAtTill } from '../helpers.js';
@@ -104,6 +104,10 @@ describe('the §37 offline scenario (7h)', () => {
     for (const db of [restarted.db, b.db]) expect(healthy(db, businessId)).toEqual({ tieOuts: [], replay: [], partyMismatches: [], allocationFaults: [] });
     const kettle = (db: Db) => db.prepare('SELECT SUM(qty_milli) FROM stock_level WHERE business_id = ? AND product_id = ?').pluck().get(businessId, last);
     expect([kettle(restarted.db), kettle(b.db)]).toEqual([-1000, -1000]);
+    const oversold = (db: Db) => stockReconciliation(db, businessId, getMeta(db, META_KEYS.installationId)!, 50)
+      .filter((r) => r.productId === last).map((r) => ({ terminal: r.terminalCode, viaSync: r.viaSync, balanceAfterMilli: r.balanceAfterMilli }));
+    expect(oversold(restarted.db)).toEqual([{ terminal: 'T02', viaSync: true, balanceAfterMilli: -1000 }]);
+    expect(oversold(b.db)).toEqual([{ terminal: 'T02', viaSync: false, balanceAfterMilli: -1000 }]);
     for (const [db, app] of [[restarted.db, restarted.app], [b.db, b.app]] as const) {
       expect(verifyAuditChain(db, businessId, getMeta(db, META_KEYS.installationId)!)).toMatchObject({ ok: true });
       expect(app.statements.trialBalance({})).toMatchObject({ balanced: true });
