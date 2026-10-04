@@ -41,3 +41,4 @@ export * from './repositories/allocation.js';
 export * from './repositories/payment.js';
 export * from './repositories/writeOff.js';
 export * from './repositories/expense.js';
+export * from './repositories/account.js';

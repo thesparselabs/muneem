@@ -99,6 +99,68 @@ Permissions:
 - ADRs 0030–0034, the posting-matrix document for CA review, this plan, build-stages (Stage 5 → merged in PR #6,
   Stage 6 → In progress), and LLD notes.
 
+6a details (drafted 2026-10-04, for review before building):
+
+- **Posting rules as data** (`@muneem/domain/accounting`, LLD §5.3).
+  - **Rule shape:** a rule is a list of `{ side: 'dr' | 'cr', account: AccountRole, amount: (f) => paise, when?,
+    party? }`.
+  - **Building a journal:** `buildJournal(rule, facts)` evaluates the rule and drops zero lines. A **signed** amount
+    (round-off) flips to the other side when negative, so no line ever carries a negative amount. It throws
+    `LEDGER_IMBALANCE` unless Σ debit = Σ credit, and it is pure, so the same rule can run in the Go cloud later.
+  - **Accounts are named by role,** never by code (`cash`, `clearing`, `bank`, `ar`, `ap`, `inventory`, `cogs`,
+    `sales_goods`, `round_off`, `input_cgst` … `output_cess`, `shrinkage`, `inventory_gain`, `bad_debts`,
+    `purchase_return_loss`, `opening_equity`, `cash_to_classify`, `cash_short`, `cash_over`). Expense categories name
+    their account by code (5400…). The seed maps roles to codes, so a business can rename an account without breaking
+    its postings.
+  - **One fact type and one rule per posting** (all written in 6a; 6b only wires them to documents):
+    - sale, purchase, debit note, receipt, supplier payment, write-off, expense;
+    - opening stock, stock adjustment / stock take (loss and gain lines), cost correction;
+    - party opening (each side for each party type), register variance, cash in/out.
+  - **Reversal:** `reverse(lines)` swaps the sides, for cancellations and manual reversals.
+  - **Payment-method accounts:** `tenderAccount(method)` (sale tenders) and `paymentAccount(method)` (payments and
+    expenses) implement ADR-0031.
+- **Properties** (fast-check, 500 runs each):
+  - every rule balances for any facts its generator makes, and the generators obey the documents' own CHECKs (a
+    sale's tenders + credit − change = total; a purchase's total = taxable + taxes + charges + round-off; a debit
+    note's split);
+  - a reversal plus its original nets every account to zero;
+  - no built line is ever negative or two-sided.
+
+  Unit tests pin each rule's lines to the posting matrix with worked numbers.
+- **Chart of accounts seed** (`domain/accounting/chart.ts`, data only). These are LLD §5.1's groups and accounts plus
+  ADR-0031's additions. Each account has a code, name, type, normal side, parent group, role and `is_system`.
+  - **Groups** (1000/2000/3000/4000/5000) are header accounts that nothing posts to.
+  - **Input GST:** 1510 CGST · 1520 SGST/UTGST · 1530 IGST · 1540 Cess.
+  - **Output GST:** 2210 CGST · 2220 SGST/UTGST · 2230 IGST · 2240 Cess.
+  - **Other additions:** 1199 Cash to classify, 3400 Opening Balance Equity, 5110 Purchase-return losses, 5470 Bad
+    Debts.
+  - **Seeding:** `ensureChartOfAccounts(db, businessId, actor)` seeds it on first use, like the catalog defaults, and
+    is idempotent by code. Each seeded account is audited and queued for sync (`account`).
+- **Migration `0012_accounting`:**
+  - `account`;
+  - `accounting_period`, with the monthly rows made on demand in 6c;
+  - `journal_entry`:
+    - **unique** `(business, source, ref_id, COALESCE(is_reversal_of, ''))` (the plan's `ux_je_ref`), so a document
+      has one journal and at most one reversal;
+    - balance CHECK;
+    - append-only triggers except sync bookkeeping;
+  - `journal_line`, append-only, with the one-side and non-negative CHECKs;
+  - `account_balance`, a cache keyed by account and period.
+
+  **Sources:** LLD §2.4's list plus `write_off`, `register_close` and `cash_movement`. A debit note is
+  `purchase_return`, a party opening and opening stock are both `opening` (`ref_type` tells them apart), and a cost
+  correction is `stock_adjustment`.
+
+  **Migration tests:** an unbalanced entry is refused; a two-sided or negative line is refused; a second journal for
+  the same document is refused but a reversal is allowed; nothing is updated or deleted.
+- **Documents:**
+  - **ADRs 0030–0034;**
+  - **`docs/accounting/posting-matrix.md`:** for CA review — one table per document with Dr/Cr, account, amount, the
+    worked example from the unit tests, and every choice that departs from LLD §5.2, marked;
+  - **build-stages and LLD:** notes where the build differs (sources, tax accounts per head, 2400 not used for
+    advances, additional accounts).
+- **Not in 6a:** writing journals from documents (6b), periods and the backfill (6c), reports (6d).
+
 **6b — Postings.** `postJournal` and the journal step in every document's transaction:
 - sales (cash, split, credit), purchases, debit notes, purchase cancel;
 - receipts, supplier payments, payment cancel, write-offs, expenses;

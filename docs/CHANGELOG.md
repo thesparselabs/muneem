@@ -14,6 +14,31 @@ All notable changes, newest first. Each entry records **what** changed and **why
   - **Reports:** the core statements, account ledger, day book, cash and bank books, and manual journals.
 
   Build stages now show Stage 5 merged (PR #6) and Stage 6 in progress.
+- **6a details written into the plan before building,** reviewed by the user first.
+- **Posting engine** (`@muneem/domain/accounting`, ADR-0030):
+  - **The rules:** written as data, for every document Stages 3–5 store (sale, purchase, debit note, receipt,
+    supplier payment, write-off, expense, opening stock, adjustment and stock take, cost correction, party opening,
+    register variance, cash in/out).
+  - **`buildJournal`:** drops zero lines and moves signed amounts to the other side. It refuses an unbalanced journal
+    with `LEDGER_IMBALANCE` before anything is written.
+  - **Tests:** a 500-run property per rule (balanced, no negative or two-sided line, a reversal nets to zero), and
+    unit tests that pin each rule to the posting matrix.
+- **Chart of accounts** (ADR-0031): LLD §5.1 as data, with one input and one output account per tax head, 1199 Cash to
+  classify, 3400 Opening Balance Equity, 5110 Purchase-return Losses and 5470 Bad Debts. Rules name accounts by role,
+  so renaming an account keeps its postings. It is seeded per business on first use; system accounts cannot be
+  retyped or deleted.
+- **Migration `0012_accounting`:** accounts, periods, journals, journal lines and the `account_balance` cache. CHECKs
+  and triggers refuse the following:
+  - an unbalanced or empty journal;
+  - a line on both sides or below zero;
+  - a posting to a group account;
+  - a second journal for one document (a reversal is allowed once);
+  - a late posting dated before its document;
+  - any change to a journal.
+- **ADRs 0030–0034** (engine, accounts, posting matrix, dates and periods, tie-outs) and
+  **`docs/accounting/posting-matrix.md`**, the as-built matrix with worked examples for a CA to sign. It marks every
+  departure from LLD §5.2 (customer receipts wholly to 1300, freight kept on returns to 5110, manual cash to 1199,
+  openings against 3400).
 
 ### Fixed — Stage 5
 - **Cheap items were over-costed when sold** (ADR-0027, amends ADR-0018). An issue was costed at the average rounded

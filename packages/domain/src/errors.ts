@@ -5,7 +5,8 @@ export class DomainError extends Error {
       | 'INVALID_INPUT'
       | 'OVERFLOW'
       | 'DISCOUNT_EXCEEDS_VALUE'
-      | 'DIVIDE_BY_ZERO',
+      | 'DIVIDE_BY_ZERO'
+      | 'LEDGER_IMBALANCE',
     message: string,
   ) {
     super(message);

@@ -34,3 +34,8 @@ Template: Context → Decision → Consequences → Status.
 | [0027](0027-issue-cost-by-share-of-value.md) | An issue takes its share of the value, not a rounded average (amends ADR-0018) |
 | [0028](0028-document-numbers-with-kind-letter.md) | Numbers for purchases, debit notes and other documents |
 | [0029](0029-payments-drawer-and-who-may-pay.md) | Cash payments and the drawer, and who may pay suppliers |
+| [0030](0030-journal-and-posting-engine.md) | The journal and the posting engine |
+| [0031](0031-chart-of-accounts-and-posting-accounts.md) | Chart of accounts and the accounts each posting uses |
+| [0032](0032-posting-matrix-as-built.md) | The posting matrix as built (for CA review) |
+| [0033](0033-posting-dates-periods-late-postings.md) | Posting dates, periods and late postings |
+| [0034](0034-tie-outs-backfill-integrity.md) | Tie-outs, backfill and integrity |
