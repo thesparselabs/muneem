@@ -15,7 +15,7 @@ export interface FaultOptions {
 }
 
 export type FaultKind = 'drop' | 'drop_response' | 'duplicate' | 'error500' | 'reorder' | 'partition' | 'delivered';
-export interface FaultEvent { call: 'push' | 'pull' | 'bootstrap'; deviceId: string; fault: FaultKind }
+export interface FaultEvent { call: 'push' | 'pull' | 'bootstrap' | 'snapshot'; deviceId: string; fault: FaultKind }
 
 export class NetworkError extends ServerError {
   constructor(detail: string) { super(0, 'NETWORK_UNREACHABLE', detail); this.name = 'NetworkError'; }
@@ -46,6 +46,7 @@ export class FaultInjector implements SyncServer {
   push(deviceId: string, body: unknown): Promise<PushResponse> { return this.call('push', deviceId, () => this.inner.push(deviceId, body)); }
   pull(deviceId: string, q: PullQuery): Promise<PullResponse> { return this.call('pull', deviceId, () => this.inner.pull(deviceId, q)); }
   bootstrap(deviceId: string, body: { businessId: string }): Promise<Snapshot> { return this.call('bootstrap', deviceId, () => this.inner.bootstrap(deviceId, body)); }
+  snapshot(deviceId: string, snapshotId: string): Promise<Snapshot> { return this.call('snapshot', deviceId, () => this.inner.snapshot(deviceId, snapshotId)); }
 
   private armNext(): void {
     this.nextDone = new Promise((resolve) => { this.releaseNext = resolve; });

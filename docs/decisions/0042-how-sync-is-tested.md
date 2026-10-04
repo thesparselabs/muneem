@@ -24,6 +24,10 @@ hard to make deterministic.
 - **The real server:** the §37 scenario and a smaller simulation also run against the Go server with Postgres and
   MinIO, in a CI job with those services. Locally they run when `MUNEEM_E2E_CLOUD` is set.
 
+- **As built (7f-2):** the reference server builds the same hydration bundle as Go and serves its object with byte
+  ranges at a fake URL, so tests hydrate through the real downloader. A fixture-free test checks that a bundle replays
+  to the same state as pulling every stream from 0.
+
 ## Consequences
 - The reference server's behaviour beyond the fixtures could drift from Go's. Every new protocol rule gets a fixture.
 - The simulation runs 20 seeds in CI and 500 with `pnpm sim`.

@@ -25,6 +25,7 @@ function scripted(answers: Answer[]): Transport & { requests: PushRequest[] } {
     },
     pull: async () => page(),
     bootstrap: async () => { throw new TransportError(501, 'NOT_IMPLEMENTED'); },
+    snapshot: async () => { throw new TransportError(501, 'NOT_IMPLEMENTED'); },
   };
 }
 const answer = (results: PushResult[]): PushResponse => ({ serverTime: new Date().toISOString(), nextPullSeq: 0, results });

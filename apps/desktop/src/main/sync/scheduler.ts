@@ -48,6 +48,13 @@ export class SyncScheduler {
     return this.idle();
   }
 
+  // After a hydration: a normal pull at once, through the scheduler when it runs, so runs never overlap.
+  pullNow(): Promise<void> {
+    if (!this.started) return this.engine.run({ pull: true }).then(() => undefined);
+    this.request({ pull: true });
+    return this.idle();
+  }
+
   async idle(): Promise<void> {
     while (this.running) await this.running;
   }

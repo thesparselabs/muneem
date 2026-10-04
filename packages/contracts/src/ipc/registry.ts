@@ -30,6 +30,7 @@ import {
 import { CompleteSaleInput, CompleteSaleResult, HeldBill, HoldBillInput, Sale, SaleDraft, SaleListInput, SalePage, SaleQuote } from './sales.js';
 import { PrintJobSummary, PrinterConfig, ReceiptDoc } from './print.js';
 import { SETTING_KEYS } from './settings.js';
+import { CloudBusiness, HydrationStartInput, HydrationStatus } from './hydration.js';
 import {
   AdjustmentResult, AdjustStockInput, MovementPage, MovementsInput, OpeningImportCommitInput, OpeningImportPreview, OpeningImportPreviewInput,
   OpeningStockInput, StockListInput, StockPage, StockRow, StockTakeInput, Valuation,
@@ -234,6 +235,10 @@ export const contract = {
   'sync.resend': spec({ input: ResendInput, output: z.object({ resent: z.number().int() }), permission: 'sync.manage', rateLimit: { perSec: 1 }, audit: true }),
   'sync.listReviewItems': spec({ input: ListReviewItemsInput, output: z.array(ReviewItem), permission: 'sync.view', rateLimit: { perSec: 5 } }),
   'sync.markReviewed': spec({ input: MarkReviewedInput, output: z.object({ reviewed: z.number().int() }), permission: 'sync.manage', rateLimit: { perSec: 2 }, audit: true }),
+  // 7f: a device being added has a session but no business yet, so these check the session and the membership themselves.
+  'sync.listCloudBusinesses': spec({ input: Empty, output: z.array(CloudBusiness), permission: null, rateLimit: { perSec: 2 } }),
+  'sync.hydrationStart': spec({ input: HydrationStartInput, output: HydrationStatus, permission: null, rateLimit: { perSec: 2 }, audit: true }),
+  'sync.hydrationStatus': spec({ input: Empty, output: HydrationStatus, permission: null, rateLimit: { perSec: 10 } }),
 
   'diagnostics.getHealth': spec({ input: Empty, output: Health, permission: 'diagnostics.view', rateLimit: { perSec: 5 } }),
   'diagnostics.integrityCheck': spec({

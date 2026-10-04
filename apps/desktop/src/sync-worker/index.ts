@@ -1,4 +1,5 @@
-// Electron utility process entry (7d): HTTP, gzip and request signing for sync. It never opens the database.
+// Electron utility process entry (7d): HTTP, gzip and request signing for sync, and hydration downloads (7f). It never opens the database.
+import { HttpBundleDownloader } from '../main/sync/bundleDownloader.js';
 import { HttpTransport } from '../main/sync/httpTransport.js';
 import { serveTransport, type Channel, type WorkerConfig } from '../main/sync/workerProtocol.js';
 
@@ -12,6 +13,6 @@ parentPort?.once('message', (e) => {
   const port = e.ports[0];
   if (!port) return;
   const channel: Channel = { send: (m) => port.postMessage(m), onMessage: (listener) => port.on('message', (ev) => listener(ev.data)) };
-  serveTransport(channel, (credentials) => new HttpTransport({ ...config, credentials: () => credentials }));
+  serveTransport(channel, (credentials) => new HttpTransport({ ...config, credentials: () => credentials }), new HttpBundleDownloader());
   port.start();
 });

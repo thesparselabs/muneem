@@ -7,7 +7,13 @@ export interface Transport {
   push(request: PushRequest): Promise<PushResponse>;
   pull(query: PullQuery): Promise<PullResponse>;
   bootstrap(request: { businessId: string }): Promise<Snapshot>;
+  snapshot(snapshotId: string): Promise<Snapshot>;
 }
+
+// 7f: a bundle is a plain GET of a presigned URL, appended to `path` from `offset`; resolves to the bytes now on disk.
+export interface BundleDownload { url: string; path: string; offset: number }
+export interface BundleFetcher { download(request: BundleDownload, onProgress: (bytes: number) => void): Promise<number> }
+export const isBundleFetcher = (t: unknown): t is BundleFetcher => typeof (t as Partial<BundleFetcher> | null)?.download === 'function';
 
 // What a request is signed and authorised with; main owns it and hands it to whichever transport sends.
 export interface Credentials { deviceId: string; privateKeyPem: string; accessToken: string | null }

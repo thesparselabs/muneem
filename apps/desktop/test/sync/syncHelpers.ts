@@ -1,6 +1,7 @@
 import { ROLE_PRESETS } from '@muneem/contracts';
 import { reconcilePartiesDb, replayCheck, tieOutFailures, type Db } from '@muneem/db-sqlite';
 import { ReferenceServer, ServerError, type SyncServer } from '@muneem/sync-reference';
+import { HttpBundleDownloader } from '../../src/main/sync/bundleDownloader.js';
 import { TransportError, type Transport } from '../../src/main/sync/transport.js';
 import type { App } from '../../src/main/app.js';
 import { defaultServer, loginResponse, ORG_ID, testApp, USER_ID, type FakeServer, type TestAppOptions } from '../helpers.js';
@@ -26,7 +27,39 @@ export function referenceTransport(server: SyncServer, deviceId: () => string | 
     push: (r) => call((id) => server.push(id, wire(r))),
     pull: (q) => call((id) => server.pull(id, q)),
     bootstrap: (r) => call((id) => server.bootstrap(id, r)),
+    snapshot: (s) => call((id) => server.snapshot(id, s)),
   };
+}
+
+export interface BundleFetchLog { ranges: (string | null)[] }
+
+// S3 in miniature: the bundle URL served from the reference server, honouring Range; `cutAfter` stalls a download after
+// that many bytes for good, as a process killed mid-download would leave it.
+export function bundleFetch(cloud: ReferenceServer, log: BundleFetchLog = { ranges: [] }, cutAfter?: number): typeof fetch {
+  return (async (input: string | URL | Request, init?: RequestInit) => {
+    const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
+    const range = (init?.headers as Record<string, string> | undefined)?.Range ?? null;
+    log.ranges.push(range);
+    const from = range ? Number(/bytes=(\d+)-/u.exec(range)![1]) : 0;
+    const object = cloud.bundleObject(url, from);
+    if (object.status >= 400) return new Response(null, { status: object.status });
+    const body = cutAfter === undefined ? object.body : object.body.subarray(0, Math.max(0, cutAfter - from));
+    const stream = new ReadableStream<Uint8Array>({
+      start(c) {
+        c.enqueue(new Uint8Array(body));
+        if (cutAfter === undefined) c.close();
+      },
+    });
+    return new Response(stream, { status: object.status, headers: { 'Content-Type': 'application/gzip' } });
+  }) as typeof fetch;
+}
+
+export const bundleDownloader = (cloud: ReferenceServer, log?: BundleFetchLog, cutAfter?: number) => new HttpBundleDownloader(bundleFetch(cloud, log, cutAfter));
+
+// Adds `businessId` to this device by a hydration bundle and waits for the import and the pull after it.
+export async function hydrate(app: App, businessId: string) {
+  app.hydration.start(businessId);
+  return app.hydration.launch({ businessId, cloudDeviceId: app.device.cloudDeviceId()! });
 }
 
 export function referenceCloud(): ReferenceServer {

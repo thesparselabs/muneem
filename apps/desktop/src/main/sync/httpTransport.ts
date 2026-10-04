@@ -33,6 +33,10 @@ export class HttpTransport implements Transport {
     return this.send<Snapshot>('POST', '/sync/bootstrap', '', gzipSync(Buffer.from(JSON.stringify(request), 'utf8')));
   }
 
+  snapshot(snapshotId: string): Promise<Snapshot> {
+    return this.send<Snapshot>('GET', `/sync/bootstrap/${encodeURIComponent(snapshotId)}`, '', undefined);
+  }
+
   private headers(method: Method, path: string, body: Uint8Array | undefined): Record<string, string> {
     const creds = this.o.credentials();
     if (!creds) throw new TransportError(401, 'DEVICE_NOT_REGISTERED', 'This device is not registered with the cloud yet');

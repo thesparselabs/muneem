@@ -37,6 +37,29 @@ on order, and two offline terminals see different orders.
 - **Echoes:** applying a pulled change writes no outbox row and no local audit row. A change whose origin is this
   device is skipped, unless the cloud merged it (its origin is then null).
 
+- **As built (7f-2):**
+  - **Own echoes:** a document's own echo is skipped; a master's or config's is applied. The device adopts the cloud's
+    version, and a merged (null-origin) version pulled on the same page no longer overwrites what the device sent
+    last. Without this, prices and product versions diverged between terminals (found by the 7h simulation).
+  - **Cost corrections travel as movements too:** a receipt's payload carries `correctionMovements` (the zero-qty
+    `cost_correction` rows it made) beside the `corrections` journals, so stock value matches on every device.
+  - **Unique clashes:** a pulled customer or supplier GSTIN, product SKU, terminal code or invoice prefix, or branch
+    code held by another row here goes to the lower id on every device. The other row's value is cleared (a supplier
+    becomes unregistered, as the schema requires) or replaced by the next free variant (codes, prefixes), and a local
+    `unique_clash` review item records both. Rows are never merged by GSTIN: parties are referenced by id everywhere.
+  - **Nothing blocks a stream:** each change applies in its own savepoint. One that still fails is rolled back,
+    recorded as an `apply_failed` review item with its error, and skipped; the cursor advances. It surfaces in Review
+    Items, in the sync status detail (`sync_log.last_error`) and in the sync log.
+  - **Hydration (7f):** a device adds a business from a bundle (ADR-0038) through the same apply functions, in pages
+    of 500. Each page and `hydration_state.lines_imported` commit together. Config is imported first, then the rest in
+    bundle order. Own changes are applied too (`includeOwn`). At the end every cursor is set to `asOfSeq`, then a
+    normal pull runs. Until then the business is *held*: sync does not run for it, IPC other than sign-in, sync,
+    diagnostics and `business.get` is refused, and nothing is seeded (FR-086). In the app a business not on the
+    device is held until hydrated; tests may still cold-pull it (`coldStart: 'pull'`).
+  - **Who may start it:** `sync.hydrationStart` has no RBAC permission, because grants belong to the session's business
+    and a device being added has none open. The handler requires a session and a cached membership of the chosen
+    business, and the cloud checks membership again on bootstrap.
+
 ## Consequences
 - Two terminals can oversell the same last unit offline (FR-087). Both sales stand; stock goes negative and the stock
   reconciliation screen shows it.

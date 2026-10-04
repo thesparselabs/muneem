@@ -26,6 +26,7 @@ const acceptingCloud: Transport = {
   push: async (r) => ({ serverTime: new Date().toISOString(), nextPullSeq: 0, results: r.operations.map((o) => ({ operationId: o.operationId, status: 'applied' as const })) }),
   pull: async () => ({ changes: [], nextSeq: 0, hasMore: false, serverTime: new Date().toISOString() }),
   bootstrap: async () => { throw new Error('not used'); },
+  snapshot: async () => { throw new Error('not used'); },
 };
 
 beforeAll(async () => {

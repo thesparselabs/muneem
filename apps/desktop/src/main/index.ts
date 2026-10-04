@@ -63,6 +63,7 @@ async function boot(): Promise<void> {
   const apiBaseUrl = process.env.MUNEEM_API_URL ?? 'http://localhost:8080/v1';
   muneem = createApp({
     db: () => db!, dbFile: paths.file, receiptsDir: join(userData, 'receipts'), backupsDir: paths.backups, bundlesDir: join(userData, 'support-bundles'), secrets, loggers,
+    hydrationDir: join(userData, 'hydration'),
     apiBaseUrl, appVersion: app.getVersion(), platform: process.platform,
     isTrustedSender: (id) => mainWindow?.webContents.id === id,
     // 7d: HTTP, gzip and signing run in a utility process; main stays the only writer of SQLite.
@@ -77,10 +78,13 @@ async function boot(): Promise<void> {
   muneem.events.attach({ send: (ch, p) => mainWindow?.webContents.send(ch, p) });
   muneem.connectivity.start();
   muneem.sync.start();
+  void muneem.hydration.resume().catch((e) => loggers.sync.error({ err: String(e) }, 'hydration resume failed'));
   // ADR-0034: each business seeds its chart and posts its backlog once per run, when a session first has it.
   muneem.events.attach({
     send: (channel, payload) => {
-      if (channel !== 'session.changed' || !(payload as { businessId?: string | null } | null)?.businessId) return;
+      const businessId = (payload as { businessId?: string | null } | null)?.businessId;
+      // 7f: nothing is seeded into a business still being imported; it runs once the import is ready.
+      if (channel !== 'session.changed' || !businessId || muneem?.hydrationGate.holds(businessId)) return;
       try {
         void muneem?.backlog.startForSession()
           ?.then((r) => { if (r.posted > 0 || r.remaining > 0) loggers.app.info(r, 'journal backlog posted'); })

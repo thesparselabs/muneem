@@ -3,6 +3,7 @@ import {
   type PushOperation, type PushResponse, type PushResult, type Snapshot, type SyncError, type SyncErrorCode, type SyncStream,
 } from '@muneem/contracts';
 import { payloadHash } from './canonical.js';
+import { buildBundle, encodeBundle } from './bundle.js';
 import { applyOperation, type NewChange, type NewConflict } from './entities.js';
 import { ServerError } from './errors.js';
 import { requiredRefs } from './references.js';
@@ -16,7 +17,13 @@ export interface SyncServer {
   push(deviceId: string, body: unknown): Promise<PushResponse>;
   pull(deviceId: string, query: PullQuery): Promise<PullResponse>;
   bootstrap(deviceId: string, body: { businessId: string }): Promise<Snapshot>;
+  snapshot(deviceId: string, snapshotId: string): Promise<Snapshot>;
 }
+
+// A bundle's object, as S3 serves it: a plain GET of its URL, from a byte offset (206) or whole (200).
+export interface BundleObject { status: 200 | 206 | 404 | 416; body: Buffer; total: number }
+
+interface StoredSnapshot { snapshotId: string; businessId: string; deviceId: string; asOfSeq: number; bytes: Buffer }
 
 interface Device { userId: string; revoked: boolean }
 export interface ReferenceServerOptions { now?: () => Date; minSchemaVersion?: number }
@@ -30,6 +37,8 @@ export class ReferenceServer implements SyncServer {
   private readonly devices = new Map<string, Device>();
   private readonly memberships = new Map<string, Set<string>>();
   private readonly businesses = new Map<string, BusinessState>();
+  private readonly snapshots = new Map<string, StoredSnapshot>();
+  private snapshotNo = 0;
 
   constructor(private readonly opts: ReferenceServerOptions = {}) {}
 
@@ -81,7 +90,38 @@ export class ReferenceServer implements SyncServer {
     return { changes, nextSeq: changes.at(-1)?.seq ?? q.since, hasMore: after.length > limit, serverTime };
   }
 
-  async bootstrap(): Promise<Snapshot> { throw new ServerError(501, 'NOT_IMPLEMENTED', 'hydration bundles arrive in 7f'); }
+  // 7f: the bundle is built at once from the change log; it reads as building until its status is asked for.
+  async bootstrap(deviceId: string, body: { businessId: string }): Promise<Snapshot> {
+    const d = this.device(deviceId);
+    const b = this.businesses.get(body.businessId);
+    if (!b) throw new ServerError(404, 'BUSINESS_UNKNOWN');
+    if (!this.memberships.get(d.userId)?.has(b.organizationId)) throw new ServerError(403, 'PERMISSION_DENIED');
+    const bundle = buildBundle(b);
+    const snapshotId = `01J${String(++this.snapshotNo).padStart(23, '0')}`;
+    this.snapshots.set(snapshotId, { snapshotId, businessId: b.id, deviceId, asOfSeq: bundle.header.asOfSeq, bytes: encodeBundle(bundle) });
+    return { snapshotId, status: 'building' };
+  }
+
+  async snapshot(deviceId: string, snapshotId: string): Promise<Snapshot> {
+    this.device(deviceId);
+    const s = this.snapshots.get(snapshotId);
+    if (!s || s.deviceId !== deviceId) throw new ServerError(404, 'NOT_FOUND');
+    return {
+      snapshotId, status: 'ready', url: `${ReferenceServer.BUNDLE_HOST}${snapshotId}.ndjson.gz`, asOfSeq: s.asOfSeq, bytes: s.bytes.length,
+      expiresAt: new Date(this.now().getTime() + 3_600_000).toISOString(),
+    };
+  }
+
+  static readonly BUNDLE_HOST = 'https://bundles.reference.test/';
+
+  bundleObject(url: string, from = 0): BundleObject {
+    const id = url.startsWith(ReferenceServer.BUNDLE_HOST) ? url.slice(ReferenceServer.BUNDLE_HOST.length).replace(/\.ndjson\.gz$/u, '') : '';
+    const s = this.snapshots.get(id);
+    if (!s) return { status: 404, body: Buffer.alloc(0), total: 0 };
+    const total = s.bytes.length;
+    if (from >= total && from > 0) return { status: 416, body: Buffer.alloc(0), total };
+    return { status: from > 0 ? 206 : 200, body: s.bytes.subarray(from), total };
+  }
 
   private device(deviceId: string): Device {
     const d = this.devices.get(deviceId);

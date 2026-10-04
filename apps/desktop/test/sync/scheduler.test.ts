@@ -71,6 +71,7 @@ describe('sync scheduler (7d)', () => {
       push: async () => { throw new TransportError(426, 'UPGRADE_REQUIRED'); },
       pull: async () => { throw new Error('unused'); },
       bootstrap: async () => { throw new Error('unused'); },
+      snapshot: async () => { throw new Error('unused'); },
     };
     const { app, db } = await testApp({ syncTransport: () => wire });
     await ownerAtTill(app);

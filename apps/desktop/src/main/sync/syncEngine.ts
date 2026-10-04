@@ -19,6 +19,7 @@ export interface SyncEngineDeps {
   log: Loggers['sync'];
   onStatus: () => void;
   onApplied: (r: PageResult) => void;
+  holds?: (businessId: string) => boolean;
 }
 
 export interface SyncRun { ran: boolean; reason?: string; push?: PushOutcome; pull?: PageResult; error?: string }
@@ -55,6 +56,7 @@ export class SyncEngine {
     const db = this.d.db();
     const ready = readiness(db, this.d.device, this.d.businessId(), this.d.schemaVersion());
     if (!ready.ready) return { ran: false, reason: ready.reason };
+    if (this.d.holds?.(ready.identity.businessId)) return { ran: false, reason: 'This device is still importing the business' };
     const run: SyncRun = { ran: true };
     run.push = await this.pusher.pushAll(ready.identity);
     recordPush(db, this.iso(), run.push.error === null, run.push.error);
@@ -66,7 +68,8 @@ export class SyncEngine {
   private async pull(run: SyncRun, identity: Parameters<Puller['pullAll']>[0]): Promise<void> {
     try {
       run.pull = await this.puller.pullAll(identity);
-      recordPull(this.d.db(), this.iso(), true, null);
+      recordPull(this.d.db(), this.iso(), true, run.pull.failed > 0 ? `${run.pull.failed} pulled changes could not be applied; see Review Items` : null);
+      if (run.pull.failed > 0) this.d.log.warn({ failed: run.pull.failed }, 'pulled changes skipped and listed for review');
       if (run.pull.applied > 0) this.d.onApplied(run.pull);
     } catch (e) {
       block(this.d.db(), e);

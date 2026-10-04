@@ -7,3 +7,4 @@ export * from './state.js';
 export { verifyOperation } from './verify.js';
 export { mergeStale, matchesSent } from './conflicts.js';
 export { requiredRefs } from './references.js';
+export * from './bundle.js';

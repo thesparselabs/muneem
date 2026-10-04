@@ -54,7 +54,12 @@ import { HttpTransport } from './sync/httpTransport.js';
 import { SyncEngine } from './sync/syncEngine.js';
 import { SyncScheduler } from './sync/scheduler.js';
 import { syncScreenHandlers } from './sync/screens.js';
-import type { Credentials, Transport } from './sync/transport.js';
+import { isBundleFetcher, type BundleFetcher, type Credentials, type Transport } from './sync/transport.js';
+import { HttpBundleDownloader } from './sync/bundleDownloader.js';
+import { HydrationGate, type ColdStart } from './sync/hydration/hydrationGate.js';
+import { HydrationService } from './sync/hydration/hydrationService.js';
+import { Hydrator } from './sync/hydration/hydrator.js';
+import { dirname, join } from 'node:path';
 
 export interface AppConfig {
   db: () => Db;
@@ -73,6 +78,10 @@ export interface AppConfig {
   now?: () => number;
   syncTransport?: (credentials: () => Credentials | null) => Transport;
   random?: () => number;
+  coldStart?: ColdStart;
+  hydrationDir?: string;
+  bundleFetcher?: BundleFetcher;
+  sleep?: (ms: number) => Promise<void>;
 }
 
 export function createApp(cfg: AppConfig) {
@@ -138,12 +147,24 @@ export function createApp(cfg: AppConfig) {
   const syncTransport = cfg.syncTransport?.(credentials) ?? new HttpTransport({
     baseUrl: cfg.apiBaseUrl, appVersion: cfg.appVersion, schemaVersion: currentSchemaVersion(cfg.db()), credentials, ...(cfg.fetchImpl && { fetchImpl: cfg.fetchImpl }),
   });
+  const gate = new HydrationGate(cfg.db, cfg.coldStart ?? 'hydrate');
   const syncEngine = new SyncEngine({
     db: cfg.db, transport: syncTransport, device, businessId: () => session.get()?.businessId ?? null, schemaVersion: () => currentSchemaVersion(cfg.db()),
     refreshAuth: () => auth.refreshAccessToken(), now: cfg.now ?? (() => Date.now()), random: cfg.random ?? Math.random, log: cfg.loggers.sync,
-    onStatus: () => events.emit('sync.status', syncStatus()), onApplied: () => productSearch.invalidate(),
+    onStatus: () => events.emit('sync.status', syncStatus()), onApplied: () => productSearch.invalidate(), holds: (id) => gate.holds(id),
   });
   const sync = new SyncScheduler(syncEngine, { now: cfg.now ?? (() => Date.now()), onError: (e) => cfg.loggers.sync.error({ err: String(e) }, 'sync run failed') });
+  const hydrator = new Hydrator({
+    db: cfg.db, transport: syncTransport, fetcher: cfg.bundleFetcher ?? (isBundleFetcher(syncTransport) ? syncTransport : new HttpBundleDownloader(cfg.fetchImpl)),
+    dir: cfg.hydrationDir ?? join(dirname(cfg.bundlesDir), 'hydration'), refreshAuth: () => auth.refreshAccessToken(), now: cfg.now ?? (() => Date.now()),
+    sleep: cfg.sleep ?? ((ms) => new Promise((resolve) => setTimeout(resolve, ms))), log: cfg.loggers.sync,
+    onProgress: (h, linesTotal) => hydration.progress(h, linesTotal),
+  });
+  const hydration: HydrationService = new HydrationService({
+    db: cfg.db, session, gate, runner: hydrator, cloudDeviceId: () => device.cloudDeviceId(),
+    listCloudBusinesses: async () => (await cloud.request<{ id: string; name: string; state_code?: string | null }[]>('GET', '/businesses')).data,
+    emit: (status) => events.emit('sync.hydration', status), afterReady: () => sync.pullNow(), log: cfg.loggers.sync,
+  });
   events.attach({
     send: (channel, payload) => {
       if (channel === 'connectivity.changed' && (payload as { online?: boolean }).online) sync.online();
@@ -287,6 +308,9 @@ export function createApp(cfg: AppConfig) {
     ...syncScreenHandlers({
       db: cfg.db, businessId: () => posCtx.businessId(), userId: () => posCtx.userId(), localDeviceId: () => device.localDeviceId(), onResent: () => { void sync.retry(); },
     }),
+    'sync.listCloudBusinesses': () => hydration.listCloudBusinesses(),
+    'sync.hydrationStart': (i) => hydration.start(i.businessId),
+    'sync.hydrationStatus': () => hydration.status(),
     'diagnostics.getHealth': () => diagnostics.getHealth(),
     'diagnostics.integrityCheck': () => diagnostics.integrityCheck(),
     'diagnostics.backupNow': () => diagnostics.backupNow('manual'),
@@ -299,9 +323,9 @@ export function createApp(cfg: AppConfig) {
   const gateway = createGateway({
     handlers, session, rbac, db: cfg.db, deviceId: () => device.localDeviceId(), loggers: cfg.loggers, events,
     connectivity: () => connectivity.snapshot(), isTrustedSender: cfg.isTrustedSender ?? (() => true), ...(cfg.now && { now: cfg.now }),
-    onCommitted: () => sync.nudge(),
+    onCommitted: () => sync.nudge(), holds: (id) => gate.holds(id),
   });
 
-  return { events, session, rbac, cloud, connectivity, device, auth, business, settings, products, catalog, pricing, productImport, customers, suppliers, customerLedger, supplierLedger, purchases, purchaseReturns, purchaseImport, payments, writeOffs, expenses, periods, backlog, statements, chart, manualJournals, register, sales, printQueue, inventory, openingImport, diagnostics, gateway, handlers, syncStatus, syncEngine, sync };
+  return { events, session, rbac, cloud, connectivity, device, auth, business, settings, products, catalog, pricing, productImport, customers, suppliers, customerLedger, supplierLedger, purchases, purchaseReturns, purchaseImport, payments, writeOffs, expenses, periods, backlog, statements, chart, manualJournals, register, sales, printQueue, inventory, openingImport, diagnostics, gateway, handlers, syncStatus, syncEngine, sync, hydration, hydrationGate: gate };
 }
 export type App = ReturnType<typeof createApp>;

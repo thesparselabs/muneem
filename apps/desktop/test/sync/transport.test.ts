@@ -10,7 +10,10 @@ import { TransportError, type Credentials, type Transport } from '../../src/main
 import { UtilityTransport } from '../../src/main/sync/utilityTransport.js';
 import { serveTransport, type Channel } from '../../src/main/sync/workerProtocol.js';
 import { caller, fakeFetch, ownerAtTill, testApp } from '../helpers.js';
-import { books, DEVICE_A, DEVICE_B, deviceServer, ownerMembership, referenceCloud, syncUntilQuiet } from './syncHelpers.js';
+import { mkdtempSync, readFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { books, bundleDownloader, DEVICE_A, DEVICE_B, deviceServer, ownerMembership, referenceCloud, referenceTransport, syncUntilQuiet, type BundleFetchLog } from './syncHelpers.js';
 
 interface Seen { method: string; path: string; headers: Record<string, string> }
 
@@ -97,7 +100,28 @@ describe('transports (7d)', () => {
 
     const unregistered = overPort(() => null, (c) => new HttpTransport({ baseUrl: 'http://cloud.test/v1', appVersion: 'x', schemaVersion: 14, credentials: () => c, fetchImpl }));
     await expect(unregistered.pull({ businessId, stream: 'masters', since: 0, limit: 1 })).rejects.toMatchObject({ status: 401, code: 'DEVICE_NOT_REGISTERED' });
-    const hung = overPort(() => null, () => ({ push: () => new Promise(() => undefined), pull: () => new Promise(() => undefined), bootstrap: () => new Promise(() => undefined) }), 50);
+    const hung = overPort(() => null, () => ({ push: () => new Promise(() => undefined), pull: () => new Promise(() => undefined), bootstrap: () => new Promise(() => undefined), snapshot: () => new Promise(() => undefined) }), 50);
     await expect(hung.pull({ businessId, stream: 'masters', since: 0, limit: 1 })).rejects.toBeInstanceOf(TransportError);
+  });
+
+  it('the utility process writes a hydration bundle to the file main names, with progress, and resumes it with Range', async () => {
+    const cloud = referenceCloud();
+    const a = await testApp({ syncTransport: () => referenceTransport(cloud, () => DEVICE_A) });
+    const { businessId } = await ownerAtTill(a.app);
+    await syncUntilQuiet(a.app);
+    const { snapshotId } = await cloud.bootstrap(DEVICE_A, { businessId });
+    const { url, bytes } = await cloud.snapshot(DEVICE_A, snapshotId);
+    const path = join(mkdtempSync(join(tmpdir(), 'muneem-bundle-')), 'b.ndjson.gz');
+    const log: BundleFetchLog = { ranges: [] };
+    const { port1, port2 } = new MessageChannel();
+    open.push(port1, port2);
+    serveTransport(portChannel(port2), () => referenceTransport(cloud, () => DEVICE_A), bundleDownloader(cloud, log));
+    const worker = new UtilityTransport(portChannel(port1), () => null, 1_000);
+    const seenProgress: number[] = [];
+    await worker.download({ url: url!, path, offset: 0 }, (n) => seenProgress.push(n));
+    expect(seenProgress.at(-1)).toBe(bytes);
+    expect(readFileSync(path)).toEqual(cloud.bundleObject(url!).body);
+    expect(await worker.download({ url: url!, path, offset: bytes! }, () => undefined)).toBe(bytes);
+    expect(log.ranges).toEqual([null, `bytes=${bytes!}-`]);
   });
 });
