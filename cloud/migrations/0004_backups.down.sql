@@ -1,0 +1,2 @@
+DROP TABLE IF EXISTS backup_key;
+DROP TABLE IF EXISTS backup;

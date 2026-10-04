@@ -32,7 +32,7 @@ func RolePreset(role string) []api.Grant {
 	case "manager":
 		g := cross([]string{"sales", "purchases", "inventory", "products", "customers", "suppliers", "payments", "expenses", "pos", "gst"},
 			[]string{"view", "create", "edit", "cancel", "approve", "adjust"})
-		return append(g, grants("reports.view", "reports.export", "reports.financial", "sync.view", "sync.manage", "diagnostics.view", "business.view", "settings.view")...)
+		return append(g, grants("reports.view", "reports.export", "reports.financial", "sync.view", "sync.manage", "diagnostics.view", "diagnostics.manage", "business.view", "settings.view")...)
 	case "cashier":
 		five := 500
 		g := grants("sales.view")

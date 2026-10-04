@@ -3,7 +3,7 @@ info:
   title: Muneem Cloud API
   version: 1.0.0
   description: |
-    Stage 1 surface: identity, device registration, business setup, health. Stage 7 adds sync push, pull and bootstrap.
+    Stage 1 surface: identity, device registration, business setup, health. Stage 7 adds sync push, pull and bootstrap; Stage 8f adds encrypted backups and key escrow.
     Single source of truth for both the Go server (oapi-codegen) and the desktop client (openapi-typescript).
     Every response carries `X-Server-Time` (NFR-018). Every request from a registered device carries
     `X-Device-Id`, `X-Device-Timestamp`, `X-Device-Signature`, `X-App-Version`, `X-Schema-Version`,
@@ -424,6 +424,132 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Snapshot'
+        default:
+          $ref: '#/components/responses/Error'
+  /backups/presign:
+    post:
+      operationId: presignBackup
+      tags: [backups]
+      description: A signed device asks to upload an encrypted backup; the reply is a presigned PUT URL for exactly those bytes.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BackupPresignRequest'
+      responses:
+        '200':
+          description: Where to PUT the object
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BackupUpload'
+        default:
+          $ref: '#/components/responses/Error'
+  /backups/{backupId}/confirm:
+    post:
+      operationId: confirmBackup
+      tags: [backups]
+      description: The upload finished; the cloud checks the object's size and SHA-256 and keeps the last 30 per business.
+      parameters:
+        - name: backupId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: The confirmed backup
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Backup'
+        default:
+          $ref: '#/components/responses/Error'
+  /backups:
+    get:
+      operationId: listBackups
+      tags: [backups]
+      parameters:
+        - name: businessId
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Confirmed backups, newest first
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Backup'
+        default:
+          $ref: '#/components/responses/Error'
+  /backups/{backupId}:
+    get:
+      operationId: getBackup
+      tags: [backups]
+      parameters:
+        - name: backupId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: The backup with a presigned GET URL
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BackupDownload'
+        default:
+          $ref: '#/components/responses/Error'
+  /backups/key:
+    post:
+      operationId: escrowBackupKey
+      tags: [backups]
+      description: |
+        Escrows a business's backup data key (base64, 32 bytes). The cloud stores it wrapped by its master key.
+        Idempotent per (businessId, keyId); a different key under an existing keyId is refused.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BackupKey'
+      responses:
+        '200':
+          description: Escrowed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BackupKeyRef'
+        default:
+          $ref: '#/components/responses/Error'
+    get:
+      operationId: getBackupKey
+      tags: [backups]
+      description: A member's registered device fetches an escrowed key; without keyId, the business's first key.
+      parameters:
+        - name: businessId
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: keyId
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: The data key
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BackupKey'
         default:
           $ref: '#/components/responses/Error'
 components:
@@ -911,3 +1037,53 @@ components:
         asOfSeq: { type: integer, format: int64 }
         bytes: { type: integer, format: int64 }
         expiresAt: { type: string, format: date-time }
+    BackupPresignRequest:
+      type: object
+      required: [businessId, bytes, sha256, keyId, schemaVersion]
+      properties:
+        businessId: { type: string }
+        bytes: { type: integer, format: int64, description: Size of the encrypted object }
+        sha256: { type: string, description: Lowercase hex SHA-256 of the encrypted object }
+        keyId: { type: string, description: Which escrowed data key encrypted it }
+        schemaVersion: { type: integer }
+    BackupUpload:
+      type: object
+      required: [backupId, url, expiresAt]
+      properties:
+        backupId: { type: string }
+        url: { type: string }
+        expiresAt: { type: string, format: date-time }
+    Backup:
+      type: object
+      required: [backupId, businessId, deviceId, bytes, sha256, keyId, schemaVersion, createdAt]
+      properties:
+        backupId: { type: string }
+        businessId: { type: string }
+        deviceId: { type: string }
+        bytes: { type: integer, format: int64 }
+        sha256: { type: string }
+        keyId: { type: string }
+        schemaVersion: { type: integer }
+        createdAt: { type: string, format: date-time }
+        confirmedAt: { type: string, format: date-time }
+    BackupDownload:
+      allOf:
+        - $ref: '#/components/schemas/Backup'
+        - type: object
+          required: [url, expiresAt]
+          properties:
+            url: { type: string }
+            expiresAt: { type: string, format: date-time }
+    BackupKey:
+      type: object
+      required: [businessId, keyId, key]
+      properties:
+        businessId: { type: string }
+        keyId: { type: string }
+        key: { type: string, description: base64 of the 32-byte AES-256 data key }
+    BackupKeyRef:
+      type: object
+      required: [businessId, keyId]
+      properties:
+        businessId: { type: string }
+        keyId: { type: string }
