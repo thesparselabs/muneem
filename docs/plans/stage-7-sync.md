@@ -447,3 +447,59 @@ The TS reference server (7d) and the Go server (7b/7c) both load and pass them.
 - **Go ports:** posting rules and costing (ADR-0040 relies on stored values), and `resolvePrice` (ADR-0011) before the
   cloud prices anything.
 - **Restore and backup:** the Stage 8 restore-to-new-device exit reuses 7f.
+
+## As built (2026-10-04)
+
+**How it was built.** The lead wrote 7a and the details of every part, then ran agents in isolated worktrees, at most
+two at a time:
+- cloud 7b+7c, beside device 7d+7e;
+- cloud 7f-1, beside screens 7g;
+- device 7f-2 with the clash fixes, beside the Go end-to-end run.
+
+The lead integrated each by cherry-pick, ran the full suite between phases, and wrote the simulation, §37 and NFR-022
+tests and the close-out.
+
+**Exit evidence:**
+- **Simulation suite:** three devices behind a seeded fault injector, over 20 seeds in CI (`pnpm sim` runs 500). The
+  faults are drop, lost answer, duplicate, 500, reorder, partition and reclaimed in-flight rows, and the workload
+  includes concurrent price edits and receipt cancels. There is no loss and no duplicate, and books and catalog are
+  identical on every device. The same seed gives the same conflict outcomes.
+- **§37 scenario** against both the reference server and the real Go API + Postgres + MinIO:
+  - 114 sales held once by the cloud and both terminals;
+  - the cloud Trial Balance equals each device's;
+  - the audit chains verify;
+  - tie-outs, replay and party reconciliation are clean;
+  - the oversold last unit is named in stock reconciliation.
+- **Hydration:** a new device hydrates from the Go bundle to the same books, then bills and syncs back.
+- **NFR-022:** 5,525 operations take about 40 s at 512 kbps, against a stated 10-minute window.
+- **Billing speed:** `sales.complete` p95 is about 14 ms idle and up to 18 ms while syncing, within its test's limit.
+
+**Bugs the tests found and fixed:**
+- **Catalog drift:** a device skipped its own echo after a merge (simulation).
+- **Stock value:** cost-correction movements did not travel with receipts (soak).
+- **Review items:** devices ignored the Go cloud's review items.
+- **Unique clashes:** a clashing GSTIN, SKU, terminal or branch code would block a stream.
+- **Clock skew:** a skew refusal spent a refresh token.
+- **Bootstrap:** the Go handler read the gzipped body raw.
+- **Cancels:** the Go server stored a cancel in a shape devices could not apply.
+- **The §37 test itself:** its lost-answer step had silently not run.
+
+**Deviations from the plan:**
+- **Retry timers** live in main; the utility process only does HTTP, gzip and signing.
+- **Later document versions** carry the whole document with the operation under its type.
+- **Unique clashes** go to the lower id, with a local review item.
+- **Hydration IPC** checks the session and the membership itself (no RBAC permission), because a device being added
+  has no business open.
+- **MinIO** in development and CI uses `bitnamilegacy/minio` (`minio/minio` left Docker Hub).
+- **The ADRs** gained "As built" notes: 0038, 0040, 0041 and 0042.
+
+**Not done in Stage 7:**
+- **Manual clicks:** the 7g manual checklist and the setup "Add this device" flow have not been clicked through. They
+  are covered by helper tests, typecheck and the build.
+- **Attachments** (FR-075) are in Stage 8.
+- **Typed cloud report tables** are in Stage 8.
+- **Expired bundles** in object storage are not cleaned up yet; that is a bucket lifecycle rule to set when the cloud
+  is deployed.
+- **Presigned URLs** use the API's S3 endpoint host, so a public-endpoint setting is needed if devices reach storage by
+  another host.
+
