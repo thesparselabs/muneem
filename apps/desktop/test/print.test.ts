@@ -39,6 +39,13 @@ describe('receipt layout', () => {
     for (const line of text.split('\n')) expect(line.length).toBeLessThanOrEqual(32);
     expect(text).toContain('*** DUPLICATE (copy 2) ***');
   });
+  it('prints the composition declaration at the top of a bill of supply (CGST rule 5(1)(g))', () => {
+    const declaration = 'Composition taxable person, not eligible to collect tax on supplies';
+    const lines = renderText(layoutReceipt({ ...DOC, title: 'BILL OF SUPPLY', declaration }, 42), 42).split('\n').map((l) => l.trim());
+    const title = lines.indexOf('BILL OF SUPPLY');
+    expect(lines.slice(title + 1, title + 3).join(' ')).toBe(declaration);
+    expect(lines.filter((l) => l.startsWith('Composition'))).toHaveLength(1);
+  });
   it('wraps long words and keeps amounts on the paper', () => {
     expect(wrap('Supercalifragilistic soap', 10)).toEqual(['Supercalif', 'ragilistic', 'soap']);
     expect(columns('A very long product description', '1,234.50', 20)).toBe('A very long 1,234.50');

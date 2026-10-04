@@ -46,6 +46,8 @@ export function layoutReceipt(doc: ReceiptDoc, width: number, rupee: RupeeStyle 
   doc.header.lines.forEach((l) => center(l));
   if (doc.header.gstin) center(`GSTIN: ${doc.header.gstin}`);
   center(doc.title, true);
+  // CGST rule 5(1)(g): a composition dealer's declaration goes at the top of the bill of supply.
+  if (doc.declaration) center(doc.declaration);
   if (doc.duplicate) center(`*** DUPLICATE (copy ${doc.copyNo}) ***`, true);
   left(`No: ${doc.docNumber}`);
   pair(`Date: ${doc.docDate}`, `Time: ${doc.time}`);
@@ -92,7 +94,6 @@ export function layoutReceipt(doc: ReceiptDoc, width: number, rupee: RupeeStyle 
     left(`  Due: ${doc.credit.dueDate}`);
     pair('Balance now', amount(doc.credit.balancePaise));
   }
-  if (doc.declaration) center(doc.declaration);
   doc.footer.forEach((f) => center(f));
   return out;
 }
