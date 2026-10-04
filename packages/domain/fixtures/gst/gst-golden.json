@@ -1159,6 +1159,66 @@
    }
   },
   {
+   "name": "HAND inclusive MRP with per-unit cess keeps the total at the MRP",
+   "input": {
+    "docType": "tax_invoice",
+    "supplierStateCode": "07",
+    "placeOfSupplyStateCode": "07",
+    "isUnionTerritoryWithoutLegislature": false,
+    "taxScheme": "regular",
+    "billDiscount": {
+     "kind": "amount",
+     "value": 0
+    },
+    "roundToRupee": false,
+    "b2clThresholdPaise": 10000000,
+    "lines": [
+     {
+      "qtyMilli": 1000,
+      "unitPricePaise": 15000,
+      "priceIsInclusive": true,
+      "lineDiscount": {
+       "kind": "amount",
+       "value": 0
+      },
+      "gstRateBp": 2800,
+      "cessRateBp": 500,
+      "cessPerUnitPaise": 1000,
+      "taxTreatment": "taxable"
+     }
+    ]
+   },
+   "expected": {
+    "supplyType": "intra",
+    "stateTaxKind": "sgst",
+    "lines": [
+     {
+      "grossPaise": 15000,
+      "grossExPaise": 10526,
+      "lineDiscountPaise": 0,
+      "apportionedBillDiscountPaise": 0,
+      "taxablePaise": 10526,
+      "cgstPaise": 1474,
+      "sgstPaise": 1473,
+      "igstPaise": 0,
+      "cessPaise": 1526,
+      "totalPaise": 14999
+     }
+    ],
+    "grossPaise": 15000,
+    "lineDiscountPaise": 0,
+    "billDiscountPaise": 0,
+    "taxablePaise": 10526,
+    "cgstPaise": 1474,
+    "sgstPaise": 1473,
+    "igstPaise": 0,
+    "cessPaise": 1526,
+    "roundOffPaise": 0,
+    "totalPaise": 14999,
+    "gstr1Bucket": "b2cs"
+   }
+  },
+  {
    "name": "HAND single paise invoice @18%",
    "input": {
     "docType": "tax_invoice",

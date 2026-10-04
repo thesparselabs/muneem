@@ -83,6 +83,19 @@ describe('GST engine invariants', () => {
     );
   });
 
+  it('an inclusive price with ad valorem and per-unit cess still totals the price, within 2 paise', () => {
+    fc.assert(
+      fc.property(fc.integer({ min: 2_000, max: 100_000_000 }), fc.constantFrom(0, 100, 500, 1200, 2200), fc.constantFrom(0, 400, 2_000), (pricePaise, cessRateBp, cessPerUnitPaise) => {
+        const r = computeInvoice({
+          docType: 'tax_invoice', supplierStateCode: '07', placeOfSupplyStateCode: '07', isUnionTerritoryWithoutLegislature: false, taxScheme: 'regular',
+          roundToRupee: false, billDiscount: { kind: 'amount', value: 0 }, b2clThresholdPaise: 10_000_000,
+          lines: [{ qtyMilli: 1000, unitPricePaise: pricePaise, priceIsInclusive: true, lineDiscount: { kind: 'amount', value: 0 }, gstRateBp: 2800, cessRateBp, cessPerUnitPaise, taxTreatment: 'taxable' }],
+        });
+        expect(Math.abs(r.totalPaise - pricePaise)).toBeLessThanOrEqual(2);
+      }),
+    );
+  });
+
   it('is deterministic', () => {
     fc.assert(fc.property(arbInvoice(), (inv) => {
       expect(computeInvoice(inv)).toEqual(computeInvoice(structuredClone(inv)));

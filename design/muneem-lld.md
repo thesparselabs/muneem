@@ -526,7 +526,8 @@ computeInvoice(input: {
 2  per line:
      gross          = divRound(qtyMilli * unitPrice, 1000)
      if priceIsInclusive:                      // C-3
-        gross_ex     = divRound(gross * 10000, 10000 + gstRateBp + cessRateBp)
+        unit_cess    = divRound(qtyMilli * cessPerUnitPaise, 1000)
+        gross_ex     = divRound(max(0, gross - unit_cess) * 10000, 10000 + gstRateBp + cessRateBp)
      else gross_ex   = gross
      line_disc      = kind=='percent' ? pctOf(gross_ex, value*100) : value
      line_taxable_0 = gross_ex - line_disc
@@ -559,7 +560,7 @@ computeInvoice(input: {
 
 Notes that matter in practice:
 
-- **Inclusive back-calculation must divide by `(10000 + gstRateBp + cessRateBp)`**, not just the GST rate, or cess-bearing MRP items are mis-taxed.
+- **Inclusive back-calculation must divide by `(10000 + gstRateBp + cessRateBp)`**, not just the GST rate, or cess-bearing MRP items are mis-taxed. A per-unit (specific) cess is inside the MRP too, so it is taken out of the gross first (Stage 9h; before that, a ₹150 MRP pack with ₹10 per-unit cess billed ₹160).
 - **Never compute the two halves independently.** `divRound(taxable * rate / 20000)` for CGST and `sgst = tax_total − cgst` is deliberate: the 0.25% slab halves to 12.5 bp, so a naive `pctOf(taxable, rate/2)` would take a non-integer rate, and two independent roundings can make `cgst + sgst ≠ tax_total` by a paise — which GSTN validation and the buyer's books will both reject.
 - `B2CL_THRESHOLD_PAISE` lives in a **versioned, effective-dated config table** synced from the cloud, never a code constant — thresholds and rates change by notification, and a rate change must not require a desktop release.
 - Composition scheme produces `doc_type = 'bill_of_supply'`, zero tax, and a mandatory printed declaration (FR-095).

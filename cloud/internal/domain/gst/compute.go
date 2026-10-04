@@ -39,7 +39,11 @@ func ComputeInvoice(in *InvoiceInput) (*InvoiceResult, error) {
 		}
 		grossEx := gross
 		if l.PriceIsInclusive && lineTaxes {
-			g, err := money.MulChecked(gross, 10_000)
+			unitCess, err := perUnitCess(l)
+			if err != nil {
+				return nil, err
+			}
+			g, err := money.MulChecked(max(0, gross-unitCess), 10_000)
 			if err != nil {
 				return nil, err
 			}
@@ -110,11 +114,7 @@ func ComputeInvoice(in *InvoiceInput) (*InvoiceResult, error) {
 			if err != nil {
 				return nil, err
 			}
-			m2, err := money.MulChecked(l.QtyMilli, l.CessPerUnitPaise)
-			if err != nil {
-				return nil, err
-			}
-			c2, err := money.DivRound(m2, 1000)
+			c2, err := perUnitCess(l)
 			if err != nil {
 				return nil, err
 			}
@@ -295,4 +295,12 @@ func itoa(i int) string {
 		i /= 10
 	}
 	return string(b)
+}
+
+func perUnitCess(l LineInput) (int64, error) {
+	m, err := money.MulChecked(l.QtyMilli, l.CessPerUnitPaise)
+	if err != nil {
+		return 0, err
+	}
+	return money.DivRound(m, 1000)
 }

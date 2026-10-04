@@ -25,11 +25,11 @@ export function computeInvoice(input: GstInvoiceInput): GstInvoiceResult {
   const pre = input.lines.map((l, i) => {
     const lineTaxes = taxesApply && l.taxTreatment === 'taxable';
     const gross = divRound(mulChecked(l.qtyMilli, l.unitPricePaise), 1000);
-    // Inclusive back-calc divides by (10000 + gst + cess) — cess-bearing MRP items would otherwise be mis-taxed.
-    // A non-taxable line has no tax inside its price, so its exclusive gross is its gross.
+    // Inclusive back-calc takes out the per-unit cess, then divides by (10000 + gst + cess) — cess-bearing MRP items would
+    // otherwise be mis-taxed. A non-taxable line has no tax inside its price, so its exclusive gross is its gross.
     const grossEx =
       l.priceIsInclusive && lineTaxes
-        ? divRound(mulChecked(gross, 10_000), 10_000 + l.gstRateBp + l.cessRateBp)
+        ? divRound(mulChecked(Math.max(0, gross - perUnitCess(l)), 10_000), 10_000 + l.gstRateBp + l.cessRateBp)
         : gross;
     const lineDisc = discountAmount(l.lineDiscount, grossEx);
     if (lineDisc > grossEx) {
@@ -60,7 +60,7 @@ export function computeInvoice(input: GstInvoiceInput): GstInvoiceResult {
       } else {
         igst = pctOf(taxable, l.gstRateBp);
       }
-      cess = pctOf(taxable, l.cessRateBp) + divRound(mulChecked(l.qtyMilli, l.cessPerUnitPaise), 1000);
+      cess = pctOf(taxable, l.cessRateBp) + perUnitCess(l);
     }
     const total = taxable + cgst + sgst + igst + cess;
     return {
@@ -148,6 +148,8 @@ function discountAmount(d: Discount, base: number): number {
   if (d.kind === 'percent') return pctOf(base, d.value);
   return d.value;
 }
+
+const perUnitCess = (l: GstLineInput): number => divRound(mulChecked(l.qtyMilli, l.cessPerUnitPaise), 1000);
 
 function mulChecked(a: number, b: number): number {
   return assertSafeInt(a * b, 'product');

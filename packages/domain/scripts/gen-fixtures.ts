@@ -60,6 +60,9 @@ const hand: Hand[] = [
     check: { grossPaise: 12_500, cgstPaise: 313, sgstPaise: 312, totalPaise: 13_125 } }, // tax 625 → cgst divRound(12500*500,20000)=312.5→313
   { name: 'HAND inclusive MRP with 12% cess (aerated) divides by 10000+2800+1200', input: inv({ lines: [line({ unitPricePaise: 14_000, priceIsInclusive: true, gstRateBp: 2800, cessRateBp: 1200 })] }),
     check: { taxablePaise: 10_000, cgstPaise: 1_400, sgstPaise: 1_400, cessPaise: 1_200, totalPaise: 14_000 } },
+  // (15000 − 1000 per-unit cess) × 10000 / 13300 = 10526.32 → 10526; tax 2947 (1474 + 1473); cess 526 + 1000; total 14999 ≈ MRP.
+  { name: 'HAND inclusive MRP with per-unit cess keeps the total at the MRP', input: inv({ lines: [line({ unitPricePaise: 15_000, priceIsInclusive: true, gstRateBp: 2800, cessRateBp: 500, cessPerUnitPaise: 1_000 })] }),
+    check: { taxablePaise: 10_526, cgstPaise: 1_474, sgstPaise: 1_473, cessPaise: 1_526, totalPaise: 14_999 } },
   { name: 'HAND single paise invoice @18%', input: inv({ lines: [line({ unitPricePaise: 1 })] }),
     check: { taxablePaise: 1, cgstPaise: 0, sgstPaise: 0, totalPaise: 1 } },
 ];
