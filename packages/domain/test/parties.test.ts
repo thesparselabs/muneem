@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import fc from 'fast-check';
+import { readFileSync } from 'node:fs';
 import {
-  addDays, ageingBucket, allocateAsChosen, allocateOldestFirst, chargeSign, daysPastDue, reconcileParties, type OpenItem, type PartyAllocation, type PartyDocument, type PartyEntry,
+  addDays, ageingBucket, allocateAsChosen, allocateOldestFirst, DomainError, chargeSign, daysPastDue, reconcileParties, type OpenItem, type PartyAllocation, type PartyDocument, type PartyEntry,
   type PartyType,
 } from '../src/index.js';
 
@@ -171,5 +172,18 @@ describe('addDays', () => {
     expect(addDays('2026-12-15', 30)).toBe('2027-01-14');
     expect(addDays('2028-02-28', 1)).toBe('2028-02-29');
     expect(addDays('2026-10-03', 0)).toBe('2026-10-03');
+  });
+});
+
+describe('allocation golden vectors (shared with the Go port)', () => {
+  it('matches every case in fixtures/parties/allocation.json', () => {
+    const fx = JSON.parse(readFileSync(new URL('../fixtures/parties/allocation.json', import.meta.url), 'utf8')) as {
+      cases: { name: string; items: OpenItem[]; amountPaise: number; expected?: unknown; error?: string }[];
+    };
+    expect(fx.cases.length).toBeGreaterThan(40);
+    for (const c of fx.cases) {
+      if (c.error) expect(() => allocateOldestFirst(c.items, c.amountPaise), c.name).toThrow(DomainError);
+      else expect(allocateOldestFirst(c.items, c.amountPaise), c.name).toEqual(c.expected);
+    }
   });
 });

@@ -1,0 +1,3342 @@
+{
+ "version": 1,
+ "cases": [
+  {
+   "name": "HAND oldest due first, rest left as an advance",
+   "items": [
+    {
+     "id": "B",
+     "dueDate": "2026-10-20",
+     "docDate": "2026-10-20",
+     "outstandingPaise": 4000
+    },
+    {
+     "id": "A",
+     "dueDate": "2026-10-10",
+     "docDate": "2026-10-10",
+     "outstandingPaise": 6000
+    },
+    {
+     "id": "C",
+     "dueDate": "2026-10-30",
+     "docDate": "2026-10-30",
+     "outstandingPaise": 5000
+    }
+   ],
+   "amountPaise": 20000,
+   "expected": {
+    "allocations": [
+     {
+      "itemId": "A",
+      "amountPaise": 6000
+     },
+     {
+      "itemId": "B",
+      "amountPaise": 4000
+     },
+     {
+      "itemId": "C",
+      "amountPaise": 5000
+     }
+    ],
+    "unallocatedPaise": 5000
+   }
+  },
+  {
+   "name": "HAND partial last item",
+   "items": [
+    {
+     "id": "A",
+     "dueDate": "2026-10-10",
+     "docDate": "2026-10-10",
+     "outstandingPaise": 6000
+    },
+    {
+     "id": "B",
+     "dueDate": "2026-10-20",
+     "docDate": "2026-10-20",
+     "outstandingPaise": 4000
+    }
+   ],
+   "amountPaise": 7000,
+   "expected": {
+    "allocations": [
+     {
+      "itemId": "A",
+      "amountPaise": 6000
+     },
+     {
+      "itemId": "B",
+      "amountPaise": 1000
+     }
+    ],
+    "unallocatedPaise": 0
+   }
+  },
+  {
+   "name": "HAND due-date tie broken by doc date, then id",
+   "items": [
+    {
+     "id": "Z",
+     "dueDate": "2026-10-10",
+     "docDate": "2026-10-02",
+     "outstandingPaise": 100
+    },
+    {
+     "id": "Y",
+     "dueDate": "2026-10-10",
+     "docDate": "2026-10-01",
+     "outstandingPaise": 100
+    },
+    {
+     "id": "X",
+     "dueDate": "2026-10-10",
+     "docDate": "2026-10-02",
+     "outstandingPaise": 100
+    }
+   ],
+   "amountPaise": 300,
+   "expected": {
+    "allocations": [
+     {
+      "itemId": "Y",
+      "amountPaise": 100
+     },
+     {
+      "itemId": "X",
+      "amountPaise": 100
+     },
+     {
+      "itemId": "Z",
+      "amountPaise": 100
+     }
+    ],
+    "unallocatedPaise": 0
+   }
+  },
+  {
+   "name": "HAND settled and credit items are skipped",
+   "items": [
+    {
+     "id": "A",
+     "dueDate": "2026-10-01",
+     "docDate": "2026-10-01",
+     "outstandingPaise": 0
+    },
+    {
+     "id": "B",
+     "dueDate": "2026-10-02",
+     "docDate": "2026-10-02",
+     "outstandingPaise": -500
+    },
+    {
+     "id": "C",
+     "dueDate": "2026-10-03",
+     "docDate": "2026-10-03",
+     "outstandingPaise": 900
+    }
+   ],
+   "amountPaise": 1000,
+   "expected": {
+    "allocations": [
+     {
+      "itemId": "C",
+      "amountPaise": 900
+     }
+    ],
+    "unallocatedPaise": 100
+   }
+  },
+  {
+   "name": "HAND nothing open: all unallocated",
+   "items": [],
+   "amountPaise": 2500,
+   "expected": {
+    "allocations": [],
+    "unallocatedPaise": 2500
+   }
+  },
+  {
+   "name": "HAND zero payment refused",
+   "items": [
+    {
+     "id": "A",
+     "dueDate": "2026-10-01",
+     "docDate": "2026-10-01",
+     "outstandingPaise": 100
+    }
+   ],
+   "amountPaise": 0,
+   "error": "INVALID_INPUT"
+  },
+  {
+   "name": "HAND negative payment refused",
+   "items": [
+    {
+     "id": "A",
+     "dueDate": "2026-10-01",
+     "docDate": "2026-10-01",
+     "outstandingPaise": 100
+    }
+   ],
+   "amountPaise": -1,
+   "error": "INVALID_INPUT"
+  },
+  {
+   "name": "GRID n=1 amount=1",
+   "items": [
+    {
+     "id": "01J00000000000000000001000",
+     "dueDate": "2026-01-10",
+     "docDate": "2026-01-01",
+     "outstandingPaise": -500
+    }
+   ],
+   "amountPaise": 1,
+   "expected": {
+    "allocations": [],
+    "unallocatedPaise": 1
+   }
+  },
+  {
+   "name": "GRID n=1 amount=1",
+   "items": [
+    {
+     "id": "01J00000000000000000001000",
+     "dueDate": "2026-01-10",
+     "docDate": "2026-01-01",
+     "outstandingPaise": -500
+    }
+   ],
+   "amountPaise": 1,
+   "expected": {
+    "allocations": [],
+    "unallocatedPaise": 1
+   }
+  },
+  {
+   "name": "GRID n=1 amount=1",
+   "items": [
+    {
+     "id": "01J00000000000000000001000",
+     "dueDate": "2026-01-10",
+     "docDate": "2026-01-01",
+     "outstandingPaise": -500
+    }
+   ],
+   "amountPaise": 1,
+   "expected": {
+    "allocations": [],
+    "unallocatedPaise": 1
+   }
+  },
+  {
+   "name": "GRID n=1 amount=777",
+   "items": [
+    {
+     "id": "01J00000000000000000001000",
+     "dueDate": "2026-01-10",
+     "docDate": "2026-01-01",
+     "outstandingPaise": -500
+    }
+   ],
+   "amountPaise": 777,
+   "expected": {
+    "allocations": [],
+    "unallocatedPaise": 777
+   }
+  },
+  {
+   "name": "GRID n=2 amount=1",
+   "items": [
+    {
+     "id": "01J00000000000000000001000",
+     "dueDate": "2026-01-10",
+     "docDate": "2026-01-01",
+     "outstandingPaise": -500
+    },
+    {
+     "id": "01J00000000000000000001001",
+     "dueDate": "2026-02-11",
+     "docDate": "2026-02-02",
+     "outstandingPaise": 3017
+    }
+   ],
+   "amountPaise": 1,
+   "expected": {
+    "allocations": [
+     {
+      "itemId": "01J00000000000000000001001",
+      "amountPaise": 1
+     }
+    ],
+    "unallocatedPaise": 0
+   }
+  },
+  {
+   "name": "GRID n=2 amount=1508",
+   "items": [
+    {
+     "id": "01J00000000000000000001000",
+     "dueDate": "2026-01-10",
+     "docDate": "2026-01-01",
+     "outstandingPaise": -500
+    },
+    {
+     "id": "01J00000000000000000001001",
+     "dueDate": "2026-02-11",
+     "docDate": "2026-02-02",
+     "outstandingPaise": 3017
+    }
+   ],
+   "amountPaise": 1508,
+   "expected": {
+    "allocations": [
+     {
+      "itemId": "01J00000000000000000001001",
+      "amountPaise": 1508
+     }
+    ],
+    "unallocatedPaise": 0
+   }
+  },
+  {
+   "name": "GRID n=2 amount=3017",
+   "items": [
+    {
+     "id": "01J00000000000000000001000",
+     "dueDate": "2026-01-10",
+     "docDate": "2026-01-01",
+     "outstandingPaise": -500
+    },
+    {
+     "id": "01J00000000000000000001001",
+     "dueDate": "2026-02-11",
+     "docDate": "2026-02-02",
+     "outstandingPaise": 3017
+    }
+   ],
+   "amountPaise": 3017,
+   "expected": {
+    "allocations": [
+     {
+      "itemId": "01J00000000000000000001001",
+      "amountPaise": 3017
+     }
+    ],
+    "unallocatedPaise": 0
+   }
+  },
+  {
+   "name": "GRID n=2 amount=3794",
+   "items": [
+    {
+     "id": "01J00000000000000000001000",
+     "dueDate": "2026-01-10",
+     "docDate": "2026-01-01",
+     "outstandingPaise": -500
+    },
+    {
+     "id": "01J00000000000000000001001",
+     "dueDate": "2026-02-11",
+     "docDate": "2026-02-02",
+     "outstandingPaise": 3017
+    }
+   ],
+   "amountPaise": 3794,
+   "expected": {
+    "allocations": [
+     {
+      "itemId": "01J00000000000000000001001",
+      "amountPaise": 3017
+     }
+    ],
+    "unallocatedPaise": 777
+   }
+  },
+  {
+   "name": "GRID n=3 amount=1",
+   "items": [
+    {
+     "id": "01J00000000000000000001000",
+     "dueDate": "2026-01-10",
+     "docDate": "2026-01-01",
+     "outstandingPaise": -500
+    },
+    {
+     "id": "01J00000000000000000001001",
+     "dueDate": "2026-02-11",
+     "docDate": "2026-02-02",
+     "outstandingPaise": 3017
+    },
+    {
+     "id": "01J00000000000000000001002",
+     "dueDate": "2026-03-10",
+     "docDate": "2026-01-03",
+     "outstandingPaise": 6534
+    }
+   ],
+   "amountPaise": 1,
+   "expected": {
+    "allocations": [
+     {
+      "itemId": "01J00000000000000000001001",
+      "amountPaise": 1
+     }
+    ],
+    "unallocatedPaise": 0
+   }
+  },
+  {
+   "name": "GRID n=3 amount=4775",
+   "items": [
+    {
+     "id": "01J00000000000000000001000",
+     "dueDate": "2026-01-10",
+     "docDate": "2026-01-01",
+     "outstandingPaise": -500
+    },
+    {
+     "id": "01J00000000000000000001001",
+     "dueDate": "2026-02-11",
+     "docDate": "2026-02-02",
+     "outstandingPaise": 3017
+    },
+    {
+     "id": "01J00000000000000000001002",
+     "dueDate": "2026-03-10",
+     "docDate": "2026-01-03",
+     "outstandingPaise": 6534
+    }
+   ],
+   "amountPaise": 4775,
+   "expected": {
+    "allocations": [
+     {
+      "itemId": "01J00000000000000000001001",
+      "amountPaise": 3017
+     },
+     {
+      "itemId": "01J00000000000000000001002",
+      "amountPaise": 1758
+     }
+    ],
+    "unallocatedPaise": 0
+   }
+  },
+  {
+   "name": "GRID n=3 amount=9551",
+   "items": [
+    {
+     "id": "01J00000000000000000001000",
+     "dueDate": "2026-01-10",
+     "docDate": "2026-01-01",
+     "outstandingPaise": -500
+    },
+    {
+     "id": "01J00000000000000000001001",
+     "dueDate": "2026-02-11",
+     "docDate": "2026-02-02",
+     "outstandingPaise": 3017
+    },
+    {
+     "id": "01J00000000000000000001002",
+     "dueDate": "2026-03-10",
+     "docDate": "2026-01-03",
+     "outstandingPaise": 6534
+    }
+   ],
+   "amountPaise": 9551,
+   "expected": {
+    "allocations": [
+     {
+      "itemId": "01J00000000000000000001001",
+      "amountPaise": 3017
+     },
+     {
+      "itemId": "01J00000000000000000001002",
+      "amountPaise": 6534
+     }
+    ],
+    "unallocatedPaise": 0
+   }
+  },
+  {
+   "name": "GRID n=3 amount=10328",
+   "items": [
+    {
+     "id": "01J00000000000000000001000",
+     "dueDate": "2026-01-10",
+     "docDate": "2026-01-01",
+     "outstandingPaise": -500
+    },
+    {
+     "id": "01J00000000000000000001001",
+     "dueDate": "2026-02-11",
+     "docDate": "2026-02-02",
+     "outstandingPaise": 3017
+    },
+    {
+     "id": "01J00000000000000000001002",
+     "dueDate": "2026-03-10",
+     "docDate": "2026-01-03",
+     "outstandingPaise": 6534
+    }
+   ],
+   "amountPaise": 10328,
+   "expected": {
+    "allocations": [
+     {
+      "itemId": "01J00000000000000000001001",
+      "amountPaise": 3017
+     },
+     {
+      "itemId": "01J00000000000000000001002",
+      "amountPaise": 6534
+     }
+    ],
+    "unallocatedPaise": 777
+   }
+  },
+  {
+   "name": "GRID n=4 amount=1",
+   "items": [
+    {
+     "id": "01J00000000000000000001000",
+     "dueDate": "2026-01-10",
+     "docDate": "2026-01-01",
+     "outstandingPaise": -500
+    },
+    {
+     "id": "01J00000000000000000001003",
+     "dueDate": "2026-02-11",
+     "docDate": "2026-02-02",
+     "outstandingPaise": 3017
+    },
+    {
+     "id": "01J00000000000000000001002",
+     "dueDate": "2026-03-10",
+     "docDate": "2026-01-03",
+     "outstandingPaise": 6534
+    },
+    {
+     "id": "01J00000000000000000001001",
+     "dueDate": "2026-01-11",
+     "docDate": "2026-02-04",
+     "outstandingPaise": 1051
+    }
+   ],
+   "amountPaise": 1,
+   "expected": {
+    "allocations": [
+     {
+      "itemId": "01J00000000000000000001001",
+      "amountPaise": 1
+     }
+    ],
+    "unallocatedPaise": 0
+   }
+  },
+  {
+   "name": "GRID n=4 amount=5301",
+   "items": [
+    {
+     "id": "01J00000000000000000001000",
+     "dueDate": "2026-01-10",
+     "docDate": "2026-01-01",
+     "outstandingPaise": -500
+    },
+    {
+     "id": "01J00000000000000000001003",
+     "dueDate": "2026-02-11",
+     "docDate": "2026-02-02",
+     "outstandingPaise": 3017
+    },
+    {
+     "id": "01J00000000000000000001002",
+     "dueDate": "2026-03-10",
+     "docDate": "2026-01-03",
+     "outstandingPaise": 6534
+    },
+    {
+     "id": "01J00000000000000000001001",
+     "dueDate": "2026-01-11",
+     "docDate": "2026-02-04",
+     "outstandingPaise": 1051
+    }
+   ],
+   "amountPaise": 5301,
+   "expected": {
+    "allocations": [
+     {
+      "itemId": "01J00000000000000000001001",
+      "amountPaise": 1051
+     },
+     {
+      "itemId": "01J00000000000000000001003",
+      "amountPaise": 3017
+     },
+     {
+      "itemId": "01J00000000000000000001002",
+      "amountPaise": 1233
+     }
+    ],
+    "unallocatedPaise": 0
+   }
+  },
+  {
+   "name": "GRID n=4 amount=10602",
+   "items": [
+    {
+     "id": "01J00000000000000000001000",
+     "dueDate": "2026-01-10",
+     "docDate": "2026-01-01",
+     "outstandingPaise": -500
+    },
+    {
+     "id": "01J00000000000000000001003",
+     "dueDate": "2026-02-11",
+     "docDate": "2026-02-02",
+     "outstandingPaise": 3017
+    },
+    {
+     "id": "01J00000000000000000001002",
+     "dueDate": "2026-03-10",
+     "docDate": "2026-01-03",
+     "outstandingPaise": 6534
+    },
+    {
+     "id": "01J00000000000000000001001",
+     "dueDate": "2026-01-11",
+     "docDate": "2026-02-04",
+     "outstandingPaise": 1051
+    }
+   ],
+   "amountPaise": 10602,
+   "expected": {
+    "allocations": [
+     {
+      "itemId": "01J00000000000000000001001",
+      "amountPaise": 1051
+     },
+     {
+      "itemId": "01J00000000000000000001003",
+      "amountPaise": 3017
+     },
+     {
+      "itemId": "01J00000000000000000001002",
+      "amountPaise": 6534
+     }
+    ],
+    "unallocatedPaise": 0
+   }
+  },
+  {
+   "name": "GRID n=4 amount=11379",
+   "items": [
+    {
+     "id": "01J00000000000000000001000",
+     "dueDate": "2026-01-10",
+     "docDate": "2026-01-01",
+     "outstandingPaise": -500
+    },
+    {
+     "id": "01J00000000000000000001003",
+     "dueDate": "2026-02-11",
+     "docDate": "2026-02-02",
+     "outstandingPaise": 3017
+    },
+    {
+     "id": "01J00000000000000000001002",
+     "dueDate": "2026-03-10",
+     "docDate": "2026-01-03",
+     "outstandingPaise": 6534
+    },
+    {
+     "id": "01J00000000000000000001001",
+     "dueDate": "2026-01-11",
+     "docDate": "2026-02-04",
+     "outstandingPaise": 1051
+    }
+   ],
+   "amountPaise": 11379,
+   "expected": {
+    "allocations": [
+     {
+      "itemId": "01J00000000000000000001001",
+      "amountPaise": 1051
+     },
+     {
+      "itemId": "01J00000000000000000001003",
+      "amountPaise": 3017
+     },
+     {
+      "itemId": "01J00000000000000000001002",
+      "amountPaise": 6534
+     }
+    ],
+    "unallocatedPaise": 777
+   }
+  },
+  {
+   "name": "GRID n=5 amount=1",
+   "items": [
+    {
+     "id": "01J00000000000000000001000",
+     "dueDate": "2026-01-10",
+     "docDate": "2026-01-01",
+     "outstandingPaise": -500
+    },
+    {
+     "id": "01J00000000000000000001002",
+     "dueDate": "2026-02-11",
+     "docDate": "2026-02-02",
+     "outstandingPaise": 3017
+    },
+    {
+     "id": "01J00000000000000000001004",
+     "dueDate": "2026-03-10",
+     "docDate": "2026-01-03",
+     "outstandingPaise": 6534
+    },
+    {
+     "id": "01J00000000000000000001001",
+     "dueDate": "2026-01-11",
+     "docDate": "2026-02-04",
+     "outstandingPaise": 1051
+    },
+    {
+     "id": "01J00000000000000000001003",
+     "dueDate": "2026-02-10",
+     "docDate": "2026-01-05",
+     "outstandingPaise": 4568
+    }
+   ],
+   "amountPaise": 1,
+   "expected": {
+    "allocations": [
+     {
+      "itemId": "01J00000000000000000001001",
+      "amountPaise": 1
+     }
+    ],
+    "unallocatedPaise": 0
+   }
+  },
+  {
+   "name": "GRID n=5 amount=7585",
+   "items": [
+    {
+     "id": "01J00000000000000000001000",
+     "dueDate": "2026-01-10",
+     "docDate": "2026-01-01",
+     "outstandingPaise": -500
+    },
+    {
+     "id": "01J00000000000000000001002",
+     "dueDate": "2026-02-11",
+     "docDate": "2026-02-02",
+     "outstandingPaise": 3017
+    },
+    {
+     "id": "01J00000000000000000001004",
+     "dueDate": "2026-03-10",
+     "docDate": "2026-01-03",
+     "outstandingPaise": 6534
+    },
+    {
+     "id": "01J00000000000000000001001",
+     "dueDate": "2026-01-11",
+     "docDate": "2026-02-04",
+     "outstandingPaise": 1051
+    },
+    {
+     "id": "01J00000000000000000001003",
+     "dueDate": "2026-02-10",
+     "docDate": "2026-01-05",
+     "outstandingPaise": 4568
+    }
+   ],
+   "amountPaise": 7585,
+   "expected": {
+    "allocations": [
+     {
+      "itemId": "01J00000000000000000001001",
+      "amountPaise": 1051
+     },
+     {
+      "itemId": "01J00000000000000000001003",
+      "amountPaise": 4568
+     },
+     {
+      "itemId": "01J00000000000000000001002",
+      "amountPaise": 1966
+     }
+    ],
+    "unallocatedPaise": 0
+   }
+  },
+  {
+   "name": "GRID n=5 amount=15170",
+   "items": [
+    {
+     "id": "01J00000000000000000001000",
+     "dueDate": "2026-01-10",
+     "docDate": "2026-01-01",
+     "outstandingPaise": -500
+    },
+    {
+     "id": "01J00000000000000000001002",
+     "dueDate": "2026-02-11",
+     "docDate": "2026-02-02",
+     "outstandingPaise": 3017
+    },
+    {
+     "id": "01J00000000000000000001004",
+     "dueDate": "2026-03-10",
+     "docDate": "2026-01-03",
+     "outstandingPaise": 6534
+    },
+    {
+     "id": "01J00000000000000000001001",
+     "dueDate": "2026-01-11",
+     "docDate": "2026-02-04",
+     "outstandingPaise": 1051
+    },
+    {
+     "id": "01J00000000000000000001003",
+     "dueDate": "2026-02-10",
+     "docDate": "2026-01-05",
+     "outstandingPaise": 4568
+    }
+   ],
+   "amountPaise": 15170,
+   "expected": {
+    "allocations": [
+     {
+      "itemId": "01J00000000000000000001001",
+      "amountPaise": 1051
+     },
+     {
+      "itemId": "01J00000000000000000001003",
+      "amountPaise": 4568
+     },
+     {
+      "itemId": "01J00000000000000000001002",
+      "amountPaise": 3017
+     },
+     {
+      "itemId": "01J00000000000000000001004",
+      "amountPaise": 6534
+     }
+    ],
+    "unallocatedPaise": 0
+   }
+  },
+  {
+   "name": "GRID n=5 amount=15947",
+   "items": [
+    {
+     "id": "01J00000000000000000001000",
+     "dueDate": "2026-01-10",
+     "docDate": "2026-01-01",
+     "outstandingPaise": -500
+    },
+    {
+     "id": "01J00000000000000000001002",
+     "dueDate": "2026-02-11",
+     "docDate": "2026-02-02",
+     "outstandingPaise": 3017
+    },
+    {
+     "id": "01J00000000000000000001004",
+     "dueDate": "2026-03-10",
+     "docDate": "2026-01-03",
+     "outstandingPaise": 6534
+    },
+    {
+     "id": "01J00000000000000000001001",
+     "dueDate": "2026-01-11",
+     "docDate": "2026-02-04",
+     "outstandingPaise": 1051
+    },
+    {
+     "id": "01J00000000000000000001003",
+     "dueDate": "2026-02-10",
+     "docDate": "2026-01-05",
+     "outstandingPaise": 4568
+    }
+   ],
+   "amountPaise": 15947,
+   "expected": {
+    "allocations": [
+     {
+      "itemId": "01J00000000000000000001001",
+      "amountPaise": 1051
+     },
+     {
+      "itemId": "01J00000000000000000001003",
+      "amountPaise": 4568
+     },
+     {
+      "itemId": "01J00000000000000000001002",
+      "amountPaise": 3017
+     },
+     {
+      "itemId": "01J00000000000000000001004",
+      "amountPaise": 6534
+     }
+    ],
+    "unallocatedPaise": 777
+   }
+  },
+  {
+   "name": "GRID n=6 amount=1",
+   "items": [
+    {
+     "id": "01J00000000000000000001000",
+     "dueDate": "2026-01-10",
+     "docDate": "2026-01-01",
+     "outstandingPaise": -500
+    },
+    {
+     "id": "01J00000000000000000001001",
+     "dueDate": "2026-02-11",
+     "docDate": "2026-02-02",
+     "outstandingPaise": 3017
+    },
+    {
+     "id": "01J00000000000000000001002",
+     "dueDate": "2026-03-10",
+     "docDate": "2026-01-03",
+     "outstandingPaise": 6534
+    },
+    {
+     "id": "01J00000000000000000001003",
+     "dueDate": "2026-01-11",
+     "docDate": "2026-02-04",
+     "outstandingPaise": 1051
+    },
+    {
+     "id": "01J00000000000000000001004",
+     "dueDate": "2026-02-10",
+     "docDate": "2026-01-05",
+     "outstandingPaise": 4568
+    },
+    {
+     "id": "01J00000000000000000001005",
+     "dueDate": "2026-03-11",
+     "docDate": "2026-02-01",
+     "outstandingPaise": 8085
+    }
+   ],
+   "amountPaise": 1,
+   "expected": {
+    "allocations": [
+     {
+      "itemId": "01J00000000000000000001003",
+      "amountPaise": 1
+     }
+    ],
+    "unallocatedPaise": 0
+   }
+  },
+  {
+   "name": "GRID n=6 amount=11627",
+   "items": [
+    {
+     "id": "01J00000000000000000001000",
+     "dueDate": "2026-01-10",
+     "docDate": "2026-01-01",
+     "outstandingPaise": -500
+    },
+    {
+     "id": "01J00000000000000000001001",
+     "dueDate": "2026-02-11",
+     "docDate": "2026-02-02",
+     "outstandingPaise": 3017
+    },
+    {
+     "id": "01J00000000000000000001002",
+     "dueDate": "2026-03-10",
+     "docDate": "2026-01-03",
+     "outstandingPaise": 6534
+    },
+    {
+     "id": "01J00000000000000000001003",
+     "dueDate": "2026-01-11",
+     "docDate": "2026-02-04",
+     "outstandingPaise": 1051
+    },
+    {
+     "id": "01J00000000000000000001004",
+     "dueDate": "2026-02-10",
+     "docDate": "2026-01-05",
+     "outstandingPaise": 4568
+    },
+    {
+     "id": "01J00000000000000000001005",
+     "dueDate": "2026-03-11",
+     "docDate": "2026-02-01",
+     "outstandingPaise": 8085
+    }
+   ],
+   "amountPaise": 11627,
+   "expected": {
+    "allocations": [
+     {
+      "itemId": "01J00000000000000000001003",
+      "amountPaise": 1051
+     },
+     {
+      "itemId": "01J00000000000000000001004",
+      "amountPaise": 4568
+     },
+     {
+      "itemId": "01J00000000000000000001001",
+      "amountPaise": 3017
+     },
+     {
+      "itemId": "01J00000000000000000001002",
+      "amountPaise": 2991
+     }
+    ],
+    "unallocatedPaise": 0
+   }
+  },
+  {
+   "name": "GRID n=6 amount=23255",
+   "items": [
+    {
+     "id": "01J00000000000000000001000",
+     "dueDate": "2026-01-10",
+     "docDate": "2026-01-01",
+     "outstandingPaise": -500
+    },
+    {
+     "id": "01J00000000000000000001001",
+     "dueDate": "2026-02-11",
+     "docDate": "2026-02-02",
+     "outstandingPaise": 3017
+    },
+    {
+     "id": "01J00000000000000000001002",
+     "dueDate": "2026-03-10",
+     "docDate": "2026-01-03",
+     "outstandingPaise": 6534
+    },
+    {
+     "id": "01J00000000000000000001003",
+     "dueDate": "2026-01-11",
+     "docDate": "2026-02-04",
+     "outstandingPaise": 1051
+    },
+    {
+     "id": "01J00000000000000000001004",
+     "dueDate": "2026-02-10",
+     "docDate": "2026-01-05",
+     "outstandingPaise": 4568
+    },
+    {
+     "id": "01J00000000000000000001005",
+     "dueDate": "2026-03-11",
+     "docDate": "2026-02-01",
+     "outstandingPaise": 8085
+    }
+   ],
+   "amountPaise": 23255,
+   "expected": {
+    "allocations": [
+     {
+      "itemId": "01J00000000000000000001003",
+      "amountPaise": 1051
+     },
+     {
+      "itemId": "01J00000000000000000001004",
+      "amountPaise": 4568
+     },
+     {
+      "itemId": "01J00000000000000000001001",
+      "amountPaise": 3017
+     },
+     {
+      "itemId": "01J00000000000000000001002",
+      "amountPaise": 6534
+     },
+     {
+      "itemId": "01J00000000000000000001005",
+      "amountPaise": 8085
+     }
+    ],
+    "unallocatedPaise": 0
+   }
+  },
+  {
+   "name": "GRID n=6 amount=24032",
+   "items": [
+    {
+     "id": "01J00000000000000000001000",
+     "dueDate": "2026-01-10",
+     "docDate": "2026-01-01",
+     "outstandingPaise": -500
+    },
+    {
+     "id": "01J00000000000000000001001",
+     "dueDate": "2026-02-11",
+     "docDate": "2026-02-02",
+     "outstandingPaise": 3017
+    },
+    {
+     "id": "01J00000000000000000001002",
+     "dueDate": "2026-03-10",
+     "docDate": "2026-01-03",
+     "outstandingPaise": 6534
+    },
+    {
+     "id": "01J00000000000000000001003",
+     "dueDate": "2026-01-11",
+     "docDate": "2026-02-04",
+     "outstandingPaise": 1051
+    },
+    {
+     "id": "01J00000000000000000001004",
+     "dueDate": "2026-02-10",
+     "docDate": "2026-01-05",
+     "outstandingPaise": 4568
+    },
+    {
+     "id": "01J00000000000000000001005",
+     "dueDate": "2026-03-11",
+     "docDate": "2026-02-01",
+     "outstandingPaise": 8085
+    }
+   ],
+   "amountPaise": 24032,
+   "expected": {
+    "allocations": [
+     {
+      "itemId": "01J00000000000000000001003",
+      "amountPaise": 1051
+     },
+     {
+      "itemId": "01J00000000000000000001004",
+      "amountPaise": 4568
+     },
+     {
+      "itemId": "01J00000000000000000001001",
+      "amountPaise": 3017
+     },
+     {
+      "itemId": "01J00000000000000000001002",
+      "amountPaise": 6534
+     },
+     {
+      "itemId": "01J00000000000000000001005",
+      "amountPaise": 8085
+     }
+    ],
+    "unallocatedPaise": 777
+   }
+  },
+  {
+   "name": "GRID n=7 amount=1",
+   "items": [
+    {
+     "id": "01J00000000000000000001000",
+     "dueDate": "2026-01-10",
+     "docDate": "2026-01-01",
+     "outstandingPaise": -500
+    },
+    {
+     "id": "01J00000000000000000001000",
+     "dueDate": "2026-02-11",
+     "docDate": "2026-02-02",
+     "outstandingPaise": 3017
+    },
+    {
+     "id": "01J00000000000000000001000",
+     "dueDate": "2026-03-10",
+     "docDate": "2026-01-03",
+     "outstandingPaise": 6534
+    },
+    {
+     "id": "01J00000000000000000001000",
+     "dueDate": "2026-01-11",
+     "docDate": "2026-02-04",
+     "outstandingPaise": 1051
+    },
+    {
+     "id": "01J00000000000000000001000",
+     "dueDate": "2026-02-10",
+     "docDate": "2026-01-05",
+     "outstandingPaise": 4568
+    },
+    {
+     "id": "01J00000000000000000001000",
+     "dueDate": "2026-03-11",
+     "docDate": "2026-02-01",
+     "outstandingPaise": 8085
+    },
+    {
+     "id": "01J00000000000000000001000",
+     "dueDate": "2026-01-10",
+     "docDate": "2026-01-02",
+     "outstandingPaise": 2602
+    }
+   ],
+   "amountPaise": 1,
+   "expected": {
+    "allocations": [
+     {
+      "itemId": "01J00000000000000000001000",
+      "amountPaise": 1
+     }
+    ],
+    "unallocatedPaise": 0
+   }
+  },
+  {
+   "name": "GRID n=7 amount=12928",
+   "items": [
+    {
+     "id": "01J00000000000000000001000",
+     "dueDate": "2026-01-10",
+     "docDate": "2026-01-01",
+     "outstandingPaise": -500
+    },
+    {
+     "id": "01J00000000000000000001000",
+     "dueDate": "2026-02-11",
+     "docDate": "2026-02-02",
+     "outstandingPaise": 3017
+    },
+    {
+     "id": "01J00000000000000000001000",
+     "dueDate": "2026-03-10",
+     "docDate": "2026-01-03",
+     "outstandingPaise": 6534
+    },
+    {
+     "id": "01J00000000000000000001000",
+     "dueDate": "2026-01-11",
+     "docDate": "2026-02-04",
+     "outstandingPaise": 1051
+    },
+    {
+     "id": "01J00000000000000000001000",
+     "dueDate": "2026-02-10",
+     "docDate": "2026-01-05",
+     "outstandingPaise": 4568
+    },
+    {
+     "id": "01J00000000000000000001000",
+     "dueDate": "2026-03-11",
+     "docDate": "2026-02-01",
+     "outstandingPaise": 8085
+    },
+    {
+     "id": "01J00000000000000000001000",
+     "dueDate": "2026-01-10",
+     "docDate": "2026-01-02",
+     "outstandingPaise": 2602
+    }
+   ],
+   "amountPaise": 12928,
+   "expected": {
+    "allocations": [
+     {
+      "itemId": "01J00000000000000000001000",
+      "amountPaise": 2602
+     },
+     {
+      "itemId": "01J00000000000000000001000",
+      "amountPaise": 1051
+     },
+     {
+      "itemId": "01J00000000000000000001000",
+      "amountPaise": 4568
+     },
+     {
+      "itemId": "01J00000000000000000001000",
+      "amountPaise": 3017
+     },
+     {
+      "itemId": "01J00000000000000000001000",
+      "amountPaise": 1690
+     }
+    ],
+    "unallocatedPaise": 0
+   }
+  },
+  {
+   "name": "GRID n=7 amount=25857",
+   "items": [
+    {
+     "id": "01J00000000000000000001000",
+     "dueDate": "2026-01-10",
+     "docDate": "2026-01-01",
+     "outstandingPaise": -500
+    },
+    {
+     "id": "01J00000000000000000001000",
+     "dueDate": "2026-02-11",
+     "docDate": "2026-02-02",
+     "outstandingPaise": 3017
+    },
+    {
+     "id": "01J00000000000000000001000",
+     "dueDate": "2026-03-10",
+     "docDate": "2026-01-03",
+     "outstandingPaise": 6534
+    },
+    {
+     "id": "01J00000000000000000001000",
+     "dueDate": "2026-01-11",
+     "docDate": "2026-02-04",
+     "outstandingPaise": 1051
+    },
+    {
+     "id": "01J00000000000000000001000",
+     "dueDate": "2026-02-10",
+     "docDate": "2026-01-05",
+     "outstandingPaise": 4568
+    },
+    {
+     "id": "01J00000000000000000001000",
+     "dueDate": "2026-03-11",
+     "docDate": "2026-02-01",
+     "outstandingPaise": 8085
+    },
+    {
+     "id": "01J00000000000000000001000",
+     "dueDate": "2026-01-10",
+     "docDate": "2026-01-02",
+     "outstandingPaise": 2602
+    }
+   ],
+   "amountPaise": 25857,
+   "expected": {
+    "allocations": [
+     {
+      "itemId": "01J00000000000000000001000",
+      "amountPaise": 2602
+     },
+     {
+      "itemId": "01J00000000000000000001000",
+      "amountPaise": 1051
+     },
+     {
+      "itemId": "01J00000000000000000001000",
+      "amountPaise": 4568
+     },
+     {
+      "itemId": "01J00000000000000000001000",
+      "amountPaise": 3017
+     },
+     {
+      "itemId": "01J00000000000000000001000",
+      "amountPaise": 6534
+     },
+     {
+      "itemId": "01J00000000000000000001000",
+      "amountPaise": 8085
+     }
+    ],
+    "unallocatedPaise": 0
+   }
+  },
+  {
+   "name": "GRID n=7 amount=26634",
+   "items": [
+    {
+     "id": "01J00000000000000000001000",
+     "dueDate": "2026-01-10",
+     "docDate": "2026-01-01",
+     "outstandingPaise": -500
+    },
+    {
+     "id": "01J00000000000000000001000",
+     "dueDate": "2026-02-11",
+     "docDate": "2026-02-02",
+     "outstandingPaise": 3017
+    },
+    {
+     "id": "01J00000000000000000001000",
+     "dueDate": "2026-03-10",
+     "docDate": "2026-01-03",
+     "outstandingPaise": 6534
+    },
+    {
+     "id": "01J00000000000000000001000",
+     "dueDate": "2026-01-11",
+     "docDate": "2026-02-04",
+     "outstandingPaise": 1051
+    },
+    {
+     "id": "01J00000000000000000001000",
+     "dueDate": "2026-02-10",
+     "docDate": "2026-01-05",
+     "outstandingPaise": 4568
+    },
+    {
+     "id": "01J00000000000000000001000",
+     "dueDate": "2026-03-11",
+     "docDate": "2026-02-01",
+     "outstandingPaise": 8085
+    },
+    {
+     "id": "01J00000000000000000001000",
+     "dueDate": "2026-01-10",
+     "docDate": "2026-01-02",
+     "outstandingPaise": 2602
+    }
+   ],
+   "amountPaise": 26634,
+   "expected": {
+    "allocations": [
+     {
+      "itemId": "01J00000000000000000001000",
+      "amountPaise": 2602
+     },
+     {
+      "itemId": "01J00000000000000000001000",
+      "amountPaise": 1051
+     },
+     {
+      "itemId": "01J00000000000000000001000",
+      "amountPaise": 4568
+     },
+     {
+      "itemId": "01J00000000000000000001000",
+      "amountPaise": 3017
+     },
+     {
+      "itemId": "01J00000000000000000001000",
+      "amountPaise": 6534
+     },
+     {
+      "itemId": "01J00000000000000000001000",
+      "amountPaise": 8085
+     }
+    ],
+    "unallocatedPaise": 777
+   }
+  },
+  {
+   "name": "GRID n=8 amount=1",
+   "items": [
+    {
+     "id": "01J00000000000000000001000",
+     "dueDate": "2026-01-10",
+     "docDate": "2026-01-01",
+     "outstandingPaise": -500
+    },
+    {
+     "id": "01J00000000000000000001007",
+     "dueDate": "2026-02-11",
+     "docDate": "2026-02-02",
+     "outstandingPaise": 3017
+    },
+    {
+     "id": "01J00000000000000000001006",
+     "dueDate": "2026-03-10",
+     "docDate": "2026-01-03",
+     "outstandingPaise": 6534
+    },
+    {
+     "id": "01J00000000000000000001005",
+     "dueDate": "2026-01-11",
+     "docDate": "2026-02-04",
+     "outstandingPaise": 1051
+    },
+    {
+     "id": "01J00000000000000000001004",
+     "dueDate": "2026-02-10",
+     "docDate": "2026-01-05",
+     "outstandingPaise": 4568
+    },
+    {
+     "id": "01J00000000000000000001003",
+     "dueDate": "2026-03-11",
+     "docDate": "2026-02-01",
+     "outstandingPaise": 8085
+    },
+    {
+     "id": "01J00000000000000000001002",
+     "dueDate": "2026-01-10",
+     "docDate": "2026-01-02",
+     "outstandingPaise": 2602
+    },
+    {
+     "id": "01J00000000000000000001001",
+     "dueDate": "2026-02-11",
+     "docDate": "2026-02-03",
+     "outstandingPaise": 6119
+    }
+   ],
+   "amountPaise": 1,
+   "expected": {
+    "allocations": [
+     {
+      "itemId": "01J00000000000000000001002",
+      "amountPaise": 1
+     }
+    ],
+    "unallocatedPaise": 0
+   }
+  },
+  {
+   "name": "GRID n=8 amount=15988",
+   "items": [
+    {
+     "id": "01J00000000000000000001000",
+     "dueDate": "2026-01-10",
+     "docDate": "2026-01-01",
+     "outstandingPaise": -500
+    },
+    {
+     "id": "01J00000000000000000001007",
+     "dueDate": "2026-02-11",
+     "docDate": "2026-02-02",
+     "outstandingPaise": 3017
+    },
+    {
+     "id": "01J00000000000000000001006",
+     "dueDate": "2026-03-10",
+     "docDate": "2026-01-03",
+     "outstandingPaise": 6534
+    },
+    {
+     "id": "01J00000000000000000001005",
+     "dueDate": "2026-01-11",
+     "docDate": "2026-02-04",
+     "outstandingPaise": 1051
+    },
+    {
+     "id": "01J00000000000000000001004",
+     "dueDate": "2026-02-10",
+     "docDate": "2026-01-05",
+     "outstandingPaise": 4568
+    },
+    {
+     "id": "01J00000000000000000001003",
+     "dueDate": "2026-03-11",
+     "docDate": "2026-02-01",
+     "outstandingPaise": 8085
+    },
+    {
+     "id": "01J00000000000000000001002",
+     "dueDate": "2026-01-10",
+     "docDate": "2026-01-02",
+     "outstandingPaise": 2602
+    },
+    {
+     "id": "01J00000000000000000001001",
+     "dueDate": "2026-02-11",
+     "docDate": "2026-02-03",
+     "outstandingPaise": 6119
+    }
+   ],
+   "amountPaise": 15988,
+   "expected": {
+    "allocations": [
+     {
+      "itemId": "01J00000000000000000001002",
+      "amountPaise": 2602
+     },
+     {
+      "itemId": "01J00000000000000000001005",
+      "amountPaise": 1051
+     },
+     {
+      "itemId": "01J00000000000000000001004",
+      "amountPaise": 4568
+     },
+     {
+      "itemId": "01J00000000000000000001007",
+      "amountPaise": 3017
+     },
+     {
+      "itemId": "01J00000000000000000001001",
+      "amountPaise": 4750
+     }
+    ],
+    "unallocatedPaise": 0
+   }
+  },
+  {
+   "name": "GRID n=8 amount=31976",
+   "items": [
+    {
+     "id": "01J00000000000000000001000",
+     "dueDate": "2026-01-10",
+     "docDate": "2026-01-01",
+     "outstandingPaise": -500
+    },
+    {
+     "id": "01J00000000000000000001007",
+     "dueDate": "2026-02-11",
+     "docDate": "2026-02-02",
+     "outstandingPaise": 3017
+    },
+    {
+     "id": "01J00000000000000000001006",
+     "dueDate": "2026-03-10",
+     "docDate": "2026-01-03",
+     "outstandingPaise": 6534
+    },
+    {
+     "id": "01J00000000000000000001005",
+     "dueDate": "2026-01-11",
+     "docDate": "2026-02-04",
+     "outstandingPaise": 1051
+    },
+    {
+     "id": "01J00000000000000000001004",
+     "dueDate": "2026-02-10",
+     "docDate": "2026-01-05",
+     "outstandingPaise": 4568
+    },
+    {
+     "id": "01J00000000000000000001003",
+     "dueDate": "2026-03-11",
+     "docDate": "2026-02-01",
+     "outstandingPaise": 8085
+    },
+    {
+     "id": "01J00000000000000000001002",
+     "dueDate": "2026-01-10",
+     "docDate": "2026-01-02",
+     "outstandingPaise": 2602
+    },
+    {
+     "id": "01J00000000000000000001001",
+     "dueDate": "2026-02-11",
+     "docDate": "2026-02-03",
+     "outstandingPaise": 6119
+    }
+   ],
+   "amountPaise": 31976,
+   "expected": {
+    "allocations": [
+     {
+      "itemId": "01J00000000000000000001002",
+      "amountPaise": 2602
+     },
+     {
+      "itemId": "01J00000000000000000001005",
+      "amountPaise": 1051
+     },
+     {
+      "itemId": "01J00000000000000000001004",
+      "amountPaise": 4568
+     },
+     {
+      "itemId": "01J00000000000000000001007",
+      "amountPaise": 3017
+     },
+     {
+      "itemId": "01J00000000000000000001001",
+      "amountPaise": 6119
+     },
+     {
+      "itemId": "01J00000000000000000001006",
+      "amountPaise": 6534
+     },
+     {
+      "itemId": "01J00000000000000000001003",
+      "amountPaise": 8085
+     }
+    ],
+    "unallocatedPaise": 0
+   }
+  },
+  {
+   "name": "GRID n=8 amount=32753",
+   "items": [
+    {
+     "id": "01J00000000000000000001000",
+     "dueDate": "2026-01-10",
+     "docDate": "2026-01-01",
+     "outstandingPaise": -500
+    },
+    {
+     "id": "01J00000000000000000001007",
+     "dueDate": "2026-02-11",
+     "docDate": "2026-02-02",
+     "outstandingPaise": 3017
+    },
+    {
+     "id": "01J00000000000000000001006",
+     "dueDate": "2026-03-10",
+     "docDate": "2026-01-03",
+     "outstandingPaise": 6534
+    },
+    {
+     "id": "01J00000000000000000001005",
+     "dueDate": "2026-01-11",
+     "docDate": "2026-02-04",
+     "outstandingPaise": 1051
+    },
+    {
+     "id": "01J00000000000000000001004",
+     "dueDate": "2026-02-10",
+     "docDate": "2026-01-05",
+     "outstandingPaise": 4568
+    },
+    {
+     "id": "01J00000000000000000001003",
+     "dueDate": "2026-03-11",
+     "docDate": "2026-02-01",
+     "outstandingPaise": 8085
+    },
+    {
+     "id": "01J00000000000000000001002",
+     "dueDate": "2026-01-10",
+     "docDate": "2026-01-02",
+     "outstandingPaise": 2602
+    },
+    {
+     "id": "01J00000000000000000001001",
+     "dueDate": "2026-02-11",
+     "docDate": "2026-02-03",
+     "outstandingPaise": 6119
+    }
+   ],
+   "amountPaise": 32753,
+   "expected": {
+    "allocations": [
+     {
+      "itemId": "01J00000000000000000001002",
+      "amountPaise": 2602
+     },
+     {
+      "itemId": "01J00000000000000000001005",
+      "amountPaise": 1051
+     },
+     {
+      "itemId": "01J00000000000000000001004",
+      "amountPaise": 4568
+     },
+     {
+      "itemId": "01J00000000000000000001007",
+      "amountPaise": 3017
+     },
+     {
+      "itemId": "01J00000000000000000001001",
+      "amountPaise": 6119
+     },
+     {
+      "itemId": "01J00000000000000000001006",
+      "amountPaise": 6534
+     },
+     {
+      "itemId": "01J00000000000000000001003",
+      "amountPaise": 8085
+     }
+    ],
+    "unallocatedPaise": 777
+   }
+  },
+  {
+   "name": "GRID n=9 amount=1",
+   "items": [
+    {
+     "id": "01J00000000000000000001000",
+     "dueDate": "2026-01-10",
+     "docDate": "2026-01-01",
+     "outstandingPaise": -500
+    },
+    {
+     "id": "01J00000000000000000001007",
+     "dueDate": "2026-02-11",
+     "docDate": "2026-02-02",
+     "outstandingPaise": 3017
+    },
+    {
+     "id": "01J00000000000000000001005",
+     "dueDate": "2026-03-10",
+     "docDate": "2026-01-03",
+     "outstandingPaise": 6534
+    },
+    {
+     "id": "01J00000000000000000001003",
+     "dueDate": "2026-01-11",
+     "docDate": "2026-02-04",
+     "outstandingPaise": 1051
+    },
+    {
+     "id": "01J00000000000000000001001",
+     "dueDate": "2026-02-10",
+     "docDate": "2026-01-05",
+     "outstandingPaise": 4568
+    },
+    {
+     "id": "01J00000000000000000001008",
+     "dueDate": "2026-03-11",
+     "docDate": "2026-02-01",
+     "outstandingPaise": 8085
+    },
+    {
+     "id": "01J00000000000000000001006",
+     "dueDate": "2026-01-10",
+     "docDate": "2026-01-02",
+     "outstandingPaise": 2602
+    },
+    {
+     "id": "01J00000000000000000001004",
+     "dueDate": "2026-02-11",
+     "docDate": "2026-02-03",
+     "outstandingPaise": 6119
+    },
+    {
+     "id": "01J00000000000000000001002",
+     "dueDate": "2026-03-10",
+     "docDate": "2026-01-04",
+     "outstandingPaise": 636
+    }
+   ],
+   "amountPaise": 1,
+   "expected": {
+    "allocations": [
+     {
+      "itemId": "01J00000000000000000001006",
+      "amountPaise": 1
+     }
+    ],
+    "unallocatedPaise": 0
+   }
+  },
+  {
+   "name": "GRID n=9 amount=16306",
+   "items": [
+    {
+     "id": "01J00000000000000000001000",
+     "dueDate": "2026-01-10",
+     "docDate": "2026-01-01",
+     "outstandingPaise": -500
+    },
+    {
+     "id": "01J00000000000000000001007",
+     "dueDate": "2026-02-11",
+     "docDate": "2026-02-02",
+     "outstandingPaise": 3017
+    },
+    {
+     "id": "01J00000000000000000001005",
+     "dueDate": "2026-03-10",
+     "docDate": "2026-01-03",
+     "outstandingPaise": 6534
+    },
+    {
+     "id": "01J00000000000000000001003",
+     "dueDate": "2026-01-11",
+     "docDate": "2026-02-04",
+     "outstandingPaise": 1051
+    },
+    {
+     "id": "01J00000000000000000001001",
+     "dueDate": "2026-02-10",
+     "docDate": "2026-01-05",
+     "outstandingPaise": 4568
+    },
+    {
+     "id": "01J00000000000000000001008",
+     "dueDate": "2026-03-11",
+     "docDate": "2026-02-01",
+     "outstandingPaise": 8085
+    },
+    {
+     "id": "01J00000000000000000001006",
+     "dueDate": "2026-01-10",
+     "docDate": "2026-01-02",
+     "outstandingPaise": 2602
+    },
+    {
+     "id": "01J00000000000000000001004",
+     "dueDate": "2026-02-11",
+     "docDate": "2026-02-03",
+     "outstandingPaise": 6119
+    },
+    {
+     "id": "01J00000000000000000001002",
+     "dueDate": "2026-03-10",
+     "docDate": "2026-01-04",
+     "outstandingPaise": 636
+    }
+   ],
+   "amountPaise": 16306,
+   "expected": {
+    "allocations": [
+     {
+      "itemId": "01J00000000000000000001006",
+      "amountPaise": 2602
+     },
+     {
+      "itemId": "01J00000000000000000001003",
+      "amountPaise": 1051
+     },
+     {
+      "itemId": "01J00000000000000000001001",
+      "amountPaise": 4568
+     },
+     {
+      "itemId": "01J00000000000000000001007",
+      "amountPaise": 3017
+     },
+     {
+      "itemId": "01J00000000000000000001004",
+      "amountPaise": 5068
+     }
+    ],
+    "unallocatedPaise": 0
+   }
+  },
+  {
+   "name": "GRID n=9 amount=32612",
+   "items": [
+    {
+     "id": "01J00000000000000000001000",
+     "dueDate": "2026-01-10",
+     "docDate": "2026-01-01",
+     "outstandingPaise": -500
+    },
+    {
+     "id": "01J00000000000000000001007",
+     "dueDate": "2026-02-11",
+     "docDate": "2026-02-02",
+     "outstandingPaise": 3017
+    },
+    {
+     "id": "01J00000000000000000001005",
+     "dueDate": "2026-03-10",
+     "docDate": "2026-01-03",
+     "outstandingPaise": 6534
+    },
+    {
+     "id": "01J00000000000000000001003",
+     "dueDate": "2026-01-11",
+     "docDate": "2026-02-04",
+     "outstandingPaise": 1051
+    },
+    {
+     "id": "01J00000000000000000001001",
+     "dueDate": "2026-02-10",
+     "docDate": "2026-01-05",
+     "outstandingPaise": 4568
+    },
+    {
+     "id": "01J00000000000000000001008",
+     "dueDate": "2026-03-11",
+     "docDate": "2026-02-01",
+     "outstandingPaise": 8085
+    },
+    {
+     "id": "01J00000000000000000001006",
+     "dueDate": "2026-01-10",
+     "docDate": "2026-01-02",
+     "outstandingPaise": 2602
+    },
+    {
+     "id": "01J00000000000000000001004",
+     "dueDate": "2026-02-11",
+     "docDate": "2026-02-03",
+     "outstandingPaise": 6119
+    },
+    {
+     "id": "01J00000000000000000001002",
+     "dueDate": "2026-03-10",
+     "docDate": "2026-01-04",
+     "outstandingPaise": 636
+    }
+   ],
+   "amountPaise": 32612,
+   "expected": {
+    "allocations": [
+     {
+      "itemId": "01J00000000000000000001006",
+      "amountPaise": 2602
+     },
+     {
+      "itemId": "01J00000000000000000001003",
+      "amountPaise": 1051
+     },
+     {
+      "itemId": "01J00000000000000000001001",
+      "amountPaise": 4568
+     },
+     {
+      "itemId": "01J00000000000000000001007",
+      "amountPaise": 3017
+     },
+     {
+      "itemId": "01J00000000000000000001004",
+      "amountPaise": 6119
+     },
+     {
+      "itemId": "01J00000000000000000001005",
+      "amountPaise": 6534
+     },
+     {
+      "itemId": "01J00000000000000000001002",
+      "amountPaise": 636
+     },
+     {
+      "itemId": "01J00000000000000000001008",
+      "amountPaise": 8085
+     }
+    ],
+    "unallocatedPaise": 0
+   }
+  },
+  {
+   "name": "GRID n=9 amount=33389",
+   "items": [
+    {
+     "id": "01J00000000000000000001000",
+     "dueDate": "2026-01-10",
+     "docDate": "2026-01-01",
+     "outstandingPaise": -500
+    },
+    {
+     "id": "01J00000000000000000001007",
+     "dueDate": "2026-02-11",
+     "docDate": "2026-02-02",
+     "outstandingPaise": 3017
+    },
+    {
+     "id": "01J00000000000000000001005",
+     "dueDate": "2026-03-10",
+     "docDate": "2026-01-03",
+     "outstandingPaise": 6534
+    },
+    {
+     "id": "01J00000000000000000001003",
+     "dueDate": "2026-01-11",
+     "docDate": "2026-02-04",
+     "outstandingPaise": 1051
+    },
+    {
+     "id": "01J00000000000000000001001",
+     "dueDate": "2026-02-10",
+     "docDate": "2026-01-05",
+     "outstandingPaise": 4568
+    },
+    {
+     "id": "01J00000000000000000001008",
+     "dueDate": "2026-03-11",
+     "docDate": "2026-02-01",
+     "outstandingPaise": 8085
+    },
+    {
+     "id": "01J00000000000000000001006",
+     "dueDate": "2026-01-10",
+     "docDate": "2026-01-02",
+     "outstandingPaise": 2602
+    },
+    {
+     "id": "01J00000000000000000001004",
+     "dueDate": "2026-02-11",
+     "docDate": "2026-02-03",
+     "outstandingPaise": 6119
+    },
+    {
+     "id": "01J00000000000000000001002",
+     "dueDate": "2026-03-10",
+     "docDate": "2026-01-04",
+     "outstandingPaise": 636
+    }
+   ],
+   "amountPaise": 33389,
+   "expected": {
+    "allocations": [
+     {
+      "itemId": "01J00000000000000000001006",
+      "amountPaise": 2602
+     },
+     {
+      "itemId": "01J00000000000000000001003",
+      "amountPaise": 1051
+     },
+     {
+      "itemId": "01J00000000000000000001001",
+      "amountPaise": 4568
+     },
+     {
+      "itemId": "01J00000000000000000001007",
+      "amountPaise": 3017
+     },
+     {
+      "itemId": "01J00000000000000000001004",
+      "amountPaise": 6119
+     },
+     {
+      "itemId": "01J00000000000000000001005",
+      "amountPaise": 6534
+     },
+     {
+      "itemId": "01J00000000000000000001002",
+      "amountPaise": 636
+     },
+     {
+      "itemId": "01J00000000000000000001008",
+      "amountPaise": 8085
+     }
+    ],
+    "unallocatedPaise": 777
+   }
+  },
+  {
+   "name": "GRID n=10 amount=1",
+   "items": [
+    {
+     "id": "01J00000000000000000001000",
+     "dueDate": "2026-01-10",
+     "docDate": "2026-01-01",
+     "outstandingPaise": -500
+    },
+    {
+     "id": "01J00000000000000000001007",
+     "dueDate": "2026-02-11",
+     "docDate": "2026-02-02",
+     "outstandingPaise": 3017
+    },
+    {
+     "id": "01J00000000000000000001004",
+     "dueDate": "2026-03-10",
+     "docDate": "2026-01-03",
+     "outstandingPaise": 6534
+    },
+    {
+     "id": "01J00000000000000000001001",
+     "dueDate": "2026-01-11",
+     "docDate": "2026-02-04",
+     "outstandingPaise": 1051
+    },
+    {
+     "id": "01J00000000000000000001008",
+     "dueDate": "2026-02-10",
+     "docDate": "2026-01-05",
+     "outstandingPaise": 4568
+    },
+    {
+     "id": "01J00000000000000000001005",
+     "dueDate": "2026-03-11",
+     "docDate": "2026-02-01",
+     "outstandingPaise": 8085
+    },
+    {
+     "id": "01J00000000000000000001002",
+     "dueDate": "2026-01-10",
+     "docDate": "2026-01-02",
+     "outstandingPaise": 2602
+    },
+    {
+     "id": "01J00000000000000000001009",
+     "dueDate": "2026-02-11",
+     "docDate": "2026-02-03",
+     "outstandingPaise": 6119
+    },
+    {
+     "id": "01J00000000000000000001006",
+     "dueDate": "2026-03-10",
+     "docDate": "2026-01-04",
+     "outstandingPaise": 636
+    },
+    {
+     "id": "01J00000000000000000001003",
+     "dueDate": "2026-01-11",
+     "docDate": "2026-02-05",
+     "outstandingPaise": 4153
+    }
+   ],
+   "amountPaise": 1,
+   "expected": {
+    "allocations": [
+     {
+      "itemId": "01J00000000000000000001002",
+      "amountPaise": 1
+     }
+    ],
+    "unallocatedPaise": 0
+   }
+  },
+  {
+   "name": "GRID n=10 amount=18382",
+   "items": [
+    {
+     "id": "01J00000000000000000001000",
+     "dueDate": "2026-01-10",
+     "docDate": "2026-01-01",
+     "outstandingPaise": -500
+    },
+    {
+     "id": "01J00000000000000000001007",
+     "dueDate": "2026-02-11",
+     "docDate": "2026-02-02",
+     "outstandingPaise": 3017
+    },
+    {
+     "id": "01J00000000000000000001004",
+     "dueDate": "2026-03-10",
+     "docDate": "2026-01-03",
+     "outstandingPaise": 6534
+    },
+    {
+     "id": "01J00000000000000000001001",
+     "dueDate": "2026-01-11",
+     "docDate": "2026-02-04",
+     "outstandingPaise": 1051
+    },
+    {
+     "id": "01J00000000000000000001008",
+     "dueDate": "2026-02-10",
+     "docDate": "2026-01-05",
+     "outstandingPaise": 4568
+    },
+    {
+     "id": "01J00000000000000000001005",
+     "dueDate": "2026-03-11",
+     "docDate": "2026-02-01",
+     "outstandingPaise": 8085
+    },
+    {
+     "id": "01J00000000000000000001002",
+     "dueDate": "2026-01-10",
+     "docDate": "2026-01-02",
+     "outstandingPaise": 2602
+    },
+    {
+     "id": "01J00000000000000000001009",
+     "dueDate": "2026-02-11",
+     "docDate": "2026-02-03",
+     "outstandingPaise": 6119
+    },
+    {
+     "id": "01J00000000000000000001006",
+     "dueDate": "2026-03-10",
+     "docDate": "2026-01-04",
+     "outstandingPaise": 636
+    },
+    {
+     "id": "01J00000000000000000001003",
+     "dueDate": "2026-01-11",
+     "docDate": "2026-02-05",
+     "outstandingPaise": 4153
+    }
+   ],
+   "amountPaise": 18382,
+   "expected": {
+    "allocations": [
+     {
+      "itemId": "01J00000000000000000001002",
+      "amountPaise": 2602
+     },
+     {
+      "itemId": "01J00000000000000000001001",
+      "amountPaise": 1051
+     },
+     {
+      "itemId": "01J00000000000000000001003",
+      "amountPaise": 4153
+     },
+     {
+      "itemId": "01J00000000000000000001008",
+      "amountPaise": 4568
+     },
+     {
+      "itemId": "01J00000000000000000001007",
+      "amountPaise": 3017
+     },
+     {
+      "itemId": "01J00000000000000000001009",
+      "amountPaise": 2991
+     }
+    ],
+    "unallocatedPaise": 0
+   }
+  },
+  {
+   "name": "GRID n=10 amount=36765",
+   "items": [
+    {
+     "id": "01J00000000000000000001000",
+     "dueDate": "2026-01-10",
+     "docDate": "2026-01-01",
+     "outstandingPaise": -500
+    },
+    {
+     "id": "01J00000000000000000001007",
+     "dueDate": "2026-02-11",
+     "docDate": "2026-02-02",
+     "outstandingPaise": 3017
+    },
+    {
+     "id": "01J00000000000000000001004",
+     "dueDate": "2026-03-10",
+     "docDate": "2026-01-03",
+     "outstandingPaise": 6534
+    },
+    {
+     "id": "01J00000000000000000001001",
+     "dueDate": "2026-01-11",
+     "docDate": "2026-02-04",
+     "outstandingPaise": 1051
+    },
+    {
+     "id": "01J00000000000000000001008",
+     "dueDate": "2026-02-10",
+     "docDate": "2026-01-05",
+     "outstandingPaise": 4568
+    },
+    {
+     "id": "01J00000000000000000001005",
+     "dueDate": "2026-03-11",
+     "docDate": "2026-02-01",
+     "outstandingPaise": 8085
+    },
+    {
+     "id": "01J00000000000000000001002",
+     "dueDate": "2026-01-10",
+     "docDate": "2026-01-02",
+     "outstandingPaise": 2602
+    },
+    {
+     "id": "01J00000000000000000001009",
+     "dueDate": "2026-02-11",
+     "docDate": "2026-02-03",
+     "outstandingPaise": 6119
+    },
+    {
+     "id": "01J00000000000000000001006",
+     "dueDate": "2026-03-10",
+     "docDate": "2026-01-04",
+     "outstandingPaise": 636
+    },
+    {
+     "id": "01J00000000000000000001003",
+     "dueDate": "2026-01-11",
+     "docDate": "2026-02-05",
+     "outstandingPaise": 4153
+    }
+   ],
+   "amountPaise": 36765,
+   "expected": {
+    "allocations": [
+     {
+      "itemId": "01J00000000000000000001002",
+      "amountPaise": 2602
+     },
+     {
+      "itemId": "01J00000000000000000001001",
+      "amountPaise": 1051
+     },
+     {
+      "itemId": "01J00000000000000000001003",
+      "amountPaise": 4153
+     },
+     {
+      "itemId": "01J00000000000000000001008",
+      "amountPaise": 4568
+     },
+     {
+      "itemId": "01J00000000000000000001007",
+      "amountPaise": 3017
+     },
+     {
+      "itemId": "01J00000000000000000001009",
+      "amountPaise": 6119
+     },
+     {
+      "itemId": "01J00000000000000000001004",
+      "amountPaise": 6534
+     },
+     {
+      "itemId": "01J00000000000000000001006",
+      "amountPaise": 636
+     },
+     {
+      "itemId": "01J00000000000000000001005",
+      "amountPaise": 8085
+     }
+    ],
+    "unallocatedPaise": 0
+   }
+  },
+  {
+   "name": "GRID n=10 amount=37542",
+   "items": [
+    {
+     "id": "01J00000000000000000001000",
+     "dueDate": "2026-01-10",
+     "docDate": "2026-01-01",
+     "outstandingPaise": -500
+    },
+    {
+     "id": "01J00000000000000000001007",
+     "dueDate": "2026-02-11",
+     "docDate": "2026-02-02",
+     "outstandingPaise": 3017
+    },
+    {
+     "id": "01J00000000000000000001004",
+     "dueDate": "2026-03-10",
+     "docDate": "2026-01-03",
+     "outstandingPaise": 6534
+    },
+    {
+     "id": "01J00000000000000000001001",
+     "dueDate": "2026-01-11",
+     "docDate": "2026-02-04",
+     "outstandingPaise": 1051
+    },
+    {
+     "id": "01J00000000000000000001008",
+     "dueDate": "2026-02-10",
+     "docDate": "2026-01-05",
+     "outstandingPaise": 4568
+    },
+    {
+     "id": "01J00000000000000000001005",
+     "dueDate": "2026-03-11",
+     "docDate": "2026-02-01",
+     "outstandingPaise": 8085
+    },
+    {
+     "id": "01J00000000000000000001002",
+     "dueDate": "2026-01-10",
+     "docDate": "2026-01-02",
+     "outstandingPaise": 2602
+    },
+    {
+     "id": "01J00000000000000000001009",
+     "dueDate": "2026-02-11",
+     "docDate": "2026-02-03",
+     "outstandingPaise": 6119
+    },
+    {
+     "id": "01J00000000000000000001006",
+     "dueDate": "2026-03-10",
+     "docDate": "2026-01-04",
+     "outstandingPaise": 636
+    },
+    {
+     "id": "01J00000000000000000001003",
+     "dueDate": "2026-01-11",
+     "docDate": "2026-02-05",
+     "outstandingPaise": 4153
+    }
+   ],
+   "amountPaise": 37542,
+   "expected": {
+    "allocations": [
+     {
+      "itemId": "01J00000000000000000001002",
+      "amountPaise": 2602
+     },
+     {
+      "itemId": "01J00000000000000000001001",
+      "amountPaise": 1051
+     },
+     {
+      "itemId": "01J00000000000000000001003",
+      "amountPaise": 4153
+     },
+     {
+      "itemId": "01J00000000000000000001008",
+      "amountPaise": 4568
+     },
+     {
+      "itemId": "01J00000000000000000001007",
+      "amountPaise": 3017
+     },
+     {
+      "itemId": "01J00000000000000000001009",
+      "amountPaise": 6119
+     },
+     {
+      "itemId": "01J00000000000000000001004",
+      "amountPaise": 6534
+     },
+     {
+      "itemId": "01J00000000000000000001006",
+      "amountPaise": 636
+     },
+     {
+      "itemId": "01J00000000000000000001005",
+      "amountPaise": 8085
+     }
+    ],
+    "unallocatedPaise": 777
+   }
+  },
+  {
+   "name": "GRID n=11 amount=1",
+   "items": [
+    {
+     "id": "01J00000000000000000001000",
+     "dueDate": "2026-01-10",
+     "docDate": "2026-01-01",
+     "outstandingPaise": -500
+    },
+    {
+     "id": "01J00000000000000000001007",
+     "dueDate": "2026-02-11",
+     "docDate": "2026-02-02",
+     "outstandingPaise": 3017
+    },
+    {
+     "id": "01J00000000000000000001003",
+     "dueDate": "2026-03-10",
+     "docDate": "2026-01-03",
+     "outstandingPaise": 6534
+    },
+    {
+     "id": "01J00000000000000000001010",
+     "dueDate": "2026-01-11",
+     "docDate": "2026-02-04",
+     "outstandingPaise": 1051
+    },
+    {
+     "id": "01J00000000000000000001006",
+     "dueDate": "2026-02-10",
+     "docDate": "2026-01-05",
+     "outstandingPaise": 4568
+    },
+    {
+     "id": "01J00000000000000000001002",
+     "dueDate": "2026-03-11",
+     "docDate": "2026-02-01",
+     "outstandingPaise": 8085
+    },
+    {
+     "id": "01J00000000000000000001009",
+     "dueDate": "2026-01-10",
+     "docDate": "2026-01-02",
+     "outstandingPaise": 2602
+    },
+    {
+     "id": "01J00000000000000000001005",
+     "dueDate": "2026-02-11",
+     "docDate": "2026-02-03",
+     "outstandingPaise": 6119
+    },
+    {
+     "id": "01J00000000000000000001001",
+     "dueDate": "2026-03-10",
+     "docDate": "2026-01-04",
+     "outstandingPaise": 636
+    },
+    {
+     "id": "01J00000000000000000001008",
+     "dueDate": "2026-01-11",
+     "docDate": "2026-02-05",
+     "outstandingPaise": 4153
+    },
+    {
+     "id": "01J00000000000000000001004",
+     "dueDate": "2026-02-10",
+     "docDate": "2026-01-01",
+     "outstandingPaise": 7670
+    }
+   ],
+   "amountPaise": 1,
+   "expected": {
+    "allocations": [
+     {
+      "itemId": "01J00000000000000000001009",
+      "amountPaise": 1
+     }
+    ],
+    "unallocatedPaise": 0
+   }
+  },
+  {
+   "name": "GRID n=11 amount=22217",
+   "items": [
+    {
+     "id": "01J00000000000000000001000",
+     "dueDate": "2026-01-10",
+     "docDate": "2026-01-01",
+     "outstandingPaise": -500
+    },
+    {
+     "id": "01J00000000000000000001007",
+     "dueDate": "2026-02-11",
+     "docDate": "2026-02-02",
+     "outstandingPaise": 3017
+    },
+    {
+     "id": "01J00000000000000000001003",
+     "dueDate": "2026-03-10",
+     "docDate": "2026-01-03",
+     "outstandingPaise": 6534
+    },
+    {
+     "id": "01J00000000000000000001010",
+     "dueDate": "2026-01-11",
+     "docDate": "2026-02-04",
+     "outstandingPaise": 1051
+    },
+    {
+     "id": "01J00000000000000000001006",
+     "dueDate": "2026-02-10",
+     "docDate": "2026-01-05",
+     "outstandingPaise": 4568
+    },
+    {
+     "id": "01J00000000000000000001002",
+     "dueDate": "2026-03-11",
+     "docDate": "2026-02-01",
+     "outstandingPaise": 8085
+    },
+    {
+     "id": "01J00000000000000000001009",
+     "dueDate": "2026-01-10",
+     "docDate": "2026-01-02",
+     "outstandingPaise": 2602
+    },
+    {
+     "id": "01J00000000000000000001005",
+     "dueDate": "2026-02-11",
+     "docDate": "2026-02-03",
+     "outstandingPaise": 6119
+    },
+    {
+     "id": "01J00000000000000000001001",
+     "dueDate": "2026-03-10",
+     "docDate": "2026-01-04",
+     "outstandingPaise": 636
+    },
+    {
+     "id": "01J00000000000000000001008",
+     "dueDate": "2026-01-11",
+     "docDate": "2026-02-05",
+     "outstandingPaise": 4153
+    },
+    {
+     "id": "01J00000000000000000001004",
+     "dueDate": "2026-02-10",
+     "docDate": "2026-01-01",
+     "outstandingPaise": 7670
+    }
+   ],
+   "amountPaise": 22217,
+   "expected": {
+    "allocations": [
+     {
+      "itemId": "01J00000000000000000001009",
+      "amountPaise": 2602
+     },
+     {
+      "itemId": "01J00000000000000000001010",
+      "amountPaise": 1051
+     },
+     {
+      "itemId": "01J00000000000000000001008",
+      "amountPaise": 4153
+     },
+     {
+      "itemId": "01J00000000000000000001004",
+      "amountPaise": 7670
+     },
+     {
+      "itemId": "01J00000000000000000001006",
+      "amountPaise": 4568
+     },
+     {
+      "itemId": "01J00000000000000000001007",
+      "amountPaise": 2173
+     }
+    ],
+    "unallocatedPaise": 0
+   }
+  },
+  {
+   "name": "GRID n=11 amount=44435",
+   "items": [
+    {
+     "id": "01J00000000000000000001000",
+     "dueDate": "2026-01-10",
+     "docDate": "2026-01-01",
+     "outstandingPaise": -500
+    },
+    {
+     "id": "01J00000000000000000001007",
+     "dueDate": "2026-02-11",
+     "docDate": "2026-02-02",
+     "outstandingPaise": 3017
+    },
+    {
+     "id": "01J00000000000000000001003",
+     "dueDate": "2026-03-10",
+     "docDate": "2026-01-03",
+     "outstandingPaise": 6534
+    },
+    {
+     "id": "01J00000000000000000001010",
+     "dueDate": "2026-01-11",
+     "docDate": "2026-02-04",
+     "outstandingPaise": 1051
+    },
+    {
+     "id": "01J00000000000000000001006",
+     "dueDate": "2026-02-10",
+     "docDate": "2026-01-05",
+     "outstandingPaise": 4568
+    },
+    {
+     "id": "01J00000000000000000001002",
+     "dueDate": "2026-03-11",
+     "docDate": "2026-02-01",
+     "outstandingPaise": 8085
+    },
+    {
+     "id": "01J00000000000000000001009",
+     "dueDate": "2026-01-10",
+     "docDate": "2026-01-02",
+     "outstandingPaise": 2602
+    },
+    {
+     "id": "01J00000000000000000001005",
+     "dueDate": "2026-02-11",
+     "docDate": "2026-02-03",
+     "outstandingPaise": 6119
+    },
+    {
+     "id": "01J00000000000000000001001",
+     "dueDate": "2026-03-10",
+     "docDate": "2026-01-04",
+     "outstandingPaise": 636
+    },
+    {
+     "id": "01J00000000000000000001008",
+     "dueDate": "2026-01-11",
+     "docDate": "2026-02-05",
+     "outstandingPaise": 4153
+    },
+    {
+     "id": "01J00000000000000000001004",
+     "dueDate": "2026-02-10",
+     "docDate": "2026-01-01",
+     "outstandingPaise": 7670
+    }
+   ],
+   "amountPaise": 44435,
+   "expected": {
+    "allocations": [
+     {
+      "itemId": "01J00000000000000000001009",
+      "amountPaise": 2602
+     },
+     {
+      "itemId": "01J00000000000000000001010",
+      "amountPaise": 1051
+     },
+     {
+      "itemId": "01J00000000000000000001008",
+      "amountPaise": 4153
+     },
+     {
+      "itemId": "01J00000000000000000001004",
+      "amountPaise": 7670
+     },
+     {
+      "itemId": "01J00000000000000000001006",
+      "amountPaise": 4568
+     },
+     {
+      "itemId": "01J00000000000000000001007",
+      "amountPaise": 3017
+     },
+     {
+      "itemId": "01J00000000000000000001005",
+      "amountPaise": 6119
+     },
+     {
+      "itemId": "01J00000000000000000001003",
+      "amountPaise": 6534
+     },
+     {
+      "itemId": "01J00000000000000000001001",
+      "amountPaise": 636
+     },
+     {
+      "itemId": "01J00000000000000000001002",
+      "amountPaise": 8085
+     }
+    ],
+    "unallocatedPaise": 0
+   }
+  },
+  {
+   "name": "GRID n=11 amount=45212",
+   "items": [
+    {
+     "id": "01J00000000000000000001000",
+     "dueDate": "2026-01-10",
+     "docDate": "2026-01-01",
+     "outstandingPaise": -500
+    },
+    {
+     "id": "01J00000000000000000001007",
+     "dueDate": "2026-02-11",
+     "docDate": "2026-02-02",
+     "outstandingPaise": 3017
+    },
+    {
+     "id": "01J00000000000000000001003",
+     "dueDate": "2026-03-10",
+     "docDate": "2026-01-03",
+     "outstandingPaise": 6534
+    },
+    {
+     "id": "01J00000000000000000001010",
+     "dueDate": "2026-01-11",
+     "docDate": "2026-02-04",
+     "outstandingPaise": 1051
+    },
+    {
+     "id": "01J00000000000000000001006",
+     "dueDate": "2026-02-10",
+     "docDate": "2026-01-05",
+     "outstandingPaise": 4568
+    },
+    {
+     "id": "01J00000000000000000001002",
+     "dueDate": "2026-03-11",
+     "docDate": "2026-02-01",
+     "outstandingPaise": 8085
+    },
+    {
+     "id": "01J00000000000000000001009",
+     "dueDate": "2026-01-10",
+     "docDate": "2026-01-02",
+     "outstandingPaise": 2602
+    },
+    {
+     "id": "01J00000000000000000001005",
+     "dueDate": "2026-02-11",
+     "docDate": "2026-02-03",
+     "outstandingPaise": 6119
+    },
+    {
+     "id": "01J00000000000000000001001",
+     "dueDate": "2026-03-10",
+     "docDate": "2026-01-04",
+     "outstandingPaise": 636
+    },
+    {
+     "id": "01J00000000000000000001008",
+     "dueDate": "2026-01-11",
+     "docDate": "2026-02-05",
+     "outstandingPaise": 4153
+    },
+    {
+     "id": "01J00000000000000000001004",
+     "dueDate": "2026-02-10",
+     "docDate": "2026-01-01",
+     "outstandingPaise": 7670
+    }
+   ],
+   "amountPaise": 45212,
+   "expected": {
+    "allocations": [
+     {
+      "itemId": "01J00000000000000000001009",
+      "amountPaise": 2602
+     },
+     {
+      "itemId": "01J00000000000000000001010",
+      "amountPaise": 1051
+     },
+     {
+      "itemId": "01J00000000000000000001008",
+      "amountPaise": 4153
+     },
+     {
+      "itemId": "01J00000000000000000001004",
+      "amountPaise": 7670
+     },
+     {
+      "itemId": "01J00000000000000000001006",
+      "amountPaise": 4568
+     },
+     {
+      "itemId": "01J00000000000000000001007",
+      "amountPaise": 3017
+     },
+     {
+      "itemId": "01J00000000000000000001005",
+      "amountPaise": 6119
+     },
+     {
+      "itemId": "01J00000000000000000001003",
+      "amountPaise": 6534
+     },
+     {
+      "itemId": "01J00000000000000000001001",
+      "amountPaise": 636
+     },
+     {
+      "itemId": "01J00000000000000000001002",
+      "amountPaise": 8085
+     }
+    ],
+    "unallocatedPaise": 777
+   }
+  },
+  {
+   "name": "GRID n=12 amount=1",
+   "items": [
+    {
+     "id": "01J00000000000000000001000",
+     "dueDate": "2026-01-10",
+     "docDate": "2026-01-01",
+     "outstandingPaise": -500
+    },
+    {
+     "id": "01J00000000000000000001007",
+     "dueDate": "2026-02-11",
+     "docDate": "2026-02-02",
+     "outstandingPaise": 3017
+    },
+    {
+     "id": "01J00000000000000000001002",
+     "dueDate": "2026-03-10",
+     "docDate": "2026-01-03",
+     "outstandingPaise": 6534
+    },
+    {
+     "id": "01J00000000000000000001009",
+     "dueDate": "2026-01-11",
+     "docDate": "2026-02-04",
+     "outstandingPaise": 1051
+    },
+    {
+     "id": "01J00000000000000000001004",
+     "dueDate": "2026-02-10",
+     "docDate": "2026-01-05",
+     "outstandingPaise": 4568
+    },
+    {
+     "id": "01J00000000000000000001011",
+     "dueDate": "2026-03-11",
+     "docDate": "2026-02-01",
+     "outstandingPaise": 8085
+    },
+    {
+     "id": "01J00000000000000000001006",
+     "dueDate": "2026-01-10",
+     "docDate": "2026-01-02",
+     "outstandingPaise": 2602
+    },
+    {
+     "id": "01J00000000000000000001001",
+     "dueDate": "2026-02-11",
+     "docDate": "2026-02-03",
+     "outstandingPaise": 6119
+    },
+    {
+     "id": "01J00000000000000000001008",
+     "dueDate": "2026-03-10",
+     "docDate": "2026-01-04",
+     "outstandingPaise": 636
+    },
+    {
+     "id": "01J00000000000000000001003",
+     "dueDate": "2026-01-11",
+     "docDate": "2026-02-05",
+     "outstandingPaise": 4153
+    },
+    {
+     "id": "01J00000000000000000001010",
+     "dueDate": "2026-02-10",
+     "docDate": "2026-01-01",
+     "outstandingPaise": 7670
+    },
+    {
+     "id": "01J00000000000000000001005",
+     "dueDate": "2026-03-11",
+     "docDate": "2026-02-02",
+     "outstandingPaise": 2187
+    }
+   ],
+   "amountPaise": 1,
+   "expected": {
+    "allocations": [
+     {
+      "itemId": "01J00000000000000000001006",
+      "amountPaise": 1
+     }
+    ],
+    "unallocatedPaise": 0
+   }
+  },
+  {
+   "name": "GRID n=12 amount=23311",
+   "items": [
+    {
+     "id": "01J00000000000000000001000",
+     "dueDate": "2026-01-10",
+     "docDate": "2026-01-01",
+     "outstandingPaise": -500
+    },
+    {
+     "id": "01J00000000000000000001007",
+     "dueDate": "2026-02-11",
+     "docDate": "2026-02-02",
+     "outstandingPaise": 3017
+    },
+    {
+     "id": "01J00000000000000000001002",
+     "dueDate": "2026-03-10",
+     "docDate": "2026-01-03",
+     "outstandingPaise": 6534
+    },
+    {
+     "id": "01J00000000000000000001009",
+     "dueDate": "2026-01-11",
+     "docDate": "2026-02-04",
+     "outstandingPaise": 1051
+    },
+    {
+     "id": "01J00000000000000000001004",
+     "dueDate": "2026-02-10",
+     "docDate": "2026-01-05",
+     "outstandingPaise": 4568
+    },
+    {
+     "id": "01J00000000000000000001011",
+     "dueDate": "2026-03-11",
+     "docDate": "2026-02-01",
+     "outstandingPaise": 8085
+    },
+    {
+     "id": "01J00000000000000000001006",
+     "dueDate": "2026-01-10",
+     "docDate": "2026-01-02",
+     "outstandingPaise": 2602
+    },
+    {
+     "id": "01J00000000000000000001001",
+     "dueDate": "2026-02-11",
+     "docDate": "2026-02-03",
+     "outstandingPaise": 6119
+    },
+    {
+     "id": "01J00000000000000000001008",
+     "dueDate": "2026-03-10",
+     "docDate": "2026-01-04",
+     "outstandingPaise": 636
+    },
+    {
+     "id": "01J00000000000000000001003",
+     "dueDate": "2026-01-11",
+     "docDate": "2026-02-05",
+     "outstandingPaise": 4153
+    },
+    {
+     "id": "01J00000000000000000001010",
+     "dueDate": "2026-02-10",
+     "docDate": "2026-01-01",
+     "outstandingPaise": 7670
+    },
+    {
+     "id": "01J00000000000000000001005",
+     "dueDate": "2026-03-11",
+     "docDate": "2026-02-02",
+     "outstandingPaise": 2187
+    }
+   ],
+   "amountPaise": 23311,
+   "expected": {
+    "allocations": [
+     {
+      "itemId": "01J00000000000000000001006",
+      "amountPaise": 2602
+     },
+     {
+      "itemId": "01J00000000000000000001009",
+      "amountPaise": 1051
+     },
+     {
+      "itemId": "01J00000000000000000001003",
+      "amountPaise": 4153
+     },
+     {
+      "itemId": "01J00000000000000000001010",
+      "amountPaise": 7670
+     },
+     {
+      "itemId": "01J00000000000000000001004",
+      "amountPaise": 4568
+     },
+     {
+      "itemId": "01J00000000000000000001007",
+      "amountPaise": 3017
+     },
+     {
+      "itemId": "01J00000000000000000001001",
+      "amountPaise": 250
+     }
+    ],
+    "unallocatedPaise": 0
+   }
+  },
+  {
+   "name": "GRID n=12 amount=46622",
+   "items": [
+    {
+     "id": "01J00000000000000000001000",
+     "dueDate": "2026-01-10",
+     "docDate": "2026-01-01",
+     "outstandingPaise": -500
+    },
+    {
+     "id": "01J00000000000000000001007",
+     "dueDate": "2026-02-11",
+     "docDate": "2026-02-02",
+     "outstandingPaise": 3017
+    },
+    {
+     "id": "01J00000000000000000001002",
+     "dueDate": "2026-03-10",
+     "docDate": "2026-01-03",
+     "outstandingPaise": 6534
+    },
+    {
+     "id": "01J00000000000000000001009",
+     "dueDate": "2026-01-11",
+     "docDate": "2026-02-04",
+     "outstandingPaise": 1051
+    },
+    {
+     "id": "01J00000000000000000001004",
+     "dueDate": "2026-02-10",
+     "docDate": "2026-01-05",
+     "outstandingPaise": 4568
+    },
+    {
+     "id": "01J00000000000000000001011",
+     "dueDate": "2026-03-11",
+     "docDate": "2026-02-01",
+     "outstandingPaise": 8085
+    },
+    {
+     "id": "01J00000000000000000001006",
+     "dueDate": "2026-01-10",
+     "docDate": "2026-01-02",
+     "outstandingPaise": 2602
+    },
+    {
+     "id": "01J00000000000000000001001",
+     "dueDate": "2026-02-11",
+     "docDate": "2026-02-03",
+     "outstandingPaise": 6119
+    },
+    {
+     "id": "01J00000000000000000001008",
+     "dueDate": "2026-03-10",
+     "docDate": "2026-01-04",
+     "outstandingPaise": 636
+    },
+    {
+     "id": "01J00000000000000000001003",
+     "dueDate": "2026-01-11",
+     "docDate": "2026-02-05",
+     "outstandingPaise": 4153
+    },
+    {
+     "id": "01J00000000000000000001010",
+     "dueDate": "2026-02-10",
+     "docDate": "2026-01-01",
+     "outstandingPaise": 7670
+    },
+    {
+     "id": "01J00000000000000000001005",
+     "dueDate": "2026-03-11",
+     "docDate": "2026-02-02",
+     "outstandingPaise": 2187
+    }
+   ],
+   "amountPaise": 46622,
+   "expected": {
+    "allocations": [
+     {
+      "itemId": "01J00000000000000000001006",
+      "amountPaise": 2602
+     },
+     {
+      "itemId": "01J00000000000000000001009",
+      "amountPaise": 1051
+     },
+     {
+      "itemId": "01J00000000000000000001003",
+      "amountPaise": 4153
+     },
+     {
+      "itemId": "01J00000000000000000001010",
+      "amountPaise": 7670
+     },
+     {
+      "itemId": "01J00000000000000000001004",
+      "amountPaise": 4568
+     },
+     {
+      "itemId": "01J00000000000000000001007",
+      "amountPaise": 3017
+     },
+     {
+      "itemId": "01J00000000000000000001001",
+      "amountPaise": 6119
+     },
+     {
+      "itemId": "01J00000000000000000001002",
+      "amountPaise": 6534
+     },
+     {
+      "itemId": "01J00000000000000000001008",
+      "amountPaise": 636
+     },
+     {
+      "itemId": "01J00000000000000000001011",
+      "amountPaise": 8085
+     },
+     {
+      "itemId": "01J00000000000000000001005",
+      "amountPaise": 2187
+     }
+    ],
+    "unallocatedPaise": 0
+   }
+  },
+  {
+   "name": "GRID n=12 amount=47399",
+   "items": [
+    {
+     "id": "01J00000000000000000001000",
+     "dueDate": "2026-01-10",
+     "docDate": "2026-01-01",
+     "outstandingPaise": -500
+    },
+    {
+     "id": "01J00000000000000000001007",
+     "dueDate": "2026-02-11",
+     "docDate": "2026-02-02",
+     "outstandingPaise": 3017
+    },
+    {
+     "id": "01J00000000000000000001002",
+     "dueDate": "2026-03-10",
+     "docDate": "2026-01-03",
+     "outstandingPaise": 6534
+    },
+    {
+     "id": "01J00000000000000000001009",
+     "dueDate": "2026-01-11",
+     "docDate": "2026-02-04",
+     "outstandingPaise": 1051
+    },
+    {
+     "id": "01J00000000000000000001004",
+     "dueDate": "2026-02-10",
+     "docDate": "2026-01-05",
+     "outstandingPaise": 4568
+    },
+    {
+     "id": "01J00000000000000000001011",
+     "dueDate": "2026-03-11",
+     "docDate": "2026-02-01",
+     "outstandingPaise": 8085
+    },
+    {
+     "id": "01J00000000000000000001006",
+     "dueDate": "2026-01-10",
+     "docDate": "2026-01-02",
+     "outstandingPaise": 2602
+    },
+    {
+     "id": "01J00000000000000000001001",
+     "dueDate": "2026-02-11",
+     "docDate": "2026-02-03",
+     "outstandingPaise": 6119
+    },
+    {
+     "id": "01J00000000000000000001008",
+     "dueDate": "2026-03-10",
+     "docDate": "2026-01-04",
+     "outstandingPaise": 636
+    },
+    {
+     "id": "01J00000000000000000001003",
+     "dueDate": "2026-01-11",
+     "docDate": "2026-02-05",
+     "outstandingPaise": 4153
+    },
+    {
+     "id": "01J00000000000000000001010",
+     "dueDate": "2026-02-10",
+     "docDate": "2026-01-01",
+     "outstandingPaise": 7670
+    },
+    {
+     "id": "01J00000000000000000001005",
+     "dueDate": "2026-03-11",
+     "docDate": "2026-02-02",
+     "outstandingPaise": 2187
+    }
+   ],
+   "amountPaise": 47399,
+   "expected": {
+    "allocations": [
+     {
+      "itemId": "01J00000000000000000001006",
+      "amountPaise": 2602
+     },
+     {
+      "itemId": "01J00000000000000000001009",
+      "amountPaise": 1051
+     },
+     {
+      "itemId": "01J00000000000000000001003",
+      "amountPaise": 4153
+     },
+     {
+      "itemId": "01J00000000000000000001010",
+      "amountPaise": 7670
+     },
+     {
+      "itemId": "01J00000000000000000001004",
+      "amountPaise": 4568
+     },
+     {
+      "itemId": "01J00000000000000000001007",
+      "amountPaise": 3017
+     },
+     {
+      "itemId": "01J00000000000000000001001",
+      "amountPaise": 6119
+     },
+     {
+      "itemId": "01J00000000000000000001002",
+      "amountPaise": 6534
+     },
+     {
+      "itemId": "01J00000000000000000001008",
+      "amountPaise": 636
+     },
+     {
+      "itemId": "01J00000000000000000001011",
+      "amountPaise": 8085
+     },
+     {
+      "itemId": "01J00000000000000000001005",
+      "amountPaise": 2187
+     }
+    ],
+    "unallocatedPaise": 777
+   }
+  }
+ ]
+}

@@ -10,6 +10,7 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { computeInvoice } from '../src/index.js';
 import type { Discount, GstFixtureCase, GstFixtureFile, GstInvoiceInput, GstLineInput, TaxTreatment } from '../src/index.js';
+import { allocationFixtures } from './allocationFixtures.js';
 
 const out = fileURLToPath(new URL('../fixtures/gst/', import.meta.url));
 mkdirSync(out, { recursive: true });
@@ -104,3 +105,9 @@ for (const m of mixes) {
 const file: GstFixtureFile = { version: 1, cases };
 writeFileSync(out + 'gst-golden.json', JSON.stringify(file, null, 1) + '\n');
 console.log(`wrote ${cases.length} cases (${hand.length} hand-verified)`);
+
+const parties = fileURLToPath(new URL('../fixtures/parties/', import.meta.url));
+mkdirSync(parties, { recursive: true });
+const allocation = allocationFixtures();
+writeFileSync(parties + 'allocation.json', JSON.stringify(allocation, null, 1) + '\n');
+console.log(`wrote ${allocation.cases.length} allocation cases`);

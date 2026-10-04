@@ -69,7 +69,7 @@ func main() {
 		authHandler:     &auth.Handler{DB: db, Signer: signer},
 		deviceHandler:   &device.Handler{DB: db, Verifier: verifier},
 		businessHandler: &business.Handler{DB: db},
-		syncHandler:     &devicesync.Handler{},
+		syncHandler:     &devicesync.Handler{Ingest: &devicesync.Ingest{DB: db, Log: log}},
 	}
 	e := httpx.New(httpx.Deps{Handlers: h, RequireAuth: signer.Require, DeviceVerifier: verifier.Middleware, Logger: log})
 	port := os.Getenv("PORT")

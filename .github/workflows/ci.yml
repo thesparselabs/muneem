@@ -34,6 +34,15 @@ jobs:
   go:
     runs-on: ubuntu-latest
     defaults: { run: { working-directory: cloud } }
+    services:
+      postgres:            # sync ingest/pull integration tests and the protocol fixtures (Stage 7b/7c)
+        image: postgres:16-alpine
+        env: { POSTGRES_USER: muneem, POSTGRES_PASSWORD: muneem, POSTGRES_DB: muneem }
+        ports: ['5433:5432']
+        options: >-
+          --health-cmd "pg_isready -U muneem" --health-interval 5s --health-timeout 3s --health-retries 10
+    env:
+      MUNEEM_TEST_DATABASE_URL: postgres://muneem:muneem@localhost:5433/muneem?sslmode=disable
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-go@v7
