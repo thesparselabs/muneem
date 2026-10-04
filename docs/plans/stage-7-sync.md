@@ -364,6 +364,8 @@ The TS reference server (7d) and the Go server (7b/7c) both load and pass them.
 ### 7f — Hydration (agent "cloud" for the builder; the lead or the "device" agent for the import)
 
 - **The cloud builder** (`internal/devicesync/snapshot/`):
+  - **Documents come from `change_log`,** not `entity_state`, which keeps only a document's latest version. A
+    cancelled sale would otherwise reach a new device as just its cancel (found in 7b).
   - **Contents:** the latest `entity_state` per entity as change records, in stream order then seq, written as gzipped
     NDJSON. A header line holds `{format, version: 1, businessId, asOfSeq, counts}`.
   - **Delivery:** uploaded to S3-compatible storage (`minio` added to docker-compose; `MUNEEM_S3_*` env), then a
