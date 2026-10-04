@@ -23,6 +23,26 @@ All notable changes, newest first. Each entry records **what** changed and **why
   - **Files:** the user picks where an export goes in a save dialog, and the screen never sees a path.
   - **First report:** the Trial Balance; 8e adds the rest.
   - **IPC:** `reports.listDefinitions`, `reports.run`, `reports.export`.
+- **Auto-update (8i, ADR-0049 as built).** Why: NFR-013; a shop must get fixes without losing data or a sale.
+  - **Channels and rollout:** dev, beta and stable channels, with a staged rollout by a stable installation-id cohort.
+    Settings → Updates and an update-ready banner.
+  - **Download:** in the background. A finished download is reused across restarts, but an interrupted transfer starts
+    again.
+  - **Install:** only when the POS is idle: an empty cart, no command running, and the register closed or 10 minutes
+    quiet. Quitting the app always installs a downloaded update.
+  - **Integrity:** the installer's sha512 is always checked, and on Windows its Authenticode signer too. `latest.yml`
+    itself is not signed (signing certificates are an ops task).
+  - **Release tooling:** `scripts/release-manifest.ts` writes a channel's `latest.yml` with its rollout percentage.
+- **Start-up migration guard (8i).** Why: a failed upgrade must never lose data.
+  - **Before migrating:** an encrypted pre-migration backup when a business and key exist, otherwise a verified plain
+    copy.
+  - **The migration:** every pending migration runs in one transaction, with a foreign-key check inside and no core
+    table allowed to lose rows.
+  - **On failure:** the backup is restored and the failure recorded. The data rolls back; the program does not, so
+    the user reinstalls the previous version, and ops sets the rollout to 0.
+- **The cloud accepts sync protocols N and N−1 (8i).** `MUNEEM_SYNC_MIN_PROTOCOL` sets the minimum; anything else gets
+  426. The v1 protocol fixtures are frozen and replayed against a protocol-2 server. Why: shops on mixed versions
+  during a rollout (LLD §12 takes precedence over FR-105's N−2).
 - **Year-end close (8d, ADR-0045 as built).** Why: FR-096 and the Stage 6 deferral.
   - **The close:** an `fy_close` closes the year's income and expense to 3300 Retained Earnings with one `CL/` journal
     dated 31 March, posted into the locked March. `postClosingJournal` is the only path allowed to post into a locked
