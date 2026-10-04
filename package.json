@@ -18,7 +18,8 @@
     "gen:preload": "tsx scripts/gen-preload.ts",
     "release:version": "tsx scripts/release-version.ts",
     "release:manifest": "tsx scripts/release-manifest.ts",
-    "release:promote": "tsx scripts/release-promote.ts"
+    "release:promote": "tsx scripts/release-promote.ts",
+    "e2e:ui": "pnpm --filter @muneem/desktop e2e:ui"
   },
   "devDependencies": {
     "@types/node": "^24.0.0",

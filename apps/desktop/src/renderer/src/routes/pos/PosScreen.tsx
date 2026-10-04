@@ -37,6 +37,7 @@ export default function PosScreen() {
   const [query, setQuery] = useState('');
   const quoteSeq = useRef(0);
   const pendingCommand = useRef<PendingCommand | null>(null);
+  useEffect(() => { if (lastSale) search.current?.focus(); }, [lastSale]); // ready for the next customer
 
   // 8i: an update never installs while a bill is on screen.
   const cartLines = cart.lines.length;
@@ -93,7 +94,7 @@ export default function PosScreen() {
       setCart(emptyCart());
       setModal(null);
       setMessage({ kind: 'ok', text: `Saved ${result.docNumber}${result.changePaise ? ` · give change ${formatPaise(result.changePaise)}` : ''}` });
-      void qc.invalidateQueries({ queryKey: ['printQueue'] });
+      void qc.invalidateQueries(); // a sale changes stock, balances and the books
     } catch (e) {
       setModal(null);
       setMessage({ kind: 'error', text: errorMessage(e) });

@@ -27,3 +27,4 @@ packages/db-sqlite/src/migrations.generated.ts
 /deploy/.env
 /deploy/state/
 /deploy/monitoring/prometheus/targets/api.yml
+apps/desktop/test-results/

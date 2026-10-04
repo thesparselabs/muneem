@@ -10,7 +10,8 @@ const TONE: Record<NotificationSeverity | 'none', string> = {
 };
 
 export function useNotificationCounts() {
-  return useQuery({ queryKey: ['notifications', 'counts'], queryFn: () => api.notifications.counts({}), refetchInterval: 60_000, retry: false });
+  // Notifications raised while signing in arrive before the bell mounts, so it reads afresh every time it appears.
+  return useQuery({ queryKey: ['notifications', 'counts'], queryFn: () => api.notifications.counts({}), refetchInterval: 60_000, refetchOnMount: 'always', retry: false });
 }
 
 export default function NotificationBell() {

@@ -2,7 +2,7 @@
  * Composition root. Builds services + IPC handlers from explicit dependencies so tests can wire
  * an in-memory SQLite, a memory secret store and a fake fetch without touching Electron.
  */
-import { backupHealth, defaultWarehouseId, listAllLowStock, listStock, listWarehouses, openDatabase, openReviewCounts, partyDues, productMovements, readSyncStatus, rebuildStockLevels, stockValuation, type Db } from '@muneem/db-sqlite';
+import { backupHealth, defaultWarehouseId, listAllLowStock, listStock, listWarehouses, nativeBindingOf, openDatabase, openReviewCounts, partyDues, productMovements, readSyncStatus, rebuildStockLevels, stockValuation, type Db } from '@muneem/db-sqlite';
 import { CloudClient } from './infra/cloudClient.js';
 import { Connectivity } from './infra/connectivity.js';
 import { EventBus } from './infra/events.js';
@@ -167,7 +167,8 @@ export function createApp(cfg: AppConfig) {
   const statements = new StatementService(posCtx);
   let readDb: Db | null = null;
   const closeReadConnections = () => { readDb?.close(); readDb = null; };
-  const reportDb = () => (cfg.dbFile === ':memory:' ? cfg.db() : (readDb ??= openDatabase(cfg.dbFile, { readonly: true })));
+  const openReadOnly = (): Db => { const nativeBinding = nativeBindingOf(cfg.db()); return openDatabase(cfg.dbFile, { readonly: true, ...(nativeBinding && { nativeBinding }) }); };
+  const reportDb = () => (cfg.dbFile === ':memory:' ? cfg.db() : (readDb ??= openReadOnly()));
   const reports = new ReportService({
     catalogue: new ReportCatalogue(REPORTS),
     readDb: reportDb,

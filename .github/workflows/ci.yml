@@ -131,6 +131,32 @@ jobs:
         working-directory: cloud
       - name: secrets scan
         run: docker run --rm -v "$PWD:/repo" ghcr.io/gitleaks/gitleaks:v8.28.0 git /repo --redact --no-banner --config /repo/.gitleaks.toml
+  e2e-ui:
+    # 9j: Playwright drives the built Electron app (stub cloud, printer simulator) at 1366×768 under Xvfb.
+    if: github.event_name == 'pull_request' || github.event_name == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6   # version comes from package.json packageManager
+      - uses: actions/setup-node@v7
+        with: { node-version: 24, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm turbo run gen build --filter=@muneem/desktop...
+      - run: pnpm --filter @muneem/desktop native
+      # Ubuntu 24.04 blocks the unprivileged user namespaces Chromium's sandbox needs; the app keeps its sandbox on.
+      - run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+      - run: command -v xvfb-run || (sudo apt-get update && sudo apt-get install -y xvfb)
+      - run: xvfb-run -a -s "-screen 0 1920x1080x24" pnpm e2e:ui
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ui-screens-and-report
+          path: |
+            apps/desktop/test-results/ui
+            apps/desktop/test-results/ui-report
+            apps/desktop/test-results/playwright
+          retention-days: 14
   diff-fuzz:
     if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     needs: [node, go]
