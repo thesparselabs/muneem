@@ -8,7 +8,11 @@ import { Connectivity } from './infra/connectivity.js';
 import { EventBus } from './infra/events.js';
 import type { Loggers } from './infra/logger.js';
 import { SECRET_KEYS, type SecretStore } from './infra/secrets.js';
-import { createGateway, type Handlers } from './ipc/gateway.js';
+import { createGateway, DEVICE_AUDIT_SCOPE, type Handlers } from './ipc/gateway.js';
+import { createBackups, type BackupTransport, type RestoreHost } from './backups/index.js';
+import { HttpBackupTransport } from './backups/httpBackupTransport.js';
+import { swapHost } from './backups/recovery.js';
+import { isBackupTransport } from './backups/transport.js';
 import { Rbac } from './rbac.js';
 import { AuthService } from './services/auth.js';
 import { BusinessService } from './services/business.js';
@@ -90,6 +94,8 @@ export interface AppConfig {
   sleep?: (ms: number) => Promise<void>;
   saveFile?: SaveFile;
   pdfRenderer?: PdfRenderer;
+  backupTransport?: (credentials: () => Credentials | null) => BackupTransport;
+  restoreHost?: RestoreHost;
 }
 
 export function createApp(cfg: AppConfig) {
@@ -133,6 +139,7 @@ export function createApp(cfg: AppConfig) {
   const backlog = new JournalBacklog(posCtx);
   const statements = new StatementService(posCtx);
   let readDb: Db | null = null;
+  const closeReadConnections = () => { readDb?.close(); readDb = null; };
   const reports = new ReportService({
     catalogue: new ReportCatalogue(REPORTS),
     readDb: () => (cfg.dbFile === ':memory:' ? cfg.db() : (readDb ??= openDatabase(cfg.dbFile, { readonly: true }))),
@@ -152,7 +159,7 @@ export function createApp(cfg: AppConfig) {
   const sales = new SaleService(posCtx, new SalePricing(posCtx), register, () => session.require().user.name, (r) => printQueue.enqueue(r.printJobId));
   const productImport = new ImportService(catalogCtx, new PreviewStore(cfg.now ?? (() => Date.now())), invalidateSearch);
   const diagnostics = new DiagnosticsService({
-    db: cfg.db, dbFile: cfg.dbFile, backupsDir: cfg.backupsDir, bundlesDir: cfg.bundlesDir, loggers: cfg.loggers, session, device,
+    db: cfg.db, dbFile: cfg.dbFile, bundlesDir: cfg.bundlesDir, loggers: cfg.loggers, session, device,
     appVersion: cfg.appVersion, secretStoreAvailable: cfg.secrets.encrypted, connectivity: () => connectivity.snapshot(),
   });
   const syncStatus = () => readSyncStatus(cfg.db(), connectivity.online, connectivity.serverSkewMs);
@@ -164,6 +171,16 @@ export function createApp(cfg: AppConfig) {
   const syncTransport = cfg.syncTransport?.(credentials) ?? new HttpTransport({
     baseUrl: cfg.apiBaseUrl, appVersion: cfg.appVersion, schemaVersion: currentSchemaVersion(cfg.db()), credentials, ...(cfg.fetchImpl && { fetchImpl: cfg.fetchImpl }),
   });
+  const bundleFetcher = cfg.bundleFetcher ?? (isBundleFetcher(syncTransport) ? syncTransport : new HttpBundleDownloader(cfg.fetchImpl));
+  const backupTransport = cfg.backupTransport?.(credentials) ?? (isBackupTransport(syncTransport) ? syncTransport : new HttpBackupTransport({
+    baseUrl: cfg.apiBaseUrl, appVersion: cfg.appVersion, schemaVersion: currentSchemaVersion(cfg.db()), credentials, ...(cfg.fetchImpl && { fetchImpl: cfg.fetchImpl }),
+  }, cfg.fetchImpl));
+  const backups = createBackups({
+    db: cfg.db, dir: cfg.backupsDir, secrets: cfg.secrets, device, session, transport: () => backupTransport, fetcher: bundleFetcher,
+    host: cfg.restoreHost ?? swapHost(() => { closeReadConnections(); cfg.db().close(); }, cfg.dbFile),
+    appVersion: cfg.appVersion, now: cfg.now ?? (() => Date.now()), sleep: cfg.sleep ?? ((ms) => new Promise((resolve) => setTimeout(resolve, ms))),
+    loggers: cfg.loggers, auditScope: DEVICE_AUDIT_SCOPE,
+  });
   const gate = new HydrationGate(cfg.db, cfg.coldStart ?? 'hydrate');
   const syncEngine = new SyncEngine({
     db: cfg.db, transport: syncTransport, device, businessId: () => session.get()?.businessId ?? null, schemaVersion: () => currentSchemaVersion(cfg.db()),
@@ -172,7 +189,7 @@ export function createApp(cfg: AppConfig) {
   });
   const sync = new SyncScheduler(syncEngine, { now: cfg.now ?? (() => Date.now()), onError: (e) => cfg.loggers.sync.error({ err: String(e) }, 'sync run failed') });
   const hydrator = new Hydrator({
-    db: cfg.db, transport: syncTransport, fetcher: cfg.bundleFetcher ?? (isBundleFetcher(syncTransport) ? syncTransport : new HttpBundleDownloader(cfg.fetchImpl)),
+    db: cfg.db, transport: syncTransport, fetcher: bundleFetcher,
     dir: cfg.hydrationDir ?? join(dirname(cfg.bundlesDir), 'hydration'), refreshAuth: () => auth.refreshAccessToken(), now: cfg.now ?? (() => Date.now()),
     sleep: cfg.sleep ?? ((ms) => new Promise((resolve) => setTimeout(resolve, ms))), log: cfg.loggers.sync,
     onProgress: (h, linesTotal) => hydration.progress(h, linesTotal),
@@ -292,7 +309,11 @@ export function createApp(cfg: AppConfig) {
     'pos.cashMovement': (i) => { register.cashMovement(i); return { ok: true as const }; },
     'pos.xReport': () => register.xReport(),
     'pos.zReport': (i) => register.zReport(i.sessionId),
-    'pos.closeRegister': (i) => register.close(i),
+    'pos.closeRegister': (i) => {
+      const report = register.close(i);
+      backups.scheduler.afterRegisterClose();
+      return report;
+    },
     'pos.holdBill': (i) => heldBills.hold(i.label, i.cart),
     'pos.listHeldBills': () => heldBills.list(),
     'pos.getHeldBill': (i) => heldBills.get(i.id),
@@ -333,9 +354,9 @@ export function createApp(cfg: AppConfig) {
     'sync.hydrationStatus': () => hydration.status(),
     'diagnostics.getHealth': () => diagnostics.getHealth(),
     'diagnostics.integrityCheck': () => diagnostics.integrityCheck(),
-    'diagnostics.backupNow': () => diagnostics.backupNow('manual'),
     'diagnostics.exportSupportBundle': () => diagnostics.exportSupportBundle(),
     'diagnostics.getLogsTail': (i) => diagnostics.getLogsTail(i.log, i.lines),
+    ...backups.handlers,
   };
 
   printQueue.resumeUnfinished(catalogCtx.today());
@@ -346,6 +367,6 @@ export function createApp(cfg: AppConfig) {
     onCommitted: () => sync.nudge(), holds: (id) => gate.holds(id),
   });
 
-  return { events, session, reports, rbac, cloud, connectivity, device, auth, business, settings, products, catalog, pricing, productImport, customers, suppliers, customerLedger, supplierLedger, purchases, purchaseReturns, purchaseImport, payments, writeOffs, expenses, periods, backlog, statements, chart, manualJournals, register, sales, printQueue, inventory, openingImport, diagnostics, gateway, handlers, syncStatus, syncEngine, sync, hydration, hydrationGate: gate };
+  return { events, session, reports, rbac, cloud, connectivity, device, auth, business, settings, products, catalog, pricing, productImport, customers, suppliers, customerLedger, supplierLedger, purchases, purchaseReturns, purchaseImport, payments, writeOffs, expenses, periods, backlog, statements, chart, manualJournals, register, sales, printQueue, inventory, openingImport, diagnostics, backups, closeReadConnections, gateway, handlers, syncStatus, syncEngine, sync, hydration, hydrationGate: gate };
 }
 export type App = ReturnType<typeof createApp>;

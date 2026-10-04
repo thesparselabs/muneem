@@ -119,13 +119,13 @@ describe('business setup end-to-end through the gateway', () => {
     expect(h).toMatchObject({ ok: true, data: { outboxDepth: 14 + CHART_OF_ACCOUNTS.length, auditChainOk: true, schemaVersion: SCHEMA_VERSION } });
     expect(await g.handle('diagnostics.integrityCheck', {}, 1)).toMatchObject({ ok: true, data: { quickCheck: 'ok', foreignKeys: 'ok', auditChain: 'ok' } });
   });
-  it('backupNow writes a verified copy (file DB)', async () => {
+  it('backups.runNow writes an encrypted, verified backup (file DB)', async () => {
     const { app } = await testApp({ file: true });
     await app.gateway.handle('auth.login', { identifier: '9999999999', password: 'correct-horse' }, 1);
     await app.gateway.handle('business.create', { name: 'S', businessType: 'retail', stateCode: '07', taxScheme: 'regular' }, 1);
-    const r = await app.gateway.handle('diagnostics.backupNow', {}, 1);
-    expect(r).toMatchObject({ ok: true, data: { verified: true } });
-    expect((r as { data: { bytes: number } }).data.bytes).toBeGreaterThan(10_000);
+    const r = await app.gateway.handle('backups.runNow', {}, 1);
+    expect(r).toMatchObject({ ok: true, data: { backup: { verified: true, encrypted: true } } });
+    expect((r as { data: { backup: { bytes: number } } }).data.backup.bytes).toBeGreaterThan(10_000);
     const bundle = await app.gateway.handle('diagnostics.exportSupportBundle', {}, 1);
     expect(bundle.ok).toBe(true);
     expect((bundle as { data: { handle: string } }).data.handle).not.toMatch(/[\\/]/); // opaque handle, never a path

@@ -10,6 +10,7 @@ import type { BundleFetcher, Credentials, Transport } from '../src/main/sync/tra
 import type { ColdStart } from '../src/main/sync/hydration/hydrationGate.js';
 import type { SaveFile } from '../src/main/reports/service.js';
 import type { PdfRenderer } from '../src/main/reports/exports/pdf.js';
+import type { BackupTransport, RestoreHost } from '../src/main/backups/index.js';
 
 export interface FakeServer { calls: { method: string; path: string; body: unknown; headers: Record<string, string> }[]; online: boolean; respond: (method: string, path: string, body: unknown) => { status: number; body: unknown } }
 
@@ -62,6 +63,7 @@ export interface TestAppOptions {
   syncTransport?: (credentials: () => Credentials | null) => Transport; random?: () => number; fetch?: typeof fetch;
   coldStart?: ColdStart; bundleFetcher?: BundleFetcher; apiBaseUrl?: string; secrets?: SecretStore;
   saveFile?: SaveFile; pdfRenderer?: PdfRenderer;
+  backupTransport?: (credentials: () => Credentials | null) => BackupTransport; restoreHost?: RestoreHost;
 }
 
 export async function testApp(opts: TestAppOptions = {}): Promise<{ app: App; db: Db; server: FakeServer; dir: string }> {
@@ -75,6 +77,7 @@ export async function testApp(opts: TestAppOptions = {}): Promise<{ app: App; db
     apiBaseUrl: opts.apiBaseUrl ?? 'http://cloud.test/v1', appVersion: '0.0.0-test', platform: 'linux', fetchImpl: opts.fetch ?? fakeFetch(server), probeIntervalMs: 3_600_000, ...(opts.now && { now: opts.now }),
     ...(opts.syncTransport && { syncTransport: opts.syncTransport }), ...(opts.random && { random: opts.random }),
     ...(opts.saveFile && { saveFile: opts.saveFile }), ...(opts.pdfRenderer && { pdfRenderer: opts.pdfRenderer }),
+    ...(opts.backupTransport && { backupTransport: opts.backupTransport }), ...(opts.restoreHost && { restoreHost: opts.restoreHost }),
     coldStart: opts.coldStart ?? 'pull', ...(opts.bundleFetcher && { bundleFetcher: opts.bundleFetcher }), sleep: async () => undefined,
   });
   app.device.ensureIdentity();

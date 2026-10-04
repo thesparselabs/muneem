@@ -32,6 +32,7 @@ import { PrintJobSummary, PrinterConfig, ReceiptDoc } from './print.js';
 import { SETTING_KEYS } from './settings.js';
 import { CloudBusiness, HydrationStartInput, HydrationStatus } from './hydration.js';
 import { ExportReportInput, ExportReportResult, ReportDefinitionView, ReportResult, RunReportInput } from './reports.js';
+import { BackupList, BackupRef, BackupVerification, RestoreBackupInput, RestoreFromCloudInput, RestoreResult, RunBackupResult } from './backups.js';
 import {
   AdjustmentResult, AdjustStockInput, MovementPage, MovementsInput, OpeningImportCommitInput, OpeningImportPreview, OpeningImportPreviewInput,
   OpeningStockInput, StockListInput, StockPage, StockRow, StockTakeInput, Valuation,
@@ -252,9 +253,16 @@ export const contract = {
     output: z.object({ quickCheck: z.enum(['ok', 'failed']), foreignKeys: z.enum(['ok', 'failed']), auditChain: z.enum(['ok', 'broken']), stock: z.enum(['ok', 'healed', 'not_run']), parties: z.enum(['ok', 'mismatch', 'not_run']), journals: z.enum(['ok', 'healed', 'mismatch', 'not_run']), detail: z.array(z.string()) }),
     permission: 'diagnostics.view', rateLimit: { perSec: 1 }, audit: true,
   }),
-  'diagnostics.backupNow': spec({ input: Empty, output: z.object({ path: z.string(), bytes: z.number().int(), verified: z.boolean() }), permission: 'diagnostics.view', rateLimit: { perSec: 1 }, audit: true }),
   'diagnostics.exportSupportBundle': spec({ input: Empty, output: z.object({ handle: z.string(), bytes: z.number().int() }), permission: 'diagnostics.view', rateLimit: { perSec: 1 }, audit: true }),
   'diagnostics.getLogsTail': spec({ input: z.object({ log: z.enum(['app', 'sync', 'sql-slow', 'hardware']), lines: z.number().int().min(1).max(2000).default(200) }), output: z.array(z.string()), permission: 'diagnostics.view', rateLimit: { perSec: 5 } }),
+
+  // ADR-0047 (8f). A restore swaps the database and restarts, so it writes its own audit row into the restored file.
+  'backups.list': spec({ input: Empty, output: BackupList, permission: 'diagnostics.view', rateLimit: { perSec: 2 } }),
+  'backups.runNow': spec({ input: Empty, output: RunBackupResult, permission: 'diagnostics.view', rateLimit: { perSec: 1 }, audit: true }),
+  'backups.verify': spec({ input: BackupRef, output: BackupVerification, permission: 'diagnostics.view', rateLimit: { perSec: 1 } }),
+  'backups.restore': spec({ input: RestoreBackupInput, output: RestoreResult, permission: 'diagnostics.manage', rateLimit: { perSec: 1 } }),
+  // A new device (setup) has a session but no business yet, so this checks the session and the membership itself, as hydration does.
+  'backups.restoreFromCloud': spec({ input: RestoreFromCloudInput, output: RestoreResult, permission: null, rateLimit: { perSec: 1 } }),
 } as const satisfies Record<string, ContractSpec>;
 
 export type Contract = typeof contract;

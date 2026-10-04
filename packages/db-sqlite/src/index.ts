@@ -55,3 +55,4 @@ export * from './sync/documentKeys.js';
 export { applyChange, applyChanges, applyPullPage, emptyPageResult, Touched, type ApplyTarget, type ApplyOutcome, type PageResult } from './sync/apply/index.js';
 export * from './sync/syncScreens.js';
 export * from './repositories/stockReconciliation.js';
+export * from './repositories/backupLog.js';

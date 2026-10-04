@@ -1,5 +1,5 @@
 import { join } from 'node:path';
-import { existsSync, mkdirSync, readdirSync, statSync } from 'node:fs';
+import { existsSync, mkdirSync, statSync } from 'node:fs';
 import { newUlid } from '@muneem/domain';
 import { DbCorruptError, MIGRATIONS, currentSchemaVersion, migrate, openDatabase, type Db } from '@muneem/db-sqlite';
 import type { Loggers } from './logger.js';
@@ -8,12 +8,6 @@ export interface DbPaths { file: string; backups: string }
 
 export function dbPaths(userData: string): DbPaths {
   return { file: join(userData, 'muneem.sqlite'), backups: join(userData, 'backups') };
-}
-
-export function latestBackup(backupsDir: string): string | null {
-  if (!existsSync(backupsDir)) return null;
-  const files = readdirSync(backupsDir).filter((f) => f.endsWith('.sqlite')).sort();
-  return files.length ? join(backupsDir, files.at(-1)!) : null;
 }
 
 /** startup: open (quick_check) → migrate (pre-migration backup) — LLD §12. Throws DbCorruptError for the caller to handle. */

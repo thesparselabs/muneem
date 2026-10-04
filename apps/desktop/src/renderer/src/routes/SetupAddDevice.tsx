@@ -23,6 +23,7 @@ export default function SetupAddDevice({ onReady, onCancel }: { onReady: () => v
   const businesses = useQuery({ queryKey: ['cloudBusinesses'], queryFn: () => api.sync.listCloudBusinesses({}) });
   const [status, setStatus] = useState<HydrationStatus | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [restoring, setRestoring] = useState<{ id: string; name: string; phase: 'confirm' | 'running' | 'done' } | null>(null);
 
   useEffect(() => {
     void api.sync.hydrationStatus({}).then(setStatus);
@@ -33,6 +34,28 @@ export default function SetupAddDevice({ onReady, onCancel }: { onReady: () => v
   async function start(businessId: string) {
     setError(null);
     try { setStatus(await api.sync.hydrationStart({ businessId })); } catch (e) { setError(errorMessage(e)); }
+  }
+
+  // 8f (ADR-0047): the newest encrypted cloud backup, with the escrowed key, becomes this device's database; a pull then catches up.
+  async function restoreFromBackup(businessId: string, name: string) {
+    setError(null);
+    setRestoring({ id: businessId, name, phase: 'running' });
+    try {
+      await api.backups.restoreFromCloud({ businessId, confirm: true });
+      setRestoring({ id: businessId, name, phase: 'done' });
+    } catch (e) {
+      setRestoring(null);
+      setError(errorMessage(e));
+    }
+  }
+
+  if (restoring && restoring.phase !== 'confirm') {
+    return (
+      <section className="space-y-4" aria-live="polite">
+        <h2 className="text-lg font-semibold">Restoring {restoring.name} from its cloud backup</h2>
+        <p className="text-sm text-slate-600">{restoring.phase === 'running' ? 'Downloading, decrypting and checking the backup…' : 'Restored. Muneem is restarting; sign in again to catch up with the cloud.'}</p>
+      </section>
+    );
   }
 
   if (status && IN_PROGRESS.has(status.status)) {
@@ -56,14 +79,26 @@ export default function SetupAddDevice({ onReady, onCancel }: { onReady: () => v
         {(businesses.data ?? []).map((b) => (
           <li key={b.id} className="flex items-center justify-between px-3 py-2 text-sm">
             <span><b>{b.name}</b>{b.onThisDevice && <span className="ml-2 text-xs text-slate-500">(already on this device)</span>}</span>
-            <button type="button" className="btn-primary" onClick={() => void start(b.id)}>
-              {status?.status === 'failed' && status.businessId === b.id ? 'Try again' : 'Add this device'}
-            </button>
+            <span className="flex gap-2">
+              <button type="button" className="btn-secondary" onClick={() => setRestoring({ id: b.id, name: b.name, phase: 'confirm' })}>Restore from cloud backup</button>
+              <button type="button" className="btn-primary" onClick={() => void start(b.id)}>
+                {status?.status === 'failed' && status.businessId === b.id ? 'Try again' : 'Add this device'}
+              </button>
+            </span>
           </li>
         ))}
         {businesses.data?.length === 0 && <li className="px-3 py-2 text-sm text-slate-500">You are not a member of any business on the cloud yet.</li>}
       </ul>
       {onCancel && <button type="button" className="btn-secondary" onClick={onCancel}>Create a new business instead</button>}
+      {restoring?.phase === 'confirm' && (
+        <div role="alertdialog" aria-label="Restore from cloud backup" className="border rounded-md p-3 space-y-2 text-sm">
+          <p>Replace this device&apos;s database with the newest cloud backup of <b>{restoring.name}</b>? Muneem restarts when it is done, then syncs anything newer from the cloud.</p>
+          <div className="flex justify-end gap-2">
+            <button type="button" className="btn-secondary" onClick={() => setRestoring(null)}>Cancel</button>
+            <button type="button" className="btn-primary" onClick={() => void restoreFromBackup(restoring.id, restoring.name)}>Restore</button>
+          </div>
+        </div>
+      )}
     </section>
   );
 }

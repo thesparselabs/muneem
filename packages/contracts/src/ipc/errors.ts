@@ -27,6 +27,7 @@ export const ERROR_CODES = {
   AUDIT_CHAIN_BROKEN: 'integrity',
   DB_CORRUPT: 'integrity',
   SECRET_STORE_UNAVAILABLE: 'integrity',
+  BACKUP_INVALID: 'integrity',
   PRINTER_OFFLINE: 'hardware',
   DRAWER_FAILED: 'hardware',
   SCALE_UNSTABLE: 'hardware',

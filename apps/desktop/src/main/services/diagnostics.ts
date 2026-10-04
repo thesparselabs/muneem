@@ -3,7 +3,7 @@ import { join } from 'node:path';
 import { newUlid } from '@muneem/domain';
 import { AppError, type Health } from '@muneem/contracts';
 import {
-  backupDatabase, dbSizeBytes, foreignKeyCheck, getMeta, META_KEYS, outboxDepth, quickCheck, setMeta, verifyAuditChain,
+  dbSizeBytes, foreignKeyCheck, getMeta, META_KEYS, outboxDepth, quickCheck, setMeta, verifyAuditChain,
   currentSchemaVersion, journalsNotMatchingLines, rebuildAccountBalances, reconcilePartiesDb, replayKeys, tieOutFailures, unpostedDocuments, rewriteLevels, stockKeys, type Db, type StockDrift } from '@muneem/db-sqlite';
 import { DEVICE_AUDIT_SCOPE } from '../ipc/gateway.js';
 
@@ -15,7 +15,7 @@ import type { SessionService } from './session.js';
 import type { DeviceService } from './device.js';
 
 export interface DiagnosticsDeps {
-  db: () => Db; dbFile: string; backupsDir: string; bundlesDir: string; loggers: Loggers; session: SessionService; device: DeviceService;
+  db: () => Db; dbFile: string; bundlesDir: string; loggers: Loggers; session: SessionService; device: DeviceService;
   appVersion: string; secretStoreAvailable: boolean; connectivity: () => { serverSkewMs: number | null };
 }
 
@@ -109,17 +109,6 @@ export class DiagnosticsService {
     if (journals === 'healed') detail.push('account balances disagreed with the journal lines and were rebuilt');
     if (journals === 'mismatch') detail.push('the books do not agree with their documents; see the app log (JOURNAL_MISMATCH)');
     return { quickCheck: qc.ok ? 'ok' : 'failed', foreignKeys: fk.ok ? 'ok' : 'failed', auditChain: broken.length ? 'broken' : 'ok', stock, parties, journals, detail } as const;
-  }
-
-  async backupNow(kind: 'manual' | 'scheduled' = 'manual') {
-    const db = this.d.db();
-    mkdirSync(this.d.backupsDir, { recursive: true });
-    const path = join(this.d.backupsDir, `muneem-${new Date().toISOString().replace(/[:.]/g, '-')}.sqlite`);
-    const r = await backupDatabase(db, path);
-    db.prepare('INSERT INTO backup_log (id, path, bytes, verified, kind, created_at) VALUES (?, ?, ?, ?, ?, ?)').run(newUlid(), path, r.bytes, r.verified ? 1 : 0, kind, new Date().toISOString());
-    if (r.verified) setMeta(db, META_KEYS.lastBackupAt, new Date().toISOString());
-    else this.d.loggers.app.error({ path }, 'backup failed verification');
-    return { path, bytes: r.bytes, verified: r.verified };
   }
 
   /** Logs + health JSON + schema version + row counts. No invoice contents. Returns an opaque handle, never a path. */

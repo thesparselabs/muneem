@@ -75,6 +75,11 @@ export async function backupDatabase(db: Db, destPath: string): Promise<{ bytes:
   return { bytes: statSync(destPath).size, verified };
 }
 
+/** A connection to a backup copy with none of the live database's pragmas; read-only unless asked. */
+export function openCopy(path: string, opts: { nativeBinding?: string | undefined; writable?: boolean } = {}): Db {
+  return new Database(path, { readonly: !opts.writable, fileMustExist: true, ...(opts.nativeBinding && { nativeBinding: opts.nativeBinding }) });
+}
+
 /** Restore = file copy while the DB is closed. Caller must have closed all connections. */
 export function restoreDatabaseFile(backupPath: string, dbPath: string): void {
   if (!existsSync(backupPath)) throw new Error(`backup not found: ${backupPath}`);
