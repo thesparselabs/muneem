@@ -34,13 +34,13 @@ export class JournalBacklog {
   // The poster and actor are fixed when the run starts; a session that moves to another business stops it between batches.
   private async post(businessId: string, poster: Till, actor: Actor): Promise<BacklogResult> {
     const db = this.ctx.db();
-    const pending = unpostedDocuments(db, businessId);
+    const pending = unpostedDocuments(db, businessId, actor.deviceId);
     let posted = 0;
     for (let i = 0; i < pending.length && this.stillOn(businessId); i += BATCH) {
       posted += postBacklogBatch(db, businessId, pending.slice(i, i + BATCH), poster, actor);
       await new Promise((r) => setImmediate(r));
     }
-    return { posted, remaining: unpostedDocuments(db, businessId).length };
+    return { posted, remaining: unpostedDocuments(db, businessId, actor.deviceId).length };
   }
 
   private stillOn(businessId: string): boolean {

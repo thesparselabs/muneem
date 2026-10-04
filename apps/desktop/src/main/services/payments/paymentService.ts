@@ -1,7 +1,7 @@
 import { AppError, type AllocateInput, type AllocateResult, type OpenItems, type Payment, type PaymentInput, type PaymentListInput, type PaymentPage } from '@muneem/contracts';
 import { docSeriesPrefix, financialYearOf, newUlid, type PartyType } from '@muneem/domain';
 import {
-  allocateDocNumber, allocationsOfSource, appendAudit, documentCashMovements, findOrCreateSeries, getPayment, getTerminal, insertPayment, listPayments,
+  allocateDocNumber, allocationsOfSource, appendAudit, documentCashMovements, documentKeys, drawerMovements, findOrCreateSeries, getPayment, getTerminal, insertPayment, listPayments,
   markPaymentCancelled, openItems, paymentIdByCommand, postDocumentJournal, postPartyEntry, recordChange, reverseDocumentJournal, voidAllocation, withTransaction,
   type AllocationSource,
 } from '@muneem/db-sqlite';
@@ -89,7 +89,7 @@ export class PaymentService {
       }
       const journal = reverseDocumentJournal(db, 'payment', id, this.ctx.today(), actor);
       recordChange(db, this.ctx.businessId(), actor, {
-        action: 'payment.cancel', entityType: 'payment', entityId: id, operationType: 'cancel', after: { id, status: 'cancelled', reason, entry, drawer, journal },
+        action: 'payment.cancel', entityType: 'payment', entityId: id, operationType: 'cancel', after: { id, status: 'cancelled', reason, entry, drawer, drawerMovements: drawerMovements(db, 'payment', id), journal },
       });
     });
     return this.get(id);
@@ -122,7 +122,7 @@ export class PaymentService {
     });
     const journal = postDocumentJournal(db, 'payment', id, till, actor);
     recordChange(db, till.businessId, actor, {
-      action: 'payment.create', entityType: 'payment', entityId: id, operationType: 'create', after: { ...getPayment(db, id), entry, allocations, journal },
+      action: 'payment.create', entityType: 'payment', entityId: id, operationType: 'create', after: { ...getPayment(db, id), ...documentKeys(db, 'payment', id), drawerMovements: drawerMovements(db, 'payment', id), entry, allocations, journal },
     });
     return id;
   }

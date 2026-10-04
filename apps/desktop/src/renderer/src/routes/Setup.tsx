@@ -10,6 +10,7 @@ import { api, errorMessage } from '../api.js';
 import { useUi } from '../store.js';
 import Field from '../components/Field.js';
 import { GST_STATES } from '../states.js';
+import SetupAddDevice from './SetupAddDevice.js';
 
 type Step = 1 | 2 | 3;
 
@@ -17,9 +18,12 @@ export default function Setup() {
   const nav = useNavigate();
   const qc = useQueryClient();
   const { session } = useUi();
-  const business = useQuery({ queryKey: ['business'], queryFn: () => api.business.get({}), enabled: !!session?.businessId });
-  const branches = useQuery({ queryKey: ['branches'], queryFn: () => api.business.getBranches({}), enabled: !!session?.businessId });
-  const terminals = useQuery({ queryKey: ['terminals'], queryFn: () => api.business.getTerminals({}), enabled: !!session?.businessId });
+  const hydration = useQuery({ queryKey: ['hydration', session?.businessId], queryFn: () => api.sync.hydrationStatus({}), enabled: !!session });
+  const [addDevice, setAddDevice] = useState(false);
+  const held = !!hydration.data?.held;
+  const business = useQuery({ queryKey: ['business'], queryFn: () => api.business.get({}), enabled: !!session?.businessId && !held });
+  const branches = useQuery({ queryKey: ['branches'], queryFn: () => api.business.getBranches({}), enabled: !!session?.businessId && !held });
+  const terminals = useQuery({ queryKey: ['terminals'], queryFn: () => api.business.getTerminals({}), enabled: !!session?.businessId && !held });
   const step: Step = !session?.businessId ? 1 : !branches.data?.length ? 2 : 3;
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -40,9 +44,13 @@ export default function Setup() {
           ))}
         </ol>
         {error && <p className="err mb-3" role="alert">{error}</p>}
-        {step === 1 && <BusinessForm busy={busy} onSubmit={(v) => run(() => api.business.create(v))} />}
-        {step === 2 && <BranchForm busy={busy} businessState={business.data?.stateCode ?? '07'} gstin={business.data?.gstin} onSubmit={(v) => run(() => api.business.createBranch(v))} />}
-        {step === 3 && (
+        {(held || addDevice) && <SetupAddDevice onReady={() => { setAddDevice(false); void qc.invalidateQueries(); }} {...(!held && { onCancel: () => setAddDevice(false) })} />}
+        {!held && !addDevice && step === 1 && (
+          <button type="button" className="btn-secondary mb-4" onClick={() => setAddDevice(true)}>Add this device to an existing business</button>
+        )}
+        {!held && !addDevice && step === 1 && <BusinessForm busy={busy} onSubmit={(v) => run(() => api.business.create(v))} />}
+        {!held && !addDevice && step === 2 && <BranchForm busy={busy} businessState={business.data?.stateCode ?? '07'} gstin={business.data?.gstin} onSubmit={(v) => run(() => api.business.createBranch(v))} />}
+        {!held && !addDevice && step === 3 && (
           <TerminalForm busy={busy} branchId={branches.data![0]!.id} existing={terminals.data ?? []}
             onCreate={(v) => run(() => api.business.createTerminal(v))}
             onSelect={(terminalId) => run(async () => { await api.business.selectTerminal({ terminalId }); nav('/'); })} />

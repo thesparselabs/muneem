@@ -1,9 +1,12 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api, errorMessage } from '../api.js';
+import { useCan } from '../lib/permissions.js';
+import SyncPanel from './diagnostics/SyncPanel.js';
 
 export default function Diagnostics() {
   const qc = useQueryClient();
+  const canSync = useCan('sync.view');
   const health = useQuery({ queryKey: ['health'], queryFn: () => api.diagnostics.getHealth({}), refetchInterval: 15_000 });
   const [log, setLog] = useState<'app' | 'sync'>('app');
   const logs = useQuery({ queryKey: ['logs', log], queryFn: () => api.diagnostics.getLogsTail({ log, lines: 200 }) });
@@ -16,6 +19,7 @@ export default function Diagnostics() {
   return (
     <div className="max-w-4xl space-y-6">
       <h1 className="text-2xl font-semibold">Diagnostics</h1>
+      {canSync && <SyncPanel />}
       <div className="card">
         <h2 className="font-semibold mb-3">Health</h2>
         {h && (

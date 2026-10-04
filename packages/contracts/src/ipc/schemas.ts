@@ -87,6 +87,8 @@ export const SyncStatus = z.object({
   pending: z.number().int(), inFlight: z.number().int(), failed: z.number().int(), dead: z.number().int(),
   lastPushAt: IsoDateTime.nullable(), lastPullAt: IsoDateTime.nullable(),
   online: z.boolean(), serverSkewMs: z.number().int().nullable(), detail: z.string().nullable(),
+  deviceStatus: z.enum(['active', 'revoked', 'upgrade_required']).nullable(), oldestPendingAt: z.string().nullable(),
+  documentsPulledAt: z.string().nullable(), terminalCount: z.number().int(),
 });
 export type SyncStatus = z.infer<typeof SyncStatus>;
 

@@ -16,6 +16,7 @@ import HeldBillsDialog from './HeldBillsDialog.js';
 import PaymentDialog from './PaymentDialog.js';
 import { CashMovementDialog, CloseRegisterDialog, OpenRegister, ReportView, XReportDialog } from './RegisterPanel.js';
 import Dialog from '../../components/Dialog.js';
+import StockStaleness from '../../components/StockStaleness.js';
 
 type Modal = 'customer' | 'discount' | 'payment' | 'held' | 'cash' | 'x' | 'close' | { lineDiscount: string } | null;
 const NEAR_DUPLICATE_MS = 60_000;
@@ -158,6 +159,7 @@ export default function PosScreen() {
         <CartTable cart={cart} onQty={(key, q) => update(setQty(cart, key, q))} onRemove={(key) => update(removeLine(cart, key))} onDiscount={(key) => setModal({ lineDiscount: key })} />
       </section>
       <aside className="flex flex-col gap-3">
+        <StockStaleness />
         <div className="card text-sm">
           <p className="text-slate-500">Customer (F3)</p>
           <p className="font-medium">{cart.customer ? `${cart.customer.name}${cart.customer.gstin ? ` · ${cart.customer.gstin}` : ''}` : 'Walk-in'}</p>

@@ -30,10 +30,14 @@ import {
 import { CompleteSaleInput, CompleteSaleResult, HeldBill, HoldBillInput, Sale, SaleDraft, SaleListInput, SalePage, SaleQuote } from './sales.js';
 import { PrintJobSummary, PrinterConfig, ReceiptDoc } from './print.js';
 import { SETTING_KEYS } from './settings.js';
+import { CloudBusiness, HydrationStartInput, HydrationStatus } from './hydration.js';
 import {
   AdjustmentResult, AdjustStockInput, MovementPage, MovementsInput, OpeningImportCommitInput, OpeningImportPreview, OpeningImportPreviewInput,
   OpeningStockInput, StockListInput, StockPage, StockRow, StockTakeInput, Valuation,
 } from './inventory.js';
+import {
+  FailedOperation, ListFailedInput, ListReviewItemsInput, MarkReviewedInput, ReconciliationInput, ReconciliationRow, ResendInput, ReviewItem, SyncOverview,
+} from './sync.js';
 
 /**
  * LLD §10.1 — the IPC contract registry. The preload is GENERATED from this object, so the
@@ -181,6 +185,7 @@ export const contract = {
   'inventory.stockTake': spec({ input: StockTakeInput, output: AdjustmentResult, permission: 'inventory.adjust', rateLimit: { perSec: 1 }, audit: true }),
   'inventory.importOpeningPreview': spec({ input: OpeningImportPreviewInput, output: OpeningImportPreview, permission: 'inventory.create', rateLimit: { perSec: 2 }, audit: true }),
   'inventory.importOpeningCommit': spec({ input: OpeningImportCommitInput, output: AdjustmentResult, permission: 'inventory.create', rateLimit: { perSec: 1 }, audit: true, idempotent: 'commandId' }),
+  'inventory.stockReconciliation': spec({ input: ReconciliationInput, output: z.array(ReconciliationRow), permission: 'inventory.view', rateLimit: { perSec: 2 } }),
 
   'purchases.quote': spec({ input: PurchaseDraft, output: PurchaseQuote, permission: 'purchases.create', rateLimit: { perSec: 10 } }),
   'purchases.create': spec({ input: CreatePurchaseInput, output: Purchase, permission: 'purchases.create', rateLimit: { perSec: 2 }, audit: true, idempotent: 'commandId' }),
@@ -224,6 +229,16 @@ export const contract = {
   'accounting.rebuildBalances': spec({ input: Empty, output: z.object({ rebuilt: z.number().int() }), permission: 'accounting.manage', rateLimit: { perSec: 1 }, audit: true }),
 
   'sync.getStatus': spec({ input: Empty, output: SyncStatus, permission: null, rateLimit: { perSec: 10 } }),
+  'sync.retry': spec({ input: Empty, output: SyncStatus, permission: 'sync.view', rateLimit: { perSec: 1 } }),
+  'sync.getOverview': spec({ input: Empty, output: SyncOverview, permission: 'sync.view', rateLimit: { perSec: 5 } }),
+  'sync.listFailed': spec({ input: ListFailedInput, output: z.array(FailedOperation), permission: 'sync.view', rateLimit: { perSec: 5 } }),
+  'sync.resend': spec({ input: ResendInput, output: z.object({ resent: z.number().int() }), permission: 'sync.manage', rateLimit: { perSec: 1 }, audit: true }),
+  'sync.listReviewItems': spec({ input: ListReviewItemsInput, output: z.array(ReviewItem), permission: 'sync.view', rateLimit: { perSec: 5 } }),
+  'sync.markReviewed': spec({ input: MarkReviewedInput, output: z.object({ reviewed: z.number().int() }), permission: 'sync.manage', rateLimit: { perSec: 2 }, audit: true }),
+  // 7f: a device being added has a session but no business yet, so these check the session and the membership themselves.
+  'sync.listCloudBusinesses': spec({ input: Empty, output: z.array(CloudBusiness), permission: null, rateLimit: { perSec: 2 } }),
+  'sync.hydrationStart': spec({ input: HydrationStartInput, output: HydrationStatus, permission: null, rateLimit: { perSec: 2 }, audit: true }),
+  'sync.hydrationStatus': spec({ input: Empty, output: HydrationStatus, permission: null, rateLimit: { perSec: 10 } }),
 
   'diagnostics.getHealth': spec({ input: Empty, output: Health, permission: 'diagnostics.view', rateLimit: { perSec: 5 } }),
   'diagnostics.integrityCheck': spec({

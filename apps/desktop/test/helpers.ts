@@ -5,7 +5,9 @@ import { ROLE_PRESETS } from '@muneem/contracts';
 import { migrate, openDatabase, type Db } from '@muneem/db-sqlite';
 import { createApp, type App } from '../src/main/app.js';
 import { silentLoggers } from '../src/main/infra/logger.js';
-import { MemorySecretStore } from '../src/main/infra/secrets.js';
+import { MemorySecretStore, type SecretStore } from '../src/main/infra/secrets.js';
+import type { BundleFetcher, Credentials, Transport } from '../src/main/sync/transport.js';
+import type { ColdStart } from '../src/main/sync/hydration/hydrationGate.js';
 
 export interface FakeServer { calls: { method: string; path: string; body: unknown; headers: Record<string, string> }[]; online: boolean; respond: (method: string, path: string, body: unknown) => { status: number; body: unknown } }
 
@@ -53,15 +55,23 @@ export function defaultServer(): FakeServer {
   return s;
 }
 
-export async function testApp(opts: { server?: FakeServer; now?: () => number; file?: boolean; dbFile?: string } = {}): Promise<{ app: App; db: Db; server: FakeServer; dir: string }> {
+export interface TestAppOptions {
+  server?: FakeServer; now?: () => number; file?: boolean; dbFile?: string;
+  syncTransport?: (credentials: () => Credentials | null) => Transport; random?: () => number; fetch?: typeof fetch;
+  coldStart?: ColdStart; bundleFetcher?: BundleFetcher; apiBaseUrl?: string; secrets?: SecretStore;
+}
+
+export async function testApp(opts: TestAppOptions = {}): Promise<{ app: App; db: Db; server: FakeServer; dir: string }> {
   const server = opts.server ?? defaultServer();
   const dir = opts.dbFile ? dirname(opts.dbFile) : mkdtempSync(join(tmpdir(), 'muneem-desktop-'));
   const file = opts.dbFile ?? (opts.file ? join(dir, 'muneem.sqlite') : ':memory:');
   const db = openDatabase(file, { quickCheck: false });
   await migrate(db);
   const app = createApp({
-    db: () => db, dbFile: file, receiptsDir: join(dir, 'receipts'), backupsDir: join(dir, 'backups'), bundlesDir: join(dir, 'bundles'), secrets: new MemorySecretStore(), loggers: silentLoggers(),
-    apiBaseUrl: 'http://cloud.test/v1', appVersion: '0.0.0-test', platform: 'linux', fetchImpl: fakeFetch(server), probeIntervalMs: 3_600_000, ...(opts.now && { now: opts.now }),
+    db: () => db, dbFile: file, receiptsDir: join(dir, 'receipts'), backupsDir: join(dir, 'backups'), bundlesDir: join(dir, 'bundles'), secrets: opts.secrets ?? new MemorySecretStore(), loggers: silentLoggers(),
+    apiBaseUrl: opts.apiBaseUrl ?? 'http://cloud.test/v1', appVersion: '0.0.0-test', platform: 'linux', fetchImpl: opts.fetch ?? fakeFetch(server), probeIntervalMs: 3_600_000, ...(opts.now && { now: opts.now }),
+    ...(opts.syncTransport && { syncTransport: opts.syncTransport }), ...(opts.random && { random: opts.random }),
+    coldStart: opts.coldStart ?? 'pull', ...(opts.bundleFetcher && { bundleFetcher: opts.bundleFetcher }), sleep: async () => undefined,
   });
   app.device.ensureIdentity();
   await app.connectivity.probe();
@@ -81,9 +91,9 @@ export function caller(app: App) {
 }
 
 // Owner logged in, with a business, a Delhi branch and terminal T01 selected on this device.
-export async function ownerAtTill(app: App, over: { stateCode?: string; taxScheme?: string; gstin?: string } = {}): Promise<{ businessId: string; branchId: string; terminalId: string }> {
+export async function ownerAtTill(app: App, over: { stateCode?: string; taxScheme?: string; gstin?: string; identifier?: string; password?: string } = {}): Promise<{ businessId: string; branchId: string; terminalId: string }> {
   const { data } = caller(app);
-  await data('auth.login', { identifier: '9999999999', password: 'correct-horse' });
+  await data('auth.login', { identifier: over.identifier ?? '9999999999', password: over.password ?? 'correct-horse' });
   const stateCode = over.stateCode ?? '07';
   const b = await data<{ id: string }>('business.create', {
     name: 'Sharma Store', businessType: 'retail', stateCode, taxScheme: over.taxScheme ?? 'regular', ...(over.gstin && { gstin: over.gstin }),

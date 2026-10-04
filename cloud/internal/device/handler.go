@@ -1,6 +1,7 @@
 package device
 
 import (
+	"context"
 	"crypto/ed25519"
 	"encoding/base64"
 	"errors"
@@ -16,9 +17,15 @@ import (
 	"github.com/sparselabs/muneem/cloud/internal/store"
 )
 
+// RevocationRecorder tells the business's other devices that one was revoked (a control change, Stage 7c).
+type RevocationRecorder interface {
+	DeviceRevoked(ctx context.Context, tx pgx.Tx, businessID, deviceID string) error
+}
+
 type Handler struct {
-	DB       *store.DB
-	Verifier *Verifier
+	DB          *store.DB
+	Verifier    *Verifier
+	Revocations RevocationRecorder
 }
 
 func toAPI(d *store.Device) api.Device {
@@ -175,6 +182,11 @@ func (h *Handler) RevokeDevice(c echo.Context, deviceID string) error {
 			return err
 		}
 		d.Status = "revoked"
+		if d.BusinessID != nil && h.Revocations != nil {
+			if err := h.Revocations.DeviceRevoked(ctx, tx, *d.BusinessID, d.ID); err != nil {
+				return err
+			}
+		}
 		out = toAPI(d)
 		return store.Audit(ctx, tx, d.BusinessID, &cl.Subject, &d.ID, "device.revoke", "device", &d.ID, nil, out, c.Response().Header().Get(echo.HeaderXRequestID))
 	})

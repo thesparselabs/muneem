@@ -20,7 +20,7 @@ describe('preload surface (LLD §10.1: generated, exactly the contract)', () => 
     expect(methods.sort()).toEqual([...channels].sort());
     expect([...EXPOSED_CHANNELS].sort()).toEqual([...channels].sort());
     expect(flatten(api).filter((m) => m.startsWith('events.'))).toEqual(['events.on']);
-    expect(EXPOSED_EVENTS).toEqual(['sync.status', 'connectivity.changed', 'session.changed']);
+    expect(EXPOSED_EVENTS).toEqual(['sync.status', 'connectivity.changed', 'session.changed', 'sync.hydration']);
   });
   it('never exposes raw ipcRenderer, require, sql, shell or file access', () => {
     const api = exposed.muneem as Record<string, unknown>;

@@ -10,16 +10,16 @@ import { documentCashMovements } from './register.js';
 export interface PaymentRecord {
   id: string; businessId: string; branchId: string; terminalId: string; sessionId: string | null; commandId: string;
   partyType: PartyType; partyId: string; seriesId: string; docNumber: string; docSeq: number; paymentDate: string; fy: string;
-  method: Payment['method']; amountPaise: number; reference: string | null; note: string | null;
+  method: Payment['method']; amountPaise: number; reference: string | null; note: string | null; createdAt?: string;
 }
 
 export function insertPayment(db: Db, r: PaymentRecord, actor: Actor): void {
-  const t = nowIso();
+  const t = r.createdAt ?? nowIso();
   stmt(db, `INSERT INTO payment (id, business_id, branch_id, terminal_id, session_id, direction, party_type, party_id, series_id, doc_number, doc_seq,
       payment_date, fy, method, amount_paise, reference, note, command_id, created_at, updated_at, created_by, device_id)
     VALUES (@id, @businessId, @branchId, @terminalId, @sessionId, @direction, @partyType, @partyId, @seriesId, @docNumber, @docSeq, @paymentDate, @fy,
       @method, @amountPaise, @reference, @note, @commandId, @t, @t, @by, @device)`)
-    .run({ ...r, direction: r.partyType === 'customer' ? 'in' : 'out', t, by: actor.userId, device: actor.deviceId });
+    .run({ ...r, createdAt: undefined, direction: r.partyType === 'customer' ? 'in' : 'out', t, by: actor.userId, device: actor.deviceId });
 }
 
 export const paymentIdByCommand = (db: Db, businessId: string, commandId: string): string | null =>

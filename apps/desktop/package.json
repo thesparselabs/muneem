@@ -16,7 +16,8 @@
     "lint": "pnpm gen && eslint src test scripts",
     "test": "pnpm gen && vitest run",
     "crash-loop": "tsx scripts/crash-loop.ts",
-    "soak": "MUNEEM_SOAK_DAYS=365 vitest run test/soak"
+    "soak": "MUNEEM_SOAK_DAYS=365 vitest run test/soak",
+    "sim": "MUNEEM_SIM_SEEDS=500 vitest run test/sync/simulation.test.ts"
   },
   "dependencies": {
     "@muneem/contracts": "workspace:*",
@@ -36,6 +37,7 @@
   },
   "devDependencies": {
     "@electron/rebuild": "^4.0.0",
+    "@muneem/sync-reference": "workspace:*",
     "@tailwindcss/vite": "^4.1.0",
     "@types/better-sqlite3": "^7.6.13",
     "@types/papaparse": "^5.5.2",

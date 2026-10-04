@@ -2,6 +2,11 @@
 export DATABASE_URL ?= postgres://muneem:muneem@localhost:5433/muneem?sslmode=disable
 export JWT_SECRET   ?= dev-only-change-me
 export PORT         ?= 8080
+export MUNEEM_S3_ENDPOINT   ?= http://localhost:9000
+export MUNEEM_S3_BUCKET     ?= muneem-snapshots
+export MUNEEM_S3_ACCESS_KEY ?= muneem
+export MUNEEM_S3_SECRET_KEY ?= muneem-dev-secret
+export MUNEEM_S3_REGION     ?= us-east-1
 OPENAPI := ../packages/contracts/openapi/muneem-v1.yaml
 
 .PHONY: gen build run test lint migrate-up migrate-down db-roles smoke

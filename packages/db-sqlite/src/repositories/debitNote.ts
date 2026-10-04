@@ -38,7 +38,7 @@ export function getDebitNote(db: Db, id: string): (DebitNote & { businessId: str
       igst_paise AS igstPaise, cess_paise AS cessPaise, charges_paise AS chargesPaise, round_off_paise AS roundOffPaise, total_paise AS totalPaise, itc_reversed_paise AS itcReversedPaise,
       allocated_paise AS allocatedPaise FROM debit_note WHERE id = ?`).get(id) as NoteRow | undefined;
   if (!r) return null;
-  const lines = stmt(db, `SELECT purchase_item_id AS purchaseItemId, product_id AS productId, qty_milli AS qtyMilli, base_qty_milli AS baseQtyMilli,
+  const lines = stmt(db, `SELECT id, purchase_item_id AS purchaseItemId, product_id AS productId, qty_milli AS qtyMilli, base_qty_milli AS baseQtyMilli,
       taxable_paise AS taxablePaise, cgst_paise AS cgstPaise, sgst_paise AS sgstPaise, igst_paise AS igstPaise, cess_paise AS cessPaise,
       total_paise AS totalPaise, landed_value_paise AS landedValuePaise FROM debit_note_item WHERE debit_note_id = ? ORDER BY line_no`).all(id) as DebitNote['lines'];
   return { ...r, lines };

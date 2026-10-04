@@ -18,7 +18,8 @@ apps/desktop      Electron (main = privileged, renderer = untrusted React UI, pr
 packages/domain   Pure engines: money, GST, ids, financial year, catalog rules (names, barcodes, units, prices).
                   Money and GST give the same results as cloud/internal/domain (Go).
 packages/contracts IPC registry (zod), errors, permissions, OpenAPI HTTP contract → TS + Go types
-packages/db-sqlite Local DB: pragmas, migrator, schema, audit hash chain, outbox, repositories
+packages/db-sqlite Local DB: pragmas, migrator, schema, audit hash chain, outbox, repositories, sync apply path
+packages/sync-reference In-memory reference implementation of the sync protocol, for tests (ADR-0042)
 cloud/            Go + Echo API, Postgres with row-level security, Go port of the engines
 scripts/          schema-lint, diff-fuzz, gen-preload
 design/           PRD, PRD review, HLD, LLD (intent)
@@ -35,6 +36,8 @@ docs/             this folder (reality, with reasons)
 | Financial documents & audit log | Append-only; corrections are new documents | SQLite `RAISE(ABORT)` triggers; Postgres triggers + role grants |
 | Tenant data | A business never sees another's rows | Postgres RLS keyed on `app.business_id` set per transaction |
 | Hardware / network | Never inside the commit path | (Stage 3+) design rule, HLD §8 |
+| Sync transport ↔ SQLite | The utility process does HTTP only; main alone writes, and a pulled change never writes an outbox or audit row | process split (HLD §3.1); round-trip no-echo test |
+| TS ↔ Go sync servers | Same answers to the same requests | shared protocol fixtures in both suites (ADR-0042) |
 
 ## Invariants checked by tests
 
@@ -165,6 +168,38 @@ docs/             this folder (reality, with reasons)
 - **Statements:** Trial Balance, P&L and Balance Sheet read the journal. Retained earnings are computed until Stage 8's
   closing journal, and customer advances and supplier debits are presented apart.
 
+## Sync (Stage 7)
+
+- **The wire** (LLD §7, `packages/contracts` `protocol.ts`):
+  - **Push:** per-operation results; a duplicate is a success.
+  - **Pull:** paged, one of four streams (control, config, masters, documents).
+  - **Bootstrap:** hands out a gzipped NDJSON bundle for a new device.
+  - **Payloads:** each outbox payload is a whole document with its movements, party entry and journal, typed per
+    entity in `payloads.ts`.
+- **Cloud** (`cloud/internal/devicesync`, ADRs 0038, 0039 and 0041):
+  - **Storage:** each operation is applied in its own transaction into `entity_state`, with journals also in typed
+    tables and every accepted write in `change_log`.
+  - **Verification:** GST and totals are recomputed with the Go port, and every journal is checked against its
+    document. A failure goes to `dead_letter` whole.
+  - **Conflicts:** masters merge by field, the cloud wins on price, tax and config, a tombstone wins, and every
+    resolution is logged.
+  - **Ordering:** pushes for one business are serialized.
+- **Device** (`apps/desktop/src/main/sync`, ADR-0040):
+  - **Push:** the `SyncEngine` claims the outbox in seq order and settles each result: sent, retry with backoff,
+    failed, dead after 12 attempts, or superseded. HTTP and gzip run in a utility process.
+  - **Pull:** applies a page and its cursor in one transaction. Other terminals' documents are stored with their
+    stored values (no re-costing) through `postSyncedJournal` and the same projections local writes use.
+  - **Natural keys:** rows each device makes on demand (periods, accounts, units) are matched by natural key.
+  - **Movement order:** every device replays movements in the same order.
+- **Hydration:** a new device downloads the bundle with resume and applies it through the pull path. The bundle's
+  documents carry every version, from `change_log`.
+- **Invariants checked:**
+  - the simulation suite: three devices behind a seeded fault injector, with no loss, no duplicates, the same books
+    and catalog everywhere, and deterministic conflict outcomes;
+  - the §37 scenario;
+  - the protocol fixtures on both servers;
+  - NFR-022 throughput.
+
 ## Identity and trust
 
 - Cloud is authoritative for users, roles and permissions; the device caches a **permission snapshot** and enforces
@@ -176,7 +211,7 @@ docs/             this folder (reality, with reasons)
 
 ## What is not built yet
 
-Reports and exports, and the sync worker. In accounting: the year-end closing and opening journals, and GST returns with
+Reports and exports, attachments upload (FR-075) and typed cloud report tables. In accounting: the year-end closing and opening journals, and GST returns with
 set-off (Stage 8). In inventory: transfers, multiple warehouses per branch, batch/serial tracking. In billing: sale
 cancel, returns/credit notes and manager PIN override; USB/Windows printers and non-ASCII receipt text. In purchases and
 payments: purchase orders and GRN, reverse charge, debit-note cancellation, refunding a customer's advance, payment

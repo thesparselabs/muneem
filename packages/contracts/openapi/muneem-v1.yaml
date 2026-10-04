@@ -3,7 +3,7 @@ info:
   title: Muneem Cloud API
   version: 1.0.0
   description: |
-    Stage 1 surface: identity, device registration, business setup, health.
+    Stage 1 surface: identity, device registration, business setup, health. Stage 7 adds sync push, pull and bootstrap.
     Single source of truth for both the Go server (oapi-codegen) and the desktop client (openapi-typescript).
     Every response carries `X-Server-Time` (NFR-018). Every request from a registered device carries
     `X-Device-Id`, `X-Device-Timestamp`, `X-Device-Signature`, `X-App-Version`, `X-Schema-Version`,
@@ -328,6 +328,104 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Terminal'
+  /sync/push:
+    post:
+      operationId: syncPush
+      tags: [sync]
+      description: Per-operation results; a duplicate is a success (LLD §7.1, Stage 7).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PushRequest'
+      responses:
+        '200':
+          description: Results, one per operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PushResponse'
+        default:
+          $ref: '#/components/responses/Error'
+  /sync/pull:
+    get:
+      operationId: syncPull
+      tags: [sync]
+      parameters:
+        - $ref: '#/components/parameters/BusinessIdQuery'
+        - name: stream
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [masters, config, documents, control]
+        - name: since
+          in: query
+          required: true
+          schema:
+            type: integer
+            format: int64
+            minimum: 0
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 500
+            default: 500
+      responses:
+        '200':
+          description: A page of changes after `since`
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PullResponse'
+        default:
+          $ref: '#/components/responses/Error'
+  /sync/bootstrap:
+    post:
+      operationId: syncBootstrap
+      tags: [sync]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [businessId]
+              properties:
+                businessId:
+                  type: string
+      responses:
+        '200':
+          description: The snapshot, building or ready
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Snapshot'
+        default:
+          $ref: '#/components/responses/Error'
+  /sync/bootstrap/{snapshotId}:
+    get:
+      operationId: getSnapshot
+      tags: [sync]
+      parameters:
+        - name: snapshotId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: The snapshot
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Snapshot'
+        default:
+          $ref: '#/components/responses/Error'
 components:
   securitySchemes:
     bearerAuth:
@@ -350,6 +448,12 @@ components:
     BusinessIdPath:
       name: businessId
       in: path
+      required: true
+      schema:
+        type: string
+    BusinessIdQuery:
+      name: businessId
+      in: query
       required: true
       schema:
         type: string
@@ -727,3 +831,83 @@ components:
             created_at:
               type: string
               format: date-time
+    PushOperation:
+      type: object
+      required: [operationId, seq, entityType, entityId, operationType, dependsOn, payloadHash, payload]
+      properties:
+        operationId: { type: string }
+        seq: { type: integer, format: int64 }
+        entityType: { type: string }
+        entityId: { type: string }
+        operationType: { type: string, enum: [create, update, cancel, void] }
+        dependsOn: { type: string, nullable: true }
+        payloadHash: { type: string }
+        payload: { type: object, additionalProperties: true }
+    PushRequest:
+      type: object
+      required: [businessId, protocol, schemaVersion, clientTime, operations]
+      properties:
+        businessId: { type: string }
+        protocol: { type: integer }
+        schemaVersion: { type: integer }
+        clientTime: { type: string, format: date-time }
+        operations:
+          type: array
+          maxItems: 200
+          items: { $ref: '#/components/schemas/PushOperation' }
+    SyncError:
+      type: object
+      required: [code, class, detail]
+      properties:
+        code: { type: string }
+        class: { type: string, description: 'transient | permanent | dependency' }
+        detail: { type: string }
+    PushResult:
+      type: object
+      required: [operationId, status]
+      properties:
+        operationId: { type: string }
+        status: { type: string, enum: [applied, duplicate, rejected, deferred] }
+        serverSeq: { type: integer, format: int64 }
+        error: { $ref: '#/components/schemas/SyncError' }
+    PushResponse:
+      type: object
+      required: [serverTime, nextPullSeq, results]
+      properties:
+        serverTime: { type: string, format: date-time }
+        nextPullSeq: { type: integer, format: int64 }
+        results:
+          type: array
+          items: { $ref: '#/components/schemas/PushResult' }
+    Change:
+      type: object
+      required: [seq, stream, entityType, entityId, op, version, originDeviceId, payload]
+      properties:
+        seq: { type: integer, format: int64 }
+        stream: { type: string, enum: [masters, config, documents, control] }
+        entityType: { type: string }
+        entityId: { type: string }
+        op: { type: string, enum: [upsert, delete] }
+        version: { type: integer }
+        originDeviceId: { type: string, nullable: true }
+        payload: { type: object, additionalProperties: true }
+    PullResponse:
+      type: object
+      required: [changes, nextSeq, hasMore, serverTime]
+      properties:
+        changes:
+          type: array
+          items: { $ref: '#/components/schemas/Change' }
+        nextSeq: { type: integer, format: int64 }
+        hasMore: { type: boolean }
+        serverTime: { type: string, format: date-time }
+    Snapshot:
+      type: object
+      required: [snapshotId, status]
+      properties:
+        snapshotId: { type: string }
+        status: { type: string, enum: [building, ready, failed] }
+        url: { type: string }
+        asOfSeq: { type: integer, format: int64 }
+        bytes: { type: integer, format: int64 }
+        expiresAt: { type: string, format: date-time }

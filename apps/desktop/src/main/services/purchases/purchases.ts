@@ -1,8 +1,8 @@
 import { AppError, type CreatePurchaseInput, type Purchase, type PurchaseDraft, type PurchaseListInput, type PurchasePage, type PurchaseQuote } from '@muneem/contracts';
 import { docSeriesPrefix, financialYearOf, formatRupees as rupees, newUlid } from '@muneem/domain';
 import {
-  allocateDocNumber, ensureDefaultWarehouse, findOrCreateSeries, getPurchase, getTerminal, insertPurchase, listPurchases, movementsForRef,
-  postCorrections, postDocumentJournal, postedPurchaseByInvoice, postMovement, postPartyEntry, purchaseIdByCommand, recordChange, withTransaction,
+  allocateDocNumber, ensureDefaultWarehouse, findOrCreateSeries, getPurchase, getTerminal, insertPurchase, listPurchases, correctionMovementsFor, movementsForRef,
+  documentKeys, postCorrections, postDocumentJournal, postedPurchaseByInvoice, postMovement, postPartyEntry, purchaseIdByCommand, recordChange, withTransaction,
 } from '@muneem/db-sqlite';
 import type { PosContext } from '../pos/posContext.js';
 import type { PricedPurchase, PurchasePricing } from './purchasePricing.js';
@@ -83,7 +83,7 @@ export class PurchaseService {
     const corrections = postCorrections(db, till.businessId, 'purchase', id, till, actor);
     recordChange(db, till.businessId, actor, {
       action: 'purchase.create', entityType: 'purchase', entityId: id, operationType: 'create',
-      after: { ...getPurchase(db, id), movements: movementsForRef(db, till.businessId, 'purchase', id), entry, journal, corrections },
+      after: { ...getPurchase(db, id), ...documentKeys(db, 'purchase', id), movements: movementsForRef(db, till.businessId, 'purchase', id), entry, journal, corrections, correctionMovements: correctionMovementsFor(db, till.businessId, 'purchase', id) },
     });
     return id;
   }

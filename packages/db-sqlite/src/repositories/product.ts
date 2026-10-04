@@ -131,7 +131,7 @@ export function createProduct(db: Db, businessId: string, input: ProductInput, a
     const conversions = input.conversions.map((c) => insertConversion(db, businessId, id, input.baseUomId, c, actor));
     const root = recordChange(db, businessId, actor, {
       action: 'product.create', entityType: 'product', entityId: id, operationType: 'create',
-      after: { ...productColumns(input), id, barcodes, conversions, sellingPricePaise: input.sellingPricePaise ?? null },
+      after: { ...productColumns(input), id, barcodes, conversions, sellingPricePaise: input.sellingPricePaise ?? null, version: 1, updatedAt: s.t },
     });
     for (const b of barcodes) queueChild(db, businessId, actor, 'barcode', b.id, 'create', { productId: id, ...b }, root);
     for (const c of conversions) queueChild(db, businessId, actor, 'uom_conversion', c.id, 'create', { productId: id, ...c }, root);
@@ -203,15 +203,19 @@ export function updateProduct(db: Db, update: ProductUpdate, actor: Actor, on: s
     const input: ProductUpdate = { ...update, ...(update.sellingPricePaise === undefined && before.sellingPricePaise !== undefined && { sellingPricePaise: before.sellingPricePaise }) };
     assertValid(input);
     assertBarcodesFree(db, before.businessId, input, before.id);
+    const t = nowIso();
     stmt(db, `UPDATE product SET name=@name, name_norm=@name_norm, sku=@sku, hsn_code=@hsn_code, category_id=@category_id, brand_id=@brand_id,
         base_uom_id=@base_uom_id, tax_treatment=@tax_treatment, gst_rate_bp=@gst_rate_bp, cess_rate_bp=@cess_rate_bp,
         cess_per_unit_paise=@cess_per_unit_paise, price_is_inclusive=@price_is_inclusive, mrp_paise=@mrp_paise,
         purchase_price_paise=@purchase_price_paise, allow_negative_stock=@allow_negative_stock, reorder_level_milli=@reorder_level_milli,
         updated_at=@t, version=version+1, sync_state='pending'
-      WHERE id=@id AND version=@v`).run({ id: input.id, v: input.version, t: nowIso(), ...productColumns(input) });
+      WHERE id=@id AND version=@v`).run({ id: input.id, v: input.version, t, ...productColumns(input) });
     const root = recordChange(db, before.businessId, actor, {
       action: 'product.update', entityType: 'product', entityId: before.id, operationType: 'update', before,
-      after: { ...productColumns(input), id: before.id, barcodes: input.barcodes, conversions: input.conversions, sellingPricePaise: input.sellingPricePaise ?? null },
+      after: {
+        ...productColumns(input), id: before.id, barcodes: input.barcodes, conversions: input.conversions, sellingPricePaise: input.sellingPricePaise ?? null,
+        version: input.version + 1, updatedAt: t,
+      },
     });
     syncBarcodes(db, before, input, actor, root);
     syncConversions(db, before, input, actor, root);
@@ -230,12 +234,13 @@ export function setProductActive(db: Db, id: string, expectedVersion: number, ac
     const before = getProduct(db, id, on);
     if (!before) throw new Error('NOT_FOUND');
     if (before.version !== expectedVersion) throw new Error('VERSION_CONFLICT');
+    const t = nowIso();
     stmt(db, "UPDATE product SET is_active = ?, updated_at = ?, version = version + 1, sync_state = 'pending' WHERE id = ? AND version = ?")
-      .run(active ? 1 : 0, nowIso(), id, expectedVersion);
+      .run(active ? 1 : 0, t, id, expectedVersion);
     const after = getProduct(db, id, on)!;
     recordChange(db, before.businessId, actor, {
       action: active ? 'product.reactivate' : 'product.deactivate', entityType: 'product', entityId: id, operationType: 'update',
-      before: { isActive: before.isActive }, after: { id, isActive: active },
+      before: { isActive: before.isActive }, after: { id, isActive: active, version: expectedVersion + 1, updatedAt: t },
     });
     return after;
   });

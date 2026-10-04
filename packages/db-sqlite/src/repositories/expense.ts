@@ -35,17 +35,17 @@ export interface ExpenseRecord {
   vendorName: string | null; vendorGstin: string | null; seriesId: string; docNumber: string; docSeq: number; expenseDate: string; fy: string;
   description: string | null; method: Expense['method']; reference: string | null; supplyType: 'intra' | 'inter' | null;
   taxablePaise: number; cgstPaise: number; sgstPaise: number; igstPaise: number; cessPaise: number; itcPaise: number; roundOffPaise: number;
-  totalPaise: number; dueDate: string | null; commandId: string;
+  totalPaise: number; dueDate: string | null; commandId: string; createdAt?: string;
 }
 
 export function insertExpense(db: Db, r: ExpenseRecord, actor: Actor): void {
-  const t = nowIso();
+  const t = r.createdAt ?? nowIso();
   stmt(db, `INSERT INTO expense (id, business_id, branch_id, terminal_id, session_id, category_id, supplier_id, vendor_name, vendor_gstin, series_id,
       doc_number, doc_seq, expense_date, fy, description, method, reference, supply_type, taxable_paise, cgst_paise, sgst_paise, igst_paise, cess_paise,
       itc_paise, round_off_paise, total_paise, due_date, command_id, created_at, updated_at, created_by, device_id)
     VALUES (@id, @businessId, @branchId, @terminalId, @sessionId, @categoryId, @supplierId, @vendorName, @vendorGstin, @seriesId, @docNumber, @docSeq,
       @expenseDate, @fy, @description, @method, @reference, @supplyType, @taxablePaise, @cgstPaise, @sgstPaise, @igstPaise, @cessPaise, @itcPaise,
-      @roundOffPaise, @totalPaise, @dueDate, @commandId, @t, @t, @by, @device)`).run({ ...r, t, by: actor.userId, device: actor.deviceId });
+      @roundOffPaise, @totalPaise, @dueDate, @commandId, @t, @t, @by, @device)`).run({ ...r, createdAt: undefined, t, by: actor.userId, device: actor.deviceId });
 }
 
 export const expenseIdByCommand = (db: Db, businessId: string, commandId: string): string | null =>

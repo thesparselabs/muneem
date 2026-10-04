@@ -34,6 +34,24 @@ jobs:
   go:
     runs-on: ubuntu-latest
     defaults: { run: { working-directory: cloud } }
+    services:
+      postgres:            # sync ingest/pull integration tests and the protocol fixtures (Stage 7b/7c)
+        image: postgres:16-alpine
+        env: { POSTGRES_USER: muneem, POSTGRES_PASSWORD: muneem, POSTGRES_DB: muneem }
+        ports: ['5433:5432']
+        options: >-
+          --health-cmd "pg_isready -U muneem" --health-interval 5s --health-timeout 3s --health-retries 10
+      minio:               # hydration bundles (Stage 7f); the bitnami image starts the server without a command
+        image: bitnamilegacy/minio:2025.5.24
+        env: { MINIO_ROOT_USER: muneem, MINIO_ROOT_PASSWORD: muneem-dev-secret }
+        ports: ['9000:9000']
+        options: >-
+          --health-cmd "curl -fs http://localhost:9000/minio/health/live" --health-interval 5s --health-timeout 3s --health-retries 10
+    env:
+      MUNEEM_TEST_DATABASE_URL: postgres://muneem:muneem@localhost:5433/muneem?sslmode=disable
+      MUNEEM_TEST_S3_ENDPOINT: http://localhost:9000
+      MUNEEM_TEST_S3_ACCESS_KEY: muneem
+      MUNEEM_TEST_S3_SECRET_KEY: muneem-dev-secret
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-go@v7
@@ -42,6 +60,34 @@ jobs:
       - run: go build ./...
       - run: go vet ./...
       - run: go test ./...     # loads packages/domain/fixtures — the cross-language contract
+  e2e-cloud:
+    # §37 and a smaller sync simulation: real desktop devices against the real Go API, Postgres and MinIO (ADR-0042, Stage 7h).
+    if: github.event_name == 'pull_request' || github.event_name == 'push'
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env: { POSTGRES_USER: muneem, POSTGRES_PASSWORD: muneem, POSTGRES_DB: muneem }
+        ports: ['5433:5432']
+        options: >-
+          --health-cmd "pg_isready -U muneem" --health-interval 5s --health-timeout 3s --health-retries 10
+      minio:
+        image: bitnamilegacy/minio:2025.5.24
+        env: { MINIO_ROOT_USER: muneem, MINIO_ROOT_PASSWORD: muneem-dev-secret }
+        ports: ['9000:9000']
+        options: >-
+          --health-cmd "curl -fs http://localhost:9000/minio/health/live" --health-interval 5s --health-timeout 3s --health-retries 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6   # version comes from package.json packageManager
+      - uses: actions/setup-node@v7
+        with: { node-version: 24, cache: pnpm }
+      - uses: actions/setup-go@v7
+        with: { go-version-file: cloud/go.mod, cache-dependency-path: cloud/go.sum }
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm turbo run gen build --filter=@muneem/desktop^...
+      - run: make -C cloud gen
+      - run: bash scripts/e2e-cloud.sh   # migrates a muneem_e2e database, starts the API, runs test/sync/e2eCloud.test.ts
   diff-fuzz:
     if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     needs: [node, go]

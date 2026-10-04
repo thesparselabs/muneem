@@ -35,6 +35,8 @@ import AdjustStock from './routes/inventory/AdjustStock.js';
 import StockTake from './routes/inventory/StockTake.js';
 import OpeningStock from './routes/inventory/OpeningStock.js';
 import PrinterSettings from './routes/PrinterSettings.js';
+import StockReconciliation from './routes/inventory/StockReconciliation.js';
+import ReviewItems from './routes/settings/ReviewItems.js';
 
 export default function App() {
   const { session, setSession, setSync, setOnline } = useUi();
@@ -74,6 +76,7 @@ export default function App() {
         <Route path="/inventory/adjust" element={<AdjustStock />} />
         <Route path="/inventory/stock-take" element={<StockTake />} />
         <Route path="/inventory/opening" element={<OpeningStock />} />
+        <Route path="/inventory/reconciliation" element={<StockReconciliation />} />
         <Route path="/parties" element={<Parties />} />
         <Route path="/parties/outstanding" element={<Outstanding />} />
         <Route path="/parties/:kind/:id" element={<PartyPage />} />
@@ -91,6 +94,7 @@ export default function App() {
         <Route path="/accounts/journal/new" element={<ManualJournal />} />
         <Route path="/accounts/periods" element={<Periods />} />
         <Route path="/settings/printer" element={<PrinterSettings />} />
+        <Route path="/settings/review" element={<ReviewItems />} />
         <Route path="/diagnostics" element={<Diagnostics />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />

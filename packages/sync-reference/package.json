@@ -1,0 +1,20 @@
+{
+  "name": "@muneem/sync-reference",
+  "version": "0.1.0",
+  "private": true,
+  "description": "In-memory reference implementation of the sync protocol and conflict matrix, with a seeded fault injector (ADR-0042).",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": { ".": { "types": "./dist/index.d.ts", "default": "./dist/index.js" } },
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "lint": "eslint src test"
+  },
+  "dependencies": {
+    "@muneem/contracts": "workspace:*"
+  }
+}

@@ -6,7 +6,7 @@ import type { PosContext } from '../pos/posContext.js';
 export interface Party { partyType: PartyType; partyId: string }
 // `on`: the settling document's date when allocated with it, else today (5h #5).
 export interface Settlement { type: AllocationSource; id: string; openPaise: number; on: string }
-export interface Applied { id: string; targetType: AllocationTarget; targetId: string; amountPaise: number }
+export interface Applied { id: string; targetType: AllocationTarget; targetId: string; amountPaise: number; allocatedOn: string }
 
 // Applies a settlement to the party's open charges, oldest due first or as chosen (ADR-0025); the rest stays unallocated.
 export class SettlementAllocator {
@@ -32,10 +32,10 @@ export class SettlementAllocator {
     }
     return picked.allocations.map((a) => {
       const targetType = types.get(a.itemId)!;
-      const id = insertAllocation(db, {
+      const { id, allocatedOn } = insertAllocation(db, {
         businessId, partyType: party.partyType, partyId: party.partyId, sourceType: source.type, sourceId: source.id, targetType, targetId: a.itemId, amountPaise: a.amountPaise, on: source.on,
       }, this.ctx.actor());
-      return { id, targetType, targetId: a.itemId, amountPaise: a.amountPaise };
+      return { id, targetType, targetId: a.itemId, amountPaise: a.amountPaise, allocatedOn };
     });
   }
 }
