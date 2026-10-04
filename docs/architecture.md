@@ -209,6 +209,34 @@ docs/             this folder (reality, with reasons)
   - the protocol fixtures on both servers;
   - NFR-022 throughput.
 
+## Reports, compliance, backup and update (Stage 8)
+
+- **Reports** (ADR-0046): a `ReportDefinition` catalogue of 25 business, statement and GST reports runs on a
+  read-only connection. CSV, XLSX and PDF writers share one document shape with the business header. The user picks
+  where an export goes, so the renderer never sees a path.
+- **Dashboard:** it reads daily summary tables that triggers keep current in the same transaction as each document,
+  including pulled ones. Diagnostics checks for drift and heals it. The cloud keeps the same aggregates.
+- **Returns** (ADR-0043): credit notes have their own tables and `C` series, price each line from the sale's own tax,
+  and post through `SALE_RETURN_RULE`.
+- **GST** (ADR-0044): GSTR-1, GSTR-3B, the HSN summary and the ITC register are built from documents and must equal
+  each month's tax-account movements. `gst_setoff` and `gst_payment` documents clear the tax accounts in the
+  statutory order.
+- **Year end** (ADR-0045): see Accounting.
+- **Backups** (ADR-0047): AES-256-GCM `.mbk` archives with a device-signed manifest, kept by retention and uploaded
+  nightly. The data key is escrowed with the cloud, wrapped by a server master key. Restore works locally, from the
+  cloud, or by hydration.
+- **Audit chain** (ADR-0048): audit rows sync on a push-only stream. Both servers check sequence, link and hash, and
+  a break is dead-lettered, alerted and shown on every device.
+- **Updates** (ADR-0049): channels and a staged rollout by installation cohort; installs only when the POS is idle.
+  The migration guard takes a backup, migrates in one transaction, checks, and restores on failure. The cloud accepts
+  sync protocols N and N−1.
+- **Invariants checked:**
+  - a restored device (hydrated or from a cloud backup) has the **byte-identical** Trial Balance at every month end,
+    equal to the cloud's;
+  - each month's returns equal the tax accounts;
+  - a closed year's reports are unchanged;
+  - a tampered backup or audit row is refused.
+
 ## Identity and trust
 
 - Cloud is authoritative for users, roles and permissions; the device caches a **permission snapshot** and enforces
@@ -220,9 +248,9 @@ docs/             this folder (reality, with reasons)
 
 ## What is not built yet
 
-Reports and exports, attachments upload (FR-075) and typed cloud report tables. In accounting: the year-end closing and opening journals, and GST returns with
-set-off (Stage 8). In inventory: transfers, multiple warehouses per branch, batch/serial tracking. In billing: sale
-cancel, returns/credit notes and manager PIN override; USB/Windows printers and non-ASCII receipt text. In purchases and
-payments: purchase orders and GRN, reverse charge, debit-note cancellation, refunding a customer's advance, payment
-reminders, TDS/TCS. Product variants, weighed barcodes and label printing are deferred (ADR-0008). See
-`build-stages.md`.
+Attachments upload (FR-075), SMS/WhatsApp reminders, e-invoice and e-way bill, GST portal JSON and composition
+returns (GSTR-4/CMP-08), a cloud owner web UI and FR-103 retention. In inventory: transfers, multiple warehouses per
+branch, batch/serial tracking. In billing: manager PIN override; USB/Windows printers and non-ASCII receipt text
+(Stage 9). In purchases and payments: purchase orders and GRN, reverse charge, debit-note cancellation, refunding a
+customer's advance, TDS/TCS. Product variants, weighed barcodes and label printing are deferred (ADR-0008). Production
+deployment, monitoring, signed releases and the pilot are Stage 9. See `build-stages.md`.

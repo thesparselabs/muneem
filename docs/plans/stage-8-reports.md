@@ -327,3 +327,68 @@ soak, a load watchdog):
 - **Purchases:** reverse-charge purchases.
 - **Cloud web:** the owner reports web UI and FR-103 retention pruning with a cloud fallback.
 - **Attachments** (FR-075) move to Stage 9 unless 8f's object-storage work makes them cheap; that is decided at 8f.
+
+## As built (2026-10-05)
+
+**How it was built.** The lead wrote 8a and the details of every part, then ran agents in isolated worktrees, at most
+two at a time:
+- billing 8b, beside platform 8f;
+- platform 8g, beside gst 8c;
+- reports 8e, beside gst 8d;
+- platform 8i, beside reports 8h.
+
+The lead integrated each by cherry-pick, renumbered migrations where agents had planned around each other, and ran
+the full TypeScript and Go suites after every merge. The lead wrote the 8j exit tests.
+
+**Exit evidence:**
+- **The exit test** (`test/exit/restoreTrialBalance.test.ts`) runs 420 seeded days with 1,260 sales, returns, GST
+  set-offs and two year-end closes. A device hydrated from the cloud bundle and a device restored from the encrypted
+  cloud backup produce the **byte-identical Trial Balance** (canonical JSON) at all 15 month ends, with identical
+  books and healthy tie-outs.
+- **Against the Go cloud** with Postgres and MinIO, the hydrated and the restored device have the byte-identical
+  Trial Balance, and it equals the cloud's.
+- **Speed at 200k sales:**
+  - the dashboard reads in 52 ms, against a 300 ms budget;
+  - a year of each main report runs in 2–669 ms;
+  - CSV and XLSX exports take 150–300 ms.
+
+**Found by the tests and fixed:** returns' cost corrections; the restore-WAL handling (it turned out not to be a real
+bug, so the fix is kept as a guard); and a §37 clock jump that failed when the test ran just after midnight (a test
+bug).
+
+**Deviations from the plan:**
+- **Credit notes** have their own tables rather than being `sale` rows.
+- **Reports** run on a read-only connection in main, not a utility process.
+- **The updater** reuses a finished download but restarts an interrupted one, and `latest.yml` is not signed.
+- **A failed upgrade** rolls back the data but not the program.
+- **Set-off** documents use the `transfer`/`payment` journal sources with a `ref_type`.
+- **The year-end adjustment** is posted by a user, not automatically.
+- **Attachments** moved to Stage 9 or later.
+
+**Not done in Stage 8, carried to Stage 9:**
+- **Main-thread pause:** the daily-summary drift check takes 1.6 s for its 6-hourly 35-day run and 6.4 s over all
+  history at 200k sales. It runs on the main thread and must move off it.
+- **Set-off safety:** two offline devices can set off the same month, and there is no set-off cancel.
+- **CA review:** the six GST interpretations in ADR-0044 and the posting matrix need sign-off.
+- **Ops tasks:** code-signing certificates, the update host, `MUNEEM_BACKUP_MASTER_KEY` in a KMS, production object
+  storage with lifecycle rules.
+- **Manual checks:** the checklist below, and every earlier one, has not been clicked through.
+
+**Manual checklist (Stage 8 screens), not yet run:**
+1. **Return:** Sales → Returns, find a bill, return two lines in part with a cash refund. A `C` credit note prints,
+   the drawer's expected cash drops, and the bill shows what is returned. Cancel another bill: a full credit note.
+2. **Credit-sale return:** return part of a credit sale. The customer's outstanding falls by the returned amount.
+3. **GST:** GST → Returns for a past month. Every section has totals, the tie-out is green, and each section exports
+   (bare CSV/XLSX) and opens in the GST offline tool.
+4. **Set-off:** GST → Set-off for that month. The utilisation preview follows the statutory order; post it; then
+   GST → Payments, record the challan.
+5. **Year end:** Accounts → Year end for a closed financial year. The checklist shows locks and set-offs; close it,
+   and the closing journal appears. Last year's P&L reads exactly as before.
+6. **Reports:** run three reports (sales by product, receivables as of a date, Trial Balance); export each as CSV,
+   XLSX and PDF, and print one.
+7. **Dashboard:** today's sales, splits, low stock and the 30-day trend match the reports.
+8. **Backups:** Diagnostics → Backups, run a backup and verify it. On a second machine, "Restore from cloud backup":
+   the books match.
+9. **Audit:** Diagnostics → Audit trail shows "verified". (A tampered row is covered by tests only.)
+10. **Updates:** Settings → Updates on a dev feed. "Check now" downloads; "Restart and update" is refused with a sale
+    in the cart and allowed when idle.
