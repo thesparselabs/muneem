@@ -107,7 +107,7 @@ function stockDocument(db: Db, id: string): Built | null {
   if (!d) return null;
   const v = get<{ gain: number; loss: number }>(db, `SELECT COALESCE(SUM(CASE WHEN value_paise > 0 THEN value_paise END), 0) AS gain,
       COALESCE(-SUM(CASE WHEN value_paise < 0 THEN value_paise END), 0) AS loss
-    FROM stock_movement WHERE ref_type = ? AND ref_id = ? AND movement_type <> 'cost_correction'`, d.kind, id)!;
+    FROM stock_movement WHERE business_id = ? AND ref_type = ? AND ref_id = ? AND movement_type <> 'cost_correction'`, d.business_id, d.kind, id)!;
   const lines = d.kind === 'opening'
     ? buildJournal(OPENING_STOCK_RULE, { valuePaise: v.gain - v.loss })
     : buildJournal(STOCK_ADJUSTMENT_RULE, { lossPaise: v.loss, gainPaise: v.gain });
@@ -161,31 +161,33 @@ export function documentJournal(db: Db, kind: JournalDocKind, id: string): (Jour
 }
 
 // Posts a document's journal; a document that is already posted (a retried command, the backfill) posts nothing.
-export function postDocumentJournal(db: Db, kind: JournalDocKind, id: string, poster: Poster, actor: Actor, dateOverride?: string): PostedJournal | null {
+// A poster is needed only to number a journal whose document has none; without one such a journal is refused.
+export function postDocumentJournal(db: Db, kind: JournalDocKind, id: string, poster: Poster | null, actor: Actor, dateOverride?: string): PostedJournal | null {
   const j = documentJournal(db, kind, id);
   if (!j || journalForRef(db, j.businessId, j.source, j.refId)) return null;
-  return postJournal(db, { ...j, branchId: j.branchId ?? poster.branchId, terminalId: j.terminalId ?? poster.terminalId, ...(dateOverride && { docDate: dateOverride }) }, actor);
+  return postJournal(db, { ...j, branchId: j.branchId ?? poster?.branchId ?? null, terminalId: j.terminalId ?? poster?.terminalId ?? null, ...(dateOverride && { docDate: dateOverride }) }, actor);
 }
 
-// A cancellation reverses the document's journal on the day of the cancel.
-export function reverseDocumentJournal(db: Db, kind: JournalDocKind, id: string, date: string, poster: Poster, actor: Actor): PostedJournal | null {
+// A cancellation reverses the document's journal on the day of the cancel, under the original's number, branch and terminal.
+export function reverseDocumentJournal(db: Db, kind: JournalDocKind, id: string, date: string, actor: Actor): PostedJournal | null {
   const j = documentJournal(db, kind, id);
   if (!j) return null;
-  return reverseJournal(db, { businessId: j.businessId, branchId: j.branchId ?? poster.branchId, terminalId: j.terminalId ?? poster.terminalId,
-    source: j.source, refType: j.refType, refId: j.refId, docDate: date, narration: 'Cancelled' }, actor);
+  return reverseJournal(db, { businessId: j.businessId, source: j.source, refType: j.refType, refId: j.refId, docDate: date, narration: 'Cancelled' }, actor);
 }
 
 // Every cost correction a document's receipts or returns caused gets its own journal (6b details).
-export function postCorrections(db: Db, refType: string, refId: string, poster: Poster, actor: Actor): PostedJournal[] {
-  const ids = stmt(db, `SELECT c.id FROM stock_movement m JOIN stock_movement c ON c.ref_type = 'correction' AND c.ref_id = m.id
-    WHERE m.ref_type = ? AND m.ref_id = ? ORDER BY c.rowid`).pluck().all(refType, refId) as string[];
+export function postCorrections(db: Db, businessId: string, refType: string, refId: string, poster: Poster | null, actor: Actor): PostedJournal[] {
+  const ids = stmt(db, `SELECT c.id FROM stock_movement m JOIN stock_movement c ON c.business_id = m.business_id AND c.ref_type = 'correction' AND c.ref_id = m.id
+    WHERE m.business_id = ? AND m.ref_type = ? AND m.ref_id = ? ORDER BY c.rowid`).pluck().all(businessId, refType, refId) as string[];
   return ids.flatMap((id) => postDocumentJournal(db, 'cost_correction', id, poster, actor) ?? []);
 }
 
 // For documents whose repository records them: the journal follows as its own sync row, after the document's (6b details).
-export function queueJournal(db: Db, businessId: string, actor: Actor, journal: PostedJournal | null, documentEntityId: string): void {
+export interface SyncedDocument { entityType: string; entityId: string }
+export function queueJournal(db: Db, businessId: string, actor: Actor, journal: PostedJournal | null, document: SyncedDocument): void {
   if (!journal) return;
-  const dependsOn = stmt(db, 'SELECT operation_id FROM sync_outbox WHERE entity_id = ? ORDER BY seq DESC LIMIT 1').pluck().get(documentEntityId) as string | undefined;
+  const dependsOn = stmt(db, 'SELECT operation_id FROM sync_outbox WHERE business_id = ? AND entity_type = ? AND entity_id = ? ORDER BY seq DESC LIMIT 1')
+    .pluck().get(businessId, document.entityType, document.entityId) as string | undefined;
   appendOutbox(db, { businessId, deviceId: actor.deviceId, entityType: 'journal_entry', entityId: journal.id, operationType: 'create', payload: journal,
     ...(dependsOn && { dependsOnOperationId: dependsOn }) });
 }

@@ -166,6 +166,31 @@ All notable changes, newest first. Each entry records **what** changed and **why
   already holds. The cash a shop starts with is recorded once by manual journal (Dr 1100, Cr 3400); until then 1100
   can read below zero. Noted in the posting matrix after the golden flow showed it.
 
+### Fixed — Stage 6 review (6g)
+- **Cancels need no terminal again** (ADR-0037). Stage 6 had made cancelling a payment, expense or purchase need the
+  session's terminal, which Stage 5 did not. A reversal now takes the original journal's number, branch and terminal.
+  A journal without a document number (write-off, party opening) still needs a terminal for its `J` number and says
+  so. A business-level series was rejected because two offline devices would issue the same numbers.
+- **A business made before Stage 6 can open its books.** Its cash book threw and its chart page was empty until
+  something posted. The chart is now seeded when a session first has the business, and before the statement and chart
+  services read.
+- **Reversing a manual journal twice says "already reversed"** instead of showing a database UNIQUE error. The day book
+  row carries `reversedBy`, so Reverse is hidden even when the reversal is on another page.
+- **Backfilled journals reach the sync outbox,** each queued after its document's row. They had been written without
+  one, so the cloud would never have received them.
+- **The backlog keeps its terminal and user.** It read the session afresh each batch, so a business switch or logout
+  mid-run numbered journals with the wrong terminal. It now captures them when it starts and stops if the session
+  moves to another business. Each business opened in a run gets its own backlog, not only the first.
+- **Faster lookups.** Stock-document and cost-correction lookups now include `business_id`, so they use `ix_mov_ref`.
+  `queueJournal` filters by business and entity type, so it uses `ix_outbox_entity` instead of scanning the outbox.
+  Documents that post nothing (a register that closed exact, stock documents and corrections with no value) are left
+  out in SQL, so they are not rebuilt on every backlog and integrity run. A posting resolves its accounts with one
+  query and seeds the chart only on a miss. The tie-outs read every role balance in one grouped pass instead of eleven.
+  On the 365-day soak (same figures as 6f), the full integrity check went from 6.8 s to 5.9 s.
+- **One copy of shared rules.** The roles manual journals cannot touch (`MANUAL_JOURNAL_BLOCKED_ROLES`) and the date
+  helpers (`monthStart`, `monthEnd`, `nextMonthStart`, `dayBefore`, `fyStartOf`) live in `@muneem/domain`. They replace
+  the copies in db-sqlite, the renderer and the soak test, and the date helpers reuse the existing `addDays`.
+
 ### Fixed — Stage 5
 - **Cheap items were over-costed when sold** (ADR-0027, amends ADR-0018). An issue was costed at the average rounded
   to whole paise per unit: 1,000 units bought for ₹15 were costed at 2 paise each, so selling 999 booked ₹19.98 and

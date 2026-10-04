@@ -111,7 +111,7 @@ export class InventoryService {
       const movements: PostedMovement[] = movementsForRef(db, businessId, refType, id);
       const till = this.ctx.till();
       const journal = postDocumentJournal(db, 'stock_document', id, till, actor, this.ctx.today());
-      const corrections = postCorrections(db, refType, id, till, actor);
+      const corrections = postCorrections(db, businessId, refType, id, till, actor);
       recordChange(db, businessId, actor, {
         action: `stock.${kind}`, entityType: 'stock_adjustment', entityId: id, operationType: 'create', after: { id, kind, warehouseId, note, movements, journal, corrections },
       });

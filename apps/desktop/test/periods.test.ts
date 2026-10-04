@@ -61,12 +61,13 @@ describe('periods and late postings (6c, ADR-0033)', () => {
   });
 });
 
+const journalsOff = () => db.exec(`
+  CREATE TRIGGER off_je BEFORE INSERT ON journal_entry BEGIN SELECT RAISE(IGNORE); END;
+  CREATE TRIGGER off_jl BEFORE INSERT ON journal_line BEGIN SELECT RAISE(IGNORE); END;
+  CREATE TRIGGER off_ab BEFORE INSERT ON account_balance BEGIN SELECT RAISE(IGNORE); END;`);
+const journalsOn = () => db.exec('DROP TRIGGER off_je; DROP TRIGGER off_jl; DROP TRIGGER off_ab;');
+
 describe('backfill of documents saved before Stage 6 (6c, ADR-0034)', () => {
-  const journalsOff = () => db.exec(`
-    CREATE TRIGGER off_je BEFORE INSERT ON journal_entry BEGIN SELECT RAISE(IGNORE); END;
-    CREATE TRIGGER off_jl BEFORE INSERT ON journal_line BEGIN SELECT RAISE(IGNORE); END;
-    CREATE TRIGGER off_ab BEFORE INSERT ON account_balance BEGIN SELECT RAISE(IGNORE); END;`);
-  const journalsOn = () => db.exec('DROP TRIGGER off_je; DROP TRIGGER off_jl; DROP TRIGGER off_ab;');
 
   it('posts every kind of document, cancels as reversals, ties out, and posts nothing the second time', async () => {
     journalsOff();
@@ -97,6 +98,19 @@ describe('backfill of documents saved before Stage 6 (6c, ADR-0034)', () => {
     expect(db.prepare('SELECT COUNT(*) FROM journal_entry WHERE is_reversal_of IS NOT NULL').pluck().get()).toBe(3);   // payment, expense, replaced opening
     expect(tieOutFailures(db, businessId)).toEqual([]);
     expect(await app.backlog.run()).toEqual({ posted: 0, remaining: 0 });
+    const unqueued = db.prepare(`SELECT COUNT(*) FROM journal_entry j WHERE NOT EXISTS
+      (SELECT 1 FROM sync_outbox o WHERE o.business_id = j.business_id AND o.entity_type = 'journal_entry' AND o.entity_id = j.id)`).pluck().get();
+    expect(unqueued).toBe(0);
+    const saleJournal = db.prepare(`SELECT o.depends_on_operation_id FROM sync_outbox o JOIN journal_entry j ON j.id = o.entity_id WHERE j.source = 'sale'`).pluck().get();
+    expect(saleJournal).toBe(db.prepare("SELECT operation_id FROM sync_outbox WHERE entity_type = 'sale' ORDER BY seq DESC LIMIT 1").pluck().get());
+  });
+
+  it('documents whose journal would be empty are not candidates', async () => {
+    journalsOff();
+    await app.register.open(1000);
+    app.register.close({ countedCashPaise: 1000 });
+    journalsOn();
+    expect(unpostedDocuments(db, businessId)).toEqual([]);
   });
 });
 
@@ -111,5 +125,51 @@ describe('journal integrity (6c, ADR-0034)', () => {
     db.exec("UPDATE stock_level SET value_paise = value_paise + 100");
     expect(app.diagnostics.checkJournals()).toBe('mismatch');
     expect(db.prepare('SELECT COUNT(*) FROM journal_entry').pluck().get()).toBe(1);
+  });
+});
+
+describe('6g review fixes', () => {
+  it("cancels need no terminal and reverse under the original's till; an opening without one is refused clearly", () => {
+    const p = pay('customer', 4000);
+    const e = app.expenses.create(ExpenseInput.parse({ categoryId: app.expenses.categories()[0]!.id, method: 'bank', amountPaise: 2000, commandId: newUlid() }));
+    const original = db.prepare('SELECT branch_id, terminal_id FROM journal_entry WHERE ref_id = ?').get(p.id);
+    app.session.patch({ branchId: null, terminalId: null });
+    app.payments.cancel(p.id, 'bounced');
+    app.expenses.cancel(e.id, 'dup');
+    expect(db.prepare('SELECT branch_id, terminal_id FROM journal_entry WHERE ref_id = ? AND is_reversal_of IS NOT NULL').get(p.id)).toEqual(original);
+    expect(() => app.customerLedger.setOpening({ partyId: ravi.id, amountPaise: 5000, asOfDate: '2026-04-01' })).toThrow(/terminal/);
+    expect(tieOutFailures(db, businessId)).toEqual([]);
+  });
+
+  it('a business with no chart yet can open its cash book and add an account', async () => {
+    const fresh = await testApp();
+    fresh.db.exec('CREATE TRIGGER off_acc BEFORE INSERT ON account BEGIN SELECT RAISE(IGNORE); END;');
+    await ownerAtTill(fresh.app);
+    fresh.db.exec('DROP TRIGGER off_acc;');
+    expect(fresh.app.statements.book('cash', { limit: 10 }).items).toEqual([]);
+    expect(fresh.app.chart.create({ code: '5480', name: 'Courier', parentCode: '5000' })).toMatchObject({ code: '5480' });
+  });
+
+  it('a manual journal reversed twice is refused as already reversed, and the day book says so', async () => {
+    const accounts = app.statements.accounts();
+    const cash = accounts.find((a) => a.role === 'cash')!.id;
+    const drawings = accounts.find((a) => a.code === '3300')!.id;
+    const j = app.manualJournals.post({ narration: 'drawings', commandId: newUlid(), lines: [{ accountId: drawings, debitPaise: 500, creditPaise: 0 }, { accountId: cash, debitPaise: 0, creditPaise: 500 }] });
+    const rev = app.manualJournals.reverse(j.id, 'typo');
+    expect(await api.call('accounting.reverseJournal', { id: j.id, reason: 'again' })).toMatchObject({ ok: false, error: { code: 'INVALID_STATE', message: expect.stringMatching(/already reversed/) } });
+    const items = app.statements.dayBook({ from: today, to: today, limit: 50 }).items;
+    expect(items.find((x) => x.id === j.id)?.reversedBy).toBe(rev.id);
+  });
+
+  it('the backlog stops when the session moves to another business, and never numbers with its terminal', async () => {
+    await app.register.open(100_000);
+    journalsOff();
+    for (let i = 0; i < 201; i++) app.register.cashMovement({ kind: 'cash_out', amountPaise: 1, reason: `m${i}` });
+    journalsOn();
+    const run = app.backlog.run();
+    app.business.create({ name: 'Second Shop', businessType: 'retail', stateCode: '07', taxScheme: 'regular' } as Parameters<App['business']['create']>[0]);
+    expect(app.session.require().businessId).not.toBe(businessId);
+    expect(await run).toEqual({ posted: 200, remaining: 1 });
+    expect(db.prepare('SELECT COUNT(*) FROM journal_entry WHERE business_id <> ?').pluck().get(businessId)).toBe(0);
   });
 });

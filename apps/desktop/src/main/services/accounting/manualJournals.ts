@@ -1,12 +1,7 @@
 import { AppError, type JournalView, type ManualJournalInput } from '@muneem/contracts';
-import type { AccountRole, JournalLine } from '@muneem/domain';
+import { MANUAL_JOURNAL_BLOCKED_ROLES, type JournalLine } from '@muneem/domain';
 import { journalForRef, listAccounts, postJournal, recordChange, reverseJournal, stmt, withTransaction } from '@muneem/db-sqlite';
 import type { PosContext } from '../pos/posContext.js';
-
-// ADR-0035: these move only through documents, so their tie-outs with the sub-ledgers always hold.
-const CONTROL_ROLES = new Set<AccountRole>([
-  'ar', 'ap', 'inventory', 'input_cgst', 'input_sgst', 'input_igst', 'input_cess', 'output_cgst', 'output_sgst', 'output_igst', 'output_cess',
-]);
 
 export class ManualJournalService {
   constructor(private readonly ctx: PosContext) {}
@@ -42,9 +37,7 @@ export class ManualJournalService {
     const date = dateIn ?? this.ctx.today();
     this.refuseLocked(date);
     const reversalId = withTransaction(db, () => {
-      const till = this.ctx.till();
-      const j = reverseJournal(db, { businessId, branchId: till.branchId, terminalId: till.terminalId, source: 'manual', refType: 'manual', refId: e.ref_id, docDate: date,
-        narration: `Reversal: ${reason}` }, this.ctx.actor());
+      const j = reverseJournal(db, { businessId, source: 'manual', refType: 'manual', refId: e.ref_id, docDate: date, narration: `Reversal: ${reason}` }, this.ctx.actor());
       if (!j) throw new AppError('INVALID_STATE', 'Nothing to reverse');
       recordChange(db, businessId, this.ctx.actor(), { action: 'journal.reverse', entityType: 'journal_entry', entityId: j.id, operationType: 'create', after: { ...j, reversalOf: id, reason } });
       return j.id;
@@ -59,7 +52,7 @@ export class ManualJournalService {
       const a = accounts.get(l.accountId);
       if (!a) fields[`lines.${i}.accountId`] = 'not an account of this business';
       else if (a.isGroup) fields[`lines.${i}.accountId`] = `${a.name} is a group; choose an account under it`;
-      else if (a.role && CONTROL_ROLES.has(a.role)) fields[`lines.${i}.accountId`] = `${a.name} changes only through documents`;
+      else if (a.role && MANUAL_JOURNAL_BLOCKED_ROLES.has(a.role)) fields[`lines.${i}.accountId`] = `${a.name} changes only through documents`;
       if ((l.debitPaise === 0) === (l.creditPaise === 0)) fields[`lines.${i}`] = 'enter either a debit or a credit';
       return { account: { code: a?.code ?? '' }, debitPaise: l.debitPaise, creditPaise: l.creditPaise };
     });

@@ -87,7 +87,7 @@ export class PaymentService {
           action: 'payment.cancel_cash_outside_drawer', entityType: 'payment', entityId: id, after: { amountPaise: p.amountPaise },
         });
       }
-      const journal = reverseDocumentJournal(db, 'payment', id, this.ctx.today(), this.ctx.till(), actor);
+      const journal = reverseDocumentJournal(db, 'payment', id, this.ctx.today(), actor);
       recordChange(db, this.ctx.businessId(), actor, {
         action: 'payment.cancel', entityType: 'payment', entityId: id, operationType: 'cancel', after: { id, status: 'cancelled', reason, entry, drawer, journal },
       });

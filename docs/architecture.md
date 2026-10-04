@@ -148,7 +148,9 @@ docs/             this folder (reality, with reasons)
   - **The writer:** `postJournal` is the only writer of journals and the `account_balance` cache.
   - **Database guards:** an unbalanced, two-sided, negative, group-account or second journal for a document cannot be
     stored.
-  - **Cancels** post the mirror journal.
+  - **Cancels** post the mirror journal under the original's number, branch and terminal.
+  - **Numbering** (ADR-0037): a journal takes its document's number. One without a document number (write-off, party
+    opening, stock document, manual journal) takes a `J` number from the posting terminal's series and needs a terminal.
 - **Accounts** (ADR-0031): LLD §5.1 plus one input and one output account per tax head, seeded with the business. Rules
   name accounts by role. Card/UPI takings wait in 1250 Clearing.
 - **Periods** (ADR-0033): calendar months, lockable once ended. A document dated into a locked month posts late into
@@ -156,7 +158,8 @@ docs/             this folder (reality, with reasons)
 - **Tie-outs and integrity** (ADR-0034):
   - **The tie-outs:** 1400 = stock valuation, 1300 = customer balances, 2100 = supplier balances, and each tax account
     = its documents.
-  - **The backfill** posts anything saved before Stage 6.
+  - **The backfill** posts anything saved before Stage 6. Each business gets it once per run, with the terminal and user
+    fixed when it starts, and each journal is queued for sync after its document.
   - **Diagnostics and the 6-hourly timer** rebuild a drifted balance cache and report everything else.
 - **Manual journals** (ADR-0035) never touch AR, AP, Inventory or tax accounts, so the tie-outs hold by construction.
 - **Statements:** Trial Balance, P&L and Balance Sheet read the journal. Retained earnings are computed until Stage 8's

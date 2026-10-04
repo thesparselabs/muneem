@@ -80,7 +80,7 @@ export class PurchaseService {
       amountPaise: -quote.totals.totalPaise, docDate, dueDate: quote.dueDate,
     }, actor);
     const journal = postDocumentJournal(db, 'purchase', id, till, actor);
-    const corrections = postCorrections(db, 'purchase', id, till, actor);
+    const corrections = postCorrections(db, till.businessId, 'purchase', id, till, actor);
     recordChange(db, till.businessId, actor, {
       action: 'purchase.create', entityType: 'purchase', entityId: id, operationType: 'create',
       after: { ...getPurchase(db, id), movements: movementsForRef(db, till.businessId, 'purchase', id), entry, journal, corrections },

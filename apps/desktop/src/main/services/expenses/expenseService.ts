@@ -55,7 +55,7 @@ export class ExpenseService {
       const drawer = e.method === 'cash'
         ? this.drawer.reverse(documentCashMovements(db, 'expense', id)[0], { reason: `Cancelled ${e.docNumber}`, refType: 'expense', refId: id })
         : 'not_cash';
-      const journal = reverseDocumentJournal(db, 'expense', id, this.ctx.today(), this.ctx.till(), actor);
+      const journal = reverseDocumentJournal(db, 'expense', id, this.ctx.today(), actor);
       recordChange(db, this.ctx.businessId(), actor, {
         action: 'expense.cancel', entityType: 'expense', entityId: id, operationType: 'cancel', after: { id, status: 'cancelled', reason, entry, drawer, journal },
       });

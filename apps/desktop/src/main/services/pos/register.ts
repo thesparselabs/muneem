@@ -34,7 +34,7 @@ export class RegisterService {
     const db = this.ctx.db();
     withTransaction(db, () => {
       const id = addCashMovement(db, this.requireOpen().id, input, this.ctx.actor());
-      queueJournal(db, this.ctx.businessId(), this.ctx.actor(), postDocumentJournal(db, 'cash_movement', id, this.ctx.till(), this.ctx.actor(), this.ctx.today()), id);
+      queueJournal(db, this.ctx.businessId(), this.ctx.actor(), postDocumentJournal(db, 'cash_movement', id, this.ctx.till(), this.ctx.actor(), this.ctx.today()), { entityType: 'cash_movement', entityId: id });
     });
   }
 
@@ -60,7 +60,7 @@ export class RegisterService {
       const sessionId = this.requireOpen().id;
       const report = this.closeSession(sessionId, input);
       const journal = postDocumentJournal(db, 'register_close', sessionId, this.ctx.till(), this.ctx.actor(), this.ctx.today());
-      queueJournal(db, this.ctx.businessId(), this.ctx.actor(), journal, sessionId);
+      queueJournal(db, this.ctx.businessId(), this.ctx.actor(), journal, { entityType: 'pos_session', entityId: sessionId });
       return report;
     });
   }

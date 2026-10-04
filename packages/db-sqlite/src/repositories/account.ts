@@ -25,6 +25,8 @@ export function listAccounts(db: Db, businessId: string): AccountRow[] {
 
 // LLD §5.1 + ADR-0031, seeded per business on first use like the catalog defaults; idempotent by code.
 export function ensureChartOfAccounts(db: Db, businessId: string, actor: Actor): void {
+  const seeded = stmt(db, 'SELECT COUNT(*) FROM account WHERE business_id = ? AND is_system = 1 AND deleted_at IS NULL').pluck().get(businessId) as number;
+  if (seeded >= CHART_OF_ACCOUNTS.length) return;
   withTransaction(db, () => {
     const existing = new Map((stmt(db, 'SELECT code, id FROM account WHERE business_id = ? AND deleted_at IS NULL').all(businessId) as { code: string; id: string }[])
       .map((r) => [r.code, r.id]));
@@ -46,9 +48,11 @@ export function ensureChartOfAccounts(db: Db, businessId: string, actor: Actor):
   });
 }
 
+export interface AccountIds { byRole: Map<AccountRole, string>; byCode: Map<string, string> }
+
 // What the posting service resolves a rule's roles and codes against.
-export function accountIdsByRoleAndCode(db: Db, businessId: string): { byRole: Map<AccountRole, string>; byCode: Map<string, string> } {
-  const rows = listAccounts(db, businessId);
+export function accountIdsByRoleAndCode(db: Db, businessId: string): AccountIds {
+  const rows = stmt(db, 'SELECT id, code, role FROM account WHERE business_id = ? AND deleted_at IS NULL').all(businessId) as { id: string; code: string; role: AccountRole | null }[];
   return {
     byRole: new Map(rows.flatMap((a) => (a.role ? [[a.role, a.id] as const] : []))),
     byCode: new Map(rows.map((a) => [a.code, a.id] as const)),

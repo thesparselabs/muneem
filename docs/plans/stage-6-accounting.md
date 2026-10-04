@@ -468,6 +468,69 @@ user asked):
   - card/UPI settlement entries (done by manual journal until a settlement screen exists);
   - cost centres.
 
+## 6g — review fixes (2026-10-04)
+
+All ten review points were checked against the code; nine are fixed as asked, and one is fixed only in part.
+
+**Breaks earlier stages**
+1. **Cancels, write-offs and openings need a terminal** — real, but not reachable from the app: `App.tsx` sends any
+   session without a terminal to Setup before a screen loads.
+   - **Fix:** cancels (payment, expense, purchase) never ask for one. A reversal takes its document's own number,
+     branch and terminal, so `Poster` becomes optional and is read only when a `J` number is needed.
+   - **Not done — a business-level `J` series:** write-offs and openings keep needing a terminal for their `J` number,
+     and refuse clearly without one. A business-level series would let two offline devices issue the same numbers,
+     the reason every series is per terminal (ADR-0014/0028).
+2. **Upgraded businesses have no chart until their first posting,** so the cash book throws and the chart page is
+   empty — real.
+   - **Fix:** seed the chart when a session first has a business (the start-up hook that runs the backlog), and
+     ensure it before the statement and chart services read.
+   - **Test:** a business created without a chart can open the cash book and add an account.
+
+**Stage 6 bugs**
+3. **Reversing a manual journal twice shows a raw UNIQUE error** — real.
+   - **Fix:** check for an existing reversal first and refuse with `INVALID_STATE` "already reversed". The day book
+     hides Reverse once a reversal exists anywhere, not just on the visible page; the day book row carries
+     `reversedBy`.
+4. **Backfilled journals never reach the sync outbox** — real.
+   - **Fix:** each backfilled journal is queued as a `journal_entry` row, depending on its document's row.
+   - **Test:** after the backfill, every journal has an outbox row (its document's payload or its own).
+5. **The background backlog reads the session afresh on every batch** — real.
+   - **Fix:** the run captures its business, poster and actor at the start and stops cleanly if the session's
+     business changes. It is keyed by business, so a second business opened in the same run gets its own backlog.
+   - **Test:** a run started for business A, switched to B mid-run, posts nothing with B's terminal.
+
+**Speed** (confirmed with query plans)
+
+6. **Stock document lookups leave out `business_id`,** so `ix_mov_ref` can't be used — real. **Fix:** add it to the
+   stock-document builder and to `postCorrections`.
+7. **`queueJournal` filters `sync_outbox` by `entity_id` only,** so `ix_outbox_entity` (business, type, id, seq) can't
+   be used — real. **Fix:** filter by business and entity type too.
+8. **Empty-journal documents are rebuilt on every backlog and integrity run** — real. **Fix:** leave them out in SQL.
+   A register that closed exact (`variance_paise = 0`) and a stock document whose movements carry no value are not
+   candidates. Every other document type always has a non-zero amount.
+9. **Every posting reads the whole chart twice, and the tie-outs scan the lines eleven times** — real.
+   - **Postings:** resolve the accounts with one query, and seed the chart only on a miss.
+   - **Tie-outs:** one grouped query by role replaces the eleven role scans.
+
+**Cleanup**
+10. **Copied lists and helpers** — real.
+    - **Control roles:** one exported list in `@muneem/domain` (`MANUAL_JOURNAL_BLOCKED_ROLES`), used by the service
+      and the form.
+    - **Dates:** the date helpers (`monthStart`, `monthEnd`, `dayBefore`, `fyStartOf`) move to
+      `@muneem/domain/fy.ts` and replace the copies in db-sqlite, the renderer and the tests.
+
+**Delivery:** one commit (6g) after 6f, green, with changelog lines. The perf and soak numbers are re-checked on the
+result.
+
+**As built (6g):**
+- **Built as planned,** with one addition: a purchase cancel that causes a cost correction still needs a terminal to
+  number that correction. This is rare, and is recorded in ADR-0037.
+- **Reuse:** the date helpers reuse the domain's existing `addDays` rather than adding another.
+- **Tests:** new tests in `periods.test.ts` cover a cancel with no terminal, a business with no chart, a double
+  reversal, backfilled journals in the outbox, the backlog stopping on a business switch, and empty documents left out.
+- **Re-checked:** the full suite is green and the accounting speed budgets hold. The 365-day soak passes with the same
+  figures as 6f, and its full integrity check takes 5.9 s, down from 6.8 s.
+
 ## As built (2026-10-04)
 
 - **Journals in each document's transaction,** built from the stored document by one builder per type, so the

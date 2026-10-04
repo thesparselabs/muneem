@@ -69,7 +69,7 @@ export const DayBookPage = z.object({
   nextCursor: z.string().nullable(),
   items: z.array(z.object({
     id: Ulid, entryNo: z.string(), date: BusinessDate, docDate: BusinessDate, source: z.string(), refType: z.string().nullable(), refId: z.string().nullable(),
-    narration: z.string().nullable(), latePosting: z.boolean(), reversalOf: z.string().nullable(),
+    narration: z.string().nullable(), latePosting: z.boolean(), reversalOf: z.string().nullable(), reversedBy: z.string().nullable(),
     lines: z.array(z.object({ code: z.string(), name: z.string(), debitPaise: Int, creditPaise: Int, partyType: z.string().nullable(), partyId: z.string().nullable() })),
   })),
 });

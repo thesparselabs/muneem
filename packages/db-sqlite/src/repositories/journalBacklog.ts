@@ -2,7 +2,7 @@ import type { Db } from '../open.js';
 import { stmt } from '../statements.js';
 import { withTransaction } from '../uow.js';
 import type { Actor } from './business.js';
-import { documentJournal, postDocumentJournal, reverseDocumentJournal, type JournalDocKind, type Poster } from './documentJournals.js';
+import { documentJournal, postDocumentJournal, queueJournal, reverseDocumentJournal, type JournalDocKind, type Poster } from './documentJournals.js';
 
 export interface PendingJournal { kind: JournalDocKind; id: string; reversalOn?: string }
 
@@ -13,28 +13,32 @@ const hasReversal = (sources: string) =>
   `EXISTS (SELECT 1 FROM journal_entry j WHERE j.business_id = d.business_id AND j.ref_id = d.id AND j.source IN (${sources}) AND j.is_reversal_of IS NOT NULL)`;
 
 // Each kind: its unposted documents in date order, and — for kinds that can be cancelled — cancelled ones still unreversed.
-const KINDS: readonly { kind: JournalDocKind; sources: string; unposted: string; cancelled?: string }[] = [
-  { kind: 'sale', sources: "'sale'", unposted: 'SELECT d.id FROM sale d WHERE d.business_id = ? AND {none} ORDER BY d.doc_date, d.id' },
-  { kind: 'purchase', sources: "'purchase'", unposted: 'SELECT d.id FROM purchase d WHERE d.business_id = ? AND {none} ORDER BY d.supplier_invoice_date, d.id',
+// A document whose journal would be empty (a register that closed exact, a stock document with no value) is left out here.
+const KINDS: readonly { kind: JournalDocKind; entityType: string; sources: string; unposted: string; cancelled?: string }[] = [
+  { kind: 'sale', entityType: 'sale', sources: "'sale'", unposted: 'SELECT d.id FROM sale d WHERE d.business_id = ? AND {none} ORDER BY d.doc_date, d.id' },
+  { kind: 'purchase', entityType: 'purchase', sources: "'purchase'", unposted: 'SELECT d.id FROM purchase d WHERE d.business_id = ? AND {none} ORDER BY d.supplier_invoice_date, d.id',
     cancelled: "SELECT d.id, d.cancelled_at AS at FROM purchase d WHERE d.business_id = ? AND d.status = 'cancelled' AND NOT {rev}" },
-  { kind: 'debit_note', sources: "'purchase_return'", unposted: 'SELECT d.id FROM debit_note d WHERE d.business_id = ? AND {none} ORDER BY d.doc_date, d.id' },
-  { kind: 'payment', sources: "'receipt','payment'", unposted: 'SELECT d.id FROM payment d WHERE d.business_id = ? AND {none} ORDER BY d.payment_date, d.id',
+  { kind: 'debit_note', entityType: 'debit_note', sources: "'purchase_return'", unposted: 'SELECT d.id FROM debit_note d WHERE d.business_id = ? AND {none} ORDER BY d.doc_date, d.id' },
+  { kind: 'payment', entityType: 'payment', sources: "'receipt','payment'", unposted: 'SELECT d.id FROM payment d WHERE d.business_id = ? AND {none} ORDER BY d.payment_date, d.id',
     cancelled: "SELECT d.id, d.cancelled_at AS at FROM payment d WHERE d.business_id = ? AND d.status = 'cancelled' AND NOT {rev}" },
-  { kind: 'write_off', sources: "'write_off'", unposted: 'SELECT d.id FROM write_off d WHERE d.business_id = ? AND {none} ORDER BY d.doc_date, d.id' },
-  { kind: 'expense', sources: "'expense'", unposted: 'SELECT d.id FROM expense d WHERE d.business_id = ? AND {none} ORDER BY d.expense_date, d.id',
+  { kind: 'write_off', entityType: 'write_off', sources: "'write_off'", unposted: 'SELECT d.id FROM write_off d WHERE d.business_id = ? AND {none} ORDER BY d.doc_date, d.id' },
+  { kind: 'expense', entityType: 'expense', sources: "'expense'", unposted: 'SELECT d.id FROM expense d WHERE d.business_id = ? AND {none} ORDER BY d.expense_date, d.id',
     cancelled: "SELECT d.id, d.cancelled_at AS at FROM expense d WHERE d.business_id = ? AND d.status = 'cancelled' AND NOT {rev}" },
-  { kind: 'stock_document', sources: "'opening','stock_adjustment'", unposted: 'SELECT d.id FROM stock_adjustment d WHERE d.business_id = ? AND {none} ORDER BY d.created_at, d.id' },
-  { kind: 'cost_correction', sources: "'stock_adjustment'",
-    unposted: "SELECT d.id FROM stock_movement d WHERE d.business_id = ? AND d.movement_type = 'cost_correction' AND {none} ORDER BY d.rowid" },
-  { kind: 'party_opening', sources: "'opening'", unposted: 'SELECT d.id FROM party_opening d WHERE d.business_id = ? AND {none} ORDER BY d.as_of_date, d.id',
+  { kind: 'stock_document', entityType: 'stock_adjustment', sources: "'opening','stock_adjustment'",
+    unposted: `SELECT d.id FROM stock_adjustment d WHERE d.business_id = ? AND {none} AND EXISTS (SELECT 1 FROM stock_movement m
+      WHERE m.business_id = d.business_id AND m.ref_type = d.kind AND m.ref_id = d.id AND m.movement_type <> 'cost_correction' AND m.value_paise <> 0)
+      ORDER BY d.created_at, d.id` },
+  { kind: 'cost_correction', entityType: 'stock_movement', sources: "'stock_adjustment'",
+    unposted: "SELECT d.id FROM stock_movement d WHERE d.business_id = ? AND d.movement_type = 'cost_correction' AND d.value_paise <> 0 AND {none} ORDER BY d.rowid" },
+  { kind: 'party_opening', entityType: 'party_opening', sources: "'opening'", unposted: 'SELECT d.id FROM party_opening d WHERE d.business_id = ? AND {none} ORDER BY d.as_of_date, d.id',
     cancelled: "SELECT d.id, d.cancelled_at AS at FROM party_opening d WHERE d.business_id = ? AND d.status = 'cancelled' AND NOT {rev}" },
-  { kind: 'register_close', sources: "'register_close'", unposted: "SELECT d.id FROM pos_session d WHERE d.business_id = ? AND d.status = 'closed' AND {none} ORDER BY d.closed_at, d.id" },
-  { kind: 'cash_movement', sources: "'cash_movement'",
+  { kind: 'register_close', entityType: 'pos_session', sources: "'register_close'",
+    unposted: "SELECT d.id FROM pos_session d WHERE d.business_id = ? AND d.status = 'closed' AND COALESCE(d.variance_paise, 0) <> 0 AND {none} ORDER BY d.closed_at, d.id" },
+  { kind: 'cash_movement', entityType: 'cash_movement', sources: "'cash_movement'",
     unposted: "SELECT d.id FROM cash_movement d WHERE d.business_id = ? AND d.ref_id IS NULL AND d.kind IN ('cash_in','cash_out') AND {none} ORDER BY d.created_at, d.id" },
 ];
 
 // ADR-0034: every document that should have a journal and does not, then every cancelled document still unreversed.
-// A document whose journal would be empty (a stock take with no difference, a register that closed exact) needs none.
 export function unpostedDocuments(db: Db, businessId: string): PendingJournal[] {
   const out: PendingJournal[] = [];
   for (const k of KINDS) {
@@ -50,10 +54,13 @@ export function unpostedDocuments(db: Db, businessId: string): PendingJournal[] 
   return out;
 }
 
-// Posts a batch of the backlog in one transaction; returns how many journals it wrote.
+const ENTITY_TYPE = new Map(KINDS.map((k) => [k.kind, k.entityType]));
+
+// Posts a batch of the backlog in one transaction, each journal queued for sync after its document; returns how many it wrote.
 export function postBacklogBatch(db: Db, businessId: string, batch: readonly PendingJournal[], poster: Poster, actor: Actor): number {
   return withTransaction(db, () => batch.reduce((n, p) => {
-    const posted = p.reversalOn ? reverseDocumentJournal(db, p.kind, p.id, p.reversalOn, poster, actor) : postDocumentJournal(db, p.kind, p.id, poster, actor);
+    const posted = p.reversalOn ? reverseDocumentJournal(db, p.kind, p.id, p.reversalOn, actor) : postDocumentJournal(db, p.kind, p.id, poster, actor);
+    queueJournal(db, businessId, actor, posted, { entityType: ENTITY_TYPE.get(p.kind)!, entityId: p.id });
     return n + (posted ? 1 : 0);
   }, 0));
 }

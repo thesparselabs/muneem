@@ -9,6 +9,11 @@ export const ACCOUNT_ROLES = [
 ] as const;
 export type AccountRole = (typeof ACCOUNT_ROLES)[number];
 
+// ADR-0035: these move only through documents, so their tie-outs with the sub-ledgers always hold.
+export const MANUAL_JOURNAL_BLOCKED_ROLES: ReadonlySet<AccountRole> = new Set<AccountRole>([
+  'ar', 'ap', 'inventory', 'input_cgst', 'input_sgst', 'input_igst', 'input_cess', 'output_cgst', 'output_sgst', 'output_igst', 'output_cess',
+]);
+
 export type AccountType = 'asset' | 'liability' | 'equity' | 'income' | 'expense';
 export interface ChartAccount {
   code: string; name: string; type: AccountType; group?: string; role?: AccountRole; isGroup?: boolean;

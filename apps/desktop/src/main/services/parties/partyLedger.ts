@@ -19,9 +19,8 @@ export class PartyLedgerService {
       const opening = setPartyOpening(db, businessId, this.partyType, input.partyId, {
         side: input.side ?? usualSide(this.partyType), amountPaise: input.amountPaise, asOfDate: input.asOfDate,
       }, actor);
-      const till = this.ctx.till();
-      if (old) queueJournal(db, businessId, actor, reverseDocumentJournal(db, 'party_opening', old.id, this.ctx.today(), till, actor), old.id);
-      queueJournal(db, businessId, actor, postDocumentJournal(db, 'party_opening', opening.id, till, actor), opening.id);
+      if (old) queueJournal(db, businessId, actor, reverseDocumentJournal(db, 'party_opening', old.id, this.ctx.today(), actor), { entityType: 'party_opening', entityId: old.id });
+      queueJournal(db, businessId, actor, postDocumentJournal(db, 'party_opening', opening.id, this.ctx.till(), actor), { entityType: 'party_opening', entityId: opening.id });
       return opening;
     });
   }

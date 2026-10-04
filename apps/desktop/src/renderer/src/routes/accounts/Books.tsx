@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react';
 import { useInfiniteQuery, useQuery, useQueryClient } from '@tanstack/react-query';
+import { monthStart } from '@muneem/domain';
 import { api, errorMessage } from '../../api.js';
 import Dialog from '../../components/Dialog.js';
 import { formatPaise } from '../../lib/money.js';
@@ -8,11 +9,10 @@ import AccountsNav from './AccountsNav.js';
 import LedgerView from './LedgerView.js';
 
 const today = () => new Date().toLocaleDateString('en-CA');
-const monthStart = () => `${today().slice(0, 7)}-01`;
 
 export default function Books() {
   const [tab, setTab] = useState<'cash' | 'bank' | 'day'>('cash');
-  const [range, setRange] = useState({ from: monthStart(), to: today() });
+  const [range, setRange] = useState({ from: monthStart(today()), to: today() });
   const [bankId, setBankId] = useState('');
   const accounts = useQuery({ queryKey: ['accounts'], queryFn: () => api.accounting.listAccounts({}) });
   const banks = (accounts.data ?? []).filter((a) => a.type === 'asset' && !a.isGroup && (a.role === 'bank' || !a.isSystem));
@@ -57,7 +57,6 @@ function DayBook({ from, to }: { from: string; to: string }) {
     queryFn: ({ pageParam }) => api.accounting.getDayBook({ from, to, limit: 50, ...(pageParam && { cursor: pageParam }) }),
     initialPageParam: '', getNextPageParam: (last) => last.nextCursor ?? undefined,
   });
-  const reversed = new Set((book.data?.pages ?? []).flatMap((p) => p.items).flatMap((e) => (e.reversalOf ? [e.reversalOf] : [])));
   return (
     <div className="space-y-3">
       {book.error && <p className="err" role="alert">{errorMessage(book.error)}</p>}
@@ -67,7 +66,7 @@ function DayBook({ from, to }: { from: string; to: string }) {
             <p><span className="font-mono">{e.entryNo}</span> · {e.date} · {e.source}{e.narration && ` · ${e.narration}`}
               {e.latePosting && <span className="ml-2 rounded bg-amber-100 px-1 text-xs text-amber-800">late, dated {e.docDate}</span>}
               {e.reversalOf && <span className="ml-2 rounded bg-slate-100 px-1 text-xs">reversal</span>}</p>
-            {canReverse && e.source === 'manual' && !e.reversalOf && !reversed.has(e.id) && <button type="button" className="btn-secondary py-0" onClick={() => setReversing(e.id)}>Reverse</button>}
+            {canReverse && e.source === 'manual' && !e.reversalOf && !e.reversedBy && <button type="button" className="btn-secondary py-0" onClick={() => setReversing(e.id)}>Reverse</button>}
           </div>
           <table className="mt-1 w-full"><tbody>
             {e.lines.map((l, i) => <tr key={i}><td className={`p-0.5 ${l.creditPaise ? 'pl-8' : ''}`}><span className="font-mono text-xs text-slate-500">{l.code}</span> {l.name}</td>

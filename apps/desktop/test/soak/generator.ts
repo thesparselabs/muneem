@@ -1,4 +1,4 @@
-import { addDays, newUlid } from '@muneem/domain';
+import { addDays, monthStart, newUlid } from '@muneem/domain';
 import { findUomByCode, stockState, type Db } from '@muneem/db-sqlite';
 import {
   AllocateInput, CompleteSaleInput, CreatePurchaseInput, CustomerInput, ExpenseInput, ManualJournalInput, PaymentInput, ProductInput, PurchaseDraft, ReturnPurchaseInput,
@@ -68,7 +68,6 @@ const SUPPLIERS = [
   { name: 'Gupta Kirana Supply', stateCode: '07', gstin: '07EEEEE0000E1Z5', taxScheme: 'composition', creditDays: 7 },
 ] as const;
 const VENDOR_GSTINS = ['07DDDDD0000D1Z5', '09GGGGG0000G1Z5'];
-const monthStart = (date: string) => `${date.slice(0, 7)}-01`;
 
 
 class Trader {

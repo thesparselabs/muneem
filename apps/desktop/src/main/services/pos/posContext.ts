@@ -20,6 +20,12 @@ export class PosContext {
     return { businessId: this.businessId(), branchId: s.branchId, terminalId: s.terminalId };
   }
 
+  // For work that needs a terminal only in rare cases, such as numbering a cost correction a cancel caused.
+  tillIfAny(): Till | null {
+    const s = this.session.require();
+    return s.branchId && s.terminalId ? { businessId: this.businessId(), branchId: s.branchId, terminalId: s.terminalId } : null;
+  }
+
   can(permission: Permission): boolean { return this.rbac.has(this.session.require(), permission) !== null; }
   maxDiscountBp(): number | undefined { return this.rbac.has(this.session.require(), 'sales.create')?.limit?.maxDiscountBp; }
 

@@ -1,29 +1,21 @@
-import type { AccountType } from '@muneem/domain';
+import { addDays, dayBefore, fyStartOf, monthEnd, monthStart, type AccountType } from '@muneem/domain';
 import type { Db } from '../open.js';
 import { stmt } from '../statements.js';
 
 export interface StatementFilter { businessId: string; from?: string | null; to: string; branchId?: string | null }
 export interface AccountAmount { accountId: string; code: string; name: string; type: AccountType; role: string | null; debitPaise: number; creditPaise: number }
 
-const shiftDay = (date: string, days: number): string => {
-  const d = new Date(`${date}T00:00:00Z`);
-  d.setUTCDate(d.getUTCDate() + days);
-  return d.toISOString().slice(0, 10);
-};
-const dayBefore = (date: string): string => shiftDay(date, -1);
-const monthStart = (date: string): string => `${date.slice(0, 7)}-01`;
 const later = (a: string, b: string): string => (a > b ? a : b);
-const monthEnd = (date: string): string => new Date(Date.UTC(Number(date.slice(0, 4)), Number(date.slice(5, 7)), 0)).toISOString().slice(0, 10);
 
 // A range as the whole calendar months inside it (read from account_balance) and up to two part-month edges (read from the lines).
 interface MonthSplit { first: string | null; last: string; lo1: string | null; hi1: string | null; lo2: string | null; hi2: string | null }
 function splitByMonth(from: string | null, to: string): MonthSplit | null {
-  const first = from === null || from === monthStart(from) ? from : shiftDay(monthEnd(from), 1);
+  const first = from === null || from === monthStart(from) ? from : addDays(monthEnd(from), 1);
   const last = to === monthEnd(to) ? to : dayBefore(monthStart(to));
   if (first !== null && first > last) return null;
   const head = from !== null && first !== null && from < first;
   const tail = last < to;
-  return { first, last, lo1: head ? from : null, hi1: head ? dayBefore(first!) : null, lo2: tail ? shiftDay(last, 1) : null, hi2: tail ? to : null };
+  return { first, last, lo1: head ? from : null, hi1: head ? dayBefore(first!) : null, lo2: tail ? addDays(last, 1) : null, hi2: tail ? to : null };
 }
 
 // The balance cache has no branch, so a branch's figures always come from the lines.
@@ -98,11 +90,6 @@ export function profitAndLoss(db: Db, f: StatementFilter): ProfitAndLoss {
   const grossProfitPaise = sum(revenue) - sum(costOfSales);
   return { revenue, costOfSales, grossProfitPaise, otherIncome, expenses, netProfitPaise: grossProfitPaise + sum(otherIncome) - sum(expenses) };
 }
-
-export const fyStartOf = (date: string): string => {
-  const y = Number(date.slice(0, 4));
-  return `${Number(date.slice(5, 7)) >= 4 ? y : y - 1}-04-01`;
-};
 
 // Party balances on a control account, split by sign, so customers' advances and suppliers' debits are presented apart (ADR-0032).
 function partySplit(db: Db, f: StatementFilter, role: 'ar' | 'ap'): { debitSide: number; creditSide: number } {
@@ -203,12 +190,13 @@ function sameDayUpTo(db: Db, f: { businessId: string; accountId: string; branchI
 
 export interface DayBookEntry {
   id: string; entryNo: string; date: string; docDate: string; source: string; refType: string | null; refId: string | null; narration: string | null;
-  latePosting: boolean; reversalOf: string | null; lines: { code: string; name: string; debitPaise: number; creditPaise: number; partyType: string | null; partyId: string | null }[];
+  latePosting: boolean; reversalOf: string | null; reversedBy: string | null; lines: { code: string; name: string; debitPaise: number; creditPaise: number; partyType: string | null; partyId: string | null }[];
 }
 export function dayBook(db: Db, f: StatementFilter & { limit: number; cursor?: string | undefined }) {
   const after = decode(f.cursor);
   const entries = stmt(db, `SELECT id, entry_no AS entryNo, entry_date AS date, doc_date AS docDate, source, ref_type AS refType, ref_id AS refId, narration,
-      late_posting AS late, is_reversal_of AS reversalOf FROM journal_entry
+      late_posting AS late, is_reversal_of AS reversalOf,
+      (SELECT r.id FROM journal_entry r WHERE r.is_reversal_of = journal_entry.id) AS reversedBy FROM journal_entry
     WHERE business_id = @businessId AND entry_date <= @to AND (@from IS NULL OR entry_date >= @from) AND (@branchId IS NULL OR branch_id = @branchId)
       AND (@ad IS NULL OR (entry_date, id) > (@ad, @ae))
     ORDER BY entry_date, id LIMIT @limit`).all({ businessId: f.businessId, from: f.from ?? null, to: f.to, branchId: f.branchId ?? null,

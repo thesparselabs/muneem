@@ -1,10 +1,9 @@
 import type { AccountView, ManualJournalInput } from '@muneem/contracts';
+import { MANUAL_JOURNAL_BLOCKED_ROLES, type AccountRole } from '@muneem/domain';
 import { parseOptional } from '../money.js';
 
-// ADR-0035: these change only through documents, so the form never offers them.
-const CONTROL_ROLES = new Set(['ar', 'ap', 'inventory', 'input_cgst', 'input_sgst', 'input_igst', 'input_cess', 'output_cgst', 'output_sgst', 'output_igst', 'output_cess']);
 export const postableAccounts = (accounts: readonly AccountView[]): AccountView[] =>
-  accounts.filter((a) => !a.isGroup && !(a.role && CONTROL_ROLES.has(a.role)));
+  accounts.filter((a) => !a.isGroup && !(a.role && MANUAL_JOURNAL_BLOCKED_ROLES.has(a.role as AccountRole)));
 
 export interface JournalRow { accountId: string; debit: string; credit: string }
 export const emptyRows = (): JournalRow[] => [{ accountId: '', debit: '', credit: '' }, { accountId: '', debit: '', credit: '' }];

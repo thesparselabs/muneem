@@ -7,6 +7,7 @@ export class ChartService {
   constructor(private readonly ctx: PosContext, private readonly statements: StatementService) {}
 
   create(input: { code: string; name: string; parentCode: string }): AccountView {
+    this.statements.chart();
     const a = createAccount(this.ctx.db(), this.ctx.businessId(), input, this.ctx.actor());
     return this.statements.accounts().find((x) => x.id === a.id)!;
   }

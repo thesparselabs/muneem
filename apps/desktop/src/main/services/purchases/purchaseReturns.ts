@@ -41,9 +41,8 @@ export class PurchaseReturnService {
         businessId: p.businessId, partyType: 'supplier', partyId: p.supplierId, refType: 'purchase', refId: id, kind: 'cancel',
         amountPaise: p.totals.totalPaise, docDate: this.ctx.today(), dueDate: p.dueDate,
       }, actor);
-      const till = this.ctx.till();
-      const journal = reverseDocumentJournal(db, 'purchase', id, this.ctx.today(), till, actor);
-      const corrections = postCorrections(db, 'purchase_return', id, till, actor);
+      const journal = reverseDocumentJournal(db, 'purchase', id, this.ctx.today(), actor);
+      const corrections = postCorrections(db, p.businessId, 'purchase_return', id, this.ctx.tillIfAny(), actor);
       recordChange(db, p.businessId, actor, {
         action: 'purchase.cancel', entityType: 'purchase', entityId: id, operationType: 'cancel',
         after: { id, status: 'cancelled', reason, movements: movementsForRef(db, p.businessId, 'purchase_return', id), entry, journal, corrections },
@@ -122,7 +121,7 @@ export class PurchaseReturnService {
       }, actor);
     }
     const journal = postDocumentJournal(db, 'debit_note', id, till, actor);
-    const corrections = postCorrections(db, 'purchase_return', id, till, actor);
+    const corrections = postCorrections(db, p.businessId, 'purchase_return', id, till, actor);
     recordChange(db, p.businessId, actor, {
       action: 'debit_note.create', entityType: 'debit_note', entityId: id, operationType: 'create',
       after: { ...getDebitNote(db, id), movements: movementsForRef(db, p.businessId, 'purchase_return', id), entry, journal, corrections },

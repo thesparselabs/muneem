@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
-import { addDays } from '@muneem/domain';
+import { addDays, fyStartOf } from '@muneem/domain';
 import { balanceDrift, journalsNotMatchingLines, reconcilePartiesDb, replayCheck, tieOutFailures, unpostedDocuments } from '@muneem/db-sqlite';
 import { runSoak, type SoakRun } from './generator.js';
 
@@ -10,7 +10,6 @@ const END_DATE = '2026-04-05';
 const OWNER_EQUITY = new Set(['3100', '3200', '3400']);
 
 let run: SoakRun;
-const fyStartOf = (date: string) => `${Number(date.slice(5, 7)) >= 4 ? date.slice(0, 4) : Number(date.slice(0, 4)) - 1}-04-01`;
 
 beforeAll(async () => {
   vi.useFakeTimers({ toFake: ['Date'] });

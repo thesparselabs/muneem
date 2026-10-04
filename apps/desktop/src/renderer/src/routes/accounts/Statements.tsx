@@ -1,12 +1,12 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { fyStartOf } from '@muneem/domain';
 import { api, errorMessage } from '../../api.js';
 import { balanceSheetSides, profitAndLossSections, type Section } from '../../lib/accounting/statementLayout.js';
 import { formatPaise } from '../../lib/money.js';
 import AccountsNav from './AccountsNav.js';
 
 const today = () => new Date().toLocaleDateString('en-CA');
-const fyStart = (d: string) => `${Number(d.slice(5, 7)) >= 4 ? d.slice(0, 4) : Number(d.slice(0, 4)) - 1}-04-01`;
 
 function Badge({ ok }: { ok: boolean }) {
   return <span className={`rounded px-2 py-0.5 text-xs font-medium ${ok ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>{ok ? 'Balanced' : 'Not balanced'}</span>;
@@ -27,7 +27,7 @@ function SectionTable({ s }: { s: Section }) {
 export default function Statements() {
   const [tab, setTab] = useState<'tb' | 'pl' | 'bs'>('tb');
   const [asOf, setAsOf] = useState(today());
-  const [range, setRange] = useState({ from: fyStart(today()), to: today() });
+  const [range, setRange] = useState({ from: fyStartOf(today()), to: today() });
   const [branchId, setBranchId] = useState('');
   const branches = useQuery({ queryKey: ['branches'], queryFn: () => api.business.getBranches({}) });
   const branch = branchId ? { branchId } : {};

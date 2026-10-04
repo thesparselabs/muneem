@@ -66,16 +66,15 @@ async function boot(): Promise<void> {
   registerIpc(ipcMain, muneem.gateway);
   muneem.events.attach({ send: (ch, p) => mainWindow?.webContents.send(ch, p) });
   muneem.connectivity.start();
-  // ADR-0034: once per run, as soon as a session has a business and a terminal, post journals for anything saved without one.
-  let backlogStarted = false;
+  // ADR-0034: each business seeds its chart and posts its backlog once per run, when a session first has it.
   muneem.events.attach({
     send: (channel, payload) => {
-      const s = payload as { businessId?: string | null; terminalId?: string | null } | null;
-      if (channel !== 'session.changed' || backlogStarted || !s?.businessId || !s.terminalId) return;
-      backlogStarted = true;
-      void muneem?.backlog.run()
-        .then((r) => { if (r.posted > 0 || r.remaining > 0) loggers.app.info(r, 'journal backlog posted'); })
-        .catch((e) => { backlogStarted = false; loggers.app.error({ err: String(e) }, 'journal backlog failed'); });
+      if (channel !== 'session.changed' || !(payload as { businessId?: string | null } | null)?.businessId) return;
+      try {
+        void muneem?.backlog.startForSession()
+          ?.then((r) => { if (r.posted > 0 || r.remaining > 0) loggers.app.info(r, 'journal backlog posted'); })
+          .catch((e) => loggers.app.error({ err: String(e) }, 'journal backlog failed'));
+      } catch (e) { loggers.app.error({ err: String(e) }, 'chart of accounts seed failed'); }
     },
   });
   // Nightly-ish scheduled local backup (HLD §12): every 6 hours while running, first after 10 minutes.
