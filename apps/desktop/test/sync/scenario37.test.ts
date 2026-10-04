@@ -67,7 +67,8 @@ describe('the §37 offline scenario (7h)', () => {
     // Restart A on the same database; the clock jumps back an hour, and more sales follow.
     const dbFile = join(first.dir, 'muneem.sqlite');
     first.db.close();
-    const a = await syncedDevice(net, DEVICE_A, () => [], { dbFile, server: first.server });
+    const a = await syncedDevice(net, DEVICE_A, () => [ownerMembership(businessId)], { dbFile });
+    a.server.online = false;
     await login(a.app);
     now -= 3_600_000;
     vi.setSystemTime(now);
@@ -81,7 +82,7 @@ describe('the §37 offline scenario (7h)', () => {
     net.configure({ dropResponse: 0 });
     a.db.prepare("UPDATE sync_outbox SET status = 'in_flight', last_attempt_at = ? WHERE status <> 'sent'").run(new Date(now - 10 * 60_000).toISOString());
     a.db.close();
-    const restarted = await syncedDevice(net, DEVICE_A, () => [], { dbFile, server: a.server });
+    const restarted = await syncedDevice(net, DEVICE_A, () => [ownerMembership(businessId)], { dbFile });
     await login(restarted.app);
     expect(restarted.app.syncEngine.recover()).toBeGreaterThan(0);
     restarted.app.syncEngine.retryNow();
