@@ -25,6 +25,8 @@ All notable changes, newest first. Each entry records **what** changed and **why
   Barcode lookup, search and cart recalculation stay at 0.1–4 ms.
   - **Indexes (migration 0021):** the sync queue's reads during a push fall from 145 s to 32 ms, sync status from
     397 ms to 0.01 ms, the dashboard's party totals and top products, and customer search.
+- **The push heartbeat counts negative stock from a covering partial index (9f + 9c).** It had walked every stock row
+  of the business on every push; the query-plan gate caught it once both parts were merged.
 - **Reports and integrity checks run in a read worker (9f, ADR-0058).** The worker has its own read-only connection. At
   500k these checks had held the billing thread for minutes; the main thread now only applies a fix when one is
   needed.
