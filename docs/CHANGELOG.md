@@ -48,6 +48,17 @@ All notable changes, newest first. Each entry records **what** changed and **why
   - **Control:** revoking a device locks it out and tells the others.
   - **Tests:** CI's `go` job now runs Postgres, so every protocol fixture and one integration test per matrix row run
     there.
+- **Cloud hydration bundles (7f-1).** Why: a new or replaced device must start from a consistent copy of the
+  business, not by pulling row by row.
+  - **The bundle:** `POST/GET /sync/bootstrap` builds a gzipped NDJSON bundle per business in the background, from
+    one consistent read, and streams it into S3-compatible storage.
+  - **Delivery:** the device fetches it from a presigned URL that can resume (HTTP Range).
+  - **What it holds:** documents come from `change_log` with every version, so a cancelled document arrives whole;
+    the other streams carry each entity's latest state.
+  - **Reuse:** a ready bundle is reused until it is 1,000 changes behind.
+  - **Storage:** MinIO is in docker-compose and in CI's `go` job. The image is `bitnamilegacy/minio`, because
+    `minio/minio` left Docker Hub; it is frozen, for development and CI only.
+  - **Migration 0003** lets a member read a snapshot row before a business scope is set.
 
 ### Added — Stage 6 accounting
 - **Stage 6 plan (`docs/plans/stage-6-accounting.md`).** Decided with the user:
