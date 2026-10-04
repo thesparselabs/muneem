@@ -243,6 +243,47 @@ suite checks that every sale has exactly one journal after the kills.
 - The backfill of pre-Stage-6 documents (idempotent, batched, safe to stop mid-way).
 - The integrity check gains the journal replay, the tie-outs and unposted documents.
 
+6c details (drafted 2026-10-04; built straight after, as asked):
+
+- **Periods.**
+  - **Calls:** `accounting.getPeriods` lists months with their status and journal count. `lockPeriod({ periodStart })`
+    and `unlockPeriod({ periodStart, reason })` need `accounting.manage` and are audited.
+  - **Only months that have ended can be locked.** Locking the current or a future month is refused, so there is
+    always an open month after any locked one.
+  - **Unlocking** needs a reason, which is stored on the period.
+- **Late postings** (ADR-0033). `postJournal` checks the document's month.
+  - **If it is locked,** the journal posts into the **earliest open month after it**, dated that month's first day,
+    with `late_posting = 1`, `doc_date` kept, and a `journal.late_posting` audit row.
+  - **Review list:** `accounting.listLatePostings` shows each late posting's document, both dates and the entry number.
+  - **Reversals** of a late-posted journal follow the same rule.
+- **Backfill** (ADR-0034).
+  - **Finding the documents:** `unpostedDocuments(db, businessId)` lists every document that has no journal: sales,
+    purchases, debit notes, payments, write-offs, expenses, stock documents, cost corrections, party openings, closed
+    registers and cash in/out.
+  - **Posting them:** `postBacklog` posts each one through the same builders as live posting, in batches of 200 per
+    transaction, yielding between batches.
+  - **Cancelled before Stage 6:** a purchase, payment, expense or party opening cancelled before Stage 6 gets its
+    journal and then its reversal, dated the day it was cancelled.
+  - **Safety:** it is idempotent and safe to stop mid-way.
+  - **When it runs:** once per app run, when a session first has a business and a terminal, and on demand through
+    `accounting.postBacklog`.
+- **Integrity check.** `diagnostics.integrityCheck` gains `journals: 'ok' | 'healed' | 'mismatch' | 'not_run'`:
+  - **Rebuilt:** `account_balance` drift against the journal lines is healed by `rebuildAccountBalances` →
+    `healed`.
+  - **Reported, never rewritten** (`JOURNAL_MISMATCH` logged → `mismatch`): a tie-out failing, a journal whose lines
+    do not add up to its header, or documents without a journal.
+  - **When it runs:** on the 6-hourly timer too. `accounting.rebuildBalances` (`accounting.manage`) runs the rebuild
+    on demand.
+- **Contracts:** `ipc/accounting.ts` for periods, late postings, backlog and rebuild results; sync entity
+  `accounting_period`.
+- **Tests:**
+  - **Locking:** locking the current month is refused; locking a past month makes a backdated payment post late into
+    the next open month, flagged and listed; unlocking needs a reason.
+  - **Backfill:** documents saved with journal posting switched off (a test-only trigger) are all posted, cancels
+    included. Running it twice posts nothing new; afterwards the tie-outs hold and every document has a journal.
+  - **Integrity:** account-balance drift is healed; a document without a journal and a broken tie-out are reported,
+    not rewritten.
+
 **6d — Reports and manual journals.**
 - **Statements:** Trial Balance, P&L and Balance Sheet, with retained earnings from prior years' profit and customers
   with credit balances presented as advances.

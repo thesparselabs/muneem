@@ -66,11 +66,24 @@ async function boot(): Promise<void> {
   registerIpc(ipcMain, muneem.gateway);
   muneem.events.attach({ send: (ch, p) => mainWindow?.webContents.send(ch, p) });
   muneem.connectivity.start();
+  // ADR-0034: once per run, as soon as a session has a business and a terminal, post journals for anything saved without one.
+  let backlogStarted = false;
+  muneem.events.attach({
+    send: (channel, payload) => {
+      const s = payload as { businessId?: string | null; terminalId?: string | null } | null;
+      if (channel !== 'session.changed' || backlogStarted || !s?.businessId || !s.terminalId) return;
+      backlogStarted = true;
+      void muneem?.backlog.run()
+        .then((r) => { if (r.posted > 0 || r.remaining > 0) loggers.app.info(r, 'journal backlog posted'); })
+        .catch((e) => { backlogStarted = false; loggers.app.error({ err: String(e) }, 'journal backlog failed'); });
+    },
+  });
   // Nightly-ish scheduled local backup (HLD §12): every 6 hours while running, first after 10 minutes.
   const backupTimer = setInterval(() => {
     void muneem?.diagnostics.backupNow('scheduled').catch((e) => loggers.app.error({ err: String(e) }, 'scheduled backup failed'));
     void muneem?.diagnostics.checkStock({ slice: true }).catch((e) => loggers.app.error({ err: String(e) }, 'scheduled stock check failed'));
     try { muneem?.diagnostics.checkParties(); } catch (e) { loggers.app.error({ err: String(e) }, 'scheduled party check failed'); }
+    try { muneem?.diagnostics.checkJournals(); } catch (e) { loggers.app.error({ err: String(e) }, 'scheduled journal check failed'); }
   }, 6 * 3600_000);
   backupTimer.unref();
   setTimeout(() => void muneem?.diagnostics.backupNow('scheduled').catch(() => undefined), 10 * 60_000).unref();

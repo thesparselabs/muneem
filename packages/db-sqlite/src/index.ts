@@ -45,3 +45,5 @@ export * from './repositories/account.js';
 export * from './repositories/journal.js';
 export * from './repositories/tieOuts.js';
 export * from './repositories/documentJournals.js';
+export * from './repositories/periods.js';
+export * from './repositories/journalBacklog.js';

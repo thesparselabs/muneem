@@ -23,6 +23,7 @@ import {
   AllocateInput, AllocateResult, CancelDocumentInput, Expense, ExpenseCategory, ExpenseInput, ExpenseListInput, ExpensePage, OpenItems, PartyRefInput,
   Payment, PaymentInput, PaymentListInput, PaymentPage, WriteOff, WriteOffInput,
 } from './payments.js';
+import { BacklogResult, LatePosting, LockPeriodInput, Period, UnlockPeriodInput } from './accounting.js';
 import { CompleteSaleInput, CompleteSaleResult, HeldBill, HoldBillInput, Sale, SaleDraft, SaleListInput, SalePage, SaleQuote } from './sales.js';
 import { PrintJobSummary, PrinterConfig, ReceiptDoc } from './print.js';
 import { SETTING_KEYS } from './settings.js';
@@ -200,12 +201,19 @@ export const contract = {
   'expenses.list': spec({ input: ExpenseListInput, output: ExpensePage, permission: 'expenses.view', rateLimit: { perSec: 10 } }),
   'expenses.cancel': spec({ input: CancelDocumentInput, output: Expense, permission: 'expenses.cancel', rateLimit: { perSec: 1 }, audit: true }),
 
+  'accounting.getPeriods': spec({ input: Empty, output: z.array(Period), permission: 'accounting.view', rateLimit: { perSec: 5 } }),
+  'accounting.lockPeriod': spec({ input: LockPeriodInput, output: Period, permission: 'accounting.manage', rateLimit: { perSec: 1 }, audit: true }),
+  'accounting.unlockPeriod': spec({ input: UnlockPeriodInput, output: Period, permission: 'accounting.manage', rateLimit: { perSec: 1 }, audit: true }),
+  'accounting.listLatePostings': spec({ input: Empty, output: z.array(LatePosting), permission: 'accounting.view', rateLimit: { perSec: 5 } }),
+  'accounting.postBacklog': spec({ input: Empty, output: BacklogResult, permission: 'accounting.manage', rateLimit: { perSec: 1 }, audit: true }),
+  'accounting.rebuildBalances': spec({ input: Empty, output: z.object({ rebuilt: z.number().int() }), permission: 'accounting.manage', rateLimit: { perSec: 1 }, audit: true }),
+
   'sync.getStatus': spec({ input: Empty, output: SyncStatus, permission: null, rateLimit: { perSec: 10 } }),
 
   'diagnostics.getHealth': spec({ input: Empty, output: Health, permission: 'diagnostics.view', rateLimit: { perSec: 5 } }),
   'diagnostics.integrityCheck': spec({
     input: Empty,
-    output: z.object({ quickCheck: z.enum(['ok', 'failed']), foreignKeys: z.enum(['ok', 'failed']), auditChain: z.enum(['ok', 'broken']), stock: z.enum(['ok', 'healed', 'not_run']), parties: z.enum(['ok', 'mismatch', 'not_run']), detail: z.array(z.string()) }),
+    output: z.object({ quickCheck: z.enum(['ok', 'failed']), foreignKeys: z.enum(['ok', 'failed']), auditChain: z.enum(['ok', 'broken']), stock: z.enum(['ok', 'healed', 'not_run']), parties: z.enum(['ok', 'mismatch', 'not_run']), journals: z.enum(['ok', 'healed', 'mismatch', 'not_run']), detail: z.array(z.string()) }),
     permission: 'diagnostics.view', rateLimit: { perSec: 1 }, audit: true,
   }),
   'diagnostics.backupNow': spec({ input: Empty, output: z.object({ path: z.string(), bytes: z.number().int(), verified: z.boolean() }), permission: 'diagnostics.view', rateLimit: { perSec: 1 }, audit: true }),
