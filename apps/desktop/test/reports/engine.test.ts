@@ -58,7 +58,7 @@ describe('report engine and exports (8a, ADR-0046)', () => {
     expect(saved[0]!.name).toBe('Trial Balance 2026-10-05.csv');
 
     const book = new ExcelJS.Workbook();
-    await book.xlsx.load(saved[1]!.bytes);
+    await book.xlsx.load(saved[1]!.bytes as unknown as ArrayBuffer);
     const values = book.worksheets[0]!.getSheetValues().flat().filter((v) => typeof v === 'number');
     expect(values).toContain(12_345.6);
 
