@@ -11,6 +11,7 @@ import { fileURLToPath } from 'node:url';
 import { computeInvoice } from '../src/index.js';
 import type { Discount, GstFixtureCase, GstFixtureFile, GstInvoiceInput, GstLineInput, TaxTreatment } from '../src/index.js';
 import { allocationFixtures } from './allocationFixtures.js';
+import { complianceFixtures } from './compliance/fixtures.js';
 import { returnFixtures } from './returnFixtures.js';
 import { setoffFixtures } from './setoffFixtures.js';
 
@@ -128,3 +129,9 @@ mkdirSync(setoffDir, { recursive: true });
 const setoff = setoffFixtures();
 writeFileSync(setoffDir + 'setoff-golden.json', JSON.stringify(setoff, null, 1) + '\n');
 console.log(`wrote ${setoff.cases.length} set-off cases`);
+
+const complianceDir = fileURLToPath(new URL('../fixtures/compliance/', import.meta.url));
+mkdirSync(complianceDir, { recursive: true });
+const compliance = complianceFixtures();
+writeFileSync(complianceDir + 'scenarios.json', JSON.stringify(compliance, null, 1) + '\n');
+console.log(`wrote ${compliance.scenarios.length} compliance scenarios`);
