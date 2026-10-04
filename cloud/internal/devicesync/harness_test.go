@@ -61,9 +61,9 @@ func newCloud(t *testing.T) *cloud {
 	log := slog.New(slog.NewTextHandler(io.Discard, nil))
 	h := handlers{
 		authHandler:     &auth.Handler{DB: db, Signer: signer},
-		deviceHandler:   &device.Handler{DB: db, Verifier: verifier},
+		deviceHandler:   &device.Handler{DB: db, Verifier: verifier, Revocations: devicesync.Control{}},
 		businessHandler: &business.Handler{DB: db},
-		syncHandler:     &devicesync.Handler{Ingest: &devicesync.Ingest{DB: db, Log: log}},
+		syncHandler:     &devicesync.Handler{Ingest: &devicesync.Ingest{DB: db, Log: log}, Feed: &devicesync.Feed{DB: db}},
 	}
 	e := httpx.New(httpx.Deps{Handlers: h, RequireAuth: signer.Require, DeviceVerifier: verifier.Middleware, Logger: log})
 	return &cloud{t: t, db: db, e: e, signer: signer}
@@ -144,6 +144,31 @@ func (c *cloud) push(d *testDevice, request any) (int, devicesync.PushResponse) 
 	}
 	code, raw := c.do(d, http.MethodPost, "/v1/sync/push", nil, body)
 	var res devicesync.PushResponse
+	if code == http.StatusOK {
+		if err := json.Unmarshal(raw, &res); err != nil {
+			c.t.Fatal(err)
+		}
+	}
+	return code, res
+}
+
+// stranger is a device of another organization's user.
+func (c *cloud) stranger() *testDevice {
+	user, org := c.user, c.org
+	defer func() { c.user, c.org = user, org }()
+	c.seedOwner(ulid.Make().String(), ulid.Make().String())
+	return c.registerDevice()
+}
+
+func (c *cloud) pull(d *testDevice, businessID, stream string, since int64) (int, devicesync.PullResponse) {
+	return c.pullLimit(d, businessID, stream, since, devicesync.PullMaxLimit)
+}
+
+func (c *cloud) pullLimit(d *testDevice, businessID, stream string, since int64, limit int) (int, devicesync.PullResponse) {
+	c.t.Helper()
+	q := url.Values{"businessId": {businessID}, "stream": {stream}, "since": {strconv.FormatInt(since, 10)}, "limit": {strconv.Itoa(limit)}}
+	code, raw := c.do(d, http.MethodGet, "/v1/sync/pull", q, nil)
+	var res devicesync.PullResponse
 	if code == http.StatusOK {
 		if err := json.Unmarshal(raw, &res); err != nil {
 			c.t.Fatal(err)

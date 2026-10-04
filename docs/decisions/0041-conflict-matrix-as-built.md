@@ -28,3 +28,19 @@ LLD §9 sets a strategy per class of entity. Stage 7 implements it on the cloud,
 - The device never resolves conflicts itself. It applies what the cloud sends, except that it leaves alone an entity
   with an unsent outbox row until that push lands.
 - Review items are pulled to devices and listed under Settings → Review (7g).
+
+## As built (7c)
+- **Versions:** a payload's `version` is the version it creates, so it was based on `version − 1`. A write based on
+  the cloud's current version (or newer, after superseded edits) replaces it and keeps the device's version. A write
+  based on an older one is merged against the stored payload of that version (from `change_log`), and the result is
+  stamped with the cloud's next version. Payloads without a `version` (accounts, warehouses, series, settings, price
+  list items) cannot be compared, so they replace in arrival order.
+- **Fields** are a payload's top-level keys; arrays such as a product's barcodes compare whole. `updatedAt` follows the
+  winner and is not listed as a conflict.
+- **Tombstones:** an operation of type `void`, or a payload with `deletedAt`/`deleted_at`, deletes. A later write to a
+  deleted entity changes nothing; the delete goes out again with a null origin and a `tombstone_wins` review item.
+- **Review items:** `conflict_log.kind` is `field_conflict`, `tombstone_wins`, `duplicate_barcode` or `late_arrival`.
+  Each row also goes down the control stream as a `review_item` change with `{id, kind, entityType, entityId,
+  deviceId, operationId, serverSeq, detail}`.
+- **Late arrivals:** a document whose journal is dated in a month whose latest pushed `accounting_period` row is
+  `locked` is stored as sent, and a `late_arrival` review item is added (ADR-0040).

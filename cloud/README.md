@@ -39,3 +39,21 @@ Every tenant table carries `business_id` and has Row-Level Security policies for
 and `muneem_readonly` roles. The API runs each request in a transaction and sets
 `app.user_id` / `app.business_id` / `app.device_id` with `set_config(..., true)`; handlers still
 check membership explicitly — RLS is defence-in-depth, not the only guard.
+
+## Sync (Stage 7)
+
+`internal/devicesync` serves `POST /v1/sync/push` and `GET /v1/sync/pull` (LLD §7). Push applies each operation in
+its own transaction: idempotency, dependencies, verification (`verify/`, GST through the Go port), then
+`entity_state`, the journal projection and `change_log`. Masters and config go through the conflict matrix
+(`conflict/`, ADR-0041); review items and device revocations travel on the control stream.
+
+Integration tests use Postgres and skip without it:
+
+```bash
+docker compose up -d postgres
+MUNEEM_TEST_DATABASE_URL='postgres://muneem:muneem@localhost:5433/muneem?sslmode=disable' go test ./...
+```
+
+They include the shared protocol fixtures (`packages/contracts/fixtures/sync`). To push a real seeded soak through
+the whole pipeline, dump one with `MUNEEM_SYNC_CENSUS_OUT=<dir> pnpm --filter @muneem/desktop exec vitest run
+test/sync/dumpCensus.test.ts`, then set `MUNEEM_SYNC_CENSUS=<dir>/soak.json` for `go test ./internal/devicesync/...`.

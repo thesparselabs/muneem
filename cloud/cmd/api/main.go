@@ -67,9 +67,9 @@ func main() {
 	verifier := device.NewVerifier(db)
 	h := handlers{
 		authHandler:     &auth.Handler{DB: db, Signer: signer},
-		deviceHandler:   &device.Handler{DB: db, Verifier: verifier},
+		deviceHandler:   &device.Handler{DB: db, Verifier: verifier, Revocations: devicesync.Control{}},
 		businessHandler: &business.Handler{DB: db},
-		syncHandler:     &devicesync.Handler{Ingest: &devicesync.Ingest{DB: db, Log: log}},
+		syncHandler:     &devicesync.Handler{Ingest: &devicesync.Ingest{DB: db, Log: log}, Feed: &devicesync.Feed{DB: db}},
 	}
 	e := httpx.New(httpx.Deps{Handlers: h, RequireAuth: signer.Require, DeviceVerifier: verifier.Middleware, Logger: log})
 	port := os.Getenv("PORT")

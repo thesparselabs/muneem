@@ -162,6 +162,47 @@ func journalDebit(ctx context.Context, tx pgx.Tx, businessID, journalID string) 
 	return *debit, true, nil
 }
 
+// periodLocked reads the business's lock for the month holding a date: the latest pushed period row covering it.
+func periodLocked(ctx context.Context, tx pgx.Tx, businessID, date string) (string, bool, error) {
+	var id, status string
+	err := tx.QueryRow(ctx, `SELECT entity_id, payload->>'status' FROM entity_state
+		WHERE business_id = $1 AND entity_type = 'accounting_period' AND payload->>'periodStart' <= $2 AND payload->>'periodEnd' >= $2
+		ORDER BY updated_at DESC, last_seq DESC LIMIT 1`, businessID, date).Scan(&id, &status)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return "", false, nil
+	}
+	return id, status == "locked", err
+}
+
+func barcodesWithCode(ctx context.Context, tx pgx.Tx, businessID, code, exceptProduct string) ([]string, error) {
+	rows, err := tx.Query(ctx, `SELECT entity_id FROM entity_state WHERE business_id = $1 AND entity_type = 'barcode' AND deleted_at IS NULL
+		AND payload->>'code' = $2 AND payload->>'productId' <> $3 ORDER BY entity_id`, businessID, code, exceptProduct)
+	if err != nil {
+		return nil, err
+	}
+	return pgx.CollectRows(rows, pgx.RowTo[string])
+}
+
+type conflictRow struct {
+	ID          string
+	Kind        string
+	EntityType  string
+	EntityID    string
+	DeviceID    string
+	OperationID string
+	Detail      any
+}
+
+func insertConflict(ctx context.Context, tx pgx.Tx, businessID string, c conflictRow, seq int64) error {
+	detail, err := json.Marshal(c.Detail)
+	if err != nil {
+		return err
+	}
+	_, err = tx.Exec(ctx, `INSERT INTO conflict_log (id, business_id, kind, entity_type, entity_id, device_id, operation_id, detail, server_seq)
+		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`, c.ID, businessID, c.Kind, c.EntityType, c.EntityID, c.DeviceID, c.OperationID, detail, seq)
+	return err
+}
+
 func insertDeadLetter(ctx context.Context, tx pgx.Tx, businessID, deviceID string, op Operation, code, detail string) error {
 	raw, err := json.Marshal(op)
 	if err != nil {
@@ -178,10 +219,29 @@ func lastSeq(ctx context.Context, tx pgx.Tx, businessID string) (int64, error) {
 	return seq, err
 }
 
+func readChanges(ctx context.Context, tx pgx.Tx, businessID, stream string, since int64, limit int) ([]Change, error) {
+	rows, err := tx.Query(ctx, `SELECT seq, stream, entity_type, entity_id, op, version, origin_device_id, payload FROM change_log
+		WHERE business_id = $1 AND stream = $2 AND seq > $3 ORDER BY seq LIMIT $4`, businessID, stream, since, limit)
+	if err != nil {
+		return nil, err
+	}
+	return pgx.CollectRows(rows, func(r pgx.CollectableRow) (Change, error) {
+		var c Change
+		err := r.Scan(&c.Seq, &c.Stream, &c.EntityType, &c.EntityID, &c.Op, &c.Version, &c.OriginDeviceID, &c.Payload)
+		return c, err
+	})
+}
+
 func notePush(ctx context.Context, tx pgx.Tx, deviceID, businessID string, lastPushSeq *int64, skewMs *int) error {
 	_, err := tx.Exec(ctx, `UPDATE device SET last_seen_at = now(), updated_at = now(), business_id = COALESCE(business_id, $2),
 		last_push_seq = GREATEST(COALESCE(last_push_seq, 0), COALESCE($3, 0)), clock_skew_ms = COALESCE($4, clock_skew_ms) WHERE id = $1`,
 		deviceID, businessID, lastPushSeq, skewMs)
+	return err
+}
+
+func notePull(ctx context.Context, tx pgx.Tx, deviceID string, seq int64) error {
+	_, err := tx.Exec(ctx, `UPDATE device SET last_seen_at = now(), updated_at = now(), last_pull_seq = GREATEST(COALESCE(last_pull_seq, 0), $2) WHERE id = $1`,
+		deviceID, seq)
 	return err
 }
 

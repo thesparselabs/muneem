@@ -30,6 +30,8 @@ Postgres table now would double the schema work, and it would have to change whe
   (create, then cancel or close), and masters, config and control from `entity_state`.
 - **`writer_device_id`** on `entity_state` is the last signed pusher, even when the change went out with a null
   origin. It breaks last-writer-wins ties (ADR-0041).
+- **Cloud-made entities** share the tables: `review_item` (one per `conflict_log` row) and `device` (a revocation),
+  both on the control stream.
 - **Idempotency rows** (`sync_operation`) are kept for applied and rejected operations. A rejected operation sent again
   with the same payload is verified again rather than answered as a duplicate, so a fixed cloud can accept a resend.
 - **Writes serialize per business.** Each operation's transaction takes a per-business advisory lock before it reads

@@ -44,3 +44,9 @@ const (
 	PushMaxBytes      = 2 * 1024 * 1024
 	PullMaxLimit      = 500
 )
+
+// Control-stream entity types the cloud emits itself; devices list them as review items or act on them (7e).
+const (
+	ControlDevice     = "device"
+	ControlReviewItem = "review_item"
+)

@@ -18,6 +18,7 @@ import (
 
 type Handler struct {
 	Ingest *Ingest
+	Feed   *Feed
 }
 
 func callerOf(c echo.Context) Caller {
@@ -64,13 +65,30 @@ func (h *Handler) SyncPush(c echo.Context) error {
 	return c.JSON(http.StatusOK, res)
 }
 
-func notYet(c echo.Context) error {
-	return httpx.Fail(c, http.StatusNotImplemented, "NOT_IMPLEMENTED", api.Transient, "not available yet")
+func (h *Handler) SyncPull(c echo.Context, p api.SyncPullParams) error {
+	limit := PullMaxLimit
+	if p.Limit != nil {
+		limit = *p.Limit
+	}
+	if !validStreams[string(p.Stream)] || p.Since < 0 || limit < 1 || limit > PullMaxLimit {
+		return httpx.Validation(c, "stream must be control, config, masters or documents; since ≥ 0; 1 ≤ limit ≤ 500")
+	}
+	res, err := h.Feed.Pull(c.Request().Context(), callerOf(c), p.BusinessId, string(p.Stream), p.Since, limit)
+	if errors.Is(err, ErrNotMember) {
+		return httpx.NotFound(c, "business")
+	}
+	if err != nil {
+		return httpx.Internal(c, err)
+	}
+	return c.JSON(http.StatusOK, res)
 }
 
-func (h *Handler) SyncPull(c echo.Context, _ api.SyncPullParams) error { return notYet(c) }
-func (h *Handler) SyncBootstrap(c echo.Context) error                  { return notYet(c) }
-func (h *Handler) GetSnapshot(c echo.Context, _ string) error          { return notYet(c) }
+func notYet(c echo.Context) error {
+	return httpx.Fail(c, http.StatusNotImplemented, "NOT_IMPLEMENTED", api.Transient, "hydration is not available yet")
+}
+
+func (h *Handler) SyncBootstrap(c echo.Context) error         { return notYet(c) }
+func (h *Handler) GetSnapshot(c echo.Context, _ string) error { return notYet(c) }
 
 // decodePush reads a gzipped or plain body, refusing more than 2 MB once inflated.
 func decodePush(r *http.Request) (*PushRequest, error) {
