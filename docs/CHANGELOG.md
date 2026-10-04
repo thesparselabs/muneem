@@ -12,6 +12,17 @@ All notable changes, newest first. Each entry records **what** changed and **why
   - **Before the pilot:** USB/Windows printing with ₹ and Indic text.
   - **Scale bar:** 500k transactions, 20k SKUs and 50k customers against the strict LLD §18 budgets.
   - **Monitoring:** self-hosted Prometheus, Loki and Grafana, with a self-hosted crash collector.
+- **Windows printing (9d, ADR-0055).** Why: pilot shops use USB printers installed through Windows.
+  - **RAW mode:** receipts print on any installed Windows printer as RAW ESC/POS, through a fixed PowerShell
+    `WritePrinter` helper. There is no shell, the name must be one Windows lists, and size and time are bounded.
+  - **Image mode:** printers without ESC/POS print a page through their driver.
+- **₹ and Indic text on receipts (9d).** These lines print as ESC/POS raster images drawn with bundled Noto Devanagari
+  and Tamil fonts (OFL, about 300 KB); ASCII lines stay text. The printer's code page used to print "Rs" and "?". ₹
+  versus "Rs" is a per-printer option.
+- **A hung printer never blocks a sale (9d, NFR-012).** The print queue has a deadline over every transport, and the
+  cash drawer kicks through the spooler too.
+- **Printer settings (9d):** pick an installed printer, the mode, the paper width and the ₹ option, then test-print and
+  test the drawer. The real Windows path has not run on Windows yet; it is part of the 9j manual checks.
 - **The cloud is deployable (9b, ADR-0051).** Why: production needs one reproducible artifact and a scripted, safe
   deploy.
   - **Image:** a distroless, non-root container and a CI `cloud-image` job.
