@@ -36,6 +36,10 @@ import { JournalBacklog } from './services/accounting/backlog.js';
 import { PeriodService } from './services/accounting/periods.js';
 import { ChartService } from './services/accounting/chart.js';
 import { ManualJournalService } from './services/accounting/manualJournals.js';
+import { GstContext } from './services/gst/gstContext.js';
+import { GstPaymentService } from './services/gst/paymentService.js';
+import { GstReturnService } from './services/gst/returnService.js';
+import { GstSetoffService } from './services/gst/setoffService.js';
 import { StatementService } from './services/accounting/statements.js';
 import { PurchasePricing } from './services/purchases/purchasePricing.js';
 import { PurchaseReturnService } from './services/purchases/purchaseReturns.js';
@@ -151,6 +155,8 @@ export function createApp(cfg: AppConfig) {
   });
   const chart = new ChartService(posCtx, statements);
   const manualJournals = new ManualJournalService(posCtx);
+  const gstCtx = new GstContext(posCtx);
+  const gst = { returns: new GstReturnService(gstCtx), setoffs: new GstSetoffService(gstCtx), payments: new GstPaymentService(gstCtx) };
   const register = new RegisterService(posCtx);
   const heldBills = new HeldBillService(posCtx, register);
   const inventory = new InventoryService(posCtx);
@@ -353,6 +359,11 @@ export function createApp(cfg: AppConfig) {
     'reports.listDefinitions': () => reports.list(),
     'reports.run': (i) => reports.run(i.id, i.params),
     'reports.export': (i) => reports.export(i.id, i.params, i.format),
+    'gst.returnSummary': (i) => gst.returns.summary(i.month),
+    'gst.previewSetoff': (i) => gst.setoffs.preview(i.month),
+    'gst.postSetoff': (i) => gst.setoffs.post(i),
+    'gst.recordPayment': (i) => gst.payments.record(i),
+    'gst.ledger': () => gst.payments.ledger(),
     'sync.getStatus': () => syncStatus(),
     'sync.retry': () => { void sync.retry(); return syncStatus(); },
     ...syncScreenHandlers({
@@ -377,6 +388,6 @@ export function createApp(cfg: AppConfig) {
     onCommitted: () => sync.nudge(), holds: (id) => gate.holds(id),
   });
 
-  return { events, session, reports, rbac, cloud, connectivity, device, auth, business, settings, products, catalog, pricing, productImport, customers, suppliers, customerLedger, supplierLedger, purchases, purchaseReturns, purchaseImport, payments, writeOffs, expenses, periods, backlog, statements, chart, manualJournals, register, sales, returns, printQueue, inventory, openingImport, diagnostics, backups, closeReadConnections, gateway, handlers, syncStatus, syncEngine, sync, hydration, hydrationGate: gate };
+  return { events, session, reports, rbac, cloud, connectivity, device, auth, business, settings, products, catalog, pricing, productImport, customers, suppliers, customerLedger, supplierLedger, purchases, purchaseReturns, purchaseImport, payments, writeOffs, expenses, periods, backlog, statements, chart, manualJournals, gst, register, sales, returns, printQueue, inventory, openingImport, diagnostics, backups, closeReadConnections, gateway, handlers, syncStatus, syncEngine, sync, hydration, hydrationGate: gate };
 }
 export type App = ReturnType<typeof createApp>;

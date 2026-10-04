@@ -160,6 +160,27 @@ business's cash, in the drawer and out of it. The cash a shop starts with is rec
 Dr 1100 Cash, Cr 3400 Opening Balance Equity. Until it is, 1100 shows only what has moved since, and can read below
 zero even though the drawer holds money.
 
+## GST set-off ◆
+
+| Dr | Cr | Amount |
+|---|---|---|
+| 2210 / 2220 / 2230 / 2240 Output CGST / SGST / IGST / Cess | | each head's balance at the month's last day, cleared in full |
+| | 1510 / 1520 / 1530 / 1540 Input CGST / SGST / IGST / Cess | the credit used from each head, in the statutory order |
+| | 2300 GST Payable | what credit could not cover, paid later by challan |
+
+*Example:* output CGST 892.44, SGST 892.43 and cess 99.16 against input IGST 324.00 and cess 18.00. IGST credit pays
+CGST first (the head its own credit cannot cover), cess credit pays cess, and the rest is payable.
+- **Debits:** Output CGST 892.44, Output SGST 892.43, Output Cess 99.16.
+- **Credits:** Input IGST 324.00, Input Cess 18.00, GST Payable 1,542.03.
+
+◆ Posted on the month's last day, numbered `T1S/…`; it never touches AR, AP or Inventory (ADR-0035, ADR-0044).
+
+## GST payment (challan)
+
+| Dr | Cr | Amount |
+|---|---|---|
+| 2300 GST Payable | 1200 Bank | the challan's total; its heads are kept on the document |
+
 ## Not posted yet
 
 - **Year end:** the closing and opening journals come in Stage 8. Until then, retained earnings are computed on the

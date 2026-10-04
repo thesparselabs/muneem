@@ -1,5 +1,5 @@
-import type { Product, ProductHit, ProductInput, ProductListInput, ProductPage, ProductSearchInput, ProductUpdate } from '@muneem/contracts';
-import { createProduct, getProduct, listProductHits, setProductActive, updateProduct } from '@muneem/db-sqlite';
+import { AppError, type Product, type ProductHit, type ProductInput, type ProductListInput, type ProductPage, type ProductSearchInput, type ProductUpdate } from '@muneem/contracts';
+import { createProduct, getBusiness, getProduct, listProductHits, setProductActive, updateProduct } from '@muneem/db-sqlite';
 import type { CatalogContext } from './catalogContext.js';
 import type { ProductSearch } from './productSearch.js';
 
@@ -20,6 +20,7 @@ export class ProductService {
   }
 
   create(input: ProductInput): Product {
+    this.requireHsn(input);
     return this.changed(createProduct(this.ctx.db(), this.ctx.businessId(), input, this.ctx.actor(), this.ctx.today()));
   }
 
@@ -31,6 +32,15 @@ export class ProductService {
   setActive(id: string, version: number, active: boolean): Product {
     this.get(id);
     return this.changed(setProductActive(this.ctx.db(), id, version, active, this.ctx.actor(), this.ctx.today()));
+  }
+
+  // FR-094: a GST-registered regular business reports every line by HSN, so a new product needs one; older ones are listed
+  // by the "Products missing HSN" report instead (ADR-0044 as built).
+  private requireHsn(input: ProductInput): void {
+    const b = getBusiness(this.ctx.db(), this.ctx.businessId());
+    if (b?.taxScheme === 'regular' && b.gstin && !input.hsnCode) {
+      throw new AppError('VALIDATION_FAILED', 'Enter the HSN/SAC code', { hsnCode: 'required for a GST-registered business' });
+    }
   }
 
   private changed(p: Product): Product {

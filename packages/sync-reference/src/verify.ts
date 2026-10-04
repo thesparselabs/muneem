@@ -48,7 +48,26 @@ function creditNoteTotalsHold(p: Payload): boolean {
     && lines.every((l) => taxed(l) === num(l.totalPaise)) && num(p.refundPaise) + num(p.creditPaise) === total;
 }
 
-const TOTALS: Record<string, (p: Payload) => boolean> = { sale: saleTotalsHold, purchase: purchaseTotalsHold, debit_note: debitNoteTotalsHold, credit_note: creditNoteTotalsHold };
+// A set-off: each head's liability is met by credit or cash, and no head's credit is used beyond what was there (ADR-0044).
+function setoffTotalsHold(p: Payload): boolean {
+  const h = (k: string) => (p[k] ?? {}) as Record<string, unknown>;
+  const u = h('utilisation');
+  const [l, c, cash] = [h('liability'), h('credit'), h('cash')];
+  const met = { igst: num(u.igstToIgstPaise) + num(u.cgstToIgstPaise) + num(u.sgstToIgstPaise), cgst: num(u.igstToCgstPaise) + num(u.cgstToCgstPaise),
+    sgst: num(u.igstToSgstPaise) + num(u.sgstToSgstPaise), cess: num(u.cessToCessPaise) };
+  const used = { igst: num(u.igstToIgstPaise) + num(u.igstToCgstPaise) + num(u.igstToSgstPaise), cgst: num(u.cgstToCgstPaise) + num(u.cgstToIgstPaise),
+    sgst: num(u.sgstToSgstPaise) + num(u.sgstToIgstPaise), cess: num(u.cessToCessPaise) };
+  return (['igst', 'cgst', 'sgst', 'cess'] as const).every((k) =>
+    met[k] + num(cash[`${k}Paise`]) === num(l[`${k}Paise`]) && used[k] <= num(c[`${k}Paise`]));
+}
+
+const gstPaymentTotalsHold = (p: Payload): boolean =>
+  num(p.totalPaise) > 0 && num(p.igstPaise) + num(p.cgstPaise) + num(p.sgstPaise) + num(p.cessPaise) === num(p.totalPaise);
+
+const TOTALS: Record<string, (p: Payload) => boolean> = {
+  sale: saleTotalsHold, purchase: purchaseTotalsHold, debit_note: debitNoteTotalsHold, credit_note: creditNoteTotalsHold, gst_setoff: setoffTotalsHold,
+  gst_payment: gstPaymentTotalsHold,
+};
 
 // The light verifier (ADR-0042): document totals add up and every journal in the payload balances.
 export function verifyOperation(entityType: string, operationType: string, payload: Payload): SyncErrorCode | null {

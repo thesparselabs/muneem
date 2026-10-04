@@ -52,7 +52,7 @@ export class ReportService {
   private document(def: ReportDefinition, params: ReportParams, r: ReportResult): ExportDocument {
     return {
       title: def.title, business: this.d.business(), generatedAt: r.generatedAt, columns: r.columns, rows: r.rows as Row[], totals: r.totals as Row | null,
-      params: def.params.filter((p) => params[p.key]).map((p) => ({ label: p.label, value: params[p.key]! })),
+      params: def.params.filter((p) => params[p.key]).map((p) => ({ label: p.label, value: params[p.key]! })), ...(def.bare && { bare: true }),
     };
   }
 

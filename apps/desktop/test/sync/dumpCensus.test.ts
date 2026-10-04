@@ -1,7 +1,7 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { describe, it, vi } from 'vitest';
 import { newUlid } from '@muneem/domain';
-import { CompleteReturnInput, CompleteSaleInput, SaleDraft } from '@muneem/contracts';
+import { CompleteReturnInput, CompleteSaleInput, CreatePurchaseInput, GstPaymentInput, PurchaseDraft, SaleDraft } from '@muneem/contracts';
 import type { Db } from '@muneem/db-sqlite';
 import { runSoak } from '../soak/generator.js';
 import { caller, ownerAtTill, testApp } from '../helpers.js';
@@ -77,5 +77,27 @@ describe('sync census dumps', () => {
     giveBack(saleIds[1]!, [{ lineNo: 1, qtyMilli: 1000 }]);
     app.returns.cancel({ saleId: saleIds[2]!, reason: 'wrong bill' });
     dump(db, businessId, 'variety.json');
+  }, 120_000);
+
+  // ADR-0044: a month's set-off with IGST credit used across heads, and the challan that pays the rest.
+  run('a GST set-off and payment', async () => {
+    let clock = Date.parse('2026-05-10T06:30:00Z');
+    const { app, db } = await testApp({ now: () => clock });
+    const api = caller(app);
+    const { businessId } = await ownerAtTill(app, { gstin: '07AAAAA0000A1Z5' });
+    const pcs = (await api.data<{ id: string; code: string }[]>('catalog.listUoms')).find((u) => u.code === 'PCS')!.id;
+    const soap = await api.data<{ id: string }>('products.create', { name: 'Soap', hsnCode: '3401', baseUomId: pcs, gstRateBp: 1800, cessRateBp: 100, sellingPricePaise: 118_000 });
+    const supplier = app.suppliers.create({ name: 'Pune Mills', stateCode: '27', gstin: '27DDDDD0000D1Z5', taxScheme: 'regular', creditDays: 30 });
+    const draft = PurchaseDraft.parse({ supplierId: supplier.id, supplierInvoiceNo: 'P-1', supplierInvoiceDate: '2026-05-02',
+      lines: [{ productId: soap.id, uomId: pcs, qtyMilli: 3000, unitPricePaise: 60_000 }] });
+    app.purchases.create(CreatePurchaseInput.parse({ ...draft, billTotalPaise: app.purchases.quote(draft).totals.totalPaise, commandId: newUlid() }));
+    await app.register.open(100_000);
+    const sale = SaleDraft.parse({ lines: [{ productId: soap.id, uomId: pcs, qtyMilli: 10_000 }] });
+    const total = app.sales.quote(sale).totals.totalPaise;
+    app.sales.complete(CompleteSaleInput.parse({ ...sale, commandId: newUlid(), expectedTotalPaise: total, tenders: [{ method: 'cash', amountPaise: total }] }));
+    clock = Date.parse('2026-06-04T06:30:00Z');
+    const setoff = app.gst.setoffs.post({ month: '2026-05-01', commandId: newUlid() });
+    app.gst.payments.record(GstPaymentInput.parse({ commandId: newUlid(), paymentDate: '2026-06-04', challanRef: 'CPIN26060400001', month: '2026-05-01', ...setoff.cash }));
+    dump(db, businessId, 'gst.json');
   }, 120_000);
 });

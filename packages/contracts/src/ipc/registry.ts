@@ -33,6 +33,7 @@ import { PrintJobSummary, PrinterConfig, ReceiptDoc } from './print.js';
 import { SETTING_KEYS } from './settings.js';
 import { CloudBusiness, HydrationStartInput, HydrationStatus } from './hydration.js';
 import { ExportReportInput, ExportReportResult, ReportDefinitionView, ReportResult, RunReportInput } from './reports.js';
+import { GstLedgerView, GstMonthInput, GstPayment, GstPaymentInput, GstReturnSummary, GstSetoff, GstSetoffPreview, PostGstSetoffInput } from './gst.js';
 import { BackupList, BackupRef, BackupVerification, RestoreBackupInput, RestoreFromCloudInput, RestoreResult, RunBackupResult } from './backups.js';
 import {
   AdjustmentResult, AdjustStockInput, MovementPage, MovementsInput, OpeningImportCommitInput, OpeningImportPreview, OpeningImportPreviewInput,
@@ -242,6 +243,13 @@ export const contract = {
   'reports.listDefinitions': spec({ input: Empty, output: z.array(ReportDefinitionView), permission: 'reports.view', rateLimit: { perSec: 5 } }),
   'reports.run': spec({ input: RunReportInput, output: ReportResult, permission: 'reports.view', rateLimit: { perSec: 5 } }),
   'reports.export': spec({ input: ExportReportInput, output: ExportReportResult, permission: 'reports.export', rateLimit: { perSec: 1 }, audit: true }),
+
+  // ADR-0044: returns are read with gst.view; posting a set-off or a challan is gst.create (managers and accountants).
+  'gst.returnSummary': spec({ input: GstMonthInput, output: GstReturnSummary, permission: 'gst.view', rateLimit: { perSec: 2 } }),
+  'gst.previewSetoff': spec({ input: GstMonthInput, output: GstSetoffPreview, permission: 'gst.view', rateLimit: { perSec: 2 } }),
+  'gst.postSetoff': spec({ input: PostGstSetoffInput, output: GstSetoff, permission: 'gst.create', rateLimit: { perSec: 1 }, audit: true, idempotent: 'commandId' }),
+  'gst.recordPayment': spec({ input: GstPaymentInput, output: GstPayment, permission: 'gst.create', rateLimit: { perSec: 1 }, audit: true, idempotent: 'commandId' }),
+  'gst.ledger': spec({ input: Empty, output: GstLedgerView, permission: 'gst.view', rateLimit: { perSec: 5 } }),
 
   'sync.getStatus': spec({ input: Empty, output: SyncStatus, permission: null, rateLimit: { perSec: 10 } }),
   'sync.retry': spec({ input: Empty, output: SyncStatus, permission: 'sync.view', rateLimit: { perSec: 1 } }),

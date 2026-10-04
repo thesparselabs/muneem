@@ -25,6 +25,8 @@ var creates = map[string]check{
 	"purchase":         decoded(verifyPurchase),
 	"debit_note":       decoded(verifyDebitNote),
 	"credit_note":      decoded(verifyCreditNote),
+	"gst_setoff":       decoded(verifyGstSetoff),
+	"gst_payment":      decoded(verifyGstPayment),
 	"payment":          decoded(verifyPayment),
 	"write_off":        decoded(verifyWriteOff),
 	"expense":          decoded(verifyExpense),

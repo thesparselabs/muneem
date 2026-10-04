@@ -1,0 +1,168 @@
+{
+ "operations": [
+  {
+   "entityId": "01M43ZY9JMJVCP9AE733F1NAMM",
+   "entityType": "gst_setoff",
+   "operationType": "create",
+   "payload": {
+    "branchId": "01M43ZY9F91PVZJK4P8TBGJP6H",
+    "businessId": "01M43ZY9DBZCN4Z9RFC3P0HXTC",
+    "cash": {
+     "cessPaise": 8116,
+     "cgstPaise": 56844,
+     "igstPaise": 0,
+     "sgstPaise": 89243
+    },
+    "commandId": "01M43ZY9JGMABZSW3R038VDGFT",
+    "createdAt": "2026-10-04T17:38:44.436Z",
+    "createdBy": "01J00000000000000000000A01",
+    "credit": {
+     "cessPaise": 1800,
+     "cgstPaise": 0,
+     "igstPaise": 32400,
+     "sgstPaise": 0
+    },
+    "docDate": "2026-05-31",
+    "docNumber": "DE01S/2627/00001",
+    "docSeq": 1,
+    "fy": "2026-27",
+    "id": "01M43ZY9JMJVCP9AE733F1NAMM",
+    "journal": {
+     "branchId": "01M43ZY9F91PVZJK4P8TBGJP6H",
+     "docDate": "2026-05-31",
+     "entryDate": "2026-05-31",
+     "entryNo": "DE01S/2627/00001",
+     "id": "01M43ZY9JP0ANY2XYM7MK11FPW",
+     "latePosting": false,
+     "lines": [
+      {
+       "account": {
+        "role": "output_cgst"
+       },
+       "creditPaise": 0,
+       "debitPaise": 89244
+      },
+      {
+       "account": {
+        "role": "output_sgst"
+       },
+       "creditPaise": 0,
+       "debitPaise": 89243
+      },
+      {
+       "account": {
+        "role": "output_cess"
+       },
+       "creditPaise": 0,
+       "debitPaise": 9916
+      },
+      {
+       "account": {
+        "role": "input_igst"
+       },
+       "creditPaise": 32400,
+       "debitPaise": 0
+      },
+      {
+       "account": {
+        "role": "input_cess"
+       },
+       "creditPaise": 1800,
+       "debitPaise": 0
+      },
+      {
+       "account": {
+        "role": "gst_payable"
+       },
+       "creditPaise": 154203,
+       "debitPaise": 0
+      }
+     ],
+     "narration": "GST set-off 2026-05",
+     "periodId": "01M43ZY9HG7PXD6DK3M6XFC9BG",
+     "refId": "01M43ZY9JMJVCP9AE733F1NAMM",
+     "refType": "gst_setoff",
+     "reversalOf": null,
+     "source": "transfer",
+     "terminalId": "01M43ZY9FF6Y3G00E9RHDZD7EE"
+    },
+    "liability": {
+     "cessPaise": 9916,
+     "cgstPaise": 89244,
+     "igstPaise": 0,
+     "sgstPaise": 89243
+    },
+    "month": "2026-05-01",
+    "seriesId": "01M43ZY9JKZR5W2ZNAP9CMX0G7",
+    "terminalId": "01M43ZY9FF6Y3G00E9RHDZD7EE",
+    "utilisation": {
+     "cessToCessPaise": 1800,
+     "cgstToCgstPaise": 0,
+     "cgstToIgstPaise": 0,
+     "igstToCgstPaise": 32400,
+     "igstToIgstPaise": 0,
+     "igstToSgstPaise": 0,
+     "sgstToIgstPaise": 0,
+     "sgstToSgstPaise": 0
+    }
+   }
+  },
+  {
+   "entityId": "01M43ZY9JTKQ81SEDJT2WT7YC4",
+   "entityType": "gst_payment",
+   "operationType": "create",
+   "payload": {
+    "branchId": "01M43ZY9F91PVZJK4P8TBGJP6H",
+    "businessId": "01M43ZY9DBZCN4Z9RFC3P0HXTC",
+    "cessPaise": 8116,
+    "cgstPaise": 56844,
+    "challanRef": "CPIN26060400001",
+    "commandId": "01M43ZY9JR37XVZKV38QHFZMK1",
+    "createdAt": "2026-10-04T17:38:44.442Z",
+    "createdBy": "01J00000000000000000000A01",
+    "docDate": "2026-06-04",
+    "docNumber": "DE01G/2627/00001",
+    "docSeq": 1,
+    "fy": "2026-27",
+    "id": "01M43ZY9JTKQ81SEDJT2WT7YC4",
+    "igstPaise": 0,
+    "journal": {
+     "branchId": "01M43ZY9F91PVZJK4P8TBGJP6H",
+     "docDate": "2026-06-04",
+     "entryDate": "2026-06-04",
+     "entryNo": "DE01G/2627/00001",
+     "id": "01M43ZY9JTKQ81SEDJT2WT7YC6",
+     "latePosting": false,
+     "lines": [
+      {
+       "account": {
+        "role": "gst_payable"
+       },
+       "creditPaise": 0,
+       "debitPaise": 154203
+      },
+      {
+       "account": {
+        "role": "bank"
+       },
+       "creditPaise": 154203,
+       "debitPaise": 0
+      }
+     ],
+     "narration": "GST challan CPIN26060400001",
+     "periodId": "01M43ZY9JTKQ81SEDJT2WT7YC5",
+     "refId": "01M43ZY9JTKQ81SEDJT2WT7YC4",
+     "refType": "gst_payment",
+     "reversalOf": null,
+     "source": "payment",
+     "terminalId": "01M43ZY9FF6Y3G00E9RHDZD7EE"
+    },
+    "month": "2026-05-01",
+    "seriesId": "01M43ZY9JSR9X6NBK8BC05XVBS",
+    "sgstPaise": 89243,
+    "terminalId": "01M43ZY9FF6Y3G00E9RHDZD7EE",
+    "totalPaise": 154203
+   }
+  }
+ ]
+}

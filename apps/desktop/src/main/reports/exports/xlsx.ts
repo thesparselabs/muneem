@@ -12,14 +12,16 @@ export class XlsxWriter implements ExportWriter {
   async write(doc: ExportDocument): Promise<Buffer> {
     const book = new ExcelJS.Workbook();
     const sheet = book.addWorksheet(doc.title.slice(0, 31));
-    for (const line of headerLines(doc)) sheet.addRow([line]);
-    sheet.getRow(1).font = { bold: true };
-    sheet.addRow([]);
+    if (!doc.bare) {
+      for (const line of headerLines(doc)) sheet.addRow([line]);
+      sheet.getRow(1).font = { bold: true };
+      sheet.addRow([]);
+    }
     const head = sheet.addRow(doc.columns.map((c) => c.label));
     head.font = { bold: true };
     const add = (r: Record<string, unknown>) => sheet.addRow(doc.columns.map((c) => numericValue(c.kind, (r[c.key] ?? null) as never)));
     for (const r of doc.rows) add(r);
-    if (doc.totals) add(doc.totals).font = { bold: true };
+    if (doc.totals && !doc.bare) add(doc.totals).font = { bold: true };
     doc.columns.forEach((c, i) => {
       const col = sheet.getColumn(i + 1);
       col.width = Math.max(12, c.label.length + 2);

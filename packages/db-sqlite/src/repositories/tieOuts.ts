@@ -1,9 +1,15 @@
 import type { Db } from '../open.js';
 import { stmt } from '../statements.js';
+import { gstMonthlyTieOuts } from './gstMonth.js';
 
 export interface TieOut { name: string; ledgerPaise: number; subledgerPaise: number }
 
 const HEADS = ['cgst', 'sgst', 'igst', 'cess'] as const;
+// Input credit a set-off used, by the head it came from (ADR-0044).
+const CREDIT_USED: Record<(typeof HEADS)[number], string> = {
+  igst: 'igst_to_igst_paise + igst_to_cgst_paise + igst_to_sgst_paise', cgst: 'cgst_to_cgst_paise + cgst_to_igst_paise',
+  sgst: 'sgst_to_sgst_paise + sgst_to_igst_paise', cess: 'cess_to_cess_paise',
+};
 
 // Debit-minus-credit balance of each role's account over every period, in one pass over the lines.
 function roleBalances(db: Db, businessId: string): (role: string) => number {
@@ -27,18 +33,20 @@ export function accountingTieOuts(db: Db, businessId: string): TieOut[] {
   ];
   for (const h of HEADS) {
     out.push({
-      name: `output ${h.toUpperCase()} = sales tax less credit notes`, ledgerPaise: -roleBalance(`output_${h}`),
+      name: `output ${h.toUpperCase()} = sales tax less credit notes and set-offs`, ledgerPaise: -roleBalance(`output_${h}`),
       subledgerPaise: one(db, `SELECT COALESCE((SELECT SUM(${h}_paise) FROM sale WHERE business_id = @b AND status = 'posted'), 0)
-        - COALESCE((SELECT SUM(${h}_paise) FROM credit_note WHERE business_id = @b AND status = 'posted'), 0)`, businessId),
+        - COALESCE((SELECT SUM(${h}_paise) FROM credit_note WHERE business_id = @b AND status = 'posted'), 0)
+        - COALESCE((SELECT SUM(liability_${h}_paise) FROM gst_setoff WHERE business_id = @b AND status = 'posted'), 0)`, businessId),
     });
     out.push({
-      name: `input ${h.toUpperCase()} = claimable tax`, ledgerPaise: roleBalance(`input_${h}`),
+      name: `input ${h.toUpperCase()} = claimable tax less credit set off`, ledgerPaise: roleBalance(`input_${h}`),
       subledgerPaise: one(db, `SELECT
           COALESCE((SELECT SUM(i.${h}_paise) FROM purchase_item i JOIN purchase p ON p.id = i.purchase_id
             WHERE p.business_id = @b AND p.status = 'posted' AND i.itc_eligible = 1), 0)
         - COALESCE((SELECT SUM(d.${h}_paise) FROM debit_note_item d JOIN debit_note n ON n.id = d.debit_note_id JOIN purchase_item i ON i.id = d.purchase_item_id
             WHERE n.business_id = @b AND n.status = 'posted' AND i.itc_eligible = 1), 0)
-        + COALESCE((SELECT SUM(${h}_paise) FROM expense WHERE business_id = @b AND status = 'posted' AND itc_paise > 0), 0)`, businessId),
+        + COALESCE((SELECT SUM(${h}_paise) FROM expense WHERE business_id = @b AND status = 'posted' AND itc_paise > 0), 0)
+        - COALESCE((SELECT SUM(${CREDIT_USED[h]}) FROM gst_setoff WHERE business_id = @b AND status = 'posted'), 0)`, businessId),
     });
   }
   const cache = stmt(db, 'SELECT COALESCE(SUM(debit_paise), 0) AS dr, COALESCE(SUM(credit_paise), 0) AS cr FROM account_balance WHERE business_id = ?')
@@ -51,4 +59,5 @@ export function accountingTieOuts(db: Db, businessId: string): TieOut[] {
   return out;
 }
 
-export const tieOutFailures = (db: Db, businessId: string): TieOut[] => accountingTieOuts(db, businessId).filter((t) => t.ledgerPaise !== t.subledgerPaise);
+export const tieOutFailures = (db: Db, businessId: string): TieOut[] =>
+  [...accountingTieOuts(db, businessId), ...gstMonthlyTieOuts(db, businessId)].filter((t) => t.ledgerPaise !== t.subledgerPaise);

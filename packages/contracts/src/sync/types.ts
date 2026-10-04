@@ -26,6 +26,8 @@ export type OutboxEntityType =
   | 'purchase'
   | 'debit_note'
   | 'credit_note'
+  | 'gst_setoff'
+  | 'gst_payment'
   | 'payment'
   | 'write_off'
   | 'expense'

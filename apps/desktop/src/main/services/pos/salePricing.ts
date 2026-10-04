@@ -2,7 +2,7 @@ import {
   AppError, type Branch, type Business, type Customer, type Product, type QuoteContext, type QuoteLine, type SaleDraft, type SaleQuote, type SaleTotals,
 } from '@muneem/contracts';
 import {
-  computeInvoice, creditAvailable, DomainError, effectiveDiscountBp, isUtWithoutLegislature, resolvePrice, toBaseQty, type GstInvoiceResult, type GstLineInput,
+  b2clThresholdOn, computeInvoice, creditAvailable, DomainError, effectiveDiscountBp, isUtWithoutLegislature, resolvePrice, toBaseQty, type GstInvoiceResult, type GstLineInput,
 } from '@muneem/domain';
 import {
   defaultWarehouseId, getBranch, partyBalance, getBusiness, getCustomer, getDefaultPriceList, getPriceItemsByProduct, getProduct, listUoms, stockState,
@@ -45,7 +45,8 @@ export class SalePricing {
     const context = {
       supplierStateCode: branch.stateCode, taxScheme: business.taxScheme,
       roundToRupee: this.ctx.setting(POS_SETTINGS.roundToRupee, true),
-      b2clThresholdPaise: this.ctx.setting(POS_SETTINGS.b2clThresholdPaise, B2CL_THRESHOLD_PAISE),
+      b2clThresholdPaise: b2clThresholdOn(this.ctx.setting(POS_SETTINGS.b2clThresholds, []), this.ctx.today(),
+        this.ctx.setting(POS_SETTINGS.b2clThresholdPaise, B2CL_THRESHOLD_PAISE)),
     };
     const gst = this.compute(context, placeOfSupplyState, customer, draft, priced);
     const lines = priced.map(({ line }, i): QuoteLine => ({ ...line, lineNo: i + 1, ...pickLine(gst.lines[i]!) }));

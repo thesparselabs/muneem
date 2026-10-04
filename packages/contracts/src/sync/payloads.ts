@@ -79,6 +79,20 @@ const CreditNote = open({
   movements: z.array(MovementPayload), corrections: z.array(JournalPayload), entry: PartyEntryPayload.nullable(), allocations: z.array(AllocationLine),
   journal: JournalPayload, ...Filing, warehouseId: Id.optional(),
 });
+// ADR-0044: a set-off carries the balances it was computed from, so a server can recompute the statutory utilisation.
+const GstHeadsPayload = open({ igstPaise: Paise, cgstPaise: Paise, sgstPaise: Paise, cessPaise: Paise });
+const GstSetoff = open({
+  id: Id, businessId: Id, terminalId: Id, docNumber: z.string(), docDate: Day, month: Day, liability: GstHeadsPayload, credit: GstHeadsPayload,
+  utilisation: open({
+    igstToIgstPaise: Paise, igstToCgstPaise: Paise, igstToSgstPaise: Paise, cgstToCgstPaise: Paise, cgstToIgstPaise: Paise, sgstToSgstPaise: Paise,
+    sgstToIgstPaise: Paise, cessToCessPaise: Paise,
+  }),
+  cash: GstHeadsPayload, journal: JournalPayload.nullable(), ...Filing,
+});
+const GstPayment = open({
+  id: Id, businessId: Id, terminalId: Id, docNumber: z.string(), docDate: Day, month: Day.nullish(), challanRef: z.string().min(1), totalPaise: Paise,
+  ...TaxHeads, journal: JournalPayload, ...Filing,
+});
 const Payment = open({
   id: Id, businessId: Id, partyType: z.enum(['customer', 'supplier']), partyId: Id, docNumber: z.string(), paymentDate: Day, method: z.string(),
   amountPaise: Paise, allocations: z.array(AllocationLine), entry: PartyEntryPayload, journal: JournalPayload, ...Filing, terminalId: Id.nullish(),
@@ -113,6 +127,8 @@ const EXACT: Partial<Record<OutboxEntityType, Partial<Record<string, z.ZodTypeAn
   purchase: { create: Purchase, cancel: Cancel },
   debit_note: { create: DebitNote },
   credit_note: { create: CreditNote },
+  gst_setoff: { create: GstSetoff },
+  gst_payment: { create: GstPayment },
   payment: { create: Payment, cancel: Cancel },
   write_off: { create: WriteOff },
   expense: { create: Expense, cancel: Cancel },

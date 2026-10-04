@@ -1,5 +1,5 @@
 import {
-  buildJournal, CASH_MOVEMENT_RULE, COST_CORRECTION_RULE, DEBIT_NOTE_RULE, EXPENSE_RULE, OPENING_STOCK_RULE, PARTY_OPENING_RULE, PURCHASE_RULE, RECEIPT_RULE,
+  buildJournal, CASH_MOVEMENT_RULE, COST_CORRECTION_RULE, DEBIT_NOTE_RULE, EXPENSE_RULE, GST_PAYMENT_RULE, GST_SETOFF_RULE, OPENING_STOCK_RULE, PARTY_OPENING_RULE, PURCHASE_RULE, RECEIPT_RULE,
   REGISTER_VARIANCE_RULE, SALE_RETURN_RULE, SALE_RULE, STOCK_ADJUSTMENT_RULE, SUPPLIER_PAYMENT_RULE, WRITE_OFF_RULE, type JournalLine, type TaxHeads,
 } from '@muneem/domain';
 import type { Db } from '../open.js';
@@ -11,7 +11,7 @@ import { journalForRef, postJournal, reverseJournal, type JournalInput, type Pos
 // Every journal is built from the document as stored, so live posting and the backfill can never differ (ADR-0030/0034).
 export type JournalDocKind =
   | 'sale' | 'credit_note' | 'purchase' | 'debit_note' | 'payment' | 'write_off' | 'expense' | 'stock_document' | 'cost_correction' | 'party_opening'
-  | 'register_close' | 'cash_movement';
+  | 'register_close' | 'cash_movement' | 'gst_setoff' | 'gst_payment';
 // Who numbers a journal whose document has no number, and the branch it falls under when the document has none.
 export interface Poster { branchId: string; terminalId: string }
 
@@ -165,9 +165,35 @@ function cashMovement(db: Db, id: string): Built | null {
     lines: buildJournal(CASH_MOVEMENT_RULE, { direction: c.kind === 'cash_in' ? 'in' : 'out', amountPaise: c.amount_paise }) } };
 }
 
+// ADR-0044: a set-off clears each output head in full against the credit used and GST Payable; journal sources predate
+// these documents, so a set-off posts as a 'transfer' and a challan as a 'payment', told apart by ref_type.
+function gstSetoff(db: Db, id: string): Built | null {
+  const g = get<Record<string, string | number>>(db, 'SELECT * FROM gst_setoff WHERE id = ?', id);
+  if (!g) return null;
+  const n = (c: string) => g[c] as number;
+  const lines = buildJournal(GST_SETOFF_RULE, {
+    liability: heads({ cgst: n('liability_cgst_paise'), sgst: n('liability_sgst_paise'), igst: n('liability_igst_paise'), cess: n('liability_cess_paise') }),
+    creditUsed: heads({
+      igst: n('igst_to_igst_paise') + n('igst_to_cgst_paise') + n('igst_to_sgst_paise'), cgst: n('cgst_to_cgst_paise') + n('cgst_to_igst_paise'),
+      sgst: n('sgst_to_sgst_paise') + n('sgst_to_igst_paise'), cess: n('cess_to_cess_paise'),
+    }),
+    cashPaise: n('cash_igst_paise') + n('cash_cgst_paise') + n('cash_sgst_paise') + n('cash_cess_paise'),
+  });
+  return { businessId: g.business_id as string, input: { branchId: g.branch_id as string, terminalId: g.terminal_id as string, source: 'transfer',
+    refType: 'gst_setoff', refId: id, entryNo: g.doc_number as string, docDate: g.doc_date as string, narration: `GST set-off ${String(g.period_month).slice(0, 7)}`, lines } };
+}
+
+function gstPayment(db: Db, id: string): Built | null {
+  const g = get<{ business_id: string; branch_id: string; terminal_id: string; doc_number: string; doc_date: string; challan_ref: string; total_paise: number }>(db,
+    'SELECT * FROM gst_payment WHERE id = ?', id);
+  if (!g) return null;
+  return { businessId: g.business_id, input: { branchId: g.branch_id, terminalId: g.terminal_id, source: 'payment', refType: 'gst_payment', refId: id,
+    entryNo: g.doc_number, docDate: g.doc_date, narration: `GST challan ${g.challan_ref}`, lines: buildJournal(GST_PAYMENT_RULE, { totalPaise: g.total_paise }) } };
+}
+
 const BUILDERS: Record<JournalDocKind, (db: Db, id: string) => Built | null> = {
   sale, credit_note: creditNote, purchase, debit_note: debitNote, payment, write_off: writeOff, expense, stock_document: stockDocument, cost_correction: costCorrection,
-  party_opening: partyOpening, register_close: registerClose, cash_movement: cashMovement,
+  party_opening: partyOpening, register_close: registerClose, cash_movement: cashMovement, gst_setoff: gstSetoff, gst_payment: gstPayment,
 };
 
 export function documentJournal(db: Db, kind: JournalDocKind, id: string): (JournalInput & { lines: readonly JournalLine[] }) | null {

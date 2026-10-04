@@ -14,6 +14,8 @@ export interface ReportDefinition {
   permission: Permission;
   params: ReportParamField[];
   columns: ReportColumn[];
+  // CSV and XLSX without header lines or totals, for files another tool imports (the GST offline tool).
+  bare?: boolean;
   run(scope: ReportScope, params: ReportParams): ReportRows;
 }
 
