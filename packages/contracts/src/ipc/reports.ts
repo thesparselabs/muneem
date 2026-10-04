@@ -7,7 +7,7 @@ export const ReportColumn = z.object({ key: z.string(), label: z.string(), kind:
 export type ReportColumn = z.infer<typeof ReportColumn>;
 
 export const ReportParamField = z.object({
-  key: z.string(), label: z.string(), kind: z.enum(['date', 'branch', 'text', 'select']), required: z.boolean(),
+  key: z.string(), label: z.string(), kind: z.enum(['date', 'branch', 'text', 'select', 'customer', 'supplier']), required: z.boolean(),
   options: z.array(z.object({ value: z.string(), label: z.string() })).optional(),
 });
 export type ReportParamField = z.infer<typeof ReportParamField>;

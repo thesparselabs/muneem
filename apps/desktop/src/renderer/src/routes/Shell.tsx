@@ -19,7 +19,7 @@ const NAV: { to: string; label: string; enabled: boolean; stage?: string; need?:
   { to: '/expenses', label: 'Expenses', enabled: true, need: 'expenses.view' },
   { to: '/accounts', label: 'Accounts', enabled: true, need: 'accounting.view' },
   { to: '/gst', label: 'GST', enabled: true, need: 'gst.view' },
-  { to: '/reports', label: 'Reports', enabled: false, stage: 'Stage 8' },
+  { to: '/reports', label: 'Reports', enabled: true, need: 'reports.view' },
   { to: '/settings/review', label: 'Review items', enabled: true, need: 'sync.view' },
   { to: '/diagnostics', label: 'Diagnostics', enabled: true },
 ];
@@ -31,8 +31,8 @@ export default function Shell() {
   const terminals = useQuery({ queryKey: ['terminals'], queryFn: () => api.business.getTerminals({}) });
   const terminal = terminals.data?.find((t) => t.id === session?.terminalId);
   return (
-    <div className="h-screen grid grid-cols-[220px_1fr] grid-rows-[56px_1fr]">
-      <header className="col-span-2 flex items-center justify-between border-b bg-white px-5">
+    <div className="h-screen grid grid-cols-[220px_1fr] grid-rows-[56px_1fr] print:block print:h-auto">
+      <header className="col-span-2 flex print:hidden items-center justify-between border-b bg-white px-5">
         <div className="flex items-center gap-4 text-sm">
           <span className="font-semibold text-lg">Muneem</span>
           <span className="text-slate-700">{business.data?.name ?? '…'}</span>
@@ -46,7 +46,7 @@ export default function Shell() {
           <button className="btn-secondary py-1" onClick={async () => { await api.auth.logout({}); nav('/login'); }}>Sign out</button>
         </div>
       </header>
-      <nav className="border-r bg-white py-3" aria-label="Main">
+      <nav className="border-r bg-white py-3 print:hidden" aria-label="Main">
         <ul>
           {NAV.filter((n) => !n.need || can(session, n.need)).map((n) => (
             <li key={n.to}>
@@ -59,7 +59,7 @@ export default function Shell() {
           ))}
         </ul>
       </nav>
-      <main className="overflow-auto p-6"><Outlet /></main>
+      <main className="overflow-auto p-6 print:overflow-visible print:p-0"><Outlet /></main>
     </div>
   );
 }
