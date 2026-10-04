@@ -5,7 +5,7 @@ import {
   SaleDraft, SupplierInput, WriteOffInput, type ChargeRef, type TenderLine,
 } from '@muneem/contracts';
 import type { App } from '../../src/main/app.js';
-import { caller, ownerAtTill, testApp } from '../helpers.js';
+import { caller, ownerAtTill, testApp, type TestAppOptions } from '../helpers.js';
 
 export interface SoakOptions {
   seed: number;
@@ -14,6 +14,7 @@ export interface SoakOptions {
   endDate: string;
   file: boolean;
   setTime: (ms: number) => void;
+  appOptions?: Omit<TestAppOptions, 'file' | 'now'>;
 }
 
 export interface SoakCounts {
@@ -426,7 +427,7 @@ export async function runSoak(opts: SoakOptions): Promise<SoakRun> {
   const startDate = addDays(opts.endDate, -(opts.days - 1));
   const clock = new SoakClock(opts.setTime);
   clock.startDay(startDate);
-  const { app, db } = await testApp({ file: opts.file, now: () => clock.now() });
+  const { app, db } = await testApp({ ...opts.appOptions, file: opts.file, now: () => clock.now() });
   const rng = new Prng(opts.seed);
   const shop = await setUpShop(app, db, rng);
   const trader = new Trader(app, db, shop, rng, clock, opts.salesPerDay, startDate);

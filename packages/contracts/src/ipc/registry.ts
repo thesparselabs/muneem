@@ -224,6 +224,7 @@ export const contract = {
   'accounting.rebuildBalances': spec({ input: Empty, output: z.object({ rebuilt: z.number().int() }), permission: 'accounting.manage', rateLimit: { perSec: 1 }, audit: true }),
 
   'sync.getStatus': spec({ input: Empty, output: SyncStatus, permission: null, rateLimit: { perSec: 10 } }),
+  'sync.retry': spec({ input: Empty, output: SyncStatus, permission: 'sync.view', rateLimit: { perSec: 1 } }),
 
   'diagnostics.getHealth': spec({ input: Empty, output: Health, permission: 'diagnostics.view', rateLimit: { perSec: 5 } }),
   'diagnostics.integrityCheck': spec({

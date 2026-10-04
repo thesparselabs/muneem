@@ -50,6 +50,10 @@ import { DiagnosticsService } from './services/diagnostics.js';
 import { SessionService } from './services/session.js';
 import { SettingsService } from './services/settings.js';
 import { setMeta, META_KEYS, currentSchemaVersion } from '@muneem/db-sqlite';
+import { HttpTransport } from './sync/httpTransport.js';
+import { SyncEngine } from './sync/syncEngine.js';
+import { SyncScheduler } from './sync/scheduler.js';
+import type { Credentials, Transport } from './sync/transport.js';
 
 export interface AppConfig {
   db: () => Db;
@@ -66,6 +70,8 @@ export interface AppConfig {
   probeIntervalMs?: number;
   isTrustedSender?: (id: number) => boolean;
   now?: () => number;
+  syncTransport?: (credentials: () => Credentials | null) => Transport;
+  random?: () => number;
 }
 
 export function createApp(cfg: AppConfig) {
@@ -123,6 +129,26 @@ export function createApp(cfg: AppConfig) {
     appVersion: cfg.appVersion, secretStoreAvailable: cfg.secrets.encrypted, connectivity: () => connectivity.snapshot(),
   });
   const syncStatus = () => readSyncStatus(cfg.db(), connectivity.online, connectivity.serverSkewMs);
+  const credentials = (): Credentials | null => {
+    const deviceId = device.cloudDeviceId();
+    const privateKeyPem = device.privateKeyPem();
+    return deviceId && privateKeyPem ? { deviceId, privateKeyPem, accessToken: session.getAccessToken() } : null;
+  };
+  const syncTransport = cfg.syncTransport?.(credentials) ?? new HttpTransport({
+    baseUrl: cfg.apiBaseUrl, appVersion: cfg.appVersion, schemaVersion: currentSchemaVersion(cfg.db()), credentials, ...(cfg.fetchImpl && { fetchImpl: cfg.fetchImpl }),
+  });
+  const syncEngine = new SyncEngine({
+    db: cfg.db, transport: syncTransport, device, businessId: () => session.get()?.businessId ?? null, schemaVersion: () => currentSchemaVersion(cfg.db()),
+    refreshAuth: () => auth.refreshAccessToken(), now: cfg.now ?? (() => Date.now()), random: cfg.random ?? Math.random, log: cfg.loggers.sync,
+    onStatus: () => events.emit('sync.status', syncStatus()), onApplied: () => productSearch.invalidate(),
+  });
+  const sync = new SyncScheduler(syncEngine, { now: cfg.now ?? (() => Date.now()), onError: (e) => cfg.loggers.sync.error({ err: String(e) }, 'sync run failed') });
+  events.attach({
+    send: (channel, payload) => {
+      if (channel === 'connectivity.changed' && (payload as { online?: boolean }).online) sync.online();
+      if (channel === 'session.changed' && (payload as { businessId?: string | null } | null)?.businessId) sync.online();
+    },
+  });
 
   const handlers: Handlers = {
     'auth.register': (i) => auth.register(i),
@@ -256,6 +282,7 @@ export function createApp(cfg: AppConfig) {
     'inventory.importOpeningPreview': (i) => openingImport.preview(i),
     'inventory.importOpeningCommit': (i) => openingImport.commit(i.importId, i.commandId),
     'sync.getStatus': () => syncStatus(),
+    'sync.retry': () => { void sync.retry(); return syncStatus(); },
     'diagnostics.getHealth': () => diagnostics.getHealth(),
     'diagnostics.integrityCheck': () => diagnostics.integrityCheck(),
     'diagnostics.backupNow': () => diagnostics.backupNow('manual'),
@@ -268,8 +295,9 @@ export function createApp(cfg: AppConfig) {
   const gateway = createGateway({
     handlers, session, rbac, db: cfg.db, deviceId: () => device.localDeviceId(), loggers: cfg.loggers, events,
     connectivity: () => connectivity.snapshot(), isTrustedSender: cfg.isTrustedSender ?? (() => true), ...(cfg.now && { now: cfg.now }),
+    onCommitted: () => sync.nudge(),
   });
 
-  return { events, session, rbac, cloud, connectivity, device, auth, business, settings, products, catalog, pricing, productImport, customers, suppliers, customerLedger, supplierLedger, purchases, purchaseReturns, purchaseImport, payments, writeOffs, expenses, periods, backlog, statements, chart, manualJournals, register, sales, printQueue, inventory, openingImport, diagnostics, gateway, handlers, syncStatus };
+  return { events, session, rbac, cloud, connectivity, device, auth, business, settings, products, catalog, pricing, productImport, customers, suppliers, customerLedger, supplierLedger, purchases, purchaseReturns, purchaseImport, payments, writeOffs, expenses, periods, backlog, statements, chart, manualJournals, register, sales, printQueue, inventory, openingImport, diagnostics, gateway, handlers, syncStatus, syncEngine, sync };
 }
 export type App = ReturnType<typeof createApp>;

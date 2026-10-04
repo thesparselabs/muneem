@@ -81,7 +81,7 @@ export class CloudClient {
   }
 }
 
-export function signRequest(privateKeyPem: string, method: string, path: string, ts: string, body: string | undefined): string {
+export function signRequest(privateKeyPem: string, method: string, path: string, ts: string, body: string | Uint8Array | undefined): string {
   const key = createPrivateKey(privateKeyPem);
   return edSign(null, Buffer.from(signingString(method, path, ts, body), 'utf8'), key).toString('base64');
 }

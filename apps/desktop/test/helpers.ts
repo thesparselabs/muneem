@@ -6,6 +6,7 @@ import { migrate, openDatabase, type Db } from '@muneem/db-sqlite';
 import { createApp, type App } from '../src/main/app.js';
 import { silentLoggers } from '../src/main/infra/logger.js';
 import { MemorySecretStore } from '../src/main/infra/secrets.js';
+import type { Credentials, Transport } from '../src/main/sync/transport.js';
 
 export interface FakeServer { calls: { method: string; path: string; body: unknown; headers: Record<string, string> }[]; online: boolean; respond: (method: string, path: string, body: unknown) => { status: number; body: unknown } }
 
@@ -53,7 +54,12 @@ export function defaultServer(): FakeServer {
   return s;
 }
 
-export async function testApp(opts: { server?: FakeServer; now?: () => number; file?: boolean; dbFile?: string } = {}): Promise<{ app: App; db: Db; server: FakeServer; dir: string }> {
+export interface TestAppOptions {
+  server?: FakeServer; now?: () => number; file?: boolean; dbFile?: string;
+  syncTransport?: (credentials: () => Credentials | null) => Transport; random?: () => number; fetch?: typeof fetch;
+}
+
+export async function testApp(opts: TestAppOptions = {}): Promise<{ app: App; db: Db; server: FakeServer; dir: string }> {
   const server = opts.server ?? defaultServer();
   const dir = opts.dbFile ? dirname(opts.dbFile) : mkdtempSync(join(tmpdir(), 'muneem-desktop-'));
   const file = opts.dbFile ?? (opts.file ? join(dir, 'muneem.sqlite') : ':memory:');
@@ -61,7 +67,8 @@ export async function testApp(opts: { server?: FakeServer; now?: () => number; f
   await migrate(db);
   const app = createApp({
     db: () => db, dbFile: file, receiptsDir: join(dir, 'receipts'), backupsDir: join(dir, 'backups'), bundlesDir: join(dir, 'bundles'), secrets: new MemorySecretStore(), loggers: silentLoggers(),
-    apiBaseUrl: 'http://cloud.test/v1', appVersion: '0.0.0-test', platform: 'linux', fetchImpl: fakeFetch(server), probeIntervalMs: 3_600_000, ...(opts.now && { now: opts.now }),
+    apiBaseUrl: 'http://cloud.test/v1', appVersion: '0.0.0-test', platform: 'linux', fetchImpl: opts.fetch ?? fakeFetch(server), probeIntervalMs: 3_600_000, ...(opts.now && { now: opts.now }),
+    ...(opts.syncTransport && { syncTransport: opts.syncTransport }), ...(opts.random && { random: opts.random }),
   });
   app.device.ensureIdentity();
   await app.connectivity.probe();

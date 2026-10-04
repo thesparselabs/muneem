@@ -25,6 +25,7 @@ export interface GatewayDeps {
   connectivity: () => { online: boolean; serverSkewMs: number | null };
   isTrustedSender: (senderId: number) => boolean;
   now?: () => number;
+  onCommitted?: (channel: string) => void;
 }
 
 /** Token bucket per (channel, principal). */
@@ -99,6 +100,7 @@ export function createGateway(d: GatewayDeps) {
         });
         const c = d.connectivity();
         d.events.emit('sync.status', readSyncStatus(d.db(), c.online, c.serverSkewMs));
+        d.onCommitted?.(channel);
       }
       return { ok: true, data: spec.output.parse(out) };
     } catch (e) {

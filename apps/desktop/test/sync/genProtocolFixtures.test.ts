@@ -50,6 +50,16 @@ describe('sync protocol fixtures', () => {
       const payload = { ...product.payload, name: 'Soap Bar', version: 2, updatedAt: '2026-10-04T10:03:00.000Z' };
       return { ...product, operationId: newUlid(), seq: product.seq + 1001, operationType: 'update', dependsOn: product.operationId, payload, payloadHash: hash(payload) };
     };
+    const prices = ops.find((o) => o.entityType === 'price_list_item')!;
+    const priceItems = (device: string, pricePaise: number, retired: string[]): PushOperation => {
+      const current = (prices.payload.items as { id: string }[])[0]!;
+      const item = { ...current, id: newUlid(), pricePaise };
+      const payload = { ...prices.payload, items: [item], retired };
+      return { ...prices, operationId: newUlid(), seq: prices.seq + (device === 'A' ? 2000 : 2001), dependsOn: null, payload, payloadHash: hash(payload) };
+    };
+    const original = (prices.payload.items as { id: string }[]).map((i) => i.id);
+    const pricesFromA = priceItems('A', 12_500, original);
+    const pricesFromB = priceItems('B', 9_900, original);
     const fromB = priceEdit('B', 9_900, 2);
     const fromA = priceEdit('A', 12_500, 2);
     const nameFromB = nameEdit();
@@ -88,6 +98,17 @@ describe('sync protocol fixtures', () => {
           { device: 'B', call: 'pull', request: { businessId, stream: 'documents', since: 0, limit: 500 },
             expect: { hasMore: false, changes: ops.filter((o) => ['pos_session', 'sale', 'payment'].includes(o.entityType))
               .map((o) => ({ entityType: o.entityType, entityId: o.entityId, originDeviceId: 'A' })) } },
+        ],
+      },
+      'price-items-stale-edit-cloud-wins': {
+        description: "A replaces the product's prices, then B replaces the prices it last saw: the cloud keeps A's prices, logs the conflict and sends them back to B.",
+        setup, steps: [
+          { device: 'A', call: 'push', request: push(ops), expect: applied(ops) },
+          { device: 'A', call: 'push', request: push([pricesFromA]), expect: applied([pricesFromA]) },
+          { device: 'B', call: 'push', request: push([pricesFromB]), expect: applied([pricesFromB]) },
+          { device: 'B', call: 'pull', request: { businessId, stream: 'masters', since: 0, limit: 500 },
+            expect: { lastChangeFor: { entityType: 'price_list_item', entityId: prices.entityId, originDeviceId: null,
+              payload: { items: [{ id: (pricesFromA.payload.items as { id: string }[])[0]!.id, pricePaise: 12_500 }] } } } },
         ],
       },
       'master-conflict-cloud-wins-price': {
