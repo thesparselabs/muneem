@@ -30,6 +30,7 @@ import (
 	"github.com/sparselabs/muneem/cloud/internal/devicesync/snapshot"
 	"github.com/sparselabs/muneem/cloud/internal/httpx"
 	"github.com/sparselabs/muneem/cloud/internal/objectstore"
+	"github.com/sparselabs/muneem/cloud/internal/reports"
 	"github.com/sparselabs/muneem/cloud/internal/store"
 	"github.com/sparselabs/muneem/cloud/internal/testdb"
 )
@@ -39,6 +40,7 @@ type deviceHandler = device.Handler
 type businessHandler = business.Handler
 type syncHandler = devicesync.Handler
 type backupHandler = backups.Handler
+type reportHandler = reports.Handler
 
 type handlers struct {
 	*authHandler
@@ -46,6 +48,7 @@ type handlers struct {
 	*businessHandler
 	*syncHandler
 	*backupHandler
+	*reportHandler
 	httpx.Health
 }
 
@@ -80,6 +83,7 @@ func newCloud(t *testing.T) *cloud {
 		businessHandler: &business.Handler{DB: db},
 		syncHandler:     &devicesync.Handler{Ingest: &devicesync.Ingest{DB: db, Log: log}, Feed: &devicesync.Feed{DB: db}, Snapshots: snaps},
 		backupHandler:   &backups.Handler{Service: backups.NewService(db, objects, wrapper, log, backups.DefaultOptions)},
+		reportHandler:   &reports.Handler{DB: db},
 	}
 	e := httpx.New(httpx.Deps{Handlers: h, RequireAuth: signer.Require, DeviceVerifier: verifier.Middleware, Logger: log})
 	return &cloud{t: t, db: db, e: e, signer: signer, snaps: snaps, objects: objects}

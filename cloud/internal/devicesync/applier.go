@@ -11,6 +11,7 @@ import (
 
 	"github.com/sparselabs/muneem/cloud/internal/devicesync/conflict"
 	"github.com/sparselabs/muneem/cloud/internal/devicesync/verify"
+	"github.com/sparselabs/muneem/cloud/internal/reports"
 )
 
 var stateCodeRe = regexp.MustCompile(`^\d{2}$`)
@@ -151,6 +152,9 @@ func (a *applier) store() (Result, error) {
 	if err := a.project(seq); err != nil {
 		return Result{}, err
 	}
+	if err := a.aggregate(cur); err != nil {
+		return Result{}, err
+	}
 	if err := a.recordReviews(seq); err != nil {
 		return Result{}, err
 	}
@@ -180,6 +184,18 @@ func (a *applier) project(seq int64) error {
 		}
 	}
 	return nil
+}
+
+// 8e: the owner-report aggregates move with the document they come from, in the same transaction.
+func (a *applier) aggregate(cur *entityRow) error {
+	if streamOf[a.op.EntityType] != StreamDocuments {
+		return nil
+	}
+	op := reports.Applied{EntityType: a.op.EntityType, EntityID: a.op.EntityID, OperationType: a.op.OperationType, Payload: a.op.Payload}
+	if cur != nil {
+		op.Prior = cur.Payload
+	}
+	return reports.Project(a.ctx, a.tx, a.businessID, op)
 }
 
 func (a *applier) origin() *string { id := a.caller.DeviceID; return &id }

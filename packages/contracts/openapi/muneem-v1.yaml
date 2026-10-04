@@ -552,6 +552,38 @@ paths:
                 $ref: '#/components/schemas/BackupKey'
         default:
           $ref: '#/components/responses/Error'
+  /reports/daily:
+    get:
+      operationId: getDailyReport
+      tags: [reports]
+      summary: Daily sales, payment and product aggregates and party balances, projected on ingest (8e, ADR-0046)
+      parameters:
+        - name: businessId
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: from
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+        - name: to
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+      responses:
+        '200':
+          description: The business's aggregates for the range; party balances as they stand now
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DailyReport'
+        default:
+          $ref: '#/components/responses/Error'
 components:
   securitySchemes:
     bearerAuth:
@@ -1087,3 +1119,68 @@ components:
       properties:
         businessId: { type: string }
         keyId: { type: string }
+    DailyReport:
+      type: object
+      required: [businessId, from, to, sales, payments, products, parties]
+      properties:
+        businessId: { type: string }
+        from: { type: string, format: date }
+        to: { type: string, format: date }
+        sales:
+          type: array
+          items: { $ref: '#/components/schemas/DailySales' }
+        payments:
+          type: array
+          items: { $ref: '#/components/schemas/DailyPayment' }
+        products:
+          type: array
+          items: { $ref: '#/components/schemas/ProductSalesDaily' }
+        parties:
+          type: array
+          items: { $ref: '#/components/schemas/PartyOutstanding' }
+    DailySales:
+      type: object
+      required: [branchId, day, saleCount, saleTaxablePaise, saleTaxPaise, saleTotalPaise, saleCogsPaise, returnCount, returnTaxablePaise, returnTaxPaise, returnTotalPaise, returnCostPaise]
+      properties:
+        branchId: { type: string }
+        day: { type: string }
+        saleCount: { type: integer, format: int64 }
+        saleTaxablePaise: { type: integer, format: int64 }
+        saleTaxPaise: { type: integer, format: int64 }
+        saleTotalPaise: { type: integer, format: int64 }
+        saleCogsPaise: { type: integer, format: int64 }
+        returnCount: { type: integer, format: int64 }
+        returnTaxablePaise: { type: integer, format: int64 }
+        returnTaxPaise: { type: integer, format: int64 }
+        returnTotalPaise: { type: integer, format: int64 }
+        returnCostPaise: { type: integer, format: int64 }
+    DailyPayment:
+      type: object
+      required: [branchId, day, flow, method, docCount, amountPaise]
+      properties:
+        branchId: { type: string }
+        day: { type: string }
+        flow: { type: string, description: 'sale, refund, receipt, payment or expense' }
+        method: { type: string }
+        docCount: { type: integer, format: int64 }
+        amountPaise: { type: integer, format: int64 }
+    ProductSalesDaily:
+      type: object
+      required: [branchId, day, productId, soldQtyMilli, soldTaxablePaise, soldCogsPaise, returnedQtyMilli, returnedTaxablePaise, returnedCostPaise]
+      properties:
+        branchId: { type: string }
+        day: { type: string }
+        productId: { type: string }
+        soldQtyMilli: { type: integer, format: int64 }
+        soldTaxablePaise: { type: integer, format: int64 }
+        soldCogsPaise: { type: integer, format: int64 }
+        returnedQtyMilli: { type: integer, format: int64 }
+        returnedTaxablePaise: { type: integer, format: int64 }
+        returnedCostPaise: { type: integer, format: int64 }
+    PartyOutstanding:
+      type: object
+      required: [partyType, partyId, balancePaise]
+      properties:
+        partyType: { type: string }
+        partyId: { type: string }
+        balancePaise: { type: integer, format: int64, description: positive = the party owes the business }
