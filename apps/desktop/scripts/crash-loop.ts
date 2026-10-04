@@ -8,12 +8,21 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { openDatabase, quickCheck, foreignKeyCheck, verifyAuditChain } from '@muneem/db-sqlite';
 import { checkSalesConsistency } from '../test/crash/checkSales.js';
-import { killDuringSales, spawnTs } from '../test/crash/killLoop.js';
+import { killDuring, killDuringSales, spawnTs } from '../test/crash/killLoop.js';
+import { checkDocuments } from '../test/chaos/checkDocuments.js';
+import { DOCUMENT_KINDS } from '../test/chaos/documentKinds.js';
 
 const args = process.argv.slice(2);
 const scenario = args.includes('--scenario') ? args[args.indexOf('--scenario') + 1] : 'setup';
 const N = Number(args.find((a) => /^\d+$/u.test(a)) ?? 50);
 
+if ((DOCUMENT_KINDS as readonly string[]).includes(scenario!)) {
+  const docsFile = join(mkdtempSync(join(tmpdir(), `muneem-crash-${scenario}-`)), 'muneem.sqlite');
+  await killDuring(join(dirname(fileURLToPath(import.meta.url)), '../test/chaos/documentsChild.ts'), [docsFile, scenario!], N, 250);
+  const report = checkDocuments(docsFile);
+  console.log(JSON.stringify({ kills: N, scenario, ...report, RESULT: report.failures.length === 0 ? 'PASS' : 'FAIL' }, null, 2));
+  process.exit(report.failures.length === 0 ? 0 : 1);
+}
 if (scenario === 'sales') {
   const salesFile = join(mkdtempSync(join(tmpdir(), 'muneem-crash-sales-')), 'muneem.sqlite');
   await killDuringSales(salesFile, N);

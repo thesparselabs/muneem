@@ -18,6 +18,7 @@
     "crash-loop": "tsx scripts/crash-loop.ts",
     "soak": "MUNEEM_SOAK_DAYS=365 vitest run test/soak",
     "sim": "MUNEEM_SIM_SEEDS=500 vitest run test/sync/simulation.test.ts",
+    "chaos": "pnpm gen && MUNEEM_CHAOS_KILLS=100 MUNEEM_CRASH_KILLS=100 vitest run test/chaos test/crash --maxWorkers=1",
     "e2e:ui": "playwright test -c e2e/playwright.config.ts"
   },
   "dependencies": {

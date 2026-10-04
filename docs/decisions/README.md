@@ -63,3 +63,4 @@ Template: Context → Decision → Consequences → Status.
 | [0056](0056-release-and-installer.md) | Release and installer: CI-built, Azure-signed, promoted between channels without a rebuild |
 | [0057](0057-operator-tooling.md) | Operator tooling: operator grants and tokens, the muneem_admin role (addendum to 0051), the admin listener |
 | [0059](0059-per-unit-cess-inside-inclusive-prices.md) | Per-unit cess inside a tax-inclusive price |
+| [0060](0060-damaged-database-recovery.md) | Recovering from a damaged database at start-up: keep the file, restore and catch up, or start empty and restore from the cloud |

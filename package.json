@@ -19,7 +19,8 @@
     "release:version": "tsx scripts/release-version.ts",
     "release:manifest": "tsx scripts/release-manifest.ts",
     "release:promote": "tsx scripts/release-promote.ts",
-    "e2e:ui": "pnpm --filter @muneem/desktop e2e:ui"
+    "e2e:ui": "pnpm --filter @muneem/desktop e2e:ui",
+    "chaos": "pnpm --filter @muneem/desktop chaos"
   },
   "devDependencies": {
     "@types/node": "^24.0.0",

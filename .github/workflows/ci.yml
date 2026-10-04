@@ -172,3 +172,19 @@ jobs:
       - run: pnpm --filter @muneem/domain build
       - run: make -C cloud gen
       - run: pnpm diff-fuzz --n 20000
+  chaos:
+    # 9g: the chaos suite at 100 kills per document type, then §37 and the sync simulation over 200 seeds (docs/qa/chaos.md).
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    needs: [node]
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6   # version comes from package.json packageManager
+      - uses: actions/setup-node@v7
+        with: { node-version: 24, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm turbo run gen build --filter=@muneem/desktop^...
+      - run: pnpm chaos
+      - run: pnpm --filter @muneem/desktop exec vitest run test/sync/scenario37.test.ts test/sync/simulation.test.ts --maxWorkers=1
+        env: { MUNEEM_SIM_SEEDS: '200' }

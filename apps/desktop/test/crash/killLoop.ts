@@ -9,17 +9,20 @@ const appDir = join(here, '..', '..');
 export const spawnTs = (script: string, args: string[], stdio: Parameters<typeof spawn>[2]['stdio']) =>
   spawn(process.execPath, ['--import', 'tsx', script, ...args], { cwd: appDir, stdio });
 
-// Starts the sales child, waits until it is billing, then SIGKILLs it a random 0–100 ms later.
-export async function killDuringSales(file: string, kills: number, random: () => number = Math.random): Promise<void> {
+// Starts a child, waits until it is working, then SIGKILLs it a random 0–`windowMs` ms later; the child resumes from the database.
+export async function killDuring(script: string, args: string[], kills: number, windowMs = 100, random: () => number = Math.random): Promise<void> {
   for (let i = 0; i < kills; i++) {
-    const child = spawnTs(join(here, 'salesChild.ts'), [file], ['ignore', 'pipe', 'inherit']);
+    const child = spawnTs(script, args, ['ignore', 'pipe', 'inherit']);
     await new Promise<void>((resolve, reject) => {
       const timer = setTimeout(() => reject(new Error('crash child never became ready')), 60_000);
       child.stdout!.on('data', (d: Buffer) => { if (d.toString().includes('ready')) { clearTimeout(timer); resolve(); } });
       child.once('exit', (code) => { clearTimeout(timer); reject(new Error(`crash child exited early (${String(code)})`)); });
     });
-    await new Promise((r) => setTimeout(r, Math.floor(random() * 100)));
+    await new Promise((r) => setTimeout(r, Math.floor(random() * windowMs)));
     child.kill('SIGKILL');
     await new Promise<void>((r) => child.once('exit', () => r()));
   }
 }
+
+export const killDuringSales = (file: string, kills: number, random: () => number = Math.random): Promise<void> =>
+  killDuring(join(here, 'salesChild.ts'), [file], kills, 100, random);
