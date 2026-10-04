@@ -173,3 +173,43 @@ Three research agents surveyed the designs, every deferred item in the docs, and
 - **Release:** a signed installer is published through the beta channel.
 - **Pilot:** 30 consecutive days of pilot health reports across 5 shops show zero lost transactions and zero
   unexplained imbalances.
+
+## As built — engineering parts (2026-10-05)
+
+The user asked for every buildable part with more agents in parallel, and to leave the pilot (9l) for later. Up to
+five agents ran at once. The lead held the CPU-heavy parts (500k dataset, kill loops, Playwright) so they did not run
+together, integrated everything by cherry-pick, and ran the full suites after each batch.
+
+| Part | State | Notes |
+|---|---|---|
+| 9a | done | ADR-0054 (pilot measures). The other ADRs were written by their parts: 0051–0053, 0055–0060 |
+| 9b | done | Container, deploy kit, readiness, key rings (ADR-0051/0052) |
+| 9c | done | Metrics, business-health probes, 19 alerts with runbooks, crash collector, device integrity reports (ADR-0053) |
+| 9d | done | Windows spooler and image printing, raster ₹ and Indic text (ADR-0055); real-printer checks are manual |
+| 9e | done | Signed-release and promotion workflows, SBOMs (ADR-0056); never run on a real Windows runner |
+| 9f | done | Every LLD §18 budget at 500k; read worker (ADR-0058); the upgrade path at 500k (about 24 min) is open |
+| 9g | done | Chaos suite; 5 bugs fixed (ADR-0060) |
+| 9h | done | 12 golden tax scenarios (TS + Go), CA pack with 29 questions; 2 tax bugs fixed (ADR-0059) |
+| 9i | done | Operator API and admin page, operator runbooks (ADR-0057) |
+| 9j | done | 33 Playwright tests; 6 bugs fixed, incl. reports failing in the Electron app; one QA record |
+| 9k | done | CI security job; Go 1.26.8 (21 reachable stdlib vulnerabilities fixed); uuid override; checklist; pilot runbook |
+| 9l | **not started** | The pilot needs accounts, a signing certificate, a CA, a Windows host and 5 shops |
+
+**Bugs found by Stage 9's own tests:**
+- **Tax:** per-unit cess on MRP items was charged on top of the MRP, and the composition declaration printed in the
+  wrong place (9h).
+- **Reports:** every report and the GST returns page failed in the Electron app (9j).
+- **Restore:** restoring a device's own older backup made the next bill fail on a duplicate number (9g).
+- **Damaged databases** crashed start-up instead of offering a restore (9g).
+- **Speed:** sync push reads took 145 s at scale (9f).
+- **Keyboard POS gaps** (9j).
+- **Vulnerable Go toolchain:** CI built with Go 1.26.0 (9k).
+
+**Open before or during the pilot:**
+- **Upgrade time:** about 24 min at 500k.
+- **Old rows:** sent outbox and audit rows are never pruned (about 70% of a large file).
+- **Main thread:** notification detectors still run there (about 0.6 s per party type at login).
+- **Set-off:** a set-off can be double-posted from two offline devices.
+- **Dates:** NFR-018's date-window check is not built.
+- **Damaged header:** audit rows written after the backup are lost.
+- **Windows-only checks:** everything in `docs/qa/manual-checklist.md` and `docs/qa/chaos.md` that needs real hardware.
