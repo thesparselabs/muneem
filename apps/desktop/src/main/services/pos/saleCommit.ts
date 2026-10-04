@@ -2,7 +2,7 @@ import type { CompleteSaleInput, CustomerSnapshot, RegisterSession } from '@mune
 import { financialYearOf, newUlid, type SettledTender } from '@muneem/domain';
 import {
   allocateDocNumber, appendAudit, ensureDefaultWarehouse, findOrCreateSeries, getSale, getTerminal, insertPrintJob, insertSale, movementsForRef,
-  partyBalance, planIssues, postDocumentJournal, postMovement, postPartyEntry, recordChange, saleItemId, type Actor, type Db, type PartyEntry, type PostedJournal,
+  documentKeys, partyBalance, planIssues, postDocumentJournal, postMovement, postPartyEntry, recordChange, saleItemId, type Actor, type Db, type PartyEntry, type PostedJournal,
   type Till,
 } from '@muneem/db-sqlite';
 import { buildReceiptDoc } from '../print/receiptDoc.js';
@@ -155,7 +155,7 @@ const recordSale: Step = {
     const movements = movementsForRef(s.db, s.till.businessId, 'sale', s.saleId);
     recordChange(s.db, s.till.businessId, s.actor, {
       action: 'sale.complete', entityType: 'sale', entityId: s.saleId, operationType: 'create',
-      after: { ...sale, movements, ...(s.partyEntry && { partyEntry: s.partyEntry }), journal: s.journal },
+      after: { ...sale, ...documentKeys(s.db, 'sale', s.saleId), movements, ...(s.partyEntry && { partyEntry: s.partyEntry }), journal: s.journal },
     });
   },
 };

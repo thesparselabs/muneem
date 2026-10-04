@@ -28,13 +28,14 @@ export interface SaleRecord {
   customerId: string | null; customer: CustomerSnapshot; placeOfSupplyReason: string | null; priceListId: string | null;
   totals: SaleTotals; paidPaise: number; changePaise: number; creditPaise: number; dueDate: string | null; lines: readonly QuoteLine[]; tenders: readonly SaleTender[];
   lineCosts: readonly { unitCostPaise: number; cogsPaise: number }[];
+  createdAt?: string;
 }
 
 export const saleItemId = (saleId: string, lineNo: number): string => `${saleId}-${String(lineNo).padStart(3, '0')}`;
 
 export function insertSale(db: Db, r: SaleRecord, actor: Actor): void {
   const t = r.totals;
-  const now = nowIso();
+  const now = r.createdAt ?? nowIso();
   stmt(db, `INSERT INTO sale (id, business_id, branch_id, terminal_id, session_id, command_id, doc_type, series_id, doc_number, doc_seq,
       doc_date, fy, customer_id, customer_snapshot_json, place_of_supply_state, place_of_supply_reason, supply_type, state_tax_kind,
       gstr1_bucket, tax_scheme, price_list_id, gross_paise, line_discount_paise, bill_discount_paise, taxable_paise, cgst_paise, sgst_paise,

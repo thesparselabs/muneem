@@ -48,3 +48,7 @@ export * from './repositories/documentJournals.js';
 export * from './repositories/periods.js';
 export * from './repositories/journalBacklog.js';
 export * from './repositories/accountingStatements.js';
+export * from './sync/outboxQueue.js';
+export * from './sync/syncState.js';
+export * from './sync/documentKeys.js';
+export { applyChange, applyPullPage, Touched, type ApplyTarget, type ApplyOutcome, type PageResult } from './sync/apply/index.js';

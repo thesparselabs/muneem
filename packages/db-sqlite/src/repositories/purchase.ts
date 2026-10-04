@@ -10,10 +10,11 @@ export interface PurchaseRecord {
   seriesId: string; docNumber: string; docSeq: number; docDate: string; fy: string; placeOfSupplyState: string; isReverseCharge: boolean;
   dueDate: string; note: string | null; totals: PurchaseTotals; lines: readonly (PurchaseQuoteLine & { id: string })[];
   charges: readonly PurchaseChargeInput[];
+  createdAt?: string;
 }
 
 export function insertPurchase(db: Db, r: PurchaseRecord, actor: Actor): void {
-  const t = nowIso();
+  const t = r.createdAt ?? nowIso();
   const x = r.totals;
   stmt(db, `INSERT INTO purchase (id, business_id, branch_id, warehouse_id, supplier_id, supplier_snapshot_json, supplier_invoice_no,
       supplier_invoice_date, series_id, doc_number, doc_seq, doc_date, fy, place_of_supply_state, supply_type, state_tax_kind, supplier_tax_scheme,

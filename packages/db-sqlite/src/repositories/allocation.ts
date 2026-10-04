@@ -21,32 +21,35 @@ const TARGET_DATE: Record<AllocationTarget, string> = {
 
 // The only writer of allocation; triggers keep both documents' totals and refuse over-allocation (ADR-0025).
 // It takes effect no earlier than the document it settles, so a backdated payment never settles a bill before the bill exists (5h #5).
-export function insertAllocation(db: Db, a: AllocationInput, actor: Actor): string {
+export function insertAllocation(db: Db, a: AllocationInput, actor: Actor): { id: string; allocatedOn: string } {
   const id = newUlid();
   const s = syncColumns(actor);
   const targetDate = (stmt(db, TARGET_DATE[a.targetType]).pluck().get(a.targetId) as string | undefined) ?? a.on;
+  const allocatedOn = a.on > targetDate ? a.on : targetDate;
   stmt(db, `INSERT INTO allocation (id, business_id, party_type, party_id, source_type, source_id, target_type, target_id, amount_paise, allocated_at,
       allocated_on, created_at, updated_at, created_by, device_id)
     VALUES (@id, @businessId, @partyType, @partyId, @sourceType, @sourceId, @targetType, @targetId, @amountPaise, @t, @allocatedOn, @t, @t, @created_by, @device_id)`)
     .run({
       id, businessId: a.businessId, partyType: a.partyType, partyId: a.partyId, sourceType: a.sourceType, sourceId: a.sourceId, targetType: a.targetType,
-      targetId: a.targetId, amountPaise: a.amountPaise, allocatedOn: a.on > targetDate ? a.on : targetDate, ...s,
+      targetId: a.targetId, amountPaise: a.amountPaise, allocatedOn, ...s,
     });
-  return id;
+  return { id, allocatedOn };
 }
 
-export interface AllocationRow { id: string; targetType: string; targetId: string; docNumber?: string; amountPaise: number; voided: boolean }
+export interface AllocationRow { id: string; targetType: string; targetId: string; docNumber?: string; amountPaise: number; voided: boolean; allocatedOn: string }
 
 // Allocations made from one settlement, with the number of the document each one settled.
 export function allocationsOfSource(db: Db, sourceType: AllocationSource, sourceId: string): AllocationRow[] {
-  const rows = stmt(db, `SELECT a.id, a.target_type, a.target_id, a.amount_paise, a.voided_at IS NOT NULL AS voided
+  const rows = stmt(db, `SELECT a.id, a.target_type, a.target_id, a.amount_paise, a.voided_at IS NOT NULL AS voided, a.allocated_on
       FROM allocation a WHERE a.source_type = ? AND a.source_id = ? ORDER BY a.rowid`).all(sourceType, sourceId) as {
-    id: string; target_type: string; target_id: string; amount_paise: number; voided: number;
+    id: string; target_type: string; target_id: string; amount_paise: number; voided: number; allocated_on: string;
   }[];
   const numbers = docNumbers(db, rows.map((r) => ({ type: r.target_type, id: r.target_id })));
   return rows.map((r) => {
     const docNumber = numbers.get(`${r.target_type}:${r.target_id}`);
-    return { id: r.id, targetType: r.target_type, targetId: r.target_id, amountPaise: r.amount_paise, voided: r.voided === 1, ...(docNumber && { docNumber }) };
+    return {
+      id: r.id, targetType: r.target_type, targetId: r.target_id, amountPaise: r.amount_paise, voided: r.voided === 1, allocatedOn: r.allocated_on, ...(docNumber && { docNumber }),
+    };
   });
 }
 

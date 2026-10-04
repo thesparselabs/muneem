@@ -1,6 +1,6 @@
 import { AppError, type WriteOff, type WriteOffInput } from '@muneem/contracts';
 import { newUlid } from '@muneem/domain';
-import { getWriteOff, insertWriteOff, postDocumentJournal, postPartyEntry, recordChange, withTransaction, writeOffIdByCommand } from '@muneem/db-sqlite';
+import { documentKeys, getWriteOff, insertWriteOff, postDocumentJournal, postPartyEntry, recordChange, withTransaction, writeOffIdByCommand } from '@muneem/db-sqlite';
 import type { PosContext } from '../pos/posContext.js';
 import { requireParty } from './parties.js';
 import type { SettlementAllocator } from './settlementAllocator.js';
@@ -29,7 +29,7 @@ export class WriteOffService {
       const entry = postPartyEntry(db, { businessId, ...party, refType: 'write_off', refId: writeOffId, kind: 'post', amountPaise: -amountPaise, docDate }, actor);
       const journal = postDocumentJournal(db, 'write_off', writeOffId, this.ctx.till(), actor);
       recordChange(db, businessId, actor, {
-        action: 'write_off.create', entityType: 'write_off', entityId: writeOffId, operationType: 'create', after: { ...getWriteOff(db, writeOffId), entry, allocations, journal },
+        action: 'write_off.create', entityType: 'write_off', entityId: writeOffId, operationType: 'create', after: { ...getWriteOff(db, writeOffId), ...documentKeys(db, 'write_off', writeOffId), entry, allocations, journal },
       });
       return writeOffId;
     });

@@ -22,13 +22,17 @@ export type JournalPayload = z.infer<typeof JournalPayload>;
 
 export const MovementPayload = open({
   id: Id, productId: Id, type: z.string(), qtyMilli: z.number().int(), valuePaise: Paise, unitCostPaise: Paise, provisional: z.boolean(),
-  refType: z.string(), refId: Id, refLineId: z.string().nullable(), reasonCode: z.string().nullable(), warehouseId: Id, occurredAt: Ts,
+  refType: z.string(), refId: Id, refLineId: z.string().nullable(), reasonCode: z.string().nullable(), warehouseId: Id, occurredAt: Ts, deviceId: Id.optional(),
 });
 export const PartyEntryPayload = open({
   id: Id, partyType: z.enum(['customer', 'supplier']), partyId: Id, refType: z.string(), refId: Id, kind: z.string(), amountPaise: Paise,
   docDate: Day, dueDate: Day.nullable(),
 });
-const AllocationLine = open({ id: Id, targetType: z.string(), targetId: Id, amountPaise: Paise });
+const AllocationLine = open({ id: Id, targetType: z.string(), targetId: Id, amountPaise: Paise, allocatedOn: Day.optional() });
+// How the origin filed a numbered document (7e), so another device stores it under the same series, number and command.
+const Numbering = { seriesId: Id.optional(), docSeq: z.number().int().optional(), fy: z.string().optional(), commandId: Id.optional() };
+const Filing = { branchId: Id.optional(), ...Numbering };
+const DrawerMovement = open({ id: Id, sessionId: Id, kind: z.string(), amountPaise: Paise, reason: z.string(), createdAt: Ts });
 const TaxHeads = { cgstPaise: Paise, sgstPaise: Paise, igstPaise: Paise, cessPaise: Paise };
 
 const SaleLine = open({
@@ -42,7 +46,7 @@ const Sale = open({
   id: Id, businessId: Id, terminalId: Id, sessionId: Id.nullable(), docType: z.string(), docNumber: z.string(), docDate: Day, customerId: Id.nullish(),
   status: z.string(), lines: z.array(SaleLine).min(1), tenders: z.array(open({ method: z.string(), amountPaise: Paise, changePaise: Paise })),
   totals: DocTotals, creditPaise: Paise, changePaise: Paise, movements: z.array(MovementPayload), partyEntry: PartyEntryPayload.optional(),
-  journal: JournalPayload,
+  journal: JournalPayload, ...Filing,
 });
 const PurchaseLine = open({
   id: Id, lineNo: z.number().int(), productId: Id, uomId: Id, qtyMilli: z.number().int(), baseQtyMilli: z.number().int(), unitPricePaise: Paise,
@@ -53,16 +57,18 @@ const Purchase = open({
   id: Id, businessId: Id, branchId: Id, warehouseId: Id, supplierId: Id, docNumber: z.string(), docDate: Day, supplierInvoiceNo: z.string(),
   supplierInvoiceDate: Day, status: z.string(), lines: z.array(PurchaseLine).min(1), charges: z.array(open({ kind: z.string(), amountPaise: Paise })),
   totals: DocTotals, movements: z.array(MovementPayload), corrections: z.array(JournalPayload), entry: PartyEntryPayload, journal: JournalPayload,
+  ...Numbering, placeOfSupplyState: z.string().optional(),
 });
-const Cancel = open({ id: Id, status: z.literal('cancelled'), reason: z.string(), journal: JournalPayload.nullable() });
+const Cancel = open({ id: Id, status: z.literal('cancelled'), reason: z.string(), journal: JournalPayload.nullable(), drawerMovements: z.array(DrawerMovement).optional() });
 const DebitNote = open({
   id: Id, businessId: Id, purchaseId: Id, supplierId: Id, docNumber: z.string(), docDate: Day, totalPaise: Paise, roundOffPaise: Paise,
   lines: z.array(open({ purchaseItemId: Id, qtyMilli: z.number().int() })).min(1), movements: z.array(MovementPayload), corrections: z.array(JournalPayload),
-  entry: PartyEntryPayload, journal: JournalPayload, ...TaxHeads,
+  entry: PartyEntryPayload, journal: JournalPayload, ...TaxHeads, ...Filing, warehouseId: Id.optional(), allocations: z.array(AllocationLine).optional(),
 });
 const Payment = open({
   id: Id, businessId: Id, partyType: z.enum(['customer', 'supplier']), partyId: Id, docNumber: z.string(), paymentDate: Day, method: z.string(),
-  amountPaise: Paise, allocations: z.array(AllocationLine), entry: PartyEntryPayload, journal: JournalPayload,
+  amountPaise: Paise, allocations: z.array(AllocationLine), entry: PartyEntryPayload, journal: JournalPayload, ...Filing, terminalId: Id.nullish(),
+  drawerMovements: z.array(DrawerMovement).optional(),
 });
 const WriteOff = open({
   id: Id, businessId: Id, customerId: Id, docDate: Day, amountPaise: Paise, reason: z.string(), allocations: z.array(AllocationLine),
@@ -70,7 +76,8 @@ const WriteOff = open({
 });
 const Expense = open({
   id: Id, businessId: Id, categoryId: Id, docNumber: z.string(), expenseDate: Day, method: z.string(), taxablePaise: Paise, itcPaise: Paise,
-  totalPaise: Paise, status: z.string(), entry: PartyEntryPayload.nullable(), journal: JournalPayload, ...TaxHeads,
+  totalPaise: Paise, status: z.string(), entry: PartyEntryPayload.nullable(), journal: JournalPayload, ...TaxHeads, ...Filing, terminalId: Id.nullish(),
+  roundOffPaise: Paise.optional(), drawerMovements: z.array(DrawerMovement).optional(),
 });
 const StockDocument = open({
   id: Id, kind: z.enum(['opening', 'adjustment', 'stock_take']), warehouseId: Id, movements: z.array(MovementPayload), corrections: z.array(JournalPayload),

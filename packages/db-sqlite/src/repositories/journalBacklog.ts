@@ -38,17 +38,21 @@ const KINDS: readonly { kind: JournalDocKind; entityType: string; sources: strin
     unposted: "SELECT d.id FROM cash_movement d WHERE d.business_id = ? AND d.ref_id IS NULL AND d.kind IN ('cash_in','cash_out') AND {none} ORDER BY d.created_at, d.id" },
 ];
 
+// Only this device's documents: another device's arrive with their journals, which their own device posted (ADR-0040).
+const mine = (sql: string, deviceId: string | undefined): string => (deviceId ? sql.replace('d.business_id = ?', 'd.business_id = ? AND d.device_id = ?') : sql);
+const args = (businessId: string, deviceId: string | undefined): string[] => (deviceId ? [businessId, deviceId] : [businessId]);
+
 // ADR-0034: every document that should have a journal and does not, then every cancelled document still unreversed.
-export function unpostedDocuments(db: Db, businessId: string): PendingJournal[] {
+export function unpostedDocuments(db: Db, businessId: string, deviceId?: string): PendingJournal[] {
   const out: PendingJournal[] = [];
   for (const k of KINDS) {
-    for (const id of stmt(db, k.unposted.replace('{none}', hasJournal(k.sources))).pluck().all(businessId) as string[]) {
+    for (const id of stmt(db, mine(k.unposted.replace('{none}', hasJournal(k.sources)), deviceId)).pluck().all(...args(businessId, deviceId)) as string[]) {
       if ((documentJournal(db, k.kind, id)?.lines.length ?? 0) > 0) out.push({ kind: k.kind, id });
     }
   }
   for (const k of KINDS) {
     if (!k.cancelled) continue;
-    const rows = stmt(db, k.cancelled.replace('{rev}', hasReversal(k.sources))).all(businessId) as { id: string; at: string | null }[];
+    const rows = stmt(db, mine(k.cancelled.replace('{rev}', hasReversal(k.sources)), deviceId)).all(...args(businessId, deviceId)) as { id: string; at: string | null }[];
     for (const r of rows) if ((documentJournal(db, k.kind, r.id)?.lines.length ?? 0) > 0) out.push({ kind: k.kind, id: r.id, reversalOn: localDate(r.at ?? new Date().toISOString()) });
   }
   return out;

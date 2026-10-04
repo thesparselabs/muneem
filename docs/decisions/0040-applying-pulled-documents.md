@@ -17,11 +17,20 @@ on order, and two offline terminals see different orders.
   device whatever the order of arrival. Each device's tie-outs hold by construction.
 - **Movement order:** pulled movements replay by `(occurred_at, origin device, local seq)`, the same order everywhere,
   so every device's replay check agrees. This settles the Stage 4 note.
+  - **As built (7e):** a movement's payload carries its origin's `deviceId` (the installation id), stored as its
+    `device_id`. The replay orders by `(occurred_at, device_id, id)`; ids are monotonic ULIDs per device, so `id` is
+    the origin's own order.
 - **`postJournal` stays the only journal writer.** It gains a synced mode that takes the journal's id, number and
   entry date as given, and still writes the lines and the balance cache.
 - **Natural keys:** rows each device makes on demand are matched by natural key, not id: periods by month, accounts by
   code, units, categories and expense categories by code, and the default price list by kind. A pulled journal finds
   this device's period for its month, and seeding never duplicates a row that came from the cloud.
+  - **As built (7e):** a pulled row that matches a local one by natural key is not inserted; `sync_id_alias` maps its
+    id to the local id, and every reference to it in later payloads resolves through the alias. Brands (by name),
+    other price lists (by name) and warehouses (by code, the branch's code) are matched the same way, since their
+    unique indexes would refuse a second row.
+  - **A device that has not got the business yet** pulls the config stream first, so the control stream's locks and
+    review items have a business to belong to.
 - **Locks:** periods are cloud-authoritative and travel on the control stream, so a lock on one terminal reaches the
   others. A document from a device that had not yet heard of a lock keeps its entry date, and the cloud lists it as a
   late arrival for review rather than refusing it.

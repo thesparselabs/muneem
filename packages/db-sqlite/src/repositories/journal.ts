@@ -77,42 +77,64 @@ function resolveAccounts(db: Db, j: JournalInput, actor: Actor): string[] {
   });
 }
 
-// The only writer of journals and their balance cache (ADR-0030); runs in the document's transaction.
-export function postJournal(db: Db, j: JournalInput, actor: Actor, reversalOf: string | null = null): PostedJournal | null {
-  if (j.lines.length === 0) return null;
+interface Placement { id: string; entryNo: string; entryDate: string; periodId: string; late: boolean; reversalOf: string | null; createdAt?: string }
+
+function assertBalanced(j: JournalInput): number {
   const { debit, credit } = totals(j.lines);
   if (debit !== credit) throw new AppError('LEDGER_IMBALANCE', `journal for ${j.source} ${j.refId} does not balance: ${debit} ≠ ${credit}`);
+  return debit;
+}
+
+function writeJournal(db: Db, j: JournalInput, p: Placement, actor: Actor): PostedJournal {
+  const total = assertBalanced(j);
   const accountIds = resolveAccounts(db, j, actor);
-  const { periodId, entryDate, late } = postingPeriod(db, j.businessId, j.docDate, actor);
-  const entryNo = journalNumber(db, j, actor);
-  const id = newUlid();
   const s = syncColumns(actor);
   stmt(db, `INSERT INTO journal_entry (id, business_id, branch_id, terminal_id, entry_no, entry_date, doc_date, fy, period_id, source, ref_type, ref_id,
       narration, debit_total_paise, credit_total_paise, is_reversal_of, late_posting, created_at, updated_at, created_by, device_id)
     VALUES (@id, @businessId, @branchId, @terminalId, @entryNo, @entryDate, @docDate, @fy, @periodId, @source, @refType, @refId, @narration, @total, @total,
       @reversalOf, @late, @t, @t, @created_by, @device_id)`).run({
-    id, businessId: j.businessId, branchId: j.branchId ?? null, terminalId: j.terminalId ?? null, entryNo, entryDate, docDate: j.docDate,
-    fy: financialYearOf(entryDate), periodId, source: j.source, refType: j.refType, refId: j.refId, narration: j.narration ?? null, total: debit, reversalOf,
-    late: late ? 1 : 0, ...s,
+    id: p.id, businessId: j.businessId, branchId: j.branchId ?? null, terminalId: j.terminalId ?? null, entryNo: p.entryNo, entryDate: p.entryDate, docDate: j.docDate,
+    fy: financialYearOf(p.entryDate), periodId: p.periodId, source: j.source, refType: j.refType, refId: j.refId, narration: j.narration ?? null, total,
+    reversalOf: p.reversalOf, late: p.late ? 1 : 0, ...s, ...(p.createdAt && { t: p.createdAt }),
   });
-  if (late) {
-    appendAudit(db, {
-      businessId: j.businessId, deviceId: actor.deviceId, userId: actor.userId, terminalId: actor.terminalId,
-      action: 'journal.late_posting', entityType: 'journal_entry', entityId: id, after: { source: j.source, refId: j.refId, docDate: j.docDate, entryDate },
-    });
-  }
   const line = stmt(db, `INSERT INTO journal_line (id, entry_id, business_id, line_no, account_id, debit_paise, credit_paise, party_type, party_id)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`);
   const balance = stmt(db, `INSERT INTO account_balance (business_id, account_id, period_id, debit_paise, credit_paise) VALUES (?, ?, ?, ?, ?)
     ON CONFLICT (account_id, period_id) DO UPDATE SET debit_paise = debit_paise + excluded.debit_paise, credit_paise = credit_paise + excluded.credit_paise`);
   j.lines.forEach((l, i) => {
-    line.run(newUlid(), id, j.businessId, i + 1, accountIds[i], l.debitPaise, l.creditPaise, l.party?.partyType ?? null, l.party?.partyId ?? null);
-    balance.run(j.businessId, accountIds[i], periodId, l.debitPaise, l.creditPaise);
+    line.run(`${p.id}-${String(i + 1).padStart(3, '0')}`, p.id, j.businessId, i + 1, accountIds[i], l.debitPaise, l.creditPaise, l.party?.partyType ?? null, l.party?.partyId ?? null);
+    balance.run(j.businessId, accountIds[i], p.periodId, l.debitPaise, l.creditPaise);
   });
   return {
-    id, entryNo, entryDate, periodId, lines: j.lines, source: j.source, refType: j.refType, refId: j.refId, docDate: j.docDate, narration: j.narration ?? null,
-    branchId: j.branchId ?? null, terminalId: j.terminalId ?? null, latePosting: late, reversalOf,
+    id: p.id, entryNo: p.entryNo, entryDate: p.entryDate, periodId: p.periodId, lines: j.lines, source: j.source, refType: j.refType, refId: j.refId,
+    docDate: j.docDate, narration: j.narration ?? null, branchId: j.branchId ?? null, terminalId: j.terminalId ?? null, latePosting: p.late, reversalOf: p.reversalOf,
   };
+}
+
+// The only writer of journals and their balance cache (ADR-0030); runs in the document's transaction.
+export function postJournal(db: Db, j: JournalInput, actor: Actor, reversalOf: string | null = null): PostedJournal | null {
+  if (j.lines.length === 0) return null;
+  assertBalanced(j);
+  const { periodId, entryDate, late } = postingPeriod(db, j.businessId, j.docDate, actor);
+  const posted = writeJournal(db, j, { id: newUlid(), entryNo: journalNumber(db, j, actor), entryDate, periodId, late, reversalOf }, actor);
+  if (late) {
+    appendAudit(db, {
+      businessId: j.businessId, deviceId: actor.deviceId, userId: actor.userId, terminalId: actor.terminalId,
+      action: 'journal.late_posting', entityType: 'journal_entry', entityId: posted.id, after: { source: j.source, refId: j.refId, docDate: j.docDate, entryDate },
+    });
+  }
+  return posted;
+}
+
+export interface SyncedJournalInput extends JournalInput { id: string; entryNo: string; entryDate: string; latePosting: boolean; reversalOf: string | null; createdAt?: string }
+
+// ADR-0040: another device's journal keeps its id, number and entry date; its period is this device's month. Applying it twice writes nothing.
+export function postSyncedJournal(db: Db, j: SyncedJournalInput, actor: Actor): PostedJournal | null {
+  if (j.lines.length === 0 || stmt(db, 'SELECT 1 FROM journal_entry WHERE id = ?').get(j.id)) return null;
+  const periodId = ensurePeriod(db, j.businessId, j.entryDate, actor);
+  return writeJournal(db, j, {
+    id: j.id, entryNo: j.entryNo, entryDate: j.entryDate, periodId, late: j.latePosting, reversalOf: j.reversalOf, ...(j.createdAt && { createdAt: j.createdAt }),
+  }, actor);
 }
 
 type LineRow = { debit_paise: number; credit_paise: number; party_type: 'customer' | 'supplier' | null; party_id: string | null; code: string; role: string | null };

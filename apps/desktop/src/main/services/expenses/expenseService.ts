@@ -1,7 +1,7 @@
 import { AppError, type Expense, type ExpenseCategory, type ExpenseInput, type ExpenseListInput, type ExpensePage } from '@muneem/contracts';
 import { addDays, computeInvoice, docSeriesPrefix, DomainError, financialYearOf, isUtWithoutLegislature, newUlid, stateOfGstin } from '@muneem/domain';
 import {
-  allocateDocNumber, documentCashMovements, ensureExpenseCategories, expenseIdByCommand, findOrCreateSeries, getBranch, getBusiness, getExpense,
+  allocateDocNumber, documentCashMovements, documentKeys, drawerMovements, ensureExpenseCategories, expenseIdByCommand, findOrCreateSeries, getBranch, getBusiness, getExpense,
   getSupplier, getTerminal, insertExpense, listExpenseCategories, listExpenses, markExpenseCancelled, postDocumentJournal, postPartyEntry, recordChange,
   reverseDocumentJournal, withTransaction,
   type ExpenseRecord,
@@ -57,7 +57,7 @@ export class ExpenseService {
         : 'not_cash';
       const journal = reverseDocumentJournal(db, 'expense', id, this.ctx.today(), actor);
       recordChange(db, this.ctx.businessId(), actor, {
-        action: 'expense.cancel', entityType: 'expense', entityId: id, operationType: 'cancel', after: { id, status: 'cancelled', reason, entry, drawer, journal },
+        action: 'expense.cancel', entityType: 'expense', entityId: id, operationType: 'cancel', after: { id, status: 'cancelled', reason, entry, drawer, drawerMovements: drawerMovements(db, 'expense', id), journal },
       });
     });
     return this.get(id);
@@ -104,7 +104,7 @@ export class ExpenseService {
       : null;
     this.drawer.record(sessionId, { kind: 'cash_out', amountPaise: tax.totalPaise, reason: `${number.number} ${category!.name}`, refType: 'expense', refId: id });
     const journal = postDocumentJournal(db, 'expense', id, till, actor);
-    recordChange(db, till.businessId, actor, { action: 'expense.create', entityType: 'expense', entityId: id, operationType: 'create', after: { ...getExpense(db, id), entry, journal } });
+    recordChange(db, till.businessId, actor, { action: 'expense.create', entityType: 'expense', entityId: id, operationType: 'create', after: { ...getExpense(db, id), ...documentKeys(db, 'expense', id), drawerMovements: drawerMovements(db, 'expense', id), entry, journal } });
     return id;
   }
 

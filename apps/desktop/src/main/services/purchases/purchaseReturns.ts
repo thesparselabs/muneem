@@ -1,7 +1,7 @@
 import { AppError, type DebitNote, type Purchase, type ReturnPurchaseInput } from '@muneem/contracts';
 import { cumulativeShare, docSeriesPrefix, financialYearOf, newUlid } from '@muneem/domain';
 import {
-  allocateDocNumber, appendAudit, debitNoteCount, debitNoteIdByCommand, findOrCreateSeries, getDebitNote, getProduct, getPurchase, getTerminal,
+  allocateDocNumber, allocationsOfSource, appendAudit, debitNoteCount, debitNoteIdByCommand, documentKeys, findOrCreateSeries, getDebitNote, getProduct, getPurchase, getTerminal,
   insertAllocation, insertDebitNote, markPurchaseCancelled, movementsForRef, postCorrections, postDocumentJournal, postMovement, postPartyEntry, recordChange,
   returnedQtyByItem, reverseDocumentJournal,
   stockState, withTransaction, type StoredPurchase,
@@ -124,7 +124,7 @@ export class PurchaseReturnService {
     const corrections = postCorrections(db, p.businessId, 'purchase_return', id, till, actor);
     recordChange(db, p.businessId, actor, {
       action: 'debit_note.create', entityType: 'debit_note', entityId: id, operationType: 'create',
-      after: { ...getDebitNote(db, id), movements: movementsForRef(db, p.businessId, 'purchase_return', id), entry, journal, corrections },
+      after: { ...getDebitNote(db, id), ...documentKeys(db, 'debit_note', id), allocations: allocationsOfSource(db, 'debit_note', id), movements: movementsForRef(db, p.businessId, 'purchase_return', id), entry, journal, corrections },
     });
     return id;
   }

@@ -70,7 +70,7 @@ export interface MovementInput {
 
 export interface PostedMovement {
   id: string; productId: string; type: MovementType; qtyMilli: number; valuePaise: number; unitCostPaise: number; provisional: boolean;
-  refType: RefType; refId: string; refLineId: string | null; reasonCode: ReasonCode | null; warehouseId: string; occurredAt: string;
+  refType: RefType; refId: string; refLineId: string | null; reasonCode: ReasonCode | null; warehouseId: string; occurredAt: string; deviceId?: string;
 }
 
 function insertMovement(db: Db, m: PostedMovement, businessId: string, warehouseId: string, note: string | null, actor: Actor, at: string): void {
@@ -139,9 +139,10 @@ type MovementRow = { id: string; movement_type: MovementType; signed_qty_milli: 
 const kindOf = (r: MovementRow): StockMovementRecord['kind'] =>
   r.movement_type === 'cost_correction' ? 'correction' : r.signed_qty_milli > 0 ? 'receipt' : r.movement_type === 'purchase_return' ? 'return' : 'issue';
 
+// ADR-0040: every device replays in the same order — when it happened, then the origin device, then the origin's own order.
 function movementRecords(db: Db, businessId: string, warehouseId: string, productId: string): MovementRow[] {
   return stmt(db, `SELECT id, movement_type, signed_qty_milli, value_paise, unit_cost_paise FROM stock_movement
-    WHERE business_id = ? AND warehouse_id = ? AND product_id = ? ORDER BY rowid`).all(businessId, warehouseId, productId) as MovementRow[];
+    WHERE business_id = ? AND warehouse_id = ? AND product_id = ? ORDER BY occurred_at, device_id, id`).all(businessId, warehouseId, productId) as MovementRow[];
 }
 
 // levelDrift is healed by rewriting the cache; badMovementIds (e.g. sales costed from a drifted cache) are reported, never rewritten.
@@ -192,12 +193,12 @@ export const rebuildStockLevels = (db: Db, businessId: string, productIds?: read
 
 export function movementsForRef(db: Db, businessId: string, refType: RefType, refId: string): PostedMovement[] {
   return (stmt(db, `SELECT id, warehouse_id, occurred_at, product_id, movement_type, signed_qty_milli, value_paise, unit_cost_paise, cost_provisional, ref_type, ref_id,
-      ref_line_id, reason_code FROM stock_movement WHERE business_id = ? AND ref_type = ? AND ref_id = ? ORDER BY rowid`).all(businessId, refType, refId) as {
+      ref_line_id, reason_code, device_id FROM stock_movement WHERE business_id = ? AND ref_type = ? AND ref_id = ? ORDER BY rowid`).all(businessId, refType, refId) as {
     id: string; warehouse_id: string; occurred_at: string; product_id: string; movement_type: MovementType; signed_qty_milli: number; value_paise: number;
-    unit_cost_paise: number; cost_provisional: number; ref_type: RefType; ref_id: string; ref_line_id: string | null; reason_code: ReasonCode | null;
+    unit_cost_paise: number; cost_provisional: number; ref_type: RefType; ref_id: string; ref_line_id: string | null; reason_code: ReasonCode | null; device_id: string;
   }[]).map((r) => ({
     id: r.id, warehouseId: r.warehouse_id, occurredAt: r.occurred_at, productId: r.product_id, type: r.movement_type, qtyMilli: r.signed_qty_milli, valuePaise: r.value_paise, unitCostPaise: r.unit_cost_paise,
-    provisional: r.cost_provisional === 1, refType: r.ref_type, refId: r.ref_id, refLineId: r.ref_line_id, reasonCode: r.reason_code,
+    provisional: r.cost_provisional === 1, refType: r.ref_type, refId: r.ref_id, refLineId: r.ref_line_id, reasonCode: r.reason_code, deviceId: r.device_id,
   }));
 }
 
