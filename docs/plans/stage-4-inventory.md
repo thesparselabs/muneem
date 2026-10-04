@@ -112,6 +112,7 @@ rebuildProjections / importOpeningPreview / importOpeningCommit / listWarehouses
 - Exit criterion evidence: domain property `replay = projection` (fast-check), DB-level replay check after the sale,
   adjustment and stock-take tests, kill -9 suite with replay check; valuation report = Σ movement values = Σ levels
   in tests (GL tie-out recorded as a Stage 6 item).
+- **9j:** the manual step below moved to [docs/qa/manual-checklist.md](../qa/manual-checklist.md) (Inventory), where it is automated or kept manual with results.
 - Manual (`pnpm --filter @muneem/desktop dev`): enter opening stock, sell, see stock fall and the ledger line; sell
   past zero and see the warning; do a stock take; check valuation and low stock.
 

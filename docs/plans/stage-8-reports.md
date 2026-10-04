@@ -374,6 +374,9 @@ bug).
   storage with lifecycle rules.
 - **Manual checks:** the checklist below, and every earlier one, has not been clicked through.
 
+**9j:** this checklist moved to [docs/qa/manual-checklist.md](../qa/manual-checklist.md) (Reports, returns, GST and the rest), where each step is automated or kept
+manual with results.
+
 **Manual checklist (Stage 8 screens), not yet run:**
 1. **Return:** Sales → Returns, find a bill, return two lines in part with a cash refund. A `C` credit note prints,
    the drawer's expected cash drops, and the bill shows what is returned. Cancel another bill: a full credit note.

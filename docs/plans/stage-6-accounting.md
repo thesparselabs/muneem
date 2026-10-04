@@ -381,6 +381,9 @@ suite checks that every sale has exactly one journal after the kills.
 - **Checking:** as before — typecheck, build and helper tests, with the manual checklist extended. The screens are
   not claimed as clicked through.
 
+**9j:** this checklist and the manual exit step moved to [docs/qa/manual-checklist.md](../qa/manual-checklist.md) (Accounting), where each step is automated or kept
+manual with results.
+
 6e manual checklist (run `pnpm --filter @muneem/desktop dev`; not yet done — the screens are checked by typecheck,
 build and helper tests only):
 

@@ -483,6 +483,9 @@ append-only.
 - **Not in 5f:** printing a payment receipt or debit note, report exports (Stage 8), custom expense categories, a
   Playwright suite, and POS changes beyond 5e's credit row.
 
+**9j:** this checklist and the manual exit step moved to [docs/qa/manual-checklist.md](../qa/manual-checklist.md) (Purchases, parties and payments), where each step is
+automated or kept manual with results.
+
 5f manual checklist (run `pnpm --filter @muneem/desktop dev`; not yet done — the screens are checked by typecheck,
 build and helper tests only):
 
