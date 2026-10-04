@@ -1,9 +1,9 @@
 import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { newUlid } from '@muneem/domain';
-import { verifyAuditChain } from '@muneem/db-sqlite';
-import type { CompleteSaleResult, ProductHit, RegisterReport, SaleQuote } from '@muneem/contracts';
+import { financialYearOf, fyBounds, newUlid } from '@muneem/domain';
+import { tieOutFailures, verifyAuditChain } from '@muneem/db-sqlite';
+import type { AccountView, BalanceSheet, CompleteSaleResult, ProfitAndLoss, ProductHit, RegisterReport, SaleQuote, TrialBalance } from '@muneem/contracts';
 import { caller, ownerAtTill, testApp } from './helpers.js';
 
 // PRD §8 golden flow (Stages 3–4): billing and stock work end to end with the cloud unreachable.
@@ -62,5 +62,28 @@ describe('golden flow, offline', () => {
     expect(await api.data('sync.getStatus')).toMatchObject({ state: 'queued' });
     expect(db.prepare("SELECT status FROM sync_outbox WHERE entity_type = 'sale'").pluck().all()).toEqual(['pending']);
     expect(verifyAuditChain(db, app.session.require().businessId!, app.device.localDeviceId()).ok).toBe(true);
+
+    // Stage 6: the same day in the books.
+    const tb = await api.data<TrialBalance>('accounting.getTrialBalance');
+    expect(tb.balanced).toBe(true);
+    const bs = await api.data<BalanceSheet>('accounting.getBalanceSheet');
+    const pl = await api.data<ProfitAndLoss>('accounting.getProfitAndLoss', { from: fyBounds(financialYearOf(tb.asOf)).start, to: tb.asOf });
+    expect(bs).toMatchObject({ balanced: true, currentProfitPaise: pl.netProfitPaise });
+    expect(tieOutFailures(db, app.session.require().businessId!)).toEqual([]);
+    const balances = new Map((await api.data<AccountView[]>('accounting.listAccounts')).map((a) => [a.code, a.balancePaise]));
+    const { taxablePaise, cgstPaise, sgstPaise, roundOffPaise } = quote.totals;
+    expect(Object.fromEntries(['1100', '1199', '1250', '1300', '1400', '2210', '2220', '3400', '4100', '4900', '5100'].map((c) => [c, balances.get(c)]))).toEqual({
+      '1100': cashIn - 5000,   // the ₹2,000 opening float is not a journal, so the books hold only what moved after it
+      '1199': 5000,   // cash out waits to be classified (ADR-0032)
+      '1250': 10_000,
+      '1300': 0,
+      '1400': 47 * 800 + 9 * 11_000,
+      '2210': -cgstPaise,
+      '2220': -sgstPaise,
+      '3400': -(50 * 800 + 10 * 11_000),
+      '4100': -taxablePaise,
+      '4900': -roundOffPaise,
+      '5100': 3 * 800 + 11_000,
+    });
   });
 });

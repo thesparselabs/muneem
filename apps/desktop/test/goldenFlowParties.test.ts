@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { newUlid } from '@muneem/domain';
-import { reconcilePartiesDb, replayCheck } from '@muneem/db-sqlite';
+import { financialYearOf, fyBounds, newUlid } from '@muneem/domain';
+import { reconcilePartiesDb, replayCheck, tieOutFailures } from '@muneem/db-sqlite';
 import type {
+  AccountView, BalanceSheet, ProfitAndLoss, TrialBalance,
   Customer, DebitNote, Expense, ExpenseCategory, LedgerPage, Outstanding, Payment, Purchase, RegisterReport, SaleQuote, CompleteSaleResult, Supplier,
 } from '@muneem/contracts';
 import { caller, ownerAtTill, testApp } from './helpers.js';
@@ -83,5 +84,31 @@ describe('golden flow, parties, offline', () => {
     const payloads = db.prepare("SELECT entity_type, payload_json FROM sync_outbox WHERE entity_type IN ('sale', 'purchase', 'debit_note', 'payment')").all() as { entity_type: string; payload_json: string }[];
     expect(payloads.map((p) => p.entity_type).sort()).toEqual(['debit_note', 'payment', 'payment', 'purchase', 'sale']);
     for (const p of payloads) expect(p.payload_json).toMatch(/"(entry|partyEntry)":\{/);
+
+    // Stage 6: the books balance, agree with the sub-ledgers and say what the flow did.
+    const tb = await call<TrialBalance>('accounting.getTrialBalance');
+    expect(tb.balanced).toBe(true);
+    const bs = await call<BalanceSheet>('accounting.getBalanceSheet');
+    const pl = await call<ProfitAndLoss>('accounting.getProfitAndLoss', { from: fyBounds(financialYearOf(tb.asOf)).start, to: tb.asOf });
+    expect(bs).toMatchObject({ balanced: true, currentProfitPaise: pl.netProfitPaise });
+    const { taxablePaise, cgstPaise, sgstPaise } = quote.totals;
+    expect(pl.netProfitPaise).toBe(taxablePaise - 10 * 5500 - 1000 - 20_000);
+    expect(tieOutFailures(db, businessId)).toEqual([]);
+    const balances = new Map((await call<AccountView[]>('accounting.listAccounts')).map((a) => [a.code, a.balancePaise]));
+    expect(Object.fromEntries(['1100', '1300', '1400', '1510', '1520', '2100', '2210', '2220', '3400', '4100', '5100', '5110', '5900'].map((c) => [c, balances.get(c)]))).toEqual({
+      '1100': cashSale + 60_000 - 100_000 - 20_000,   // the ₹1,000 opening float is not a journal, so cash in hand reads ₹400 below zero
+      '1300': -10_000,
+      '1400': 8 * 5500,
+      '1510': 2500 - 250,
+      '1520': 2500 - 250,
+      '2100': -54_500,
+      '2210': -cgstPaise,
+      '2220': -sgstPaise,
+      '3400': 50_000,
+      '4100': -taxablePaise,
+      '5100': 10 * 5500,
+      '5110': 1000,   // the 2 returned bags' ₹5 freight share each, which Acme keeps
+      '5900': 20_000,
+    });
   }, 60_000);
 });
