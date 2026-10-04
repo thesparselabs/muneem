@@ -23,6 +23,18 @@ All notable changes, newest first. Each entry records **what** changed and **why
   - **Files:** the user picks where an export goes in a save dialog, and the screen never sees a path.
   - **First report:** the Trial Balance; 8e adds the rest.
   - **IPC:** `reports.listDefinitions`, `reports.run`, `reports.export`.
+- **The audit chain is verified on the cloud (8g, ADR-0048 as built).** Why: FR-078 and LLD §16; a tampered audit trail
+  must not go unnoticed.
+  - **Upload:** each audit row is pushed as an `audit_entry` operation on a push-only stream, exactly as stored.
+    Rows written before this change are queued once at start-up.
+  - **Cloud checks:** both servers check every row's sequence, link to the previous row and recomputed hash, with
+    `canonicalJson` ported to Go and shared fixtures. A break is rejected as `AUDIT_CHAIN_BROKEN`, dead-lettered,
+    alerted and listed as a review item.
+  - **On the device:** `diagnostics.verifyAudit` runs on demand, in the integrity check and every 6 hours. Any break,
+    found locally or reported by the cloud, turns the badge to "Needs attention · audit trail check failed".
+  - **Restore:** restoring this device's own backup carries its newer audit rows over, so its chain on the cloud is
+    not forked.
+  - **Migrations:** Go migration 0005 `audit_entry`; no SQLite migration.
 - **Sale returns and cancellation as credit notes (8b, ADR-0043 as built).** Why: Stage 3 deferred them, and GSTR-1
   needs credit notes.
   - **Storage:** credit notes have their own tables and a `C` number series.

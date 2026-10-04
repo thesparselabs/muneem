@@ -31,7 +31,7 @@ LLD §16 says the server verifies each device's audit hash chain on ingest; devi
 - **Go:** `cloud/internal/devicesync/auditchain` ports `canonicalJson` (JavaScript number formatting, array-index
   keys first, UTF-16 key order, `JSON.stringify` escapes) and the hash; shared fixtures in
   `packages/contracts/fixtures/canonical/` are written by the device's code and checked by TS, the reference server
-  and Go. Table `audit_entry` (migration 0006), append-only by grant, under RLS.
+  and Go. Table `audit_entry` (migration 0005), append-only by grant, under RLS.
 - **Device:** `diagnostics.verifyAudit` checks every chain held (gap, link, hash), runs on demand, in the integrity
   check and on the 6-hourly timer, and keeps the last result in `app_meta`; a local break or a cloud
   `AUDIT_CHAIN_BROKEN` turns the sync badge to "Needs attention · audit trail check failed". No SQLite migration.
