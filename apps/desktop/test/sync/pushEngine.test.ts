@@ -109,6 +109,16 @@ describe('push state machine (7d)', () => {
     expect(await revoked.app.syncEngine.run({ pull: false })).toMatchObject({ ran: false });
   });
 
+  it('a clock-skew 401 does not spend a refresh token; the batch waits, uncounted, for the clock to be set right', async () => {
+    const { app, db, wire, server } = await device([() => new TransportError(401, 'DEVICE_CLOCK_SKEW')]);
+    const run = await app.syncEngine.run({ pull: false });
+    expect(run.push?.error).toBe('DEVICE_CLOCK_SKEW');
+    expect(wire.requests).toHaveLength(1);
+    expect(server.calls.filter((c) => c.path === '/v1/auth/refresh')).toEqual([]);
+    expect(statuses(db)).toEqual({ pending: expect.any(Number) });
+    expect(db.prepare('SELECT MAX(attempt_count) FROM sync_outbox').pluck().get()).toBe(0);
+  });
+
   it('an unsent update replaced by a later, fuller one is superseded; documents and anything depended on are not', async () => {
     const { app, db, wire } = await device([]);
     let c = app.customers.create({ name: 'Ravi' });

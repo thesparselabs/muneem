@@ -31,12 +31,15 @@ export function block(db: Db, e: unknown): boolean {
   return b !== null;
 }
 
-// A 401 that is not a revocation refreshes the access token and tries once more (7d).
+// Refusals a fresh token cannot cure: the Go API answers a skewed clock with 401 too, and /auth/refresh is not clock-checked.
+const NOT_A_TOKEN_PROBLEM = new Set(['DEVICE_REVOKED', 'DEVICE_CLOCK_SKEW']);
+
+// A 401 about the token refreshes it and tries once more (7d).
 export async function authorized<T>(call: (t: Transport) => Promise<T>, transport: Transport, refresh: () => Promise<boolean>): Promise<T> {
   try {
     return await call(transport);
   } catch (e) {
-    if (!isTransportError(e) || e.status !== 401 || e.code === 'DEVICE_REVOKED' || !(await refresh())) throw e;
+    if (!isTransportError(e) || e.status !== 401 || NOT_A_TOKEN_PROBLEM.has(e.code) || !(await refresh())) throw e;
     return call(transport);
   }
 }
