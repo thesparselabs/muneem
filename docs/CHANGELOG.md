@@ -12,6 +12,19 @@ All notable changes, newest first. Each entry records **what** changed and **why
   - **Before the pilot:** USB/Windows printing with ₹ and Indic text.
   - **Scale bar:** 500k transactions, 20k SKUs and 50k customers against the strict LLD §18 budgets.
   - **Monitoring:** self-hosted Prometheus, Loki and Grafana, with a self-hosted crash collector.
+- **Operator tooling (9i, ADR-0057).** Why: during the pilot, operators must see and fix shops without raw SQL, and
+  every action must be audited.
+  - **API and page:** a cross-shop operator API (`/v1/admin`) and a plain server-rendered admin page (`/admin/`) on a
+    loopback-only listener, reached through an SSH tunnel.
+  - **What operators can do:** see shop health; revoke devices; resend or dismiss dead letters; read review items,
+    audit-chain breaks and backups.
+  - **Grants:** operators are granted only from the server CLI (`grant-operator`/`revoke-operator`). Their tokens use
+    derived keys and an `op` scope, so shop and operator tokens never open each other's routes.
+  - **Cross-shop reads** go through a least-privilege `muneem_admin` role (Go migration 0009). Actions run in the
+    shop's own RLS scope, need a reason, and are audited.
+  - **Probe fix:** the business-health probe now skips dismissed dead letters, so the alert clears.
+  - **Runbooks:** `docs/runbooks/ops-*.md` covers onboarding, device replacement, dead letters, audit-chain breaks,
+    restores, key rotation and silent devices.
 - **Security scanning in CI (9k).** Why: what ships must have no known reachable vulnerability and no committed
   secret.
   - **The `security` job** runs `pnpm audit --prod` at moderate and above, `govulncheck`, and a gitleaks scan of the

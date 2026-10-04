@@ -24,3 +24,8 @@ One page per alert in `deploy/monitoring/grafana/provisioning/alerting/rules.yml
 | [Business-health probes stale](health-probe-stale.md) | critical | The business-health probes have not completed for 10 minutes, so the business alerts are blind. |
 | [Sync alert logged](sync-alert-log.md) | critical | The API logged an alert line (a rejected operation or a failed snapshot build). |
 | [Desktop crashes rising](desktop-crashes.md) | warning | More than 5 desktop crash or error reports arrived in the last hour. |
+
+## Operator procedures
+
+Step-by-step operator tasks (onboarding, replacing a device, dead letters, restores, key rotation) are listed in
+[ops-index.md](ops-index.md).

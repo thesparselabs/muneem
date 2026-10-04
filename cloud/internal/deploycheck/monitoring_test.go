@@ -162,7 +162,8 @@ func TestEveryRunbookBelongsToAnAlert(t *testing.T) {
 	pages, _ := filepath.Glob(filepath.Join(repo, "docs/runbooks/*.md"))
 	for _, p := range pages {
 		name := strings.TrimSuffix(filepath.Base(p), ".md")
-		if name != "README" && !strings.Contains(raw, `"muneem-`+name+`"`) {
+		operatorProcedure := strings.HasPrefix(name, "ops-")
+		if name != "README" && !operatorProcedure && !strings.Contains(raw, `"muneem-`+name+`"`) {
 			t.Errorf("runbook %s has no alert", name)
 		}
 	}
@@ -242,8 +243,15 @@ func TestMetricsStayOffThePublicPath(t *testing.T) {
 	}
 	parseYAML(t, "deploy/docker-compose.prod.yml", &compose)
 	api := compose.Services["api"]
-	if len(api.Ports) != 1 || !strings.HasPrefix(api.Ports[0], "${MUNEEM_METRICS_BIND:-127.0.0.1}:9090:") {
-		t.Fatalf("api ports %v", api.Ports)
+	metrics := false
+	for _, p := range api.Ports {
+		metrics = metrics || strings.HasPrefix(p, "${MUNEEM_METRICS_BIND:-127.0.0.1}:9090:")
+		if !strings.HasPrefix(p, "127.0.0.1:") && !strings.HasPrefix(p, "${MUNEEM_METRICS_BIND:-127.0.0.1}:") {
+			t.Fatalf("api port %q is published beyond loopback or the private metrics address", p)
+		}
+	}
+	if !metrics {
+		t.Fatalf("api ports %v lack the metrics port", api.Ports)
 	}
 	if api.Environment["MUNEEM_METRICS_ADDR"] == "" {
 		t.Fatal("MUNEEM_METRICS_ADDR not set for the container")
