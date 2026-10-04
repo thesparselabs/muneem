@@ -1,5 +1,6 @@
 // muneem-api: the Go/Echo cloud service. `muneem-api` serves; `migrate-up`, `migrate-down` and `rewrap` are one-shot
-// subcommands run as the database owner role (ADR-0051); `healthcheck` probes a running server's /v1/ready.
+// subcommands run as the database owner role (ADR-0051); `healthcheck` probes a running server's /v1/ready;
+// `crash-collector` serves the desktop crash ingest instead (ADR-0053).
 package main
 
 import (
@@ -56,6 +57,10 @@ func main() {
 	log := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: level}))
 	if len(os.Args) > 1 && os.Args[1] == "healthcheck" {
 		os.Exit(healthcheck())
+	}
+	if len(os.Args) > 1 && os.Args[1] == "crash-collector" {
+		crashCollector(log)
+		return
 	}
 	dbURL := os.Getenv("DATABASE_URL")
 	if dbURL == "" {

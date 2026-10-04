@@ -1,0 +1,17 @@
+# The API's /metrics is on its internal port (MUNEEM_METRICS_ADDR), reached over the private network or WireGuard,
+# never through Caddy. targets/api.yml names where; copy targets/api.yml.example.
+global:
+  scrape_interval: 30s
+  scrape_timeout: 10s
+  evaluation_interval: 30s
+
+scrape_configs:
+  - job_name: muneem-api
+    file_sd_configs:
+      - files: [/etc/prometheus/targets/*.yml]
+  - job_name: prometheus
+    static_configs:
+      - targets: [localhost:9090]
+  - job_name: loki
+    static_configs:
+      - targets: [loki:3100]

@@ -22,6 +22,7 @@ packages/db-sqlite Local DB: pragmas, migrator, schema, audit hash chain, outbox
 packages/sync-reference In-memory reference implementation of the sync protocol, for tests (ADR-0042)
 cloud/            Go + Echo API, Postgres with row-level security, Go port of the engines; cloud/Dockerfile = the image
 deploy/           Production kit for one VM: compose (api + Caddy), deploy.sh, roles.sql, S3 lifecycle (ADR-0051)
+deploy/monitoring Prometheus, Loki, Grafana (dashboards + alert rules as files), crash collector, Alloy (ADR-0053)
 scripts/          schema-lint, diff-fuzz, gen-preload
 design/           PRD, PRD review, HLD, LLD (intent)
 docs/             this folder (reality, with reasons)
@@ -276,6 +277,26 @@ docs/             this folder (reality, with reasons)
 - **Shutdown:** SIGTERM drains HTTP, then snapshot builds, within 25 s.
 - **Per instance:** rate limits are per instance until they move to Redis.
 
+## Observability (Stage 9c)
+
+- **Metrics (ADR-0053):** `cloud/internal/metrics` owns the only Prometheus registry. It is served on its own
+  listener (`MUNEEM_METRICS_ADDR`, loopback by default) and never on the public server or through Caddy. Domain
+  packages report through small observer interfaces and do not import Prometheus. Labels are route templates, codes
+  and opaque ids, never names or amounts.
+- **Probes:** `cloud/internal/health` runs single-flight on a timer in the API. It reads cross-tenant aggregates only
+  through migration 0008's SECURITY DEFINER functions, so the API role still cannot read another shop's rows. The
+  gauges are replaced on every run.
+- **Heartbeat:** every push may carry the device's outbox state, negative-stock count and last integrity report
+  (ADR-0054). It is telemetry, so it is clamped and never fails a push. The device keeps its report in `app_meta`
+  (`integrity_report:<business>`), written by `DiagnosticsService.scheduledChecks` every 6 hours.
+- **Crash reports:** off unless the owner turns on `telemetry.crashReports`. The desktop scrubs by allow-list before
+  sending, and the collector (`muneem-api crash-collector`) scrubs again. Minidumps stay on the machine.
+- **Invariants checked by tests:**
+  - `/metrics` is absent from the public server;
+  - the probes see every shop through the RLS-bound role, and the role alone sees none;
+  - every alert rule has a runbook, and every metric a rule or dashboard uses is exported;
+  - scrubbed reports contain none of a PII fixture's values, on both the desktop and the collector.
+
 ## What is not built yet
 
 Attachments upload (FR-075), SMS/WhatsApp reminders, e-invoice and e-way bill, GST portal JSON and composition
@@ -284,3 +305,8 @@ branch, batch/serial tracking. In billing: manager PIN override (USB/Windows pri
 landed in 9d). In purchases and payments: purchase orders and GRN, reverse charge, debit-note cancellation, refunding a
 customer's advance, TDS/TCS. Product variants, weighed barcodes and label printing are deferred (ADR-0008). Production
 deployment, monitoring, signed releases and the pilot are Stage 9. See `build-stages.md`.
+branch, batch/serial tracking. In billing: manager PIN override; USB/Windows printers and non-ASCII receipt text
+(Stage 9). In purchases and payments: purchase orders and GRN, reverse charge, debit-note cancellation, refunding a
+customer's advance, TDS/TCS. Product variants, weighed barcodes and label printing are deferred (ADR-0008). Signed
+releases and the pilot are Stage 9, as are the nightly pilot health report (ADR-0054) and uploading native minidumps
+(ADR-0053). See `build-stages.md`.

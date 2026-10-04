@@ -1,0 +1,672 @@
+# Generated from the alert table in ADR-0053; every rule links its runbook in docs/runbooks/.
+apiVersion: 1
+groups:
+  - orgId: 1
+    name: "business-health"
+    folder: "Muneem"
+    interval: "1m"
+    rules:
+      - uid: "muneem-outbox-backlog"
+        title: "Outbox backlog"
+        condition: "C"
+        data:
+          - refId: "A"
+            relativeTimeRange:
+              from: 3600
+              to: 0
+            datasourceUid: "prometheus"
+            model:
+              refId: "A"
+              expr: "max by (business_id) (muneem_business_outbox_depth_max)"
+              instant: true
+              range: false
+          - refId: "C"
+            datasourceUid: "__expr__"
+            model:
+              refId: "C"
+              type: "threshold"
+              expression: "A"
+              conditions:
+                - evaluator:
+                    type: "gt"
+                    params:
+                      - 500
+        for: "15m"
+        noDataState: "OK"
+        execErrState: "Error"
+        labels:
+          severity: "critical"
+          team: "muneem-ops"
+        annotations:
+          summary: "A device of shop {{ index .Labels \"business_id\" }} has more than 500 operations waiting to sync."
+          runbook_url: "https://github.com/thesparselabs/muneem/blob/main/docs/runbooks/outbox-backlog.md"
+      - uid: "muneem-outbox-stale"
+        title: "Outbox not draining"
+        condition: "C"
+        data:
+          - refId: "A"
+            relativeTimeRange:
+              from: 3600
+              to: 0
+            datasourceUid: "prometheus"
+            model:
+              refId: "A"
+              expr: "max by (business_id) (muneem_business_outbox_oldest_age_seconds)"
+              instant: true
+              range: false
+          - refId: "C"
+            datasourceUid: "__expr__"
+            model:
+              refId: "C"
+              type: "threshold"
+              expression: "A"
+              conditions:
+                - evaluator:
+                    type: "gt"
+                    params:
+                      - 3600
+        for: "5m"
+        noDataState: "OK"
+        execErrState: "Error"
+        labels:
+          severity: "critical"
+          team: "muneem-ops"
+        annotations:
+          summary: "An operation on a device of shop {{ index .Labels \"business_id\" }} has waited more than an hour to sync."
+          runbook_url: "https://github.com/thesparselabs/muneem/blob/main/docs/runbooks/outbox-stale.md"
+      - uid: "muneem-device-silent"
+        title: "Device silent"
+        condition: "C"
+        data:
+          - refId: "A"
+            relativeTimeRange:
+              from: 3600
+              to: 0
+            datasourceUid: "prometheus"
+            model:
+              refId: "A"
+              expr: "max by (business_id) (muneem_business_devices{state=\"silent\"})"
+              instant: true
+              range: false
+          - refId: "C"
+            datasourceUid: "__expr__"
+            model:
+              refId: "C"
+              type: "threshold"
+              expression: "A"
+              conditions:
+                - evaluator:
+                    type: "gt"
+                    params:
+                      - 0
+        for: "30m"
+        noDataState: "OK"
+        execErrState: "Error"
+        labels:
+          severity: "warning"
+          team: "muneem-ops"
+        annotations:
+          summary: "A device of shop {{ index .Labels \"business_id\" }} has not synced for more than 24 hours."
+          runbook_url: "https://github.com/thesparselabs/muneem/blob/main/docs/runbooks/device-silent.md"
+      - uid: "muneem-dead-letters"
+        title: "Unresolved dead letters"
+        condition: "C"
+        data:
+          - refId: "A"
+            relativeTimeRange:
+              from: 3600
+              to: 0
+            datasourceUid: "prometheus"
+            model:
+              refId: "A"
+              expr: "max by (business_id) (muneem_business_dead_letters_unresolved)"
+              instant: true
+              range: false
+          - refId: "C"
+            datasourceUid: "__expr__"
+            model:
+              refId: "C"
+              type: "threshold"
+              expression: "A"
+              conditions:
+                - evaluator:
+                    type: "gt"
+                    params:
+                      - 0
+        for: "1m"
+        noDataState: "OK"
+        execErrState: "Error"
+        labels:
+          severity: "critical"
+          team: "muneem-ops"
+        annotations:
+          summary: "Shop {{ index .Labels \"business_id\" }} has operations the cloud rejected and that have not since applied."
+          runbook_url: "https://github.com/thesparselabs/muneem/blob/main/docs/runbooks/dead-letters.md"
+      - uid: "muneem-verification-rejections"
+        title: "Verification rejections rising"
+        condition: "C"
+        data:
+          - refId: "A"
+            relativeTimeRange:
+              from: 3600
+              to: 0
+            datasourceUid: "prometheus"
+            model:
+              refId: "A"
+              expr: "sum by (business_id) (muneem_business_rejections_recent)"
+              instant: true
+              range: false
+          - refId: "C"
+            datasourceUid: "__expr__"
+            model:
+              refId: "C"
+              type: "threshold"
+              expression: "A"
+              conditions:
+                - evaluator:
+                    type: "gt"
+                    params:
+                      - 10
+        for: "5m"
+        noDataState: "OK"
+        execErrState: "Error"
+        labels:
+          severity: "warning"
+          team: "muneem-ops"
+        annotations:
+          summary: "More than 10 operations from shop {{ index .Labels \"business_id\" }} failed server verification in the last hour."
+          runbook_url: "https://github.com/thesparselabs/muneem/blob/main/docs/runbooks/verification-rejections.md"
+  - orgId: 1
+    name: "books"
+    folder: "Muneem"
+    interval: "1m"
+    rules:
+      - uid: "muneem-audit-chain-break"
+        title: "Audit chain broken"
+        condition: "C"
+        data:
+          - refId: "A"
+            relativeTimeRange:
+              from: 3600
+              to: 0
+            datasourceUid: "prometheus"
+            model:
+              refId: "A"
+              expr: "max by (business_id) (muneem_business_audit_chain_breaks_recent)"
+              instant: true
+              range: false
+          - refId: "C"
+            datasourceUid: "__expr__"
+            model:
+              refId: "C"
+              type: "threshold"
+              expression: "A"
+              conditions:
+                - evaluator:
+                    type: "gt"
+                    params:
+                      - 0
+        for: "1m"
+        noDataState: "OK"
+        execErrState: "Error"
+        labels:
+          severity: "critical"
+          team: "muneem-ops"
+        annotations:
+          summary: "The cloud refused an audit row of shop {{ index .Labels \"business_id\" }} as a broken chain in the last 24 hours."
+          runbook_url: "https://github.com/thesparselabs/muneem/blob/main/docs/runbooks/audit-chain-break.md"
+      - uid: "muneem-tb-imbalance"
+        title: "Trial Balance imbalance"
+        condition: "C"
+        data:
+          - refId: "A"
+            relativeTimeRange:
+              from: 3600
+              to: 0
+            datasourceUid: "prometheus"
+            model:
+              refId: "A"
+              expr: "max by (business_id) (muneem_business_unbalanced_journals)"
+              instant: true
+              range: false
+          - refId: "C"
+            datasourceUid: "__expr__"
+            model:
+              refId: "C"
+              type: "threshold"
+              expression: "A"
+              conditions:
+                - evaluator:
+                    type: "gt"
+                    params:
+                      - 0
+        for: "1m"
+        noDataState: "OK"
+        execErrState: "Error"
+        labels:
+          severity: "critical"
+          team: "muneem-ops"
+        annotations:
+          summary: "Shop {{ index .Labels \"business_id\" }} has journals on the cloud whose lines do not balance."
+          runbook_url: "https://github.com/thesparselabs/muneem/blob/main/docs/runbooks/tb-imbalance.md"
+      - uid: "muneem-device-books-differ"
+        title: "Device books differ from the cloud"
+        condition: "C"
+        data:
+          - refId: "A"
+            relativeTimeRange:
+              from: 3600
+              to: 0
+            datasourceUid: "prometheus"
+            model:
+              refId: "A"
+              expr: "max by (business_id, device_id) (abs(muneem_device_journal_diff))"
+              instant: true
+              range: false
+          - refId: "C"
+            datasourceUid: "__expr__"
+            model:
+              refId: "C"
+              type: "threshold"
+              expression: "A"
+              conditions:
+                - evaluator:
+                    type: "gt"
+                    params:
+                      - 0
+        for: "7h"
+        noDataState: "OK"
+        execErrState: "Error"
+        labels:
+          severity: "critical"
+          team: "muneem-ops"
+        annotations:
+          summary: "Device {{ index .Labels \"device_id\" }} of shop {{ index .Labels \"business_id\" }} holds different journal totals from the cloud at the same seq."
+          runbook_url: "https://github.com/thesparselabs/muneem/blob/main/docs/runbooks/device-books-differ.md"
+      - uid: "muneem-device-integrity-failing"
+        title: "Device integrity check failing"
+        condition: "C"
+        data:
+          - refId: "A"
+            relativeTimeRange:
+              from: 3600
+              to: 0
+            datasourceUid: "prometheus"
+            model:
+              refId: "A"
+              expr: "max by (business_id, device_id) (muneem_device_tie_out_failures + muneem_device_replay_mismatches + (1 - muneem_device_audit_chain_ok))"
+              instant: true
+              range: false
+          - refId: "C"
+            datasourceUid: "__expr__"
+            model:
+              refId: "C"
+              type: "threshold"
+              expression: "A"
+              conditions:
+                - evaluator:
+                    type: "gt"
+                    params:
+                      - 0
+        for: "1m"
+        noDataState: "OK"
+        execErrState: "Error"
+        labels:
+          severity: "critical"
+          team: "muneem-ops"
+        annotations:
+          summary: "The last integrity run on device {{ index .Labels \"device_id\" }} of shop {{ index .Labels \"business_id\" }} found tie-out, replay or audit-chain failures."
+          runbook_url: "https://github.com/thesparselabs/muneem/blob/main/docs/runbooks/device-integrity-failing.md"
+      - uid: "muneem-negative-stock-spike"
+        title: "Negative stock spike"
+        condition: "C"
+        data:
+          - refId: "A"
+            relativeTimeRange:
+              from: 3600
+              to: 0
+            datasourceUid: "prometheus"
+            model:
+              refId: "A"
+              expr: "max by (business_id) (delta(muneem_business_negative_stock_max[1h]))"
+              instant: true
+              range: false
+          - refId: "C"
+            datasourceUid: "__expr__"
+            model:
+              refId: "C"
+              type: "threshold"
+              expression: "A"
+              conditions:
+                - evaluator:
+                    type: "gt"
+                    params:
+                      - 10
+        for: "5m"
+        noDataState: "OK"
+        execErrState: "Error"
+        labels:
+          severity: "warning"
+          team: "muneem-ops"
+        annotations:
+          summary: "More than 10 more products went below zero stock in shop {{ index .Labels \"business_id\" }} within an hour."
+          runbook_url: "https://github.com/thesparselabs/muneem/blob/main/docs/runbooks/negative-stock-spike.md"
+  - orgId: 1
+    name: "backups"
+    folder: "Muneem"
+    interval: "1m"
+    rules:
+      - uid: "muneem-backup-stale"
+        title: "Cloud backup stale"
+        condition: "C"
+        data:
+          - refId: "A"
+            relativeTimeRange:
+              from: 3600
+              to: 0
+            datasourceUid: "prometheus"
+            model:
+              refId: "A"
+              expr: "max by (business_id) (muneem_business_backup_age_seconds)"
+              instant: true
+              range: false
+          - refId: "C"
+            datasourceUid: "__expr__"
+            model:
+              refId: "C"
+              type: "threshold"
+              expression: "A"
+              conditions:
+                - evaluator:
+                    type: "gt"
+                    params:
+                      - 93600
+        for: "10m"
+        noDataState: "OK"
+        execErrState: "Error"
+        labels:
+          severity: "critical"
+          team: "muneem-ops"
+        annotations:
+          summary: "Shop {{ index .Labels \"business_id\" }} has no confirmed cloud backup in the last 26 hours."
+          runbook_url: "https://github.com/thesparselabs/muneem/blob/main/docs/runbooks/backup-stale.md"
+      - uid: "muneem-backup-confirm-failing"
+        title: "Backup confirmations failing"
+        condition: "C"
+        data:
+          - refId: "A"
+            relativeTimeRange:
+              from: 3600
+              to: 0
+            datasourceUid: "prometheus"
+            model:
+              refId: "A"
+              expr: "sum(increase(muneem_job_runs_total{job=\"backup_confirm\",outcome=~\"failed|checksum_mismatch\"}[1h]))"
+              instant: true
+              range: false
+          - refId: "C"
+            datasourceUid: "__expr__"
+            model:
+              refId: "C"
+              type: "threshold"
+              expression: "A"
+              conditions:
+                - evaluator:
+                    type: "gt"
+                    params:
+                      - 0
+        for: "1m"
+        noDataState: "OK"
+        execErrState: "Error"
+        labels:
+          severity: "warning"
+          team: "muneem-ops"
+        annotations:
+          summary: "Backup confirmations failed or mismatched in the last hour."
+          runbook_url: "https://github.com/thesparselabs/muneem/blob/main/docs/runbooks/backup-confirm-failing.md"
+      - uid: "muneem-snapshot-build-failing"
+        title: "Hydration bundle builds failing"
+        condition: "C"
+        data:
+          - refId: "A"
+            relativeTimeRange:
+              from: 3600
+              to: 0
+            datasourceUid: "prometheus"
+            model:
+              refId: "A"
+              expr: "sum(increase(muneem_job_runs_total{job=\"snapshot_build\",outcome=\"failed\"}[1h]))"
+              instant: true
+              range: false
+          - refId: "C"
+            datasourceUid: "__expr__"
+            model:
+              refId: "C"
+              type: "threshold"
+              expression: "A"
+              conditions:
+                - evaluator:
+                    type: "gt"
+                    params:
+                      - 0
+        for: "1m"
+        noDataState: "OK"
+        execErrState: "Error"
+        labels:
+          severity: "warning"
+          team: "muneem-ops"
+        annotations:
+          summary: "A hydration bundle build failed in the last hour; a new device cannot be set up from the cloud."
+          runbook_url: "https://github.com/thesparselabs/muneem/blob/main/docs/runbooks/snapshot-build-failing.md"
+  - orgId: 1
+    name: "api"
+    folder: "Muneem"
+    interval: "1m"
+    rules:
+      - uid: "muneem-api-down"
+        title: "API down"
+        condition: "C"
+        data:
+          - refId: "A"
+            relativeTimeRange:
+              from: 3600
+              to: 0
+            datasourceUid: "prometheus"
+            model:
+              refId: "A"
+              expr: "max(up{job=\"muneem-api\"}) or vector(0)"
+              instant: true
+              range: false
+          - refId: "C"
+            datasourceUid: "__expr__"
+            model:
+              refId: "C"
+              type: "threshold"
+              expression: "A"
+              conditions:
+                - evaluator:
+                    type: "lt"
+                    params:
+                      - 1
+        for: "2m"
+        noDataState: "OK"
+        execErrState: "Error"
+        labels:
+          severity: "critical"
+          team: "muneem-ops"
+        annotations:
+          summary: "Prometheus cannot scrape the API."
+          runbook_url: "https://github.com/thesparselabs/muneem/blob/main/docs/runbooks/api-down.md"
+      - uid: "muneem-readiness-failing"
+        title: "Readiness failing"
+        condition: "C"
+        data:
+          - refId: "A"
+            relativeTimeRange:
+              from: 3600
+              to: 0
+            datasourceUid: "prometheus"
+            model:
+              refId: "A"
+              expr: "min by (check) (muneem_ready_check_ok)"
+              instant: true
+              range: false
+          - refId: "C"
+            datasourceUid: "__expr__"
+            model:
+              refId: "C"
+              type: "threshold"
+              expression: "A"
+              conditions:
+                - evaluator:
+                    type: "lt"
+                    params:
+                      - 1
+        for: "2m"
+        noDataState: "OK"
+        execErrState: "Error"
+        labels:
+          severity: "critical"
+          team: "muneem-ops"
+        annotations:
+          summary: "The API readiness check {{ index .Labels \"check\" }} is failing."
+          runbook_url: "https://github.com/thesparselabs/muneem/blob/main/docs/runbooks/readiness-failing.md"
+      - uid: "muneem-error-rate"
+        title: "API error rate"
+        condition: "C"
+        data:
+          - refId: "A"
+            relativeTimeRange:
+              from: 3600
+              to: 0
+            datasourceUid: "prometheus"
+            model:
+              refId: "A"
+              expr: "sum(rate(muneem_http_requests_total{status=~\"5..\"}[5m])) / clamp_min(sum(rate(muneem_http_requests_total[5m])), 0.001)"
+              instant: true
+              range: false
+          - refId: "C"
+            datasourceUid: "__expr__"
+            model:
+              refId: "C"
+              type: "threshold"
+              expression: "A"
+              conditions:
+                - evaluator:
+                    type: "gt"
+                    params:
+                      - 0.02
+        for: "10m"
+        noDataState: "OK"
+        execErrState: "Error"
+        labels:
+          severity: "critical"
+          team: "muneem-ops"
+        annotations:
+          summary: "More than 2% of API requests are failing with a 5xx."
+          runbook_url: "https://github.com/thesparselabs/muneem/blob/main/docs/runbooks/error-rate.md"
+      - uid: "muneem-health-probe-stale"
+        title: "Business-health probes stale"
+        condition: "C"
+        data:
+          - refId: "A"
+            relativeTimeRange:
+              from: 3600
+              to: 0
+            datasourceUid: "prometheus"
+            model:
+              refId: "A"
+              expr: "time() - max(muneem_health_probe_last_success_timestamp_seconds{probe=\"businesses\"}) or vector(1e9)"
+              instant: true
+              range: false
+          - refId: "C"
+            datasourceUid: "__expr__"
+            model:
+              refId: "C"
+              type: "threshold"
+              expression: "A"
+              conditions:
+                - evaluator:
+                    type: "gt"
+                    params:
+                      - 600
+        for: "5m"
+        noDataState: "OK"
+        execErrState: "Error"
+        labels:
+          severity: "critical"
+          team: "muneem-ops"
+        annotations:
+          summary: "The business-health probes have not completed for 10 minutes, so the business alerts are blind."
+          runbook_url: "https://github.com/thesparselabs/muneem/blob/main/docs/runbooks/health-probe-stale.md"
+  - orgId: 1
+    name: "logs"
+    folder: "Muneem"
+    interval: "1m"
+    rules:
+      - uid: "muneem-sync-alert-log"
+        title: "Sync alert logged"
+        condition: "C"
+        data:
+          - refId: "A"
+            relativeTimeRange:
+              from: 3600
+              to: 0
+            datasourceUid: "loki"
+            model:
+              refId: "A"
+              expr: "sum by (service) (count_over_time({service=\"api\", alert=\"true\"} [5m]))"
+              queryType: "instant"
+          - refId: "C"
+            datasourceUid: "__expr__"
+            model:
+              refId: "C"
+              type: "threshold"
+              expression: "A"
+              conditions:
+                - evaluator:
+                    type: "gt"
+                    params:
+                      - 0
+        for: "0s"
+        noDataState: "OK"
+        execErrState: "Error"
+        labels:
+          severity: "critical"
+          team: "muneem-ops"
+        annotations:
+          summary: "The API logged an alert line (a rejected operation or a failed snapshot build)."
+          runbook_url: "https://github.com/thesparselabs/muneem/blob/main/docs/runbooks/sync-alert-log.md"
+      - uid: "muneem-desktop-crashes"
+        title: "Desktop crashes rising"
+        condition: "C"
+        data:
+          - refId: "A"
+            relativeTimeRange:
+              from: 3600
+              to: 0
+            datasourceUid: "loki"
+            model:
+              refId: "A"
+              expr: "sum(count_over_time({service=\"crash\"} |= \"crash report\" [1h]))"
+              queryType: "instant"
+          - refId: "C"
+            datasourceUid: "__expr__"
+            model:
+              refId: "C"
+              type: "threshold"
+              expression: "A"
+              conditions:
+                - evaluator:
+                    type: "gt"
+                    params:
+                      - 5
+        for: "0s"
+        noDataState: "OK"
+        execErrState: "Error"
+        labels:
+          severity: "warning"
+          team: "muneem-ops"
+        annotations:
+          summary: "More than 5 desktop crash or error reports arrived in the last hour."
+          runbook_url: "https://github.com/thesparselabs/muneem/blob/main/docs/runbooks/desktop-crashes.md"

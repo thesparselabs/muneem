@@ -1,0 +1,30 @@
+{
+	email {$ACME_EMAIL}
+}
+
+# Grafana behind TLS; Grafana's own login guards it. Prometheus and Loki are never published.
+{$GRAFANA_DOMAIN} {
+	encode zstd gzip
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "no-referrer"
+		-Server
+	}
+	reverse_proxy grafana:3000
+}
+
+# Desktop crash ingest: only the Sentry ingest paths, with a minidump-sized body cap.
+{$CRASH_DOMAIN} {
+	request_body {
+		max_size 11MiB
+	}
+	header -Server
+	@ingest path_regexp ingest ^/api/[0-9]+/(store|envelope|minidump)/$
+	handle @ingest {
+		reverse_proxy crash:8081
+	}
+	handle {
+		respond 404
+	}
+}

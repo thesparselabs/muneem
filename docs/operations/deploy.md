@@ -12,6 +12,7 @@ managed S3-compatible storage. The deploy kit is in `deploy/`, and keys follow A
 | `deploy/deploy.sh` | `up <tag>`, `rollback`, `rewrap` and `status`. |
 | `deploy/roles.sql` | Creates the `muneem_app` login role and sets its password from the environment. |
 | `deploy/s3-lifecycle.json` | Bundles expire after 2 days, backups have a 60-day safety net, and stale multipart uploads are aborted. |
+| `deploy/monitoring/` | Prometheus, Loki, Grafana, alert rules, the crash collector and the log agent (section 8). |
 
 ## 1. Provision (once)
 
@@ -154,3 +155,62 @@ newer than the restore point from their outboxes, because operations are idempot
   and drained on shutdown, so nothing is shared.
 - **Postgres:** scale up first. Add a read replica for reports only when the dashboards need it; the API's writes
   stay on the primary.
+
+## 8. Monitoring (ADR-0053)
+
+The kit is in `deploy/monitoring/`:
+
+| File | What it is |
+|---|---|
+| `docker-compose.monitoring.yml` | Prometheus (30 days), Loki (30 days), Grafana, the crash collector and Caddy, for TLS on Grafana and the crash ingest. |
+| `docker-compose.agent.yml` | Grafana Alloy. It ships the `api`, `caddy` and `crash` container logs to Loki. Run it on every VM. |
+| `.env.example` | Every variable. Copy it to `deploy/monitoring/.env` (mode 600). |
+| `prometheus/targets/api.yml.example` | Where the API's metrics port is reachable. Copy it to `api.yml` (gitignored). |
+| `grafana/` | Provisioned datasources, dashboards and alert rules, with a runbook per alert in `docs/runbooks/`. |
+
+**Sizing:** 2 vCPU, 4 GB of RAM and 40 GB of disk. A separate small VM is recommended, so the alerts survive the API
+VM failing. For the pilot it can share the API VM, which then needs 4 GB more RAM.
+
+**Network.** Only Grafana and the crash ingest are public. Prometheus scrapes the API, and the agents push to Loki,
+over a private network:
+- **Separate VMs (WireGuard):** give the API VM `10.80.0.1` and the monitoring VM `10.80.0.2` (`wg-quick`, UDP 51820
+  open between the two only). Then set:
+  - on the API VM, in `deploy/.env`: `MUNEEM_METRICS_BIND=10.80.0.1`, and run `./deploy.sh up <current tag>`;
+  - on the monitoring VM: `LOKI_BIND=10.80.0.2`, and `api.yml` targets `10.80.0.1:9090`;
+  - on both, for the agent: `LOKI_URL=http://10.80.0.2:3100/loki/api/v1/push`, with `MUNEEM_HOST` set to the VM's name.
+- **One VM:** set `MUNEEM_METRICS_BIND=172.17.0.1` (the docker bridge), `api.yml` targets `host.docker.internal:9090`,
+  `LOKI_BIND=127.0.0.1` and `LOKI_URL=http://127.0.0.1:3100/loki/api/v1/push`. Run the agent with
+  `network_mode: host`, or put Loki on the bridge address too.
+- Never open 9090 or 3100 in the firewall to the internet. `curl http://<public ip>:9090/metrics` must fail.
+
+**Bring it up (on the monitoring VM):**
+```sh
+cd /opt/muneem/deploy/monitoring
+cp .env.example .env && chmod 600 .env            # fill in the domains, passwords, MUNEEM_IMAGE/TAG and MUNEEM_CRASH_KEY
+cp prometheus/targets/api.yml.example prometheus/targets/api.yml
+docker compose -f docker-compose.monitoring.yml --env-file .env up -d
+docker compose -f docker-compose.agent.yml --env-file .env up -d
+```
+Then, on the API VM, copy `deploy/monitoring/` and an `.env` with `LOKI_URL` and `MUNEEM_HOST`, and start only the
+agent compose.
+
+**Check it:**
+- Grafana (`https://$GRAFANA_DOMAIN`): Muneem → API (RED) shows traffic. Alerting → Alert rules lists 19 rules.
+- Prometheus target `muneem-api` is up: `docker compose exec prometheus wget -qO- localhost:9090/api/v1/targets`.
+- Loki has the API logs: Explore → `{service="api"}`.
+- The crash ingest answers only the Sentry paths: `curl -s -o /dev/null -w '%{http_code}' https://$CRASH_DOMAIN/` is
+  `404`.
+- Set the SMTP values and send a test notification from the `ops` contact point.
+
+**The probes** run inside the API, configured by `MUNEEM_HEALTH_PROBE_INTERVAL` (60 s), `MUNEEM_HEALTH_LEDGER_INTERVAL`
+(15 min) and `MUNEEM_HEALTH_TOP_DEVICES` (50). They read through migration 0008's SECURITY DEFINER functions, so the
+API role still sees no tenant rows.
+
+**Crash reports.** Desktops are built with `MUNEEM_CRASH_DSN=https://<MUNEEM_CRASH_KEY>@<CRASH_DOMAIN>/1`. A shop sends
+reports only when its owner turns them on (Diagnostics → Crash reporting). Reports are log lines in Loki:
+`{service="crash"} |= "crash report"`. Minidumps uploaded to the `minidump` endpoint are kept in the `crash_dumps`
+volume for 30 days. The desktop does not upload them today (ADR-0053).
+
+**Upgrading the stack:** bump the image tags in the compose file, then `docker compose ... pull && up -d`. Dashboards
+and rules come from the files, so an edit is a file change plus `docker compose restart grafana`. Edits made in the UI
+are refused.

@@ -20,7 +20,14 @@ services:
       MUNEEM_S3_REGION: ${MUNEEM_S3_REGION:-}
       MUNEEM_BACKUP_MASTER_KEYS: ${MUNEEM_BACKUP_MASTER_KEYS:-}
       MUNEEM_BACKUP_MASTER_KEY: ${MUNEEM_BACKUP_MASTER_KEY:-}
+      # ADR-0053: /metrics listens inside the container; the published port below decides who can reach it.
+      MUNEEM_METRICS_ADDR: 0.0.0.0:9090
+      MUNEEM_HEALTH_PROBE_INTERVAL: ${MUNEEM_HEALTH_PROBE_INTERVAL:-60s}
+      MUNEEM_HEALTH_LEDGER_INTERVAL: ${MUNEEM_HEALTH_LEDGER_INTERVAL:-15m}
+      MUNEEM_HEALTH_TOP_DEVICES: ${MUNEEM_HEALTH_TOP_DEVICES:-50}
     expose: ["8080"]
+    # Metrics on the private/WireGuard address only (loopback by default); Caddy never proxies this port.
+    ports: ["${MUNEEM_METRICS_BIND:-127.0.0.1}:9090:9090"]
     stop_grace_period: 30s   # the API drains HTTP and snapshot builds within 25 s
     read_only: true
     security_opt: ["no-new-privileges:true"]

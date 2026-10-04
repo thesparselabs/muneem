@@ -57,5 +57,6 @@ Template: Context → Decision → Consequences → Status.
 | [0050](0050-notifications-and-consent.md) | Notifications and consent |
 | [0051](0051-production-topology.md) | Production topology |
 | [0052](0052-keys-and-rotation.md) | Keys and rotation |
+| [0053](0053-observability.md) | Observability: metrics, business-health probes, logs, alerts and crash reports |
 | [0054](0054-pilot-health-measures.md) | What "zero lost, zero unexplained" means for the pilot |
 | [0055](0055-windows-printing.md) | Windows printing: spooler RAW jobs, an image fallback, and ₹ and Indic text as raster lines |
