@@ -87,6 +87,26 @@ All notable changes, newest first. Each entry records **what** changed and **why
   - **Fix:** masters and config now apply their own echo, which also adopts the cloud's version. Documents still
     skip theirs.
   - **Failures no longer block:** a pulled change that fails to apply becomes a review item and the stream moves on.
+- **Receipts carry their cost-correction movements.** Without them, stock value differed on devices that pulled a
+  receipt which corrected costs. A soak caught it.
+- **Devices apply the Go cloud's review items** (`review_item` on the control stream). They had been ignored as an
+  unknown type.
+- **Pulled unique clashes never block a stream.** A pulled customer or supplier GSTIN, product SKU, terminal code,
+  invoice prefix or branch code that clashes with another row is settled the same way on every device:
+  - **The rule:** the lower id keeps the value. The other row's value is cleared or given the next free variant, and
+    a local review item records it.
+  - **Suppliers:** one that loses its GSTIN becomes unregistered, as the schema requires.
+  - **Other failures:** any change that still fails to apply is listed for review and skipped.
+- **Adding a device to an existing business (7f-2).** Why: FR-086, the device-replacement and restore path.
+  - **Setup** offers "Add this device to an existing business".
+  - **Download:** the device fetches the cloud's bundle through the utility process and resumes it across restarts
+    (HTTP Range), renewing an expired link once.
+  - **Import:** pages of 500 go through the pull path, and an interrupted import resumes. Then the device catches up
+    by pulling.
+  - **The hold:** billing, seeding and sync are held for that business until it is ready to bill offline.
+  - **New IPC:** `sync.listCloudBusinesses`, `sync.hydrationStart` and `sync.hydrationStatus` check the session and
+    the membership themselves, because a device being added has no business open yet.
+  - **Managers** gain `sync.manage` on the cloud as well.
 - **Sync screens (7g).**
   - **The status badge** shows the FR-068 states, the lag and why sync is blocked, and opens Diagnostics.
   - **The POS** shows when stock was last updated once another terminal exists.
