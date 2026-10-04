@@ -12,9 +12,10 @@ import {
   CashMovementInput, CloseRegisterInput, Customer, CustomerInput, CustomerSearchInput, OpenRegisterInput, RegisterReport, RegisterSession,
 } from './pos.js';
 import {
-  LedgerInput, LedgerPage, OpeningBalanceInput, Outstanding, OutstandingInput, PartyOpening, SetCreditLimitInput, Supplier, SupplierInput,
-  SupplierSearchInput,
+  EraseCustomerInput, ExportProfileInput, ExportProfileResult, LedgerInput, LedgerPage, OpeningBalanceInput, Outstanding, OutstandingInput, PartyOpening,
+  SetConsentInput, SetCreditLimitInput, Supplier, SupplierInput, SupplierSearchInput, WithdrawConsentInput,
 } from './parties.js';
+import { ListNotificationsInput, NotificationChanged, NotificationCounts, NotificationIdsInput, NotificationPage } from './notifications.js';
 import {
   CancelPurchaseInput, CreatePurchaseInput, DebitNote, Purchase, PurchaseDraft, PurchaseImportPreview, PurchaseImportPreviewInput, PurchaseListInput,
   PurchasePage, PurchaseQuote, ReturnPurchaseInput,
@@ -147,6 +148,11 @@ export const contract = {
   'customers.setOpening': spec({ input: OpeningBalanceInput, output: PartyOpening, permission: 'customers.edit', rateLimit: { perSec: 2 }, audit: true }),
   'customers.getLedger': spec({ input: LedgerInput, output: LedgerPage, permission: 'customers.view', rateLimit: { perSec: 10 } }),
   'customers.getOutstanding': spec({ input: OutstandingInput, output: Outstanding, permission: 'customers.view', rateLimit: { perSec: 2 } }),
+  // ADR-0050: consent is captured at the counter, so a cashier can record and withdraw it; export and erasure are a manager's.
+  'customers.setConsent': spec({ input: SetConsentInput, output: Customer, permission: 'customers.create', rateLimit: { perSec: 2 }, audit: true }),
+  'customers.withdrawConsent': spec({ input: WithdrawConsentInput, output: Customer, permission: 'customers.create', rateLimit: { perSec: 2 }, audit: true }),
+  'customers.exportProfile': spec({ input: ExportProfileInput, output: ExportProfileResult, permission: 'customers.approve', rateLimit: { perSec: 1 }, audit: true }),
+  'customers.erase': spec({ input: EraseCustomerInput, output: Customer, permission: 'customers.approve', rateLimit: { perSec: 1 }, audit: true }),
 
   'suppliers.search': spec({ input: SupplierSearchInput, output: z.array(Supplier), permission: 'suppliers.view', rateLimit: { perSec: 20 } }),
   'suppliers.get': spec({ input: z.object({ id: Ulid }), output: Supplier, permission: 'suppliers.view', rateLimit: { perSec: 20 } }),
@@ -251,6 +257,12 @@ export const contract = {
   'reports.run': spec({ input: RunReportInput, output: ReportResult, permission: 'reports.view', rateLimit: { perSec: 5 } }),
   'reports.export': spec({ input: ExportReportInput, output: ExportReportResult, permission: 'reports.export', rateLimit: { perSec: 1 }, audit: true }),
   'reports.dashboard': spec({ input: Empty, output: Dashboard, permission: 'reports.view', rateLimit: { perSec: 5 } }),
+
+  // ADR-0050: every role holds business.view; each kind is further filtered by the permission its subject needs.
+  'notifications.list': spec({ input: ListNotificationsInput, output: NotificationPage, permission: 'business.view', rateLimit: { perSec: 10 } }),
+  'notifications.counts': spec({ input: Empty, output: NotificationCounts, permission: 'business.view', rateLimit: { perSec: 10 } }),
+  'notifications.markRead': spec({ input: NotificationIdsInput, output: NotificationChanged, permission: 'business.view', rateLimit: { perSec: 5 } }),
+  'notifications.dismiss': spec({ input: NotificationIdsInput, output: NotificationChanged, permission: 'business.view', rateLimit: { perSec: 5 } }),
 
   // ADR-0044: returns are read with gst.view; posting a set-off or a challan is gst.create (managers and accountants).
   'gst.returnSummary': spec({ input: GstMonthInput, output: GstReturnSummary, permission: 'gst.view', rateLimit: { perSec: 2 } }),

@@ -16,8 +16,21 @@ export const CustomerInput = z.object({
   creditDays: z.number().int().min(0).max(365).optional(),
 });
 export type CustomerInput = z.infer<typeof CustomerInput>;
-// NULL limit = no credit allowed (ADR-0026).
-export const Customer = CustomerInput.extend({ id: Ulid, businessId: Ulid, version: Version, creditDays: z.number().int(), creditLimitPaise: Paise.nullable() });
+// FR-104 / ADR-0050: DPDP consent to be messaged, per purpose and channel.
+export const CONSENT_PURPOSES = ['payment_reminders'] as const;
+export const CONSENT_CHANNELS = ['sms', 'whatsapp'] as const;
+export const CONSENT_METHODS = ['in_person', 'phone', 'written', 'digital'] as const;
+export const CustomerConsent = z.object({
+  id: Ulid, purpose: z.enum(CONSENT_PURPOSES), channel: z.enum(CONSENT_CHANNELS), method: z.enum(CONSENT_METHODS),
+  givenAt: IsoDateTime, withdrawnAt: IsoDateTime.nullable(), capturedBy: z.string(),
+});
+export type CustomerConsent = z.infer<typeof CustomerConsent>;
+
+// NULL limit = no credit allowed (ADR-0026). consents and erasedAt come with a single customer, not with search hits.
+export const Customer = CustomerInput.extend({
+  id: Ulid, businessId: Ulid, version: Version, creditDays: z.number().int(), creditLimitPaise: Paise.nullable(),
+  consents: z.array(CustomerConsent).optional(), erasedAt: IsoDateTime.optional(),
+});
 export type Customer = z.infer<typeof Customer>;
 export const CustomerSearchInput = z.object({ query: z.string().max(64), limit: z.number().int().min(1).max(50).default(20) });
 

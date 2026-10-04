@@ -44,6 +44,7 @@ import StockReconciliation from './routes/inventory/StockReconciliation.js';
 import ReviewItems from './routes/settings/ReviewItems.js';
 import Reports from './routes/reports/Reports.js';
 import Updates from './routes/settings/Updates.js';
+import Notifications from './routes/Notifications.js';
 
 export default function App() {
   const { session, setSession, setSync, setOnline } = useUi();
@@ -110,6 +111,7 @@ export default function App() {
         <Route path="/settings/review" element={<ReviewItems />} />
         <Route path="/settings/updates" element={<Updates />} />
         <Route path="/diagnostics" element={<Diagnostics />} />
+        <Route path="/notifications" element={<Notifications />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

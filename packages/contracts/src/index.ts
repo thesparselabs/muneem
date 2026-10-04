@@ -18,6 +18,7 @@ export * from './ipc/hydration.js';
 export * from './ipc/reports.js';
 export * from './ipc/backups.js';
 export * from './ipc/updates.js';
+export * from './ipc/notifications.js';
 export * from './ipc/registry.js';
 export * from './sync/types.js';
 export * from './http/index.js';

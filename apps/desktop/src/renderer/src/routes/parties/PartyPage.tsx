@@ -7,6 +7,7 @@ import { formatPaise } from '../../lib/money.js';
 import { AGEING_COLUMNS } from '../../lib/parties/forms.js';
 import { useCan } from '../../lib/permissions.js';
 import { CreditLimitDialog, CustomerEditDialog, OpeningDialog, SupplierDialog, WriteOffDialog } from './PartyDialogs.js';
+import CustomerPrivacy from './CustomerPrivacy.js';
 
 type Modal = 'edit' | 'opening' | 'limit' | 'writeOff' | null;
 const REF_LABEL: Record<string, string> = { sale: 'Sale', purchase: 'Purchase', debit_note: 'Debit note', credit_note: 'Credit note', payment: 'Payment', write_off: 'Write-off', opening: 'Opening balance', expense: 'Expense' };
@@ -39,6 +40,7 @@ export default function PartyPage() {
   const last = statement.data?.pages.at(-1);
   const lines = statement.data?.pages.flatMap((pg) => pg.items) ?? [];
   const row = ageing.data?.rows[0];
+  const erased = 'erasedAt' in (party.data ?? {}) && !!(party.data as Customer).erasedAt;
   if (party.error) return <p className="err" role="alert">{errorMessage(party.error)}</p>;
   if (!p) return <p>Loading…</p>;
   return (
@@ -51,9 +53,9 @@ export default function PartyPage() {
         </div>
         <div className="flex flex-wrap gap-2">
           {canPay && <Link to={`/payments/new?partyType=${partyType}&partyId=${p.id}`} className="btn-primary">{partyType === 'customer' ? 'Receive payment' : 'Pay supplier'}</Link>}
-          <button type="button" className="btn-secondary" onClick={() => setModal('edit')}>Edit</button>
+          {!erased && <button type="button" className="btn-secondary" onClick={() => setModal('edit')}>Edit</button>}
           <button type="button" className="btn-secondary" onClick={() => setModal('opening')}>Opening balance</button>
-          {partyType === 'customer' && canApproveCredit && <button type="button" className="btn-secondary" onClick={() => setModal('limit')}>Credit limit</button>}
+          {partyType === 'customer' && canApproveCredit && !erased && <button type="button" className="btn-secondary" onClick={() => setModal('limit')}>Credit limit</button>}
           {partyType === 'customer' && canWriteOff && (open.data?.charges.length ?? 0) > 0 && <button type="button" className="btn-secondary" onClick={() => setModal('writeOff')}>Write off</button>}
         </div>
       </div>
@@ -74,6 +76,7 @@ export default function PartyPage() {
           }}>Apply to open bills</button>
         </div>
       )}
+      {partyType === 'customer' && <CustomerPrivacy customer={p as Customer} balancePaise={ageing.data ? (row?.netPaise ?? 0) : undefined} />}
       <div className="card flex items-end gap-3">
         <div><label className="label" htmlFor="st-from">From</label><input id="st-from" type="date" className="input" value={range.from} onChange={(e) => setRange({ ...range, from: e.target.value })} /></div>
         <div><label className="label" htmlFor="st-to">To</label><input id="st-to" type="date" className="input" value={range.to} onChange={(e) => setRange({ ...range, to: e.target.value })} /></div>

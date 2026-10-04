@@ -128,6 +128,12 @@ const FyClose = open({
 });
 
 const master = open({ id: Id.optional() });
+// ADR-0050: consents travel inside the customer; a withdrawal is never undone, and erasure blanks the profile for good.
+const Consent = open({
+  id: Id, purpose: z.enum(['payment_reminders']), channel: z.enum(['sms', 'whatsapp']), method: z.string(), givenAt: Ts, withdrawnAt: Ts.nullable(),
+  capturedBy: z.string(),
+});
+const CustomerMaster = open({ id: Id.optional(), consents: z.array(Consent).optional(), erasedAt: Ts.nullish() });
 const EXACT: Partial<Record<OutboxEntityType, Partial<Record<string, z.ZodTypeAny>>>> = {
   sale: { create: Sale },
   purchase: { create: Purchase, cancel: Cancel },
@@ -146,6 +152,7 @@ const EXACT: Partial<Record<OutboxEntityType, Partial<Record<string, z.ZodTypeAn
   journal_entry: { create: JournalPayload },
   accounting_period: { create: Period, update: Period },
   fy_close: { create: FyClose, update: FyClose },
+  customer: { create: CustomerMaster, update: CustomerMaster },
 };
 
 // The schema a payload of this entity and operation must satisfy; masters and config are checked loosely.

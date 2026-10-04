@@ -8,7 +8,7 @@ import { fileURLToPath } from 'node:url';
 // Built dist, resolved relative to the repo root (the root package has no dependency on @muneem/contracts).
 import { channels } from '../packages/contracts/dist/index.js';
 
-export const PUSH_EVENTS = ['sync.status', 'connectivity.changed', 'session.changed', 'sync.hydration', 'update.status'] as const;
+export const PUSH_EVENTS = ['sync.status', 'connectivity.changed', 'session.changed', 'sync.hydration', 'update.status', 'notification.new'] as const;
 
 const groups = new Map<string, string[]>();
 for (const ch of [...channels].sort()) {

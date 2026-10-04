@@ -168,9 +168,11 @@ async function boot(): Promise<void> {
     try { muneem?.diagnostics.checkJournals(); } catch (e) { loggers.app.error({ err: String(e) }, 'scheduled journal check failed'); }
     try { muneem?.diagnostics.checkSummaries(new Date(Date.now() - 35 * 86_400_000).toLocaleDateString('en-CA')); } catch (e) { loggers.app.error({ err: String(e) }, 'scheduled summary check failed'); }
     try { muneem?.diagnostics.verifyAudit(); } catch (e) { loggers.app.error({ err: String(e) }, 'scheduled audit chain check failed'); }
+    muneem?.notifications.runner.run();
   }, 6 * 3600_000);
   backupTimer.unref();
   muneem.updates.service.start(UPDATE_CHECK_EVERY_MS, FIRST_UPDATE_CHECK_MS);
+  muneem.notifications.runner.run(); // ADR-0050: device-wide checks at start-up; business ones follow when a session opens it
   setTimeout(scheduledBackup, 10 * 60_000).unref();
 }
 

@@ -4,6 +4,8 @@ import type { Dashboard as Figures } from '@muneem/contracts';
 import { api, errorMessage } from '../../api.js';
 import { formatPaise, scaledToText } from '../../lib/money.js';
 import { amountOf, marginPercent, methodLabel, paymentShares, trendBars } from '../../lib/reports/dashboard.js';
+import { attentionNote } from '../../lib/notifications.js';
+import { useNotificationCounts } from '../../components/NotificationBell.js';
 
 const SHARE_COLOURS = ['#1d4ed8', '#0f766e', '#b45309', '#7c3aed', '#be123c', '#475569', '#15803d'];
 
@@ -57,6 +59,7 @@ function PaymentSplit({ d }: { d: Figures }) {
 
 export default function Dashboard() {
   const q = useQuery({ queryKey: ['dashboard'], queryFn: () => api.reports.dashboard({}), refetchInterval: 60_000 });
+  const alerts = useNotificationCounts();
   if (q.error) return <p className="err" role="alert">{errorMessage(q.error)}</p>;
   const d = q.data;
   if (!d) return <p className="text-slate-500">Loading today's figures…</p>;
@@ -79,6 +82,7 @@ export default function Dashboard() {
         <Card label="Low stock" value={String(d.lowStock.count)} to="/inventory" />
         <Card label="Customers owe" value={formatPaise(d.receivablePaise)} to="/parties/outstanding" />
         <Card label="We owe suppliers" value={formatPaise(d.payablePaise)} to="/parties/outstanding" />
+        <Card label="Needs attention" value={String(alerts.data?.open ?? 0)} note={attentionNote(alerts.data)} to="/notifications" />
       </div>
       <div className="grid grid-cols-[2fr_1fr] gap-4">
         <Trend d={d} />

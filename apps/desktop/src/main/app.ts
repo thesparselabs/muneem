@@ -2,7 +2,7 @@
  * Composition root. Builds services + IPC handlers from explicit dependencies so tests can wire
  * an in-memory SQLite, a memory secret store and a fake fetch without touching Electron.
  */
-import { listStock, listWarehouses, openDatabase, productMovements, readSyncStatus, rebuildStockLevels, stockValuation, type Db } from '@muneem/db-sqlite';
+import { backupHealth, defaultWarehouseId, listAllLowStock, listStock, listWarehouses, openDatabase, openReviewCounts, partyDues, productMovements, readSyncStatus, rebuildStockLevels, stockValuation, type Db } from '@muneem/db-sqlite';
 import { CloudClient } from './infra/cloudClient.js';
 import { Connectivity } from './infra/connectivity.js';
 import { EventBus } from './infra/events.js';
@@ -81,6 +81,9 @@ import { DashboardService } from './reports/dashboard.js';
 import { createUpdates } from './update/index.js';
 import { DEFAULT_UPDATE_BASE_URL } from './update/channels.js';
 import type { Updater } from './update/updater.js';
+import { createNotifications } from './notifications/index.js';
+import { CustomerPrivacyService } from './services/parties/customerPrivacy.js';
+import type { SyncStatus } from '@muneem/contracts';
 export interface AppConfig {
   db: () => Db;
   dbFile: string;
@@ -231,6 +234,29 @@ export function createApp(cfg: AppConfig) {
       if (channel === 'session.changed') updates.activity.clearCart();
     },
   });
+  const openBusiness = () => { const id = session.get()?.businessId ?? null; return id && !gate.holds(id) ? id : null; };
+  const notifications = createNotifications({
+    db: cfg.db, businessId: openBusiness, now: cfg.now ?? (() => Date.now()), emit: (n) => events.emit('notification.new', n),
+    can: (p) => { const s = session.get(); return !!s && rbac.has(s, p) !== null; },
+    log: (err, kind) => cfg.loggers.app.error({ err: String(err), kind }, 'notification check failed'),
+    sources: {
+      today: () => posCtx.today(), now: cfg.now ?? (() => Date.now()), syncStatus, backupHealth: () => backupHealth(cfg.db()),
+      // Read-only: a check must not create the branch's warehouse; before it exists every product simply has none.
+      lowStock: () => listAllLowStock(cfg.db(), posCtx.businessId(), defaultWarehouseId(cfg.db(), session.require().branchId ?? '') ?? ''),
+      dues: (partyType, dueBefore) => partyDues(cfg.db(), posCtx.businessId(), partyType, dueBefore),
+      businessCreatedAt: () => business.get()?.createdAt ?? null,
+      reviewCounts: () => openReviewCounts(cfg.db(), posCtx.businessId()),
+    },
+  });
+  // ADR-0050: detectors run when a business opens and when sync's health changes; the 6-hourly timer runs them all.
+  events.attach({
+    send: (channel, payload) => {
+      if (channel === 'session.changed' && openBusiness()) notifications.runner.run();
+      if (channel === 'sync.status') notifications.runner.onSyncStatus(payload as SyncStatus);
+    },
+  });
+  const customerPrivacy = new CustomerPrivacyService(posCtx, customers, () => business.get()?.name ?? '',
+    cfg.saveFile ?? ((fileName) => Promise.resolve({ saved: false, fileName })), cfg.now ?? (() => Date.now()));
 
   const handlers: Handlers = {
     'auth.register': (i) => auth.register(i),
@@ -286,6 +312,10 @@ export function createApp(cfg: AppConfig) {
     'customers.setOpening': (i) => customerLedger.setOpening(i),
     'customers.getLedger': (i) => customerLedger.ledger(i),
     'customers.getOutstanding': (i) => customerLedger.outstanding(i),
+    'customers.setConsent': (i) => customerPrivacy.setConsent(i),
+    'customers.withdrawConsent': (i) => customerPrivacy.withdrawConsent(i),
+    'customers.exportProfile': (i) => customerPrivacy.exportProfile(i),
+    'customers.erase': (i) => customerPrivacy.erase(i),
     'suppliers.search': (i) => suppliers.search(i.query, i.limit),
     'suppliers.get': (i) => suppliers.get(i.id),
     'suppliers.create': (i) => suppliers.create(i),
@@ -401,6 +431,7 @@ export function createApp(cfg: AppConfig) {
     'diagnostics.getLogsTail': (i) => diagnostics.getLogsTail(i.log, i.lines),
     ...backups.handlers,
     ...updates.handlers,
+    ...notifications.handlers,
   };
 
   printQueue.resumeUnfinished(catalogCtx.today());
@@ -408,9 +439,9 @@ export function createApp(cfg: AppConfig) {
   const gateway = createGateway({
     handlers, session, rbac, db: cfg.db, deviceId: () => device.localDeviceId(), loggers: cfg.loggers, events,
     connectivity: () => connectivity.snapshot(), isTrustedSender: cfg.isTrustedSender ?? (() => true), ...(cfg.now && { now: cfg.now }),
-    onCommitted: () => sync.nudge(), holds: (id) => gate.holds(id), onDispatch: (channel) => updates.activity.dispatch(channel),
+    onCommitted: (channel) => { sync.nudge(); notifications.runner.afterCommit(channel); }, holds: (id) => gate.holds(id), onDispatch: (channel) => updates.activity.dispatch(channel),
   });
 
-  return { events, session, reports, dashboard, rbac, cloud, connectivity, device, auth, business, settings, products, catalog, pricing, productImport, customers, suppliers, customerLedger, supplierLedger, purchases, purchaseReturns, purchaseImport, payments, writeOffs, expenses, periods, yearEnd, backlog, statements, chart, manualJournals, gst, register, sales, returns, printQueue, inventory, openingImport, diagnostics, backups, closeReadConnections, gateway, handlers, syncStatus, syncEngine, sync, hydration, hydrationGate: gate, updates };
+  return { events, session, reports, dashboard, rbac, cloud, connectivity, device, auth, business, settings, products, catalog, pricing, productImport, customers, suppliers, customerLedger, supplierLedger, purchases, purchaseReturns, purchaseImport, payments, writeOffs, expenses, periods, yearEnd, backlog, statements, chart, manualJournals, gst, register, sales, returns, printQueue, inventory, openingImport, diagnostics, backups, closeReadConnections, gateway, handlers, syncStatus, syncEngine, sync, hydration, hydrationGate: gate, updates, notifications, customerPrivacy };
 }
 export type App = ReturnType<typeof createApp>;

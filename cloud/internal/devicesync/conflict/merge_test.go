@@ -122,3 +122,21 @@ func TestStalePriceItemsKeepTheCloudsPrices(t *testing.T) {
 		t.Fatalf("an edit of the current items should replace them: %+v", out)
 	}
 }
+
+func TestAnErasedCustomerStaysErased(t *testing.T) {
+	base := Payload{"id": "C", "name": "Ravi", "phone": "9876543210", "version": 1.0, "updatedAt": "t1"}
+	erased := Payload{"id": "C", "name": "Erased customer", "version": 2.0, "updatedAt": "t2", "erasedAt": "t2"}
+	cur := &Current{Version: 2, Payload: erased, Writer: "A"}
+	stale := Payload{"id": "C", "name": "Ravi", "phone": "9876500000", "email": "r@x.in", "version": 2.0, "updatedAt": "t3"}
+	out := Resolve(cur, Incoming{EntityType: "customer", Payload: stale, Device: "B", Baseline: base})
+	if out.Version != 3 || out.Payload["phone"] != nil || out.Payload["email"] != nil || out.Payload["name"] != "Erased customer" {
+		t.Fatalf("got %+v", out)
+	}
+	if len(out.Fields) != 1 || out.Fields[0].Field != erasedAtKey || out.Fields[0].Rule != RuleCloudWins {
+		t.Fatalf("fields %+v", out.Fields)
+	}
+	again := Resolve(cur, Incoming{EntityType: "customer", Payload: Payload{"id": "C", "name": "Erased customer", "version": 3.0, "erasedAt": "t2"}, Device: "A"})
+	if again.Version != 3 || len(again.Fields) != 0 {
+		t.Fatalf("an erased write should apply as usual: %+v", again)
+	}
+}

@@ -69,6 +69,12 @@ export function listReviewItems(db: Db, businessId: string, status: 'open' | 're
   }));
 }
 
+export function openReviewCounts(db: Db, businessId: string): { total: number; lateArrivals: number } {
+  const r = stmt(db, "SELECT COUNT(*) AS total, SUM(kind = 'late_arrival') AS late FROM conflict_log WHERE business_id = ? AND reviewed_at IS NULL")
+    .get(businessId) as { total: number; late: number | null };
+  return { total: r.total, lateArrivals: r.late ?? 0 };
+}
+
 export function markReviewed(db: Db, businessId: string, ids: readonly string[], userId: string): number {
   return withTransaction(db, () => {
     const mark = stmt(db, 'UPDATE conflict_log SET reviewed_at = ?, reviewed_by = ? WHERE business_id = ? AND id = ? AND reviewed_at IS NULL');

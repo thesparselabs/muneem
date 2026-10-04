@@ -54,6 +54,7 @@ const (
 	versionKey             = "version"
 	updatedAtCamel         = "updatedAt"
 	updatedAtSnake         = "updated_at"
+	erasedAtKey            = "erasedAt"
 	unversioned        int = -1
 )
 
@@ -72,6 +73,9 @@ func Resolve(cur *Current, in Incoming) Outcome {
 	if stalePrices(cur, in) {
 		return keepPrices(cur, in)
 	}
+	if erasureWins(cur, in) {
+		return keepErased(cur, in)
+	}
 	base := baseVersion(in.Payload)
 	if base == unversioned || cur.Version <= base {
 		return replace(cur.Version, in)
@@ -87,6 +91,19 @@ func stalePrices(cur *Current, in Incoming) bool {
 func keepPrices(cur *Current, in Incoming) Outcome {
 	version := cur.Version + 1
 	f := Field{Field: "items", Rule: RuleCloudWins, Winner: winnerCloud, Cloud: cur.Payload["items"], Device: in.Payload["items"]}
+	return Outcome{Payload: stamp(clone(cur.Payload), version), Version: version, Fields: []Field{f}}
+}
+
+// An erased customer stays erased (ADR-0050): a write that does not carry the erasure changes nothing of the profile.
+func erasureWins(cur *Current, in Incoming) bool {
+	erased, _ := cur.Payload[erasedAtKey].(string)
+	sent, _ := in.Payload[erasedAtKey].(string)
+	return in.EntityType == "customer" && erased != "" && sent == ""
+}
+
+func keepErased(cur *Current, in Incoming) Outcome {
+	version := cur.Version + 1
+	f := Field{Field: erasedAtKey, Rule: RuleCloudWins, Winner: winnerCloud, Cloud: cur.Payload[erasedAtKey], Device: in.Payload[erasedAtKey]}
 	return Outcome{Payload: stamp(clone(cur.Payload), version), Version: version, Fields: []Field{f}}
 }
 

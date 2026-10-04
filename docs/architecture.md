@@ -236,6 +236,17 @@ docs/             this folder (reality, with reasons)
   - each month's returns equal the tax accounts;
   - a closed year's reports are unchanged;
   - a tampered backup or audit row is refused.
+## Notifications and customer privacy (Stage 8h)
+
+- `apps/desktop/src/main/notifications/`: detectors (pure functions over injected sources) → `NotificationService`
+  (raise-or-update and resolve per kind and entity, ADR-0050) → the `notification` table, which is **local and
+  never synced**. The runner is driven by start-up, a business opening, the 6-hourly timer, `sync.status` changes
+  and stock-moving commits; other modules raise through `notifications.service.notify(kind, …)`. The renderer reads
+  it through `notifications.*` and hears `notification.new`.
+- DPDP consent rides inside the customer master (`consents`); erasure blanks the profile, keeps the row, the ledger
+  and every sale's customer snapshot, and the cloud refuses to un-erase a customer.
+- Invariants (tests): a detector run twice changes nothing; at most one open notification per (business, kind,
+  entity); erasure leaves the tie-outs and party reconciliation clean and is refused with a balance.
 
 ## Identity and trust
 
