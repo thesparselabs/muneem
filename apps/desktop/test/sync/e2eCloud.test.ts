@@ -2,7 +2,7 @@ import { rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { newUlid } from '@muneem/domain';
-import { listBackupLog, restoreDatabaseFile } from '@muneem/db-sqlite';
+import { canonicalJson, listBackupLog, restoreDatabaseFile } from '@muneem/db-sqlite';
 import { CompleteSaleInput, CustomerInput, PaymentInput, ProductInput, SaleDraft } from '@muneem/contracts';
 import { E2E_CLOUD, goHarness } from './goCloud.js';
 import { scenario37, sell } from './scenario37.js';
@@ -56,7 +56,7 @@ describe.skipIf(!E2E_CLOUD)('sync end to end against the Go cloud (7h)', () => {
     expect(db.prepare("SELECT COUNT(*) FROM sync_outbox WHERE status NOT IN ('sent', 'superseded')").pluck().get()).toBe(0);
   }, 120_000);
 
-  it('a new device hydrates from the Go bundle in object storage to the same books, then bills and syncs back', async () => {
+  it('a new device hydrates from the Go bundle in object storage to the same books and the byte-identical Trial Balance (= the cloud\'s), then bills and syncs back', async () => {
     vi.useFakeTimers({ toFake: ['Date'] });
     const cloud = await goHarness(E2E_CLOUD, 11);
     const a = await cloud.device('A');
@@ -79,6 +79,8 @@ describe.skipIf(!E2E_CLOUD)('sync end to end against the Go cloud (7h)', () => {
     await cloud.login(b.app);
     await hydrate(b.app, businessId);
     expect(books(b.db, businessId)).toEqual(books(a.db, businessId));
+    expect(canonicalJson(b.app.statements.trialBalance({}))).toBe(canonicalJson(a.app.statements.trialBalance({})));
+    expect(await cloud.trialBalance(businessId)).toEqual(books(a.db, businessId).trialBalance);
     expect(healthy(b.db, businessId)).toEqual({ tieOuts: [], replay: [], partyMismatches: [], allocationFaults: [] });
 
     const branchId = b.app.business.getBranches()[0]!.id;
@@ -123,6 +125,8 @@ describe.skipIf(!E2E_CLOUD)('sync end to end against the Go cloud (7h)', () => {
     await cloud.login(restored.app);
     await syncUntilQuiet(restored.app);
     expect(books(restored.db, businessId)).toEqual(books(a.db, businessId));
+    expect(canonicalJson(restored.app.statements.trialBalance({}))).toBe(canonicalJson(a.app.statements.trialBalance({})));
+    expect(await cloud.trialBalance(businessId)).toEqual(books(a.db, businessId).trialBalance);
     expect(healthy(restored.db, businessId)).toEqual({ tieOuts: [], replay: [], partyMismatches: [], allocationFaults: [] });
     expect(await cloud.cloudSales(businessId)).toBe(5);
   }, 300_000);

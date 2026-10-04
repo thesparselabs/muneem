@@ -57,7 +57,9 @@ export async function scenario37(cloud: CloudHarness) {
   first.db.close();
   const a = await cloud.device('A', { dbFile });
   await cloud.login(a.app);
-  clock.jump(-3_600_000);
+  // Back an hour, but not past midnight: prices start on the day they were set, so yesterday has nothing to sell.
+  const sinceMidnight = clock.now() - new Date(new Date(clock.now()).toDateString()).getTime();
+  clock.jump(-Math.max(0, Math.min(3_600_000, sinceMidnight - 60_000)));
   for (let i = 0; i < 10; i++) { clock.tick(); sell(a.app, tea, pcs); }
 
   // Internet back; the first push is answered but the answer is lost, and A is killed before it hears.
