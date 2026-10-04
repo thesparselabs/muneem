@@ -5,6 +5,17 @@ All notable changes, newest first. Each entry records **what** changed and **why
 
 ## [Unreleased]
 
+### Added — Stage 8 reports, compliance, backup and update
+- **Stage 8 plan (`docs/plans/stage-8-reports.md`).** Three agents surveyed the designs, what earlier stages deferred,
+  and the GST and year-end gaps; the plan's details of every part come from that. Decided with the user:
+  - **Compliance:** GST returns (GSTR-1, HSN, documents issued, GSTR-3B) with set-off and payment documents, the
+    year-end close, and sale returns and credit notes.
+  - **Backups:** encrypted, uploaded nightly, with the key escrowed by the cloud.
+  - **Notifications:** in-app now, with consent captured; SMS and WhatsApp later.
+  - **Updates:** the full updater, with channels, staged rollout and rollback.
+
+  Build stages now show Stage 7 merged (PR #8) and Stage 8 in progress.
+
 ### Added — Stage 7 sync
 - **Stage 7 plan (`docs/plans/stage-7-sync.md`).** Decided with the user:
   - **Verification:** the cloud recomputes totals and checks journals; allocation gets a Go port.
