@@ -15,6 +15,12 @@ import Purchases from './routes/purchases/Purchases.js';
 import NewPurchase from './routes/purchases/NewPurchase.js';
 import PurchasePage from './routes/purchases/PurchasePage.js';
 import Expenses from './routes/expenses/Expenses.js';
+import ChartOfAccounts from './routes/accounts/ChartOfAccounts.js';
+import AccountLedger from './routes/accounts/AccountLedger.js';
+import Statements from './routes/accounts/Statements.js';
+import Books from './routes/accounts/Books.js';
+import ManualJournal from './routes/accounts/ManualJournal.js';
+import Periods from './routes/accounts/Periods.js';
 import Shell from './routes/Shell.js';
 import Home from './routes/Home.js';
 import Diagnostics from './routes/Diagnostics.js';
@@ -78,6 +84,12 @@ export default function App() {
         <Route path="/payments" element={<Payments />} />
         <Route path="/payments/new" element={<NewPayment />} />
         <Route path="/payments/:id" element={<PaymentPage />} />
+        <Route path="/accounts" element={<ChartOfAccounts />} />
+        <Route path="/accounts/ledger/:id" element={<AccountLedger />} />
+        <Route path="/accounts/statements" element={<Statements />} />
+        <Route path="/accounts/books" element={<Books />} />
+        <Route path="/accounts/journal/new" element={<ManualJournal />} />
+        <Route path="/accounts/periods" element={<Periods />} />
         <Route path="/settings/printer" element={<PrinterSettings />} />
         <Route path="/diagnostics" element={<Diagnostics />} />
       </Route>

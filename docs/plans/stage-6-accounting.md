@@ -345,6 +345,56 @@ suite checks that every sale has exactly one journal after the kills.
   postings.
 - Pure helpers (journal form, statement layout) with node tests.
 
+6e details (drafted 2026-10-04; built straight after, as asked):
+
+- **Menu:** an **Accounts** item, shown with `accounting.view`.
+- **Chart of accounts** (`/accounts`): accounts grouped under Assets, Liabilities, Equity, Income and Expenses, each with
+  its balance as of a chosen date.
+  - **Clicking an account** opens its ledger.
+  - **Adding an account** opens a dialog for a group, code and name (`accounting.manage`).
+  - **Renaming** is inline.
+- **Ledger** (`/accounts/ledger/:id`): date range, branch, running balance and paging. Each line shows its entry
+  number, source and narration, and links to its document where that screen exists (sale, purchase, payment,
+  expense).
+- **Statements** (`/accounts/statements`): tabs for the three statements, each with a branch filter.
+  - **Trial Balance:** as at a date, with debit and credit totals and a balanced or not-balanced badge.
+  - **P&L:** for a range, defaulting to this FY so far. Its sections are revenue, cost of sales, gross profit, other
+    income, expenses and net profit.
+  - **Balance Sheet:** as at a date. Assets on one side; liabilities and equity on the other, with retained earnings
+    and this year's profit, and a balanced badge.
+- **Books** (`/accounts/books`): tabs for the cash book, bank book (with a choice of bank account) and day book (a date
+  range, each journal with its lines and a late-posting badge).
+- **Manual journal** (`/accounts/journal/new`, `accounting.create`): rows of account, debit and credit.
+  - **Before posting:** a running total shows the difference. Control and group accounts are not offered, and Post is
+    disabled until it balances. One command id per form.
+  - **Reversal:** from the day book, a manual journal has a "Reverse" action with a reason.
+- **Periods** (`/accounts/periods`, `accounting.manage` for actions):
+  - months with their status and journal and late-posting counts;
+  - lock (only for months that have ended) and unlock with a reason;
+  - the late-postings list;
+  - buttons to post the backlog and rebuild balances, showing their results.
+- **Pure helpers with node tests:**
+  - **`lib/accounting/journalForm`:** rows to input, the running difference, the per-row errors, and which accounts can
+    be offered.
+  - **`lib/accounting/statementLayout`:** P&L and Balance Sheet sections with subtotals, and Trial Balance totals.
+  - **`lib/accounting/chartTree`:** accounts grouped under their headers with group totals.
+- **Checking:** as before — typecheck, build and helper tests, with the manual checklist extended. The screens are
+  not claimed as clicked through.
+
+6e manual checklist (run `pnpm --filter @muneem/desktop dev`; not yet done — the screens are checked by typecheck,
+build and helper tests only):
+
+1. **Menu:** as owner, Accounts is in the menu. As a cashier it is not.
+2. **Chart of accounts:** every group with its accounts. Add "1210 HDFC Current" under Assets, rename 1300, and open a
+   ledger by clicking an account.
+3. **Trading:** sell, buy with freight, take a payment and pay an expense. Then:
+   - **Trial Balance:** "Balanced".
+   - **P&L:** shows gross and net profit.
+   - **Balance Sheet:** "Balanced", with this year's profit equal to the P&L.
+4. **Manual journal:** post a card settlement (Dr Bank, Dr Bank Charges, Cr Clearing). Post stays disabled until it
+   balances, and 1300 is not in the account list. Reverse it from the day book.
+5. **Periods:** lock last month, backdate a payment into it, and see it under late postings with both dates.
+
 **6f — Soak and close-out.**
 - **Soak generator:** seeded and deterministic.
 - **Exit test** on the soak data: TB balances, P&L = Δ equity, all tie-outs hold, and replay = projection. CI runs about

@@ -16,6 +16,7 @@ const NAV: { to: string; label: string; enabled: boolean; stage?: string; need?:
   { to: '/parties', label: 'Parties', enabled: true, need: 'customers.view' },
   { to: '/payments', label: 'Payments', enabled: true, need: 'payments.view' },
   { to: '/expenses', label: 'Expenses', enabled: true, need: 'expenses.view' },
+  { to: '/accounts', label: 'Accounts', enabled: true, need: 'accounting.view' },
   { to: '/reports', label: 'Reports', enabled: false, stage: 'Stage 8' },
   { to: '/diagnostics', label: 'Diagnostics', enabled: true },
 ];

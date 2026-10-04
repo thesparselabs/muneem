@@ -112,6 +112,20 @@ All notable changes, newest first. Each entry records **what** changed and **why
   - **Reversal:** a manual journal can be reversed once.
 - **Chart of accounts** (`accounting.listAccounts/createAccount/updateAccount`): accounts with balances, new accounts
   under a group (code in the group's range, type from the group), and renaming any account.
+- **6e details written into the plan and built straight after,** as the user asked.
+- **Accounts screens** (menu item shown with `accounting.view`):
+  - **Chart of accounts:** grouped, with balances as of a date; add an account under a group; rename.
+  - **Account ledger:** links to purchases and payments.
+  - **Statements:** Trial Balance, P&L with gross and net profit, and a two-sided Balance Sheet, each with a balanced
+    badge and a branch filter.
+  - **Books:** cash, bank (choose the account) and day book, with late-posting and reversal badges and a "Reverse"
+    action on manual journals.
+  - **Manual journal form:** shows the running difference, never offers control or group accounts, and keeps Post
+    disabled until it balances.
+  - **Periods:** lock and unlock with a reason, the late-postings list, and buttons to post the backlog and rebuild
+    balances.
+- **Helpers and checking:** the journal form, statement layout and chart grouping have node tests. The screens are
+  checked by typecheck and build, with a manual checklist in the plan.
 
 ### Fixed — Stage 5
 - **Cheap items were over-costed when sold** (ADR-0027, amends ADR-0018). An issue was costed at the average rounded
