@@ -51,4 +51,4 @@ export * from './repositories/accountingStatements.js';
 export * from './sync/outboxQueue.js';
 export * from './sync/syncState.js';
 export * from './sync/documentKeys.js';
-export { applyChange, applyPullPage, Touched, type ApplyTarget, type ApplyOutcome, type PageResult } from './sync/apply/index.js';
+export { applyChange, applyChanges, applyPullPage, emptyPageResult, Touched, type ApplyTarget, type ApplyOutcome, type PageResult } from './sync/apply/index.js';

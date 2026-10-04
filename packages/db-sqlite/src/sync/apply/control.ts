@@ -36,6 +36,22 @@ export function applyConflictLog(ctx: ApplyContext): void {
   });
 }
 
+// The Go cloud's review item: its kind names the rule and its detail holds both sides.
+export function applyReviewItem(ctx: ApplyContext): void {
+  const p = ctx.change.payload;
+  const detail = (p.detail ?? {}) as Record<string, unknown>;
+  applyConflictLog({
+    ...ctx,
+    change: {
+      ...ctx.change,
+      payload: {
+        kind: p.kind, entityType: p.entityType, entityId: p.entityId, deviceId: p.deviceId, rule: detail.rule ?? p.kind, winner: p.kind === 'late_arrival' ? 'device' : 'cloud',
+        cloudValue: detail.stored ?? detail, deviceValue: detail.sent, at: p.at,
+      },
+    },
+  });
+}
+
 // 7c: a revocation names the device; this one stops syncing and says so.
 export function applyDeviceMessage(ctx: ApplyContext): void {
   const p = ctx.change.payload;

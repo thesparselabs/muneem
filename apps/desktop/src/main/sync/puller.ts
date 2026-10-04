@@ -1,5 +1,5 @@
 import { PULL_MAX_LIMIT, STREAM_ORDER, type SyncStream } from '@muneem/contracts';
-import { applyPullPage, getBusiness, getCursor, type Db, type PageResult } from '@muneem/db-sqlite';
+import { applyPullPage, emptyPageResult, getBusiness, getCursor, type Db, type PageResult } from '@muneem/db-sqlite';
 import type { Transport } from './transport.js';
 import { authorized, type WireIdentity } from './wire.js';
 
@@ -21,7 +21,7 @@ export class Puller {
   }
 
   async pullAll(id: WireIdentity): Promise<PageResult> {
-    const total: PageResult = { applied: 0, own: 0, seen: 0, unknown: 0 };
+    const total = emptyPageResult();
     for (const stream of this.order(id.businessId)) {
       for (;;) {
         const since = getCursor(this.d.db(), id.businessId, stream);
