@@ -42,3 +42,6 @@ export * from './repositories/payment.js';
 export * from './repositories/writeOff.js';
 export * from './repositories/expense.js';
 export * from './repositories/account.js';
+export * from './repositories/journal.js';
+export * from './repositories/tieOuts.js';
+export * from './repositories/documentJournals.js';

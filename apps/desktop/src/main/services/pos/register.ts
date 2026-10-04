@@ -1,6 +1,6 @@
 import { AppError, type CashMovementInput, type CloseRegisterInput, type RegisterReport, type RegisterSession } from '@muneem/contracts';
 import {
-  addCashMovement, closeSession, getOpenSession, getSession, lastClosedSession, openSession, sessionReport, zReport,
+  addCashMovement, closeSession, getOpenSession, getSession, lastClosedSession, openSession, postDocumentJournal, queueJournal, sessionReport, withTransaction, zReport,
 } from '@muneem/db-sqlite';
 import type { PosContext } from './posContext.js';
 
@@ -29,7 +29,14 @@ export class RegisterService {
 
   open(openingCashPaise: number): RegisterSession { return openSession(this.ctx.db(), this.ctx.till(), openingCashPaise, this.ctx.actor()); }
 
-  cashMovement(input: CashMovementInput): void { addCashMovement(this.ctx.db(), this.requireOpen().id, input, this.ctx.actor()); }
+  // Cash in or out without a document waits in 1199 Cash to classify; a safe drop moves cash to cash and posts nothing (ADR-0032).
+  cashMovement(input: CashMovementInput): void {
+    const db = this.ctx.db();
+    withTransaction(db, () => {
+      const id = addCashMovement(db, this.requireOpen().id, input, this.ctx.actor());
+      queueJournal(db, this.ctx.businessId(), this.ctx.actor(), postDocumentJournal(db, 'cash_movement', id, this.ctx.till(), this.ctx.actor(), this.ctx.today()), id);
+    });
+  }
 
   // With blind close on, only someone who may approve variances sees the expected cash before counting.
   xReport(): RegisterReport {
@@ -48,7 +55,18 @@ export class RegisterService {
   }
 
   close(input: CloseRegisterInput): RegisterReport {
-    return closeSession(this.ctx.db(), this.requireOpen().id, {
+    const db = this.ctx.db();
+    return withTransaction(db, () => {
+      const sessionId = this.requireOpen().id;
+      const report = this.closeSession(sessionId, input);
+      const journal = postDocumentJournal(db, 'register_close', sessionId, this.ctx.till(), this.ctx.actor(), this.ctx.today());
+      queueJournal(db, this.ctx.businessId(), this.ctx.actor(), journal, sessionId);
+      return report;
+    });
+  }
+
+  private closeSession(sessionId: string, input: CloseRegisterInput): RegisterReport {
+    return closeSession(this.ctx.db(), sessionId, {
       countedCashPaise: input.countedCashPaise,
       denominations: input.denominations,
       approvedBy: this.ctx.can('pos.approve') ? this.ctx.userId() : null,

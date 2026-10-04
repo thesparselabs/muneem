@@ -1,6 +1,8 @@
 import type { LedgerInput, LedgerPage, OpeningBalanceInput, Outstanding, OutstandingInput, PartyOpening } from '@muneem/contracts';
 import type { PartyType } from '@muneem/domain';
-import { partyOutstanding, partyStatement, setPartyOpening, usualSide } from '@muneem/db-sqlite';
+import {
+  liveOpening, partyOutstanding, partyStatement, postDocumentJournal, queueJournal, reverseDocumentJournal, setPartyOpening, usualSide, withTransaction,
+} from '@muneem/db-sqlite';
 import type { PosContext } from '../pos/posContext.js';
 
 // Opening balances, statements and ageing for one kind of party; `requireParty` throws NOT_FOUND outside this business.
@@ -9,9 +11,19 @@ export class PartyLedgerService {
 
   setOpening(input: OpeningBalanceInput): PartyOpening {
     this.requireParty(input.partyId);
-    return setPartyOpening(this.ctx.db(), this.ctx.businessId(), this.partyType, input.partyId, {
-      side: input.side ?? usualSide(this.partyType), amountPaise: input.amountPaise, asOfDate: input.asOfDate,
-    }, this.ctx.actor());
+    const db = this.ctx.db();
+    const businessId = this.ctx.businessId();
+    const actor = this.ctx.actor();
+    return withTransaction(db, () => {
+      const old = liveOpening(db, businessId, this.partyType, input.partyId);
+      const opening = setPartyOpening(db, businessId, this.partyType, input.partyId, {
+        side: input.side ?? usualSide(this.partyType), amountPaise: input.amountPaise, asOfDate: input.asOfDate,
+      }, actor);
+      const till = this.ctx.till();
+      if (old) queueJournal(db, businessId, actor, reverseDocumentJournal(db, 'party_opening', old.id, this.ctx.today(), till, actor), old.id);
+      queueJournal(db, businessId, actor, postDocumentJournal(db, 'party_opening', opening.id, till, actor), opening.id);
+      return opening;
+    });
   }
 
   ledger(input: LedgerInput): LedgerPage {

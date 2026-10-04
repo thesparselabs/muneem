@@ -170,6 +170,73 @@ Permissions:
 Each test checks that the journal balances, its accounts are right, and the tie-outs hold afterwards. The kill -9
 suite checks that every sale has exactly one journal after the kills.
 
+6b details (drafted 2026-10-04; the user asked to build straight after writing them):
+
+- **`postJournal`** (db-sqlite, `repositories/journal.ts`) is the only writer of `journal_entry`, `journal_line` and
+  `account_balance`, and runs inside the caller's transaction. Its input is `{ businessId, branchId?, terminalId?,
+  source, refType, refId, entryNo?, docDate, narration, lines, reversalOf? }`, with lines from `buildJournal`. It:
+  - resolves each line's role or code to an account id (an unknown one is an error);
+  - finds or makes the open month for `docDate` (locks and late postings are 6c);
+  - numbers the entry (below);
+  - writes the header and lines;
+  - adds each line to `account_balance`.
+
+  A document with no lines (a zero variance) posts nothing. `reverseJournal(original, date)` posts the mirror image
+  with `is_reversal_of`.
+- **Entry numbers.** A document with a number keeps it (`T1/2627/000123`, `T1P/…`). A document without one —
+  opening stock, adjustment, stock take, cost correction, party opening, write-off, register close, cash in/out —
+  gets a `J` number from the terminal's journal series.
+- **Cost corrections.** Each `cost_correction` movement gets its own journal (`stock_adjustment`, `ref_type
+  cost_correction`, `ref_id` = the movement). One helper, `postCorrections(movements, date)`, is called wherever
+  `postMovement` can make one: purchases, opening stock, adjustment and stock-take gains, debit notes and purchase
+  cancels. The integrity check (6c) names any correction without a journal, so a missed call cannot hide.
+- **Where each journal is written,** always in the document's own transaction:
+  - **Sale:** a `journal` step after `party` (ADR-0019/0026 order: number → cost → document → stock → party → journal →
+    receipt → record).
+  - **Purchases, payments, write-offs and expenses:** inside their services' existing transactions.
+  - **Cancels:** a purchase, payment or expense cancel posts the reversal, dated on the day of the cancel.
+  - **Opening stock, adjustments and stock takes:** in `InventoryService.post`.
+  - **Wrapped repository writes:** party openings (a replacement also reverses the old opening's journal), register
+    close (variance) and cash in/out. Their repositories record the document themselves, so the service wraps each
+    one in the same transaction.
+- **The facts each journal gets:**
+
+  | Document | Facts |
+  |---|---|
+  | Sale | the stored sale: takings by account, net of change; credit; taxable; tax by head; round-off; Σ line COGS |
+  | Purchase | Σ landed value, claimable tax by head from the ITC lines, round-off, total |
+  | Debit note | total, Σ landed value of the returned shares, ITC reversed by head, freight share kept (shares − refunded), round-off |
+  | Expense | the category's account code |
+  | Stock documents | their movements' values |
+- **Sync.** Where the service records the document, the journal goes in the document's aggregate (sale, purchase, debit
+  note, payment, write-off, expense, stock documents). Where the repository records it (party opening, register
+  close, cash movement), the journal is a child outbox row that depends on the document's row.
+- **Tie-outs** (`accountingTieOuts`, db-sqlite) are checked here in the tests; 6c wires them into the integrity check:
+  - inventory: 1400 against the valuation;
+  - customers: 1300 against Σ customer balances;
+  - suppliers: 2100 against Σ supplier balances;
+  - output and input tax by head against the documents;
+  - Σ `account_balance` against Σ lines.
+- **Tests,** one per document type (journal accounts and amounts as in the posting matrix, and every tie-out holding
+  after):
+  - a sale in cash, split, on credit and with round-off;
+  - a purchase with freight and an ineligible line;
+  - a debit note with freight kept, and one completing a full return;
+  - a purchase cancel;
+  - a receipt with an advance, a supplier payment, a cancelled payment;
+  - a write-off;
+  - cash and credit expenses, and a cancelled one;
+  - opening stock;
+  - adjustments and stock take, losses and gains;
+  - a cost correction from selling before buying;
+  - party openings of each side and a replaced opening;
+  - register over and short;
+  - cash in and out.
+
+  Also: a failure part-way leaves no journal, and a repeated command posts nothing twice. The kill -9 suite adds:
+  exactly one journal per sale, no orphan journals, balanced journals and the tie-outs after the kills.
+- **Not in 6b:** locks and late postings, the backfill and the integrity check (6c); reports and manual journals (6d).
+
 **6c — Periods, late postings, backfill, integrity.**
 - Monthly periods, lock and unlock.
 - A late posting into the earliest open period, with the flag and the review list.

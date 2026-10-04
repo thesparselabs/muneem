@@ -2,7 +2,8 @@ import { AppError, type AllocateInput, type AllocateResult, type OpenItems, type
 import { docSeriesPrefix, financialYearOf, newUlid, type PartyType } from '@muneem/domain';
 import {
   allocateDocNumber, allocationsOfSource, appendAudit, documentCashMovements, findOrCreateSeries, getPayment, getTerminal, insertPayment, listPayments,
-  markPaymentCancelled, openItems, paymentIdByCommand, postPartyEntry, recordChange, voidAllocation, withTransaction, type AllocationSource,
+  markPaymentCancelled, openItems, paymentIdByCommand, postDocumentJournal, postPartyEntry, recordChange, reverseDocumentJournal, voidAllocation, withTransaction,
+  type AllocationSource,
 } from '@muneem/db-sqlite';
 import type { PosContext } from '../pos/posContext.js';
 import type { Drawer } from './drawer.js';
@@ -86,8 +87,9 @@ export class PaymentService {
           action: 'payment.cancel_cash_outside_drawer', entityType: 'payment', entityId: id, after: { amountPaise: p.amountPaise },
         });
       }
+      const journal = reverseDocumentJournal(db, 'payment', id, this.ctx.today(), this.ctx.till(), actor);
       recordChange(db, this.ctx.businessId(), actor, {
-        action: 'payment.cancel', entityType: 'payment', entityId: id, operationType: 'cancel', after: { id, status: 'cancelled', reason, entry, drawer },
+        action: 'payment.cancel', entityType: 'payment', entityId: id, operationType: 'cancel', after: { id, status: 'cancelled', reason, entry, drawer, journal },
       });
     });
     return this.get(id);
@@ -118,8 +120,9 @@ export class PaymentService {
       kind: input.partyType === 'customer' ? 'cash_in' : 'cash_out', amountPaise: input.amountPaise,
       reason: `${number.number} ${partyName}`, refType: 'payment', refId: id,
     });
+    const journal = postDocumentJournal(db, 'payment', id, till, actor);
     recordChange(db, till.businessId, actor, {
-      action: 'payment.create', entityType: 'payment', entityId: id, operationType: 'create', after: { ...getPayment(db, id), entry, allocations },
+      action: 'payment.create', entityType: 'payment', entityId: id, operationType: 'create', after: { ...getPayment(db, id), entry, allocations, journal },
     });
     return id;
   }

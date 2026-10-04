@@ -39,6 +39,37 @@ All notable changes, newest first. Each entry records **what** changed and **why
   **`docs/accounting/posting-matrix.md`**, the as-built matrix with worked examples for a CA to sign. It marks every
   departure from LLD §5.2 (customer receipts wholly to 1300, freight kept on returns to 5110, manual cash to 1199,
   openings against 3400).
+- **6b details written into the plan;** the user asked for 6b to be built straight after.
+- **Every document now posts its journal in its own transaction** (ADR-0030). This covers:
+  - sales (a new `journal` step after `party`);
+  - purchases, debit notes and purchase cancels;
+  - receipts, supplier payments and payment cancels;
+  - write-offs;
+  - expenses and expense cancels;
+  - opening stock, adjustments and stock takes;
+  - every cost correction;
+  - party openings (a replacement reverses the old one);
+  - register close (the variance);
+  - cash in/out.
+- **How journals are built and written:**
+  - **One builder per document,** reading the document as stored, so the 6c backfill will post exactly what live
+    posting does.
+  - **Cancels** post the mirror journal, dated on the day of the cancel.
+  - **Numbers:** documents without a number get a `J` number (ADR-0028 gains the kind).
+  - **Sync:** journals travel in their document's sync payload, or as a child row where the repository records the
+    document.
+- **The chart of accounts is seeded with the business,** alongside the catalog defaults. Seeding it on the first
+  posting would have put its 47 audit rows inside a sale. The setup test now counts the account rows separately, the
+  way it already counted units and the price list.
+- **`accountingTieOuts`** compares 1400 with the stock valuation, 1300 and 2100 with the party balances, each input
+  and output tax account with its documents, and the balance cache with the lines.
+  - **Document tests:** 15 cover each document type, pinning the journal's accounts and amounts to the posting
+    matrix, and every one ends with all tie-outs holding.
+  - **Crash suite:** it now checks one journal per sale, no orphan journals, journals equal to their lines, and the
+    tie-outs. 20 kills run in CI; 200 kills / 239 sales passed locally.
+- **The whole-business ageing speed test times the median of five calls.** A single call could land on a
+  garbage-collection pause of the test process: after 6b the bigger test database showed one-off 300–800 ms stalls,
+  while the query itself takes 50–110 ms. The budgets are unchanged.
 
 ### Fixed — Stage 5
 - **Cheap items were over-costed when sold** (ADR-0027, amends ADR-0018). An issue was costed at the average rounded

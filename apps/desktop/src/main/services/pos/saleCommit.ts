@@ -2,7 +2,8 @@ import type { CompleteSaleInput, CustomerSnapshot, RegisterSession } from '@mune
 import { financialYearOf, newUlid, type SettledTender } from '@muneem/domain';
 import {
   allocateDocNumber, appendAudit, ensureDefaultWarehouse, findOrCreateSeries, getSale, getTerminal, insertPrintJob, insertSale, movementsForRef,
-  partyBalance, planIssues, postMovement, postPartyEntry, recordChange, saleItemId, type Actor, type Db, type PartyEntry, type Till,
+  partyBalance, planIssues, postDocumentJournal, postMovement, postPartyEntry, recordChange, saleItemId, type Actor, type Db, type PartyEntry, type PostedJournal,
+  type Till,
 } from '@muneem/db-sqlite';
 import { buildReceiptDoc } from '../print/receiptDoc.js';
 import type { PricedSale } from './salePricing.js';
@@ -27,6 +28,7 @@ export interface CommitState extends SaleCommitInput {
   warehouseId?: string;
   costs?: { unitCostPaise: number; cogsPaise: number; qtyAfterMilli: number }[];
   partyEntry?: PartyEntry;
+  journal?: PostedJournal | null;
 }
 
 interface Step { name: string; run(s: CommitState): void }
@@ -120,6 +122,12 @@ const postCredit: Step = {
   },
 };
 
+// ADR-0030: the sale's journal is written in its own transaction, from the sale as stored.
+const postSaleJournal: Step = {
+  name: 'journal',
+  run(s) { s.journal = postDocumentJournal(s.db, 'sale', s.saleId, s.till, s.actor); },
+};
+
 const queueReceipt: Step = {
   name: 'receipt',
   run(s) {
@@ -147,13 +155,13 @@ const recordSale: Step = {
     const movements = movementsForRef(s.db, s.till.businessId, 'sale', s.saleId);
     recordChange(s.db, s.till.businessId, s.actor, {
       action: 'sale.complete', entityType: 'sale', entityId: s.saleId, operationType: 'create',
-      after: { ...sale, movements, ...(s.partyEntry && { partyEntry: s.partyEntry }) },
+      after: { ...sale, movements, ...(s.partyEntry && { partyEntry: s.partyEntry }), journal: s.journal },
     });
   },
 };
 
-// HLD §8 / ADR-0019 / ADR-0026: Stage 6 adds a 'journal' step after 'party'.
-export const SALE_COMMIT_STEPS: readonly Step[] = [allocateNumber, costLines, insertDocument, moveStock, postCredit, queueReceipt, recordSale];
+// HLD §8 / ADR-0019 / ADR-0026 / ADR-0030.
+export const SALE_COMMIT_STEPS: readonly Step[] = [allocateNumber, costLines, insertDocument, moveStock, postCredit, postSaleJournal, queueReceipt, recordSale];
 
 export function runSaleCommit(input: SaleCommitInput, steps: readonly Step[] = SALE_COMMIT_STEPS): CommitState {
   const terminal = getTerminal(input.db, input.till.terminalId)!;

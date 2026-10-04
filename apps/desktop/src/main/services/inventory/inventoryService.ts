@@ -1,7 +1,8 @@
 import { AppError, type AdjustmentResult, type AdjustStockInput, type OpeningStockInput, type StockTakeInput } from '@muneem/contracts';
 import { averageCostPaise, divRound, newUlid } from '@muneem/domain';
 import {
-  ensureDefaultWarehouse, getProduct, hasOpening, insertAdjustmentHeader, movementsForRef, postMovement, productFallbackCost, recordChange,
+  ensureDefaultWarehouse, getProduct, hasOpening, insertAdjustmentHeader, movementsForRef, postCorrections, postDocumentJournal, postMovement,
+  productFallbackCost, recordChange,
   stockState, withTransaction, type PostedMovement, type ReasonCode,
 } from '@muneem/db-sqlite';
 import type { PosContext } from '../pos/posContext.js';
@@ -108,8 +109,11 @@ export class InventoryService {
         refType, refId: id, refLineId: String(i + 1), reasonCode: l.reason, note: note ?? null,
       }, actor));
       const movements: PostedMovement[] = movementsForRef(db, businessId, refType, id);
+      const till = this.ctx.till();
+      const journal = postDocumentJournal(db, 'stock_document', id, till, actor, this.ctx.today());
+      const corrections = postCorrections(db, refType, id, till, actor);
       recordChange(db, businessId, actor, {
-        action: `stock.${kind}`, entityType: 'stock_adjustment', entityId: id, operationType: 'create', after: { id, kind, warehouseId, note, movements },
+        action: `stock.${kind}`, entityType: 'stock_adjustment', entityId: id, operationType: 'create', after: { id, kind, warehouseId, note, movements, journal, corrections },
       });
       return {
         adjustmentId: id, kind, unchanged,

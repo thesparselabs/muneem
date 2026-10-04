@@ -2,7 +2,8 @@ import { AppError, type Expense, type ExpenseCategory, type ExpenseInput, type E
 import { addDays, computeInvoice, docSeriesPrefix, DomainError, financialYearOf, isUtWithoutLegislature, newUlid, stateOfGstin } from '@muneem/domain';
 import {
   allocateDocNumber, documentCashMovements, ensureExpenseCategories, expenseIdByCommand, findOrCreateSeries, getBranch, getBusiness, getExpense,
-  getSupplier, getTerminal, insertExpense, listExpenseCategories, listExpenses, markExpenseCancelled, postPartyEntry, recordChange, withTransaction,
+  getSupplier, getTerminal, insertExpense, listExpenseCategories, listExpenses, markExpenseCancelled, postDocumentJournal, postPartyEntry, recordChange,
+  reverseDocumentJournal, withTransaction,
   type ExpenseRecord,
 } from '@muneem/db-sqlite';
 import type { Drawer } from '../payments/drawer.js';
@@ -54,8 +55,9 @@ export class ExpenseService {
       const drawer = e.method === 'cash'
         ? this.drawer.reverse(documentCashMovements(db, 'expense', id)[0], { reason: `Cancelled ${e.docNumber}`, refType: 'expense', refId: id })
         : 'not_cash';
+      const journal = reverseDocumentJournal(db, 'expense', id, this.ctx.today(), this.ctx.till(), actor);
       recordChange(db, this.ctx.businessId(), actor, {
-        action: 'expense.cancel', entityType: 'expense', entityId: id, operationType: 'cancel', after: { id, status: 'cancelled', reason, entry, drawer },
+        action: 'expense.cancel', entityType: 'expense', entityId: id, operationType: 'cancel', after: { id, status: 'cancelled', reason, entry, drawer, journal },
       });
     });
     return this.get(id);
@@ -101,7 +103,8 @@ export class ExpenseService {
       }, actor)
       : null;
     this.drawer.record(sessionId, { kind: 'cash_out', amountPaise: tax.totalPaise, reason: `${number.number} ${category!.name}`, refType: 'expense', refId: id });
-    recordChange(db, till.businessId, actor, { action: 'expense.create', entityType: 'expense', entityId: id, operationType: 'create', after: { ...getExpense(db, id), entry } });
+    const journal = postDocumentJournal(db, 'expense', id, till, actor);
+    recordChange(db, till.businessId, actor, { action: 'expense.create', entityType: 'expense', entityId: id, operationType: 'create', after: { ...getExpense(db, id), entry, journal } });
     return id;
   }
 
