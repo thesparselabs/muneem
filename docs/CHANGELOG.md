@@ -5,7 +5,20 @@ All notable changes, newest first. Each entry records **what** changed and **why
 
 ## [Unreleased]
 
-### Fixed — Stage 9 CI
+### Added — Invoice templates & branded PDF (`invoice.*`)
+- **A shop can render any sale as a styled A4 or thermal invoice (10 templates) and save it as a PDF (ADR-0063).**
+  Why: the receipt layer prints till rolls, but customers and GST filing need a proper invoice document with the
+  business's logo, signature and accent colour. New `invoice` IPC namespace (`listTemplates`, `getBranding`,
+  `setBranding`, `renderHtml`, `savePdf`); branding (template, accent, logo/signature, terms, bank details, footer)
+  is a business-scoped `setting` so it follows the shop to every till. Invoice data reuses the sale assembly and adds
+  an INR amount-in-words helper (Indian lakh/crore). A4 templates carry every GST mandatory field; PDFs print from a
+  hidden, network-blocked Electron window to Downloads. No new dependencies.
+- **Choose the page format (A4 / A5 / Letter), plus the 80 mm and 58 mm thermal rolls.** Why: printers vary, so the
+  same invoice must print right on an A4 laser or a thermal receipt printer. `pageSize` is part of the branding setting
+  and drives both the on-screen template CSS and the PDF page size.
+- **Settings → Invoice design UI:** a template gallery with live previews, logo/signature upload, accent colour, page
+  size, terms and bank details, plus a Preview dialog (Print / Save as PDF) wired into POS and the Sales list. Built
+  only from locally-authored components in the Wensity / Magic UI / opensourceui style (no new UI library).
 - **The `chaos` job was missing its `steps:`, which made GitHub reject the whole `ci.yml`.** Why: an invalid job (no
   `steps` and no `uses`) fails the workflow at parse time, so every run exited at 0 s with "workflow file issue" and no
   checks reported. The job's steps had been duplicated into `scale` during integration; moved them back to `chaos`

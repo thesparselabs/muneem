@@ -16,11 +16,12 @@ import HeldBillsDialog from './HeldBillsDialog.js';
 import PaymentDialog from './PaymentDialog.js';
 import { CashMovementDialog, CloseRegisterDialog, OpenRegister, ReportView, XReportDialog } from './RegisterPanel.js';
 import Dialog from '../../components/Dialog.js';
+import InvoicePreview from '../../components/InvoicePreview.js';
 import StockStaleness from '../../components/StockStaleness.js';
 import NumberTicker from '../../components/NumberTicker.js';
 import SuccessCheck from '../../components/SuccessCheck.js';
 import { useToasts } from '../../lib/toast.js';
-import { CreditCard, Pause, Percent, Printer, RotateCcw, Wallet, FileBarChart, Lock } from 'lucide-react';
+import { CreditCard, Pause, Percent, Printer, RotateCcw, Wallet, FileBarChart, FileText, Lock } from 'lucide-react';
 
 type Modal = 'customer' | 'discount' | 'payment' | 'held' | 'cash' | 'x' | 'close' | { lineDiscount: string } | null;
 const NEAR_DUPLICATE_MS = 60_000;
@@ -37,6 +38,7 @@ export default function PosScreen() {
   const [busy, setBusy] = useState(false);
   const [lastSale, setLastSale] = useState<{ result: CompleteSaleResult; customerId: string | null; at: number } | null>(null);
   const [zReport, setZReport] = useState<RegisterReport | null>(null);
+  const [previewSaleId, setPreviewSaleId] = useState<string | null>(null);
   const [paid, setPaid] = useState(false);
   const toast = useToasts((s) => s.push);
   const search = useRef<HTMLInputElement>(null);
@@ -196,6 +198,7 @@ export default function PosScreen() {
           <button className="btn-secondary gap-1.5" onClick={() => void hold()}><Pause size={14} aria-hidden /> Hold (F6)</button>
           <button className="btn-secondary gap-1.5" onClick={() => setModal('held')}><RotateCcw size={14} aria-hidden /> Held bills (F7)</button>
           <button className="btn-secondary gap-1.5" onClick={() => void reprintLast()} disabled={!lastSale}><Printer size={14} aria-hidden /> Reprint last (F9)</button>
+          <button className="btn-secondary gap-1.5" onClick={() => lastSale && setPreviewSaleId(lastSale.result.saleId)} disabled={!lastSale}><FileText size={14} aria-hidden /> Invoice</button>
           <button className="btn-secondary gap-1.5" onClick={() => setModal('cash')}><CreditCard size={14} aria-hidden /> Cash in/out</button>
           <button className="btn-secondary gap-1.5" onClick={() => setModal('x')}><FileBarChart size={14} aria-hidden /> X report</button>
           <button className="btn-secondary gap-1.5" onClick={() => setModal('close')}><Lock size={14} aria-hidden /> Close register</button>
@@ -214,6 +217,7 @@ export default function PosScreen() {
       {modal === 'cash' && <CashMovementDialog onClose={() => setModal(null)} />}
       {modal === 'x' && <XReportDialog onClose={() => setModal(null)} />}
       {modal === 'close' && <CloseRegisterDialog onClose={() => setModal(null)} onClosed={(z) => { setModal(null); setZReport(z); void qc.invalidateQueries({ queryKey: ['posSession'] }); }} />}
+      {previewSaleId && <InvoicePreview saleId={previewSaleId} onClose={() => setPreviewSaleId(null)} />}
       {paid && <div className="pointer-events-none fixed inset-0 z-40 flex items-center justify-center" aria-hidden><SuccessCheck size={88} /></div>}
     </div>
   );

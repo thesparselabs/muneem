@@ -10,7 +10,7 @@ import { LogoMark } from '../components/Logo.js';
 import type { Permission } from '@muneem/contracts';
 import { can } from '../lib/permissions.js';
 import {
-  Activity, BarChart3, Boxes, FileText, Home as HomeIcon, Inbox, Landmark, Package, RefreshCw,
+  Activity, BarChart3, Boxes, FileText, Home as HomeIcon, Inbox, Landmark, Package, Palette, RefreshCw,
   Receipt, ShoppingCart, Truck, Users, Wallet, TrendingDown, type LucideIcon,
 } from 'lucide-react';
 
@@ -29,6 +29,7 @@ const NAV: { to: string; label: string; icon: LucideIcon; enabled: boolean; stag
   { to: '/gst', label: 'GST', icon: FileText, enabled: true, need: 'gst.view' },
   { to: '/reports', label: 'Reports', icon: BarChart3, enabled: true, need: 'reports.view' },
   { to: '/settings/review', label: 'Review items', icon: Inbox, enabled: true, need: 'sync.view' },
+  { to: '/settings/invoice', label: 'Invoice design', icon: Palette, enabled: true, need: 'settings.view' },
   { to: '/settings/updates', label: 'Updates', icon: RefreshCw, enabled: true, need: 'settings.view' },
   { to: '/diagnostics', label: 'Diagnostics', icon: Activity, enabled: true },
 ];

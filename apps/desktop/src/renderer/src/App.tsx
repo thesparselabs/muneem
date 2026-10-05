@@ -40,6 +40,7 @@ import AdjustStock from './routes/inventory/AdjustStock.js';
 import StockTake from './routes/inventory/StockTake.js';
 import OpeningStock from './routes/inventory/OpeningStock.js';
 import PrinterSettings from './routes/PrinterSettings.js';
+import InvoiceSettings from './routes/settings/InvoiceSettings.js';
 import StockReconciliation from './routes/inventory/StockReconciliation.js';
 import ReviewItems from './routes/settings/ReviewItems.js';
 import Reports from './routes/reports/Reports.js';
@@ -108,6 +109,7 @@ export default function App() {
         <Route path="/gst/payments" element={<GstPayments />} />
         <Route path="/reports" element={<Reports />} />
         <Route path="/settings/printer" element={<PrinterSettings />} />
+        <Route path="/settings/invoice" element={<InvoiceSettings />} />
         <Route path="/settings/review" element={<ReviewItems />} />
         <Route path="/settings/updates" element={<Updates />} />
         <Route path="/diagnostics" element={<Diagnostics />} />

@@ -5,6 +5,8 @@ import { formatPaise } from '../../lib/money.js';
 import { useCan } from '../../lib/permissions.js';
 import { matchesSearch, REFUND_LABELS, returnLabel } from '../../lib/sales/returnForm.js';
 import ReturnDialog from './ReturnDialog.js';
+import InvoicePreview from '../../components/InvoicePreview.js';
+import { FileText } from 'lucide-react';
 
 // Bills with receipt search and Return / Cancel, and the credit notes issued against them (ADR-0043).
 export default function Sales() {
@@ -14,6 +16,7 @@ export default function Sales() {
   const canTakeBack = canReturn || canCancel;
   const [search, setSearch] = useState('');
   const [returning, setReturning] = useState<string | null>(null);
+  const [previewing, setPreviewing] = useState<string | null>(null);
   const [message, setMessage] = useState<{ kind: 'ok' | 'error'; text: string } | null>(null);
   const sales = useInfiniteQuery({
     queryKey: ['sales'], queryFn: ({ pageParam }) => api.sales.list({ limit: 100, ...(pageParam && { cursor: pageParam }) }),
@@ -44,7 +47,10 @@ export default function Sales() {
                 <td className="p-2 tabular-nums">{s.docNumber}</td><td className="p-2">{s.docDate}</td><td className="p-2">{s.customerName ?? 'Walk-in'}</td>
                 <td className="p-2 text-right tabular-nums">{formatPaise(s.totalPaise)}</td><td className="p-2 text-slate-600">{returnLabel(s)}</td>
                 <td className="p-2 text-right">
-                  {canTakeBack && s.returned !== 'full' && <button type="button" className="btn-secondary py-1" onClick={() => setReturning(s.id)}>Return / Cancel</button>}
+                  <span className="flex justify-end gap-2">
+                    <button type="button" className="btn-secondary gap-1.5 py-1" onClick={() => setPreviewing(s.id)}><FileText size={14} aria-hidden /> Invoice</button>
+                    {canTakeBack && s.returned !== 'full' && <button type="button" className="btn-secondary py-1" onClick={() => setReturning(s.id)}>Return / Cancel</button>}
+                  </span>
                 </td>
               </tr>
             ))}
@@ -68,6 +74,7 @@ export default function Sales() {
           </tbody>
         </table>
       </section>
+      {previewing && <InvoicePreview saleId={previewing} onClose={() => setPreviewing(null)} />}
       {returning && (
         <ReturnDialog saleId={returning} onClose={() => setReturning(null)} onDone={(r) => {
           setReturning(null);

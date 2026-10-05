@@ -32,6 +32,7 @@ import {
 import { CompleteSaleInput, CompleteSaleResult, HeldBill, HoldBillInput, Sale, SaleDraft, SaleListInput, SalePage, SaleQuote } from './sales.js';
 import { CancelSaleInput, CompleteReturnInput, CompleteReturnResult, CreditNote, CreditNoteListInput, CreditNotePage, ReturnDraft, ReturnQuote } from './returns.js';
 import { InstalledPrinter, PrintJobSummary, PrinterConfig, ReceiptDoc } from './print.js';
+import { InvoiceBranding, ListTemplatesResult, RenderInvoiceInput, RenderInvoiceResult, SaveInvoicePdfInput, SaveInvoicePdfResult } from './invoice.js';
 import { SETTING_KEYS } from './settings.js';
 import { CrashReportingStatus, RendererErrorInput } from './telemetry.js';
 import { CloudBusiness, HydrationStartInput, HydrationStatus } from './hydration.js';
@@ -196,6 +197,13 @@ export const contract = {
   'printer.retryJob': spec({ input: z.object({ jobId: Ulid }), output: Ok, permission: 'pos.create', rateLimit: { perSec: 2 } }),
   'printer.reprint': spec({ input: z.object({ saleId: Ulid }), output: z.object({ jobId: Ulid }), permission: 'pos.create', rateLimit: { perSec: 2 }, audit: true }),
   'drawer.open': spec({ input: Empty, output: Ok, permission: 'pos.create', rateLimit: { perSec: 1 }, audit: true }),
+
+  // Invoice templates & PDF
+  'invoice.listTemplates': spec({ input: Empty, output: ListTemplatesResult, permission: 'pos.view', rateLimit: { perSec: 10 } }),
+  'invoice.getBranding': spec({ input: Empty, output: InvoiceBranding, permission: 'pos.view', rateLimit: { perSec: 10 } }),
+  'invoice.setBranding': spec({ input: InvoiceBranding, output: InvoiceBranding, permission: 'settings.manage', rateLimit: { perSec: 2 }, audit: true }),
+  'invoice.renderHtml': spec({ input: RenderInvoiceInput, output: RenderInvoiceResult, permission: 'pos.view', rateLimit: { perSec: 10 } }),
+  'invoice.savePdf': spec({ input: SaveInvoicePdfInput, output: SaveInvoicePdfResult, permission: 'pos.view', rateLimit: { perSec: 2 } }),
 
   'inventory.getStock': spec({ input: StockListInput, output: StockPage, permission: 'inventory.view', rateLimit: { perSec: 10 } }),
   'inventory.getMovements': spec({ input: MovementsInput, output: MovementPage, permission: 'inventory.view', rateLimit: { perSec: 10 } }),
