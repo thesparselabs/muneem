@@ -36,7 +36,7 @@ import { InvoiceBranding, ListTemplatesResult, RenderInvoiceInput, RenderInvoice
 import { SETTING_KEYS } from './settings.js';
 import { CrashReportingStatus, RendererErrorInput } from './telemetry.js';
 import { CloudBusiness, HydrationStartInput, HydrationStatus } from './hydration.js';
-import { Dashboard, ExportReportInput, ExportReportResult, ReportDefinitionView, ReportResult, RunReportInput } from './reports.js';
+import { Dashboard, DashboardInput, ExportReportInput, ExportReportResult, ReportDefinitionView, ReportResult, RunReportInput } from './reports.js';
 import { DemoSeedSummary } from './dev.js';
 import { GstLedgerView, GstMonthInput, GstPayment, GstPaymentInput, GstReturnSummary, GstSetoff, GstSetoffPreview, PostGstSetoffInput } from './gst.js';
 import { ReportCartInput, SetChannelInput, UpdateStatus } from './updates.js';
@@ -267,7 +267,7 @@ export const contract = {
   'reports.listDefinitions': spec({ input: Empty, output: z.array(ReportDefinitionView), permission: 'reports.view', rateLimit: { perSec: 5 } }),
   'reports.run': spec({ input: RunReportInput, output: ReportResult, permission: 'reports.view', rateLimit: { perSec: 5 } }),
   'reports.export': spec({ input: ExportReportInput, output: ExportReportResult, permission: 'reports.export', rateLimit: { perSec: 1 }, audit: true }),
-  'reports.dashboard': spec({ input: Empty, output: Dashboard, permission: 'reports.view', rateLimit: { perSec: 5 } }),
+  'reports.dashboard': spec({ input: DashboardInput, output: Dashboard, permission: 'reports.view', rateLimit: { perSec: 5 } }),
 
   // ADR-0050: every role holds business.view; each kind is further filtered by the permission its subject needs.
   'notifications.list': spec({ input: ListNotificationsInput, output: NotificationPage, permission: 'business.view', rateLimit: { perSec: 10 } }),

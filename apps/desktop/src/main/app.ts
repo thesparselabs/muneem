@@ -474,7 +474,7 @@ export function createApp(cfg: AppConfig) {
     'gst.postSetoff': (i) => gst.setoffs.post(i),
     'gst.recordPayment': (i) => gst.payments.record(i),
     'gst.ledger': () => gst.payments.ledger(),
-    'reports.dashboard': () => dashboard.get(),
+    'reports.dashboard': (i) => dashboard.get(i.period),
     'sync.getStatus': () => syncStatus(),
     'sync.retry': () => { void sync.retry(); return syncStatus(); },
     ...syncScreenHandlers({

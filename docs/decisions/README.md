@@ -69,3 +69,4 @@ Template: Context → Decision → Consequences → Status.
 | [0062](0062-landing-site-in-monorepo.md) | A marketing landing site as a standalone Vite app in the monorepo, reusing existing deps |
 | [0063](0063-invoice-templates-and-branded-pdf.md) | Invoice templates & branded PDF: an `invoice.*` namespace, 10 A4/thermal templates, branding as a setting, page sizes, Electron printToPDF |
 | [0064](0064-whispr-theme-fullscreen-onboarding.md) | Whispr (tweakcn) light/dark theme, full-screen token-based layouts, icons, and a custom onboarding tour |
+| [0065](0065-help-manual-and-dashboard-periods.md) | In-app EN/HI manual + help drawer, and a Today/Week/Month dashboard with more KPIs and SVG charts |

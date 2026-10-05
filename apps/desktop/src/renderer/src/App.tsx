@@ -49,6 +49,8 @@ import Notifications from './routes/Notifications.js';
 import { TourProvider } from './components/tour/TourProvider.js';
 import TourOverlay from './components/tour/TourOverlay.js';
 import TourHelpButton from './components/tour/TourHelpButton.js';
+import HelpDrawer from './components/help/HelpDrawer.js';
+import { HelpProvider } from './lib/help/useHelp.js';
 
 export default function App() {
   const { session, setSession, setSync, setOnline } = useUi();
@@ -74,6 +76,7 @@ export default function App() {
 
   return (
     <TourProvider>
+    <HelpProvider>
     <Routes>
       <Route path="/login" element={<Login />} />
       <Route path="/switch" element={<SwitchUser />} />
@@ -125,6 +128,8 @@ export default function App() {
     </Routes>
     {inApp && <TourOverlay />}
     {inApp && <TourHelpButton />}
+    {inApp && <HelpDrawer />}
+    </HelpProvider>
     </TourProvider>
   );
 }

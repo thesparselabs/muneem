@@ -5,6 +5,17 @@ All notable changes, newest first. Each entry records **what** changed and **why
 
 ## [Unreleased]
 
+### Added — In-app manual (EN/HI), dashboard periods & charts (ADR-0065)
+- **Bilingual user manual + contextual help.** A help drawer on every screen explains, in English or Hindi (toggle),
+  what the tab is for, how it works and its keyboard shortcuts; the floating help button (bottom-right) is now a menu
+  (User manual / Take a tour) and the drawer can launch the guided tour. 16 routes documented in both languages.
+- **Dashboard: Today / This week / This month.** `reports.dashboard` gained a `period` input; figures aggregate the
+  daily summaries over the window and show a delta vs the previous period. New data points: average bill, products
+  sold, new customers, top categories, expense breakdown, receivables vs payables.
+- **Richer charts** (inline SVG, themed): a net-sales area/line, a payment-method donut, and horizontal bars for
+  categories, expenses and receivables — replacing the single bar strip.
+- **Fixed:** the help "?" button now sits in the true bottom-right corner (toasts lifted above it).
+
 ### Added — Dev demo data; fixed dark sidebar and invoice logo
 - **"Load demo data" (Diagnostics, dev builds only).** Seeds the current business through the real services — ~20
   products, 5–8 customers, 4–6 suppliers (some with opening balances), opening stock, ~40 sales (cash/UPI/card/credit),
