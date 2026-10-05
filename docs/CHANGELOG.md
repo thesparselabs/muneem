@@ -5,6 +5,13 @@ All notable changes, newest first. Each entry records **what** changed and **why
 
 ## [Unreleased]
 
+### Fixed — Stage 9 CI
+- **The `chaos` job was missing its `steps:`, which made GitHub reject the whole `ci.yml`.** Why: an invalid job (no
+  `steps` and no `uses`) fails the workflow at parse time, so every run exited at 0 s with "workflow file issue" and no
+  checks reported — on the Stage 9 branch and on `main` after the merge. The job's steps had been duplicated into
+  `scale` during integration; moved them back to `chaos` (checkout, build, `pnpm chaos`, then §37 and the 200-seed
+  simulation) and left `scale` to build the dataset and run the LLD §18 budgets.
+
 ### Added — Stage 9 hardening and pilot
 - **Stage 9 plan (`docs/plans/stage-9-hardening.md`).** Three agents surveyed the designs, every deferred item and
   operational readiness. Decided with the user:
