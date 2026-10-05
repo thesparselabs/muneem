@@ -57,6 +57,7 @@ describe('effectiveDiscountBp', () => {
 describe('expectedCash', () => {
   it('adds cash takings and movements to the opening float', () => {
     expect(expectedCash({ openingPaise: 50_000, cashTenderedPaise: 120_000, changeGivenPaise: 5000, cashInPaise: 10_000, cashOutPaise: 2000, safeDropPaise: 100_000 })).toBe(73_000);
+    expect(expectedCash({ openingPaise: 50_000, cashTenderedPaise: 120_000, changeGivenPaise: 5000, cashInPaise: 10_000, cashOutPaise: 2000, safeDropPaise: 100_000, cashRefundPaise: 3000 })).toBe(70_000);
   });
 });
 

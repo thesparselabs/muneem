@@ -12,6 +12,7 @@ export const META_KEYS = {
   lastBackupAt: 'last_backup_at',
   serverSkewMs: 'server_skew_ms',
   lastServerContactAt: 'last_server_contact_at',
+  restoreCatchUp: 'restore_catch_up_own', // 8f: after restoring this device's own backup, pull its own changes back too
 } as const;
 
 export function getMeta(db: Db, key: string): string | null {

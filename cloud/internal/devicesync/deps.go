@@ -8,7 +8,7 @@ type ref struct{ entityType, entityID string }
 // Allocation targets and credits name documents by their party-ledger kind.
 var documentOfKind = map[string]string{
 	"sale": "sale", "purchase": "purchase", "opening": "party_opening", "expense": "expense", "payment": "payment",
-	"debit_note": "debit_note", "write_off": "write_off",
+	"debit_note": "debit_note", "credit_note": "credit_note", "write_off": "write_off",
 }
 
 type refPayload struct {
@@ -16,6 +16,7 @@ type refPayload struct {
 	SupplierID  *string `json:"supplierId"`
 	SessionID   *string `json:"sessionId"`
 	PurchaseID  *string `json:"purchaseId"`
+	SaleID      *string `json:"saleId"`
 	CategoryID  *string `json:"categoryId"`
 	PartyType   string  `json:"partyType"`
 	PartyID     string  `json:"partyId"`
@@ -68,6 +69,9 @@ var createRefs = map[string]func(p *refPayload) []ref{
 	"debit_note": func(p *refPayload) []ref {
 		return append(optional("purchase", p.PurchaseID), optional("supplier", p.SupplierID)...)
 	},
+	"credit_note": func(p *refPayload) []ref {
+		return append(append(optional("sale", p.SaleID), optional("customer", p.CustomerID)...), optional("pos_session", p.SessionID)...)
+	},
 	"payment":       func(p *refPayload) []ref { return append(p.party(p.PartyType, p.PartyID), p.targets()...) },
 	"write_off":     func(p *refPayload) []ref { return append(optional("customer", p.CustomerID), p.targets()...) },
 	"allocation":    func(p *refPayload) []ref { return append(p.documents(p.CreditType, p.CreditID), p.targets()...) },
@@ -86,7 +90,7 @@ var createRefs = map[string]func(p *refPayload) []ref{
 // references lists what must already be stored. Cancels and updates of documents need the document itself; a
 // credit limit needs its customer.
 func references(op Operation) ([]ref, error) {
-	if streamOf[op.EntityType] == StreamDocuments && op.OperationType != "create" {
+	if (streamOf[op.EntityType] == StreamDocuments || op.EntityType == "fy_close") && op.OperationType != "create" {
 		return []ref{{op.EntityType, op.EntityID}}, nil
 	}
 	if op.EntityType == "customer_credit_limit" {

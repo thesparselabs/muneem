@@ -89,6 +89,8 @@ export const SyncStatus = z.object({
   online: z.boolean(), serverSkewMs: z.number().int().nullable(), detail: z.string().nullable(),
   deviceStatus: z.enum(['active', 'revoked', 'upgrade_required']).nullable(), oldestPendingAt: z.string().nullable(),
   documentsPulledAt: z.string().nullable(), terminalCount: z.number().int(),
+  // 8g: a broken audit hash chain, found here or reported by the cloud, blocks the badge until it is looked into.
+  auditChainBroken: z.boolean().optional(),
 });
 export type SyncStatus = z.infer<typeof SyncStatus>;
 
@@ -99,6 +101,16 @@ export const Health = z.object({
   secretStoreAvailable: z.boolean(),
 });
 export type Health = z.infer<typeof Health>;
+
+export const AuditChainReport = z.object({
+  businessId: z.string(), deviceId: z.string(), count: z.number().int(), ok: z.boolean(), brokenAtSeq: z.number().int().nullable(),
+  reason: z.enum(['seq_gap', 'prev_hash', 'hash']).nullable(),
+});
+export const AuditVerification = z.object({
+  checkedAt: IsoDateTime, ok: z.boolean(), chains: z.array(AuditChainReport),
+  cloudRejections: z.array(z.object({ operationId: z.string(), seq: z.number().int().nullable(), detail: z.string().nullable() })),
+});
+export type AuditVerification = z.infer<typeof AuditVerification>;
 
 export const DeviceInfo = z.object({
   deviceId: z.string().nullable(), installationId: z.string(), registered: z.boolean(),

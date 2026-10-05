@@ -8,7 +8,7 @@ export interface ReconciledProduct {
   viaSync: boolean; breaches: Breach[];
 }
 
-const SOURCE: Record<string, string> = { adjustment: 'Adjustment', stock_take: 'Stock take', purchase_return: 'Purchase return', correction: 'Correction' };
+const SOURCE: Record<string, string> = { adjustment: 'Adjustment', stock_take: 'Stock take', sale_return: 'Sale return', purchase_return: 'Purchase return', correction: 'Correction' };
 
 function source(r: ReconciliationRow): string {
   if (r.refType === 'sale') return r.terminalCode ? `Terminal ${r.terminalCode}` : r.viaSync ? 'Another terminal' : 'This terminal';

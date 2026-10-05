@@ -53,6 +53,9 @@ const ENTITY_LABEL = `CASE c.entity_type
     WHEN 'category' THEN (SELECT name FROM category WHERE id = c.entity_id)
     WHEN 'barcode' THEN (SELECT code FROM barcode WHERE id = c.entity_id)
     WHEN 'sale' THEN (SELECT doc_number FROM sale WHERE id = c.entity_id)
+    WHEN 'credit_note' THEN (SELECT doc_number FROM credit_note WHERE id = c.entity_id)
+    WHEN 'gst_setoff' THEN (SELECT doc_number FROM gst_setoff WHERE id = c.entity_id)
+    WHEN 'gst_payment' THEN (SELECT doc_number FROM gst_payment WHERE id = c.entity_id)
   END`;
 
 export function listReviewItems(db: Db, businessId: string, status: 'open' | 'reviewed' | 'all', limit: number): ReviewItem[] {
@@ -64,6 +67,12 @@ export function listReviewItems(db: Db, businessId: string, status: 'open' | 're
     field: r.field, cloudValueJson: r.cloud_value_json, deviceValueJson: r.device_value_json, occurredAt: r.occurred_at, receivedAt: r.received_at,
     reviewedAt: r.reviewed_at, reviewedBy: r.reviewed_by,
   }));
+}
+
+export function openReviewCounts(db: Db, businessId: string): { total: number; lateArrivals: number } {
+  const r = stmt(db, "SELECT COUNT(*) AS total, SUM(kind = 'late_arrival') AS late FROM conflict_log WHERE business_id = ? AND reviewed_at IS NULL")
+    .get(businessId) as { total: number; late: number | null };
+  return { total: r.total, lateArrivals: r.late ?? 0 };
 }
 
 export function markReviewed(db: Db, businessId: string, ids: readonly string[], userId: string): number {

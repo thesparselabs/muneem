@@ -5,7 +5,7 @@ import "github.com/sparselabs/muneem/cloud/api"
 // Mirrors packages/contracts/src/ipc/permissions.ts ROLE_PRESETS — keep in lockstep.
 var resources = []string{"sales", "purchases", "inventory", "products", "customers", "suppliers", "payments", "expenses",
 	"accounting", "reports", "settings", "users", "business", "pos", "sync", "diagnostics", "gst"}
-var actions = []string{"view", "create", "edit", "cancel", "approve", "manage", "adjust", "financial", "export"}
+var actions = []string{"view", "create", "edit", "cancel", "approve", "manage", "adjust", "financial", "export", "close"}
 
 func grant(p string) api.Grant { return api.Grant{Permission: p} }
 func cross(rs, as []string) []api.Grant {
@@ -32,7 +32,7 @@ func RolePreset(role string) []api.Grant {
 	case "manager":
 		g := cross([]string{"sales", "purchases", "inventory", "products", "customers", "suppliers", "payments", "expenses", "pos", "gst"},
 			[]string{"view", "create", "edit", "cancel", "approve", "adjust"})
-		return append(g, grants("reports.view", "reports.export", "reports.financial", "sync.view", "sync.manage", "diagnostics.view", "business.view", "settings.view")...)
+		return append(g, grants("reports.view", "reports.export", "reports.financial", "sync.view", "sync.manage", "diagnostics.view", "diagnostics.manage", "business.view", "settings.view")...)
 	case "cashier":
 		five := 500
 		g := grants("sales.view")
@@ -44,7 +44,8 @@ func RolePreset(role string) []api.Grant {
 		return append(g, grants("pos.view", "pos.create", "products.view", "customers.view", "customers.create", "payments.view", "payments.create", "sync.view", "business.view")...)
 	case "accountant":
 		g := cross([]string{"accounting", "payments", "expenses", "purchases", "gst"}, []string{"view", "create", "edit", "financial"})
-		return append(g, grants("reports.view", "reports.financial", "reports.export", "sales.view", "customers.view", "suppliers.view", "business.view")...)
+		return append(g, grants("reports.view", "reports.financial", "reports.export", "sales.view", "customers.view", "suppliers.view", "business.view",
+			"accounting.close")...)
 	case "inventory":
 		g := cross([]string{"inventory", "products", "purchases", "suppliers"}, []string{"view", "create", "edit", "adjust"})
 		return append(g, grants("reports.view", "business.view")...)

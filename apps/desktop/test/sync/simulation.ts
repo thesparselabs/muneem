@@ -1,6 +1,6 @@
 import { expect } from 'vitest';
 import { newUlid } from '@muneem/domain';
-import { CompleteSaleInput, CustomerInput, PaymentInput, ProductInput, ProductUpdate, SaleDraft } from '@muneem/contracts';
+import { CompleteReturnInput, CompleteSaleInput, CustomerInput, PaymentInput, ProductInput, ProductUpdate, SaleDraft } from '@muneem/contracts';
 import { getMeta, META_KEYS, type Db } from '@muneem/db-sqlite';
 import { Prng } from '../soak/generator.js';
 import type { App } from '../../src/main/app.js';
@@ -69,8 +69,23 @@ export async function simulate(seed: number, cloud: CloudHarness, shape: Simulat
       const own = d.db.prepare("SELECT id FROM payment WHERE business_id = ? AND status = 'posted' AND device_id = ? ORDER BY id")
         .pluck().all(businessId, getMeta(d.db, META_KEYS.installationId)) as string[];
       if (own.length > 0) d.app.payments.cancel(rng.pick(own), 'bounced');
-    } else {
+    } else if (roll < 0.97) {
       d.app.inventory.adjust({ lines: [{ productId: rng.pick(products), qtyMilli: -1000, reason: 'damage' }] });
+    } else {
+      returnOwnSale(d);
+    }
+  };
+
+  // ADR-0043: a device takes back one unit of its own latest bill that still has some left, refunding the way it was paid.
+  const returnOwnSale = (d: Device) => {
+    const own = d.db.prepare('SELECT id FROM sale WHERE business_id = ? AND device_id = ? AND credit_paise = 0 ORDER BY created_at DESC, id DESC LIMIT 5')
+      .pluck().all(businessId, getMeta(d.db, META_KEYS.installationId)) as string[];
+    for (const saleId of own) {
+      const line = d.app.returns.quote({ saleId, lines: [{ lineNo: 1, qtyMilli: 1 }] }).lines.find((l) => l.returnableQtyMilli >= 1000);
+      if (!line) continue;
+      const draft = { saleId, lines: [{ lineNo: line.lineNo, qtyMilli: 1000 }], refundMethod: 'upi' as const };
+      d.app.returns.complete(CompleteReturnInput.parse({ ...draft, commandId: newUlid(), reason: 'returned', expectedTotalPaise: d.app.returns.quote(draft).totalPaise }));
+      return;
     }
   };
 
@@ -119,6 +134,10 @@ export async function expectConverged(seed: number, cloud: CloudHarness, { devic
   expect(sent, `seed ${seed}: all three devices sold`).toBeGreaterThan(shape.rounds * 5);
   expect(new Set(reference.journals.map((j) => (j as { entry_no: string }).entry_no.slice(0, 4))).size, `seed ${seed}: three terminals' numbers`).toBeGreaterThanOrEqual(3);
   expect(await cloud.cloudSales(businessId), `seed ${seed}: the cloud holds each sale once`).toBe(sent);
+  const deviceChains = Object.fromEntries(devices.flatMap((d) => d.db.prepare('SELECT device_id, COUNT(*) AS n FROM audit_log WHERE business_id = ? GROUP BY device_id')
+    .all(businessId).map((r) => { const { device_id, n } = r as { device_id: string; n: number }; return [device_id, n]; })));
+  expect(Object.keys(deviceChains), `seed ${seed}: each device kept an audit trail`).toHaveLength(devices.length);
+  expect(await cloud.auditChains(businessId), `seed ${seed}: every device's audit rows reached the cloud`).toEqual(deviceChains);
   const cloudTrialBalance = await cloud.trialBalance(businessId);
   if (cloudTrialBalance) expect(cloudTrialBalance, `seed ${seed}: cloud Trial Balance`).toEqual(reference.trialBalance);
   return { sales: sent, trialBalance: reference.trialBalance };

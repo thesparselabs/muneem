@@ -11,6 +11,7 @@ import (
 
 	"github.com/sparselabs/muneem/cloud/internal/devicesync/conflict"
 	"github.com/sparselabs/muneem/cloud/internal/devicesync/verify"
+	"github.com/sparselabs/muneem/cloud/internal/reports"
 )
 
 var stateCodeRe = regexp.MustCompile(`^\d{2}$`)
@@ -32,7 +33,7 @@ func (a *applier) run() (Result, error) {
 	if err := lockBusiness(a.ctx, a.tx, a.businessID); err != nil {
 		return Result{}, err
 	}
-	for _, s := range []step{a.idempotent, a.knownEntity, a.business, a.dependencies, a.verified} {
+	for _, s := range []step{a.idempotent, a.knownEntity, a.business, a.auditEntry, a.dependencies, a.verified} {
 		if r, done, err := s(); done || err != nil {
 			return r, err
 		}
@@ -109,7 +110,7 @@ func (l *txLookup) JournalDebit(id string) (int64, bool) {
 }
 
 func (a *applier) verified() (Result, bool, error) {
-	if streamOf[a.op.EntityType] == StreamDocuments {
+	if streamOf[a.op.EntityType] == StreamDocuments || a.op.EntityType == "fy_close" {
 		js, err := verify.Journals(a.op.EntityType, a.op.Payload)
 		if err == nil {
 			err = verify.Balanced(js)
@@ -133,9 +134,12 @@ func (a *applier) store() (Result, error) {
 		return Result{}, err
 	}
 	var s *stored
-	if streamOf[a.op.EntityType] == StreamDocuments {
+	switch {
+	case a.op.EntityType == "fy_close":
+		s, err = a.yearClose(cur)
+	case streamOf[a.op.EntityType] == StreamDocuments:
 		s, err = a.document(cur)
-	} else {
+	default:
 		s, err = a.resolved(cur)
 	}
 	if err != nil {
@@ -151,6 +155,9 @@ func (a *applier) store() (Result, error) {
 	if err := a.project(seq); err != nil {
 		return Result{}, err
 	}
+	if err := a.aggregate(cur); err != nil {
+		return Result{}, err
+	}
 	if err := a.recordReviews(seq); err != nil {
 		return Result{}, err
 	}
@@ -163,12 +170,14 @@ func (a *applier) unchanged(cur *entityRow) (Result, error) {
 	return applied(a.op, seq), recordOperation(a.ctx, a.tx, a.businessID, a.caller.DeviceID, a.op, StatusApplied, &seq, nil)
 }
 
-func (a *applier) persist(s stored) (int64, error) {
-	seq, err := appendChange(a.ctx, a.tx, a.businessID, s)
+func (a *applier) persist(s stored) (int64, error) { return persist(a.ctx, a.tx, a.businessID, s) }
+
+func persist(ctx context.Context, tx pgx.Tx, businessID string, s stored) (int64, error) {
+	seq, err := appendChange(ctx, tx, businessID, s)
 	if err != nil {
 		return 0, err
 	}
-	return seq, upsertEntity(a.ctx, a.tx, a.businessID, s, seq)
+	return seq, upsertEntity(ctx, tx, businessID, s, seq)
 }
 
 func (a *applier) project(seq int64) error {
@@ -178,6 +187,18 @@ func (a *applier) project(seq int64) error {
 		}
 	}
 	return nil
+}
+
+// 8e: the owner-report aggregates move with the document they come from, in the same transaction.
+func (a *applier) aggregate(cur *entityRow) error {
+	if streamOf[a.op.EntityType] != StreamDocuments {
+		return nil
+	}
+	op := reports.Applied{EntityType: a.op.EntityType, EntityID: a.op.EntityID, OperationType: a.op.OperationType, Payload: a.op.Payload}
+	if cur != nil {
+		op.Prior = cur.Payload
+	}
+	return reports.Project(a.ctx, a.tx, a.businessID, op)
 }
 
 func (a *applier) origin() *string { id := a.caller.DeviceID; return &id }
@@ -195,20 +216,25 @@ func (a *applier) review(kind string, detail any) {
 // Every review item is kept in conflict_log and sent down the control stream, so each device lists it (ADR-0041).
 func (a *applier) recordReviews(seq int64) error {
 	for _, r := range a.reviews {
-		if err := insertConflict(a.ctx, a.tx, a.businessID, r, seq); err != nil {
-			return err
-		}
-		item, err := json.Marshal(map[string]any{"id": r.ID, "kind": r.Kind, "entityType": r.EntityType, "entityId": r.EntityID,
-			"deviceId": r.DeviceID, "operationId": r.OperationID, "serverSeq": seq, "detail": r.Detail})
-		if err != nil {
-			return err
-		}
-		if _, err := a.persist(stored{EntityType: ControlReviewItem, EntityID: r.ID, Stream: StreamControl, Version: 1, Payload: item,
-			Writer: a.caller.DeviceID}); err != nil {
+		if err := recordReview(a.ctx, a.tx, a.businessID, r, seq); err != nil {
 			return err
 		}
 	}
 	return nil
+}
+
+func recordReview(ctx context.Context, tx pgx.Tx, businessID string, r conflictRow, seq int64) error {
+	if err := insertConflict(ctx, tx, businessID, r, seq); err != nil {
+		return err
+	}
+	item, err := json.Marshal(map[string]any{"id": r.ID, "kind": r.Kind, "entityType": r.EntityType, "entityId": r.EntityID,
+		"deviceId": r.DeviceID, "operationId": r.OperationID, "serverSeq": seq, "detail": r.Detail})
+	if err != nil {
+		return err
+	}
+	_, err = persist(ctx, tx, businessID, stored{EntityType: ControlReviewItem, EntityID: r.ID, Stream: StreamControl, Version: 1, Payload: item,
+		Writer: r.DeviceID})
+	return err
 }
 
 func (a *applier) document(cur *entityRow) (*stored, error) {

@@ -20,8 +20,10 @@ curl -i localhost:8080/v1/health
 
 Environment: `DATABASE_URL`, `JWT_SECRET` (required), `PORT` (8080), `LOG_LEVEL` (`info`|`debug`), and for hydration
 `MUNEEM_S3_ENDPOINT` (a URL; `http://` turns TLS off), `MUNEEM_S3_BUCKET` (created if missing), `MUNEEM_S3_ACCESS_KEY`,
-`MUNEEM_S3_SECRET_KEY`, `MUNEEM_S3_REGION`. Without an endpoint the bootstrap routes answer 503. The Makefile defaults
-point at the docker-compose MinIO.
+`MUNEEM_S3_SECRET_KEY`, `MUNEEM_S3_REGION`. Without an endpoint the bootstrap routes answer 503. Cloud backups (8f)
+also need `MUNEEM_BACKUP_MASTER_KEY` (base64 of 32 bytes; it wraps every escrowed backup key, so it belongs in a secret
+manager or KMS); without it or object storage the `/backups` routes answer 503. The Makefile defaults point at the
+docker-compose MinIO and a dev-only master key.
 Logs are JSON via `log/slog`.
 
 ## Request conventions

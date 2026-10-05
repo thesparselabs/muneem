@@ -2,6 +2,7 @@ import { vi } from 'vitest';
 import type { Db } from '@muneem/db-sqlite';
 import { FaultInjector, type ReferenceServer } from '@muneem/sync-reference';
 import type { App } from '../../src/main/app.js';
+import type { RestoreHost } from '../../src/main/backups/index.js';
 import { MemorySecretStore } from '../../src/main/infra/secrets.js';
 import { caller, ownerAtTill, USER_ID, type FakeServer } from '../helpers.js';
 import { DEVICE_A, DEVICE_B, ownerMembership, referenceCloud, syncedDevice } from './syncHelpers.js';
@@ -22,12 +23,13 @@ export interface DeviceHandle { app: App; db: Db; dir: string }
 export interface CloudHarness {
   readonly clock: Clock;
   readonly net: Network;
-  device(slot: string, opts?: { file?: boolean; dbFile?: string }): Promise<DeviceHandle>;
+  device(slot: string, opts?: { file?: boolean; dbFile?: string; restoreHost?: RestoreHost }): Promise<DeviceHandle>;
   login(app: App): Promise<void>;
   ownerAtTill(app: App): Promise<{ businessId: string }>;
   cloudSales(businessId: string): Promise<number>;
   deadLetters(businessId: string): Promise<readonly unknown[]>;
   trialBalance(businessId: string): Promise<readonly unknown[] | null>;
+  auditChains(businessId: string): Promise<Record<string, number>>;
 }
 
 const SAFE_DRIFT_MS = 4 * 60_000;
@@ -116,5 +118,9 @@ export function referenceHarness(seed: number, start: number): ReferenceHarness 
     cloudSales: (id) => Promise.resolve([...server.business(id)!.entities.values()].filter((e) => e.entityType === 'sale').length),
     deadLetters: (id) => Promise.resolve(server.deadLetters(id)),
     trialBalance: () => Promise.resolve(null),
+    auditChains: (id) => {
+      const audit = server.business(id)!.audit;
+      return Promise.resolve(Object.fromEntries(audit.devices().map((d) => [d, audit.chain(d).length])));
+    },
   };
 }

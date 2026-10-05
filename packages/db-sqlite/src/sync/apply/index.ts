@@ -1,4 +1,4 @@
-import { STREAM_OF, type Change, type OutboxEntityType, type PullResponse, type SyncStream } from '@muneem/contracts';
+import { STREAM_OF, type Change, type OutboxEntityType, type PulledEntityType, type PullResponse, type SyncStream } from '@muneem/contracts';
 import type { Db } from '../../open.js';
 import { rewriteLevels } from '../../repositories/inventory.js';
 import { withTransaction } from '../../uow.js';
@@ -7,11 +7,14 @@ import { applyBarcode, applyConversion, applyPriceItems, BRAND, CATEGORY, PRICE_
 import { ACCOUNT, applyBusiness, applySetting, BRANCH, DOC_SERIES, EXPENSE_CATEGORY, TERMINAL } from './config.js';
 import { actorFor, appliedVersion, markApplied, Touched, type ApplyContext } from './context.js';
 import { applyConflictLog, applyDeviceMessage, applyPeriod, applyReviewItem } from './control.js';
+import { applyFyClose } from './yearEnd.js';
 import { applyDocument, type DocumentApplier } from './documents.js';
 import { EXPENSE } from './expenses.js';
 import { applyJournalEntry } from './journals.js';
 import { applyMaster, type MasterSpec } from './master.js';
 import { CUSTOMER, SUPPLIER, applyCreditLimit } from './parties.js';
+import { CREDIT_NOTE } from './creditNotes.js';
+import { GST_PAYMENT, GST_SETOFF } from './gst.js';
 import { DEBIT_NOTE, PURCHASE } from './purchases.js';
 import { applyCashMovement, POS_SESSION } from './register.js';
 import { recordLocalReview } from './review.js';
@@ -24,16 +27,17 @@ const master = (spec: MasterSpec): Applier => (ctx) => applyMaster(spec, ctx);
 const document = (a: DocumentApplier): Applier => (ctx) => applyDocument(a, ctx);
 
 // One apply function per entity type, keyed like STREAM_OF (7e); control messages have their own (the Go cloud says review_item, the reference server conflict_log).
-const APPLIERS: Readonly<Record<OutboxEntityType | 'conflict_log' | 'review_item' | 'device', Applier>> = {
+const APPLIERS: Readonly<Record<PulledEntityType | 'conflict_log' | 'review_item' | 'device', Applier>> = {
   business: applyBusiness, branch: master(BRANCH), terminal: master(TERMINAL), doc_series: master(DOC_SERIES), setting: applySetting, user_pin: () => undefined,
   account: master(ACCOUNT), expense_category: master(EXPENSE_CATEGORY),
   uom: master(UOM), category: master(CATEGORY), brand: master(BRAND), product: master(PRODUCT), barcode: applyBarcode, uom_conversion: applyConversion,
   price_list: master(PRICE_LIST), price_list_item: applyPriceItems, customer: master(CUSTOMER), customer_credit_limit: applyCreditLimit, supplier: master(SUPPLIER),
   warehouse: master(WAREHOUSE),
-  pos_session: document(POS_SESSION), cash_movement: applyCashMovement, sale: document(SALE), stock_adjustment: applyStockDocument,
+  pos_session: document(POS_SESSION), cash_movement: applyCashMovement, sale: document(SALE), credit_note: document(CREDIT_NOTE), gst_setoff: document(GST_SETOFF), gst_payment: document(GST_PAYMENT),
+  stock_adjustment: applyStockDocument,
   party_opening: document(PARTY_OPENING), purchase: document(PURCHASE), debit_note: document(DEBIT_NOTE), payment: document(PAYMENT), write_off: document(WRITE_OFF),
   expense: document(EXPENSE), allocation: applyAllocationEntity, journal_entry: applyJournalEntry,
-  accounting_period: applyPeriod, conflict_log: applyConflictLog, review_item: applyReviewItem, device: applyDeviceMessage,
+  accounting_period: applyPeriod, fy_close: applyFyClose, conflict_log: applyConflictLog, review_item: applyReviewItem, device: applyDeviceMessage,
 };
 
 // includeOwn: a hydrating device takes every change, its own included, since nothing it once sent is in this database.

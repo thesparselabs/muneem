@@ -1,5 +1,5 @@
-// Package objectstore holds the object storage behind hydration bundles: S3-compatible storage, and an in-memory
-// store for tests.
+// Package objectstore holds the object storage behind hydration bundles and device backups: S3-compatible storage,
+// and an in-memory store for tests.
 package objectstore
 
 import (
@@ -24,6 +24,8 @@ type S3Config struct {
 }
 
 const partSize = 16 << 20
+
+var ErrNotFound = errors.New("object not found")
 
 type S3 struct {
 	client *minio.Client
@@ -80,4 +82,35 @@ func (s *S3) PresignGet(ctx context.Context, key string, ttl time.Duration) (str
 		return "", err
 	}
 	return u.String(), nil
+}
+
+// PresignPut lets a device upload one object straight to storage, without its bytes passing through the API.
+func (s *S3) PresignPut(ctx context.Context, key string, ttl time.Duration) (string, error) {
+	u, err := s.client.PresignedPutObject(ctx, s.bucket, key, ttl)
+	if err != nil {
+		return "", err
+	}
+	return u.String(), nil
+}
+
+// Get streams an object with its size; a missing object is ErrNotFound.
+func (s *S3) Get(ctx context.Context, key string) (io.ReadCloser, int64, error) {
+	obj, err := s.client.GetObject(ctx, s.bucket, key, minio.GetObjectOptions{})
+	if err != nil {
+		return nil, 0, err
+	}
+	info, err := obj.Stat()
+	if err != nil {
+		obj.Close()
+		if minio.ToErrorResponse(err).Code == "NoSuchKey" {
+			return nil, 0, ErrNotFound
+		}
+		return nil, 0, err
+	}
+	return obj, info.Size, nil
+}
+
+// Delete removes an object; deleting one that is missing succeeds.
+func (s *S3) Delete(ctx context.Context, key string) error {
+	return s.client.RemoveObject(ctx, s.bucket, key, minio.RemoveObjectOptions{})
 }

@@ -155,6 +155,8 @@ export type Sale = z.infer<typeof Sale>;
 export const SaleSummary = z.object({
   id: Ulid, docNumber: z.string(), docDate: BusinessDate, customerName: z.string().optional(), totalPaise: Int,
   status: z.enum(['posted', 'cancelled']), createdAt: IsoDateTime,
+  // How much of the bill has come back on credit notes (ADR-0043).
+  returned: z.enum(['none', 'partial', 'full']).optional(),
 });
 export type SaleSummary = z.infer<typeof SaleSummary>;
 export const SaleListInput = z.object({ sessionId: Ulid.optional(), limit: z.number().int().min(1).max(200).default(50), cursor: z.string().max(200).optional() });

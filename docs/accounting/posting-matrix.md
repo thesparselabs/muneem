@@ -30,6 +30,26 @@ and ₹379.60 on credit; COGS is ₹700.
 - **Debits:** Cash 500, Clearing 300, AR 379.60, Round Off 0.40, COGS 700.
 - **Credits:** Sales 1,000, Output CGST 90, Output SGST 90, Inventory 700.
 
+## Credit note (sale return or cancel) ◆
+
+| Dr | Cr | Amount |
+|---|---|---|
+| 4100 Sales — Goods ◆ | | the returned lines' taxable value |
+| 2210 / 2220 / 2230 / 2240 Output CGST / SGST / IGST / Cess | | tax by head, each line's share of the sale line's own tax |
+| 4900 Round Off | | the sale's round-off (signed), only on the note that completes a full return |
+| | 1300 AR (customer) | the part that settles what the customer still owes on the bill, or all of it when credited to the account |
+| | 1100 Cash / 1250 Clearing | the rest, refunded in cash, or by UPI or card |
+| 1400 Inventory | 5100 COGS | the goods back at what they cost when sold: each line's share of the sale line's COGS |
+
+*Example:* the whole of the sale above comes back after the customer has paid ₹79.60 of the ₹379.60 owed. ₹300
+settles the rest of the bill and ₹879.60 is refunded in cash.
+- **Debits:** Sales 1,000, Output CGST 90, Output SGST 90, Inventory 700.
+- **Credits:** Round Off 0.40, Cash 879.60, AR 300, COGS 700.
+
+◆ The return reverses revenue in 4100 itself rather than a separate Sales Returns account, so the P&L shows net sales.
+A part return carries no round-off; the note that completes a full return takes back the sale's, so a bill returned
+in any number of parts nets to exactly zero (ADR-0043). Cancelling a sale is the same journal for the whole bill.
+
 ## Purchase invoice
 
 | Dr | Cr | Amount |
@@ -132,17 +152,53 @@ Every amount is the stock movements' recorded value, so 1400 equals the inventor
 ◆ The drawer does not know why cash went in or out, so it waits in 1199 with the reason as narration until the
 accountant reclassifies it, for example to Drawings or an expense.
 
-Cash that moves for a payment or an expense posts with that document, not here.
+Cash that moves for a payment, an expense or a credit note's cash refund posts with that document, not here. A cash
+refund lowers the register's expected cash like change given.
 
 **Opening a register posts nothing.** The float comes from cash the business already holds, and 1100 is all the
 business's cash, in the drawer and out of it. The cash a shop starts with is recorded once, as a manual journal:
 Dr 1100 Cash, Cr 3400 Opening Balance Equity. Until it is, 1100 shows only what has moved since, and can read below
 zero even though the drawer holds money.
 
+## GST set-off ◆
+
+| Dr | Cr | Amount |
+|---|---|---|
+| 2210 / 2220 / 2230 / 2240 Output CGST / SGST / IGST / Cess | | each head's balance at the month's last day, cleared in full |
+| | 1510 / 1520 / 1530 / 1540 Input CGST / SGST / IGST / Cess | the credit used from each head, in the statutory order |
+| | 2300 GST Payable | what credit could not cover, paid later by challan |
+
+*Example:* output CGST 892.44, SGST 892.43 and cess 99.16 against input IGST 324.00 and cess 18.00. IGST credit pays
+CGST first (the head its own credit cannot cover), cess credit pays cess, and the rest is payable.
+- **Debits:** Output CGST 892.44, Output SGST 892.43, Output Cess 99.16.
+- **Credits:** Input IGST 324.00, Input Cess 18.00, GST Payable 1,542.03.
+
+◆ Posted on the month's last day, numbered `T1S/…`; it never touches AR, AP or Inventory (ADR-0035, ADR-0044).
+
+## GST payment (challan)
+
+| Dr | Cr | Amount |
+|---|---|---|
+| 2300 GST Payable | 1200 Bank | the challan's total; its heads are kept on the document |
+
+## Year-end close ◆
+
+| Dr | Cr | Amount |
+|---|---|---|
+| each 4xxx income account | | its credit balance for the year, cleared |
+| | each 5xxx expense account | its debit balance for the year, cleared |
+| | 3300 Retained Earnings | the year's profit (Dr when a loss) |
+
+*Example:* a year with sales 1,00,000.00, COGS 60,000.00 and rent 12,000.00 closes with Dr Sales 1,00,000.00,
+Cr COGS 60,000.00, Cr Rent 12,000.00 and Cr Retained Earnings 28,000.00.
+
+◆ Dated 31 March and posted into that March even though it is locked, numbered `CL/2526` per business (ADR-0045). It
+never touches control accounts. An **adjusting closing journal** (`CL/2526/2`, …) with the same shape closes whatever
+reaches the year after its close — a document synced in from a device that had not heard of the locks. There is no
+opening journal: balance-sheet accounts simply carry on. The P&L leaves closing journals out, so a closed year's P&L
+reads as it did before the close.
+
 ## Not posted yet
 
-- **Year end:** the closing and opening journals come in Stage 8. Until then, retained earnings are computed on the
-  Balance Sheet.
 - **Card/UPI settlement** (Dr Bank, Dr Bank Charges, Cr Clearing) is a manual journal.
 - **Reverse-charge purchases** are refused (ADR-0023).
-- **Sale returns and credit notes** are deferred.

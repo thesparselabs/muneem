@@ -5,6 +5,7 @@ import { nowIso, withTransaction } from '../uow.js';
 import type { Actor } from './business.js';
 import { recordChange } from './catalogWrite.js';
 import { ensurePeriod } from './journal.js';
+import { isFyClosed } from './yearEnd.js';
 
 export interface PeriodRow {
   id: string; fy: string; periodStart: string; periodEnd: string; status: 'open' | 'locked'; lockedAt: string | null; lockedBy: string | null;
@@ -39,6 +40,8 @@ export function unlockPeriod(db: Db, businessId: string, periodStart: string, re
   return withTransaction(db, () => {
     const id = stmt(db, "SELECT id FROM accounting_period WHERE business_id = ? AND period_start = ? AND status = 'locked'").pluck().get(businessId, periodStart) as string | undefined;
     if (!id) throw new AppError('INVALID_STATE', 'That month is not locked');
+    const fy = stmt(db, 'SELECT fy FROM accounting_period WHERE id = ?').pluck().get(id) as string;
+    if (isFyClosed(db, businessId, fy)) throw new AppError('INVALID_STATE', `${fy} is closed; its months stay locked (ADR-0045)`);
     stmt(db, `UPDATE accounting_period SET status = 'open', unlock_reason = ?, updated_at = ?, version = version + 1, sync_state = 'pending' WHERE id = ?`)
       .run(reason, nowIso(), id);
     const row = listPeriods(db, businessId).find((p) => p.id === id)!;

@@ -9,6 +9,10 @@ export const SETTING_SCHEMAS = {
   'pos.blindClose': z.boolean(),
   'pos.varianceThresholdPaise': Paise,
   'gst.b2clThresholdPaise': Paise.refine((v) => v > 0, 'must be more than zero'),
+  // Effective-dated thresholds (LLD §3.1); the latest on or before a bill's date wins, else gst.b2clThresholdPaise.
+  'gst.b2clThresholds': z.array(z.object({
+    effectiveFrom: z.string().regex(/^\d{4}-\d{2}-\d{2}$/u, 'a date'), paise: Paise.refine((v) => v > 0, 'must be more than zero'),
+  })).max(20),
   'inventory.negativeStock': z.enum(['block', 'warn', 'allow']),
   'pos.receiptFooter': z.array(z.string().trim().max(48, 'at most 48 characters per line')).max(5, 'at most 5 lines'),
 } as const;

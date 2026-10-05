@@ -16,6 +16,10 @@ export interface Incoming { payload: Payload; updatedAt: string | null; deviceId
 export interface FieldConflict { field: string; rule: 'cloud_wins' | 'last_writer_wins'; winner: 'cloud' | 'device'; cloudValue: unknown; deviceValue: unknown }
 export interface Merge { payload: Payload; conflicts: FieldConflict[] }
 
+// ADR-0050: an erased customer's profile stays erased; a stale edit made before the erasure cannot bring any of it back.
+const erasureWins = (entityType: string, stored: Payload, incoming: Payload): boolean =>
+  entityType === 'customer' && typeof stored.erasedAt === 'string' && typeof incoming.erasedAt !== 'string';
+
 const cloudWins = (entityType: string, field: string): boolean => CLOUD_WINS_TYPES.has(entityType) || CLOUD_WINS_FIELDS.has(field);
 
 // Later updatedAt wins; a tie goes to the higher device id, so every replay picks the same side.
@@ -27,6 +31,9 @@ const deviceIsLater = (s: Stored, i: Incoming): boolean => {
 
 // A push based on an older version is merged field by field against the version it was based on (ADR-0041).
 export function mergeStale(entityType: string, base: Payload, stored: Stored, incoming: Incoming): Merge {
+  if (erasureWins(entityType, stored.payload, incoming.payload)) {
+    return { payload: { ...stored.payload }, conflicts: [{ field: 'erasedAt', rule: 'cloud_wins', winner: 'cloud', cloudValue: stored.payload.erasedAt, deviceValue: null }] };
+  }
   const payload: Payload = { ...stored.payload };
   const conflicts: FieldConflict[] = [];
   for (const [field, deviceValue] of Object.entries(incoming.payload)) {

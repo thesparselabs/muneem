@@ -1,5 +1,5 @@
 // Child for the kill -9 suite: sets the till up once, then completes sales until it is killed.
-import { CompleteSaleInput, CustomerInput, ProductInput, SaleDraft } from '@muneem/contracts';
+import { CompleteReturnInput, CompleteSaleInput, CustomerInput, ProductInput, SaleDraft } from '@muneem/contracts';
 import { newUlid } from '@muneem/domain';
 import { createCustomer, createProduct, findUomByCode, getMeta, setCustomerCreditLimit, setMeta, withTransaction } from '@muneem/db-sqlite';
 import { caller, ownerAtTill, testApp } from '../helpers.js';
@@ -27,7 +27,22 @@ if (!getMeta(db, READY)) {
 
 const { pcs, ids, customerId } = JSON.parse(getMeta(db, READY)!) as { pcs: string; ids: string[]; customerId: string };
 process.stdout.write('ready\n');
-for (let n = 0; ; n++) {
+// Every fourth bill comes back before the next one, in part or (every eighth) whole, so kills also land inside a credit note
+// (ADR-0043); the check reads the database, so a return a kill cut short is made again after the restart.
+function takeBack(): void {
+  const made = db.prepare('SELECT COUNT(*) FROM sale').pluck().get() as number;
+  const saleId = db.prepare('SELECT id FROM sale ORDER BY rowid DESC LIMIT 1').pluck().get() as string | undefined;
+  if (!saleId || made % 4 !== 3 || db.prepare('SELECT 1 FROM credit_note WHERE sale_id = ?').get(saleId)) return;
+  if (made % 8 === 7) {
+    app.returns.cancel({ saleId, reason: 'billed by mistake' });
+    return;
+  }
+  const back = { saleId, lines: [{ lineNo: 1, qtyMilli: 1000 }] };
+  app.returns.complete(CompleteReturnInput.parse({ ...back, commandId: newUlid(), reason: 'damaged', expectedTotalPaise: app.returns.quote(back).totalPaise }));
+}
+
+// Numbering carries on from the sales already made, so every pattern below recurs however early the kills land.
+for (let n = db.prepare('SELECT COUNT(*) FROM sale').pluck().get() as number; ; n++) {
   const lines = Array.from({ length: 1 + (n % 6) }, (_, i) => ({ productId: ids[(n * 7 + i * 3) % ids.length]!, uomId: pcs, qtyMilli: 1000 * (1 + (i % 3)) }));
   // Every fourth sale is partly on credit, so kills also land in the ledger step (ADR-0026).
   const credit = n % 4 === 1;
@@ -36,6 +51,7 @@ for (let n = 0; ; n++) {
   const half = Math.floor(total / 2);
   const tenders = credit ? [{ method: 'cash', amountPaise: total - half }, { method: 'credit', amountPaise: half }]
     : n % 3 === 0 ? [{ method: 'upi', amountPaise: total }] : [{ method: 'cash', amountPaise: total + (n % 5) * 100 }];
+  takeBack();
   app.sales.complete(CompleteSaleInput.parse({ ...draft, commandId: newUlid(), expectedTotalPaise: total, tenders }));
   await new Promise((r) => setImmediate(r)); // like a real till: the print queue runs between sales, so kills land there too
 }

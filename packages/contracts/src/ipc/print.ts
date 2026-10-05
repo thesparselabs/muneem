@@ -4,7 +4,7 @@ const Int = z.number().int();
 
 // The receipt as data. Amounts stay in paise; layout for a given paper width happens at print time.
 export const ReceiptDoc = z.object({
-  title: z.enum(['TAX INVOICE', 'BILL OF SUPPLY']),
+  title: z.enum(['TAX INVOICE', 'BILL OF SUPPLY', 'CREDIT NOTE']),
   duplicate: z.boolean(),
   copyNo: Int,
   header: z.object({
@@ -19,6 +19,9 @@ export const ReceiptDoc = z.object({
   cashier: z.string(),
   customer: z.object({ name: z.string(), gstin: z.string().optional(), phone: z.string().optional() }).optional(),
   placeOfSupply: z.string(),
+  // A credit note names the invoice it is against and why (ADR-0043).
+  against: z.object({ docNumber: z.string(), docDate: z.string() }).optional(),
+  reason: z.string().optional(),
   lines: z.array(z.object({ name: z.string(), hsnCode: z.string().optional(), qty: z.string(), unitPricePaise: Int, discountPaise: Int, amountPaise: Int })),
   totals: z.object({
     grossPaise: Int, discountPaise: Int, taxablePaise: Int, cgstPaise: Int, sgstPaise: Int, igstPaise: Int, cessPaise: Int,

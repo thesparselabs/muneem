@@ -2,13 +2,17 @@
  * Composition root. Builds services + IPC handlers from explicit dependencies so tests can wire
  * an in-memory SQLite, a memory secret store and a fake fetch without touching Electron.
  */
-import { listStock, listWarehouses, productMovements, readSyncStatus, rebuildStockLevels, stockValuation, type Db } from '@muneem/db-sqlite';
+import { backupHealth, defaultWarehouseId, listAllLowStock, listStock, listWarehouses, openDatabase, openReviewCounts, partyDues, productMovements, readSyncStatus, rebuildStockLevels, stockValuation, type Db } from '@muneem/db-sqlite';
 import { CloudClient } from './infra/cloudClient.js';
 import { Connectivity } from './infra/connectivity.js';
 import { EventBus } from './infra/events.js';
 import type { Loggers } from './infra/logger.js';
 import { SECRET_KEYS, type SecretStore } from './infra/secrets.js';
-import { createGateway, type Handlers } from './ipc/gateway.js';
+import { createGateway, DEVICE_AUDIT_SCOPE, type Handlers } from './ipc/gateway.js';
+import { createBackups, type BackupTransport, type RestoreHost } from './backups/index.js';
+import { HttpBackupTransport } from './backups/httpBackupTransport.js';
+import { swapHost } from './backups/recovery.js';
+import { isBackupTransport } from './backups/transport.js';
 import { Rbac } from './rbac.js';
 import { AuthService } from './services/auth.js';
 import { BusinessService } from './services/business.js';
@@ -30,8 +34,13 @@ import { WriteOffService } from './services/payments/writeOffs.js';
 import { ExpenseService } from './services/expenses/expenseService.js';
 import { JournalBacklog } from './services/accounting/backlog.js';
 import { PeriodService } from './services/accounting/periods.js';
+import { YearEndService } from './services/accounting/yearEnd.js';
 import { ChartService } from './services/accounting/chart.js';
 import { ManualJournalService } from './services/accounting/manualJournals.js';
+import { GstContext } from './services/gst/gstContext.js';
+import { GstPaymentService } from './services/gst/paymentService.js';
+import { GstReturnService } from './services/gst/returnService.js';
+import { GstSetoffService } from './services/gst/setoffService.js';
 import { StatementService } from './services/accounting/statements.js';
 import { PurchasePricing } from './services/purchases/purchasePricing.js';
 import { PurchaseReturnService } from './services/purchases/purchaseReturns.js';
@@ -43,6 +52,7 @@ import { PosContext } from './services/pos/posContext.js';
 import { RegisterService } from './services/pos/register.js';
 import { SalePricing } from './services/pos/salePricing.js';
 import { SaleService } from './services/pos/sales.js';
+import { ReturnService } from './services/returns/returnService.js';
 import { ProductSearch } from './services/productSearch.js';
 import { ProductService } from './services/products.js';
 import { DeviceService } from './services/device.js';
@@ -61,6 +71,19 @@ import { HydrationService } from './sync/hydration/hydrationService.js';
 import { Hydrator } from './sync/hydration/hydrator.js';
 import { dirname, join } from 'node:path';
 
+import { ReportCatalogue } from './reports/catalogue.js';
+import { REPORTS } from './reports/definitions/index.js';
+import { CsvWriter } from './reports/exports/csv.js';
+import { PdfWriter, type PdfRenderer } from './reports/exports/pdf.js';
+import { XlsxWriter } from './reports/exports/xlsx.js';
+import { ReportService, type SaveFile } from './reports/service.js';
+import { DashboardService } from './reports/dashboard.js';
+import { createUpdates } from './update/index.js';
+import { DEFAULT_UPDATE_BASE_URL } from './update/channels.js';
+import type { Updater } from './update/updater.js';
+import { createNotifications } from './notifications/index.js';
+import { CustomerPrivacyService } from './services/parties/customerPrivacy.js';
+import type { SyncStatus, UpdateStatus } from '@muneem/contracts';
 export interface AppConfig {
   db: () => Db;
   dbFile: string;
@@ -82,6 +105,13 @@ export interface AppConfig {
   hydrationDir?: string;
   bundleFetcher?: BundleFetcher;
   sleep?: (ms: number) => Promise<void>;
+  saveFile?: SaveFile;
+  pdfRenderer?: PdfRenderer;
+  backupTransport?: (credentials: () => Credentials | null) => BackupTransport;
+  restoreHost?: RestoreHost;
+  updater?: Updater | null;
+  updateBaseUrl?: string;
+  registerIdleMs?: number;
 }
 
 export function createApp(cfg: AppConfig) {
@@ -122,10 +152,25 @@ export function createApp(cfg: AppConfig) {
   const writeOffs = new WriteOffService(posCtx, allocator);
   const expenses = new ExpenseService(posCtx, drawer);
   const periods = new PeriodService(posCtx);
+  const yearEnd = new YearEndService(posCtx);
   const backlog = new JournalBacklog(posCtx);
   const statements = new StatementService(posCtx);
+  let readDb: Db | null = null;
+  const closeReadConnections = () => { readDb?.close(); readDb = null; };
+  const reportDb = () => (cfg.dbFile === ':memory:' ? cfg.db() : (readDb ??= openDatabase(cfg.dbFile, { readonly: true })));
+  const reports = new ReportService({
+    catalogue: new ReportCatalogue(REPORTS),
+    readDb: reportDb,
+    businessId: () => posCtx.businessId(), today: () => posCtx.today(), can: (p) => posCtx.can(p),
+    business: () => { const b = business.get(); return { name: b?.name ?? '', gstin: b?.gstin ?? null }; },
+    writers: [new CsvWriter(), new XlsxWriter(), ...(cfg.pdfRenderer ? [new PdfWriter(cfg.pdfRenderer)] : [])],
+    saveFile: cfg.saveFile ?? ((fileName) => Promise.resolve({ saved: false, fileName })),
+  });
   const chart = new ChartService(posCtx, statements);
+  const dashboard = new DashboardService({ readDb: reportDb, businessId: () => posCtx.businessId(), today: () => posCtx.today(), lowStock: () => listStock(cfg.db(), posCtx.businessId(), inventory.warehouseId(), { lowOnly: true, limit: 50 }).items });
   const manualJournals = new ManualJournalService(posCtx);
+  const gstCtx = new GstContext(posCtx);
+  const gst = { returns: new GstReturnService(gstCtx), setoffs: new GstSetoffService(gstCtx), payments: new GstPaymentService(gstCtx) };
   const register = new RegisterService(posCtx);
   const heldBills = new HeldBillService(posCtx, register);
   const inventory = new InventoryService(posCtx);
@@ -133,9 +178,10 @@ export function createApp(cfg: AppConfig) {
   const printerConfig = new PrinterConfigStore(cfg.db);
   const printQueue = new PrintQueue({ db: cfg.db, config: printerConfig, receiptsDir: cfg.receiptsDir, log: cfg.loggers.hardware });
   const sales = new SaleService(posCtx, new SalePricing(posCtx), register, () => session.require().user.name, (r) => printQueue.enqueue(r.printJobId));
+  const returns = new ReturnService(posCtx, () => session.require().user.name, (r) => printQueue.enqueue(r.printJobId));
   const productImport = new ImportService(catalogCtx, new PreviewStore(cfg.now ?? (() => Date.now())), invalidateSearch);
   const diagnostics = new DiagnosticsService({
-    db: cfg.db, dbFile: cfg.dbFile, backupsDir: cfg.backupsDir, bundlesDir: cfg.bundlesDir, loggers: cfg.loggers, session, device,
+    db: cfg.db, dbFile: cfg.dbFile, bundlesDir: cfg.bundlesDir, loggers: cfg.loggers, session, device,
     appVersion: cfg.appVersion, secretStoreAvailable: cfg.secrets.encrypted, connectivity: () => connectivity.snapshot(),
   });
   const syncStatus = () => readSyncStatus(cfg.db(), connectivity.online, connectivity.serverSkewMs);
@@ -147,6 +193,22 @@ export function createApp(cfg: AppConfig) {
   const syncTransport = cfg.syncTransport?.(credentials) ?? new HttpTransport({
     baseUrl: cfg.apiBaseUrl, appVersion: cfg.appVersion, schemaVersion: currentSchemaVersion(cfg.db()), credentials, ...(cfg.fetchImpl && { fetchImpl: cfg.fetchImpl }),
   });
+  const bundleFetcher = cfg.bundleFetcher ?? (isBundleFetcher(syncTransport) ? syncTransport : new HttpBundleDownloader(cfg.fetchImpl));
+  const backupTransport = cfg.backupTransport?.(credentials) ?? (isBackupTransport(syncTransport) ? syncTransport : new HttpBackupTransport({
+    baseUrl: cfg.apiBaseUrl, appVersion: cfg.appVersion, schemaVersion: currentSchemaVersion(cfg.db()), credentials, ...(cfg.fetchImpl && { fetchImpl: cfg.fetchImpl }),
+  }, cfg.fetchImpl));
+  const backups = createBackups({
+    db: cfg.db, dir: cfg.backupsDir, secrets: cfg.secrets, device, session, transport: () => backupTransport, fetcher: bundleFetcher,
+    host: cfg.restoreHost ?? swapHost(() => { closeReadConnections(); cfg.db().close(); }, cfg.dbFile),
+    appVersion: cfg.appVersion, now: cfg.now ?? (() => Date.now()), sleep: cfg.sleep ?? ((ms) => new Promise((resolve) => setTimeout(resolve, ms))),
+    loggers: cfg.loggers, auditScope: DEVICE_AUDIT_SCOPE,
+  });
+  const updates = createUpdates({
+    db: cfg.db, updater: cfg.updater ?? null, baseUrl: cfg.updateBaseUrl ?? DEFAULT_UPDATE_BASE_URL, appVersion: cfg.appVersion, installationId: () => device.installationId(),
+    registerOpen: () => { try { return register.current() !== null; } catch { return false; } },
+    emit: (status) => { events.emit('update.status', status); announceUpdate(status); }, now: cfg.now ?? (() => Date.now()), log: cfg.loggers.app,
+    ...(cfg.registerIdleMs !== undefined && { registerIdleMs: cfg.registerIdleMs }),
+  });
   const gate = new HydrationGate(cfg.db, cfg.coldStart ?? 'hydrate');
   const syncEngine = new SyncEngine({
     db: cfg.db, transport: syncTransport, device, businessId: () => session.get()?.businessId ?? null, schemaVersion: () => currentSchemaVersion(cfg.db()),
@@ -155,7 +217,7 @@ export function createApp(cfg: AppConfig) {
   });
   const sync = new SyncScheduler(syncEngine, { now: cfg.now ?? (() => Date.now()), onError: (e) => cfg.loggers.sync.error({ err: String(e) }, 'sync run failed') });
   const hydrator = new Hydrator({
-    db: cfg.db, transport: syncTransport, fetcher: cfg.bundleFetcher ?? (isBundleFetcher(syncTransport) ? syncTransport : new HttpBundleDownloader(cfg.fetchImpl)),
+    db: cfg.db, transport: syncTransport, fetcher: bundleFetcher,
     dir: cfg.hydrationDir ?? join(dirname(cfg.bundlesDir), 'hydration'), refreshAuth: () => auth.refreshAccessToken(), now: cfg.now ?? (() => Date.now()),
     sleep: cfg.sleep ?? ((ms) => new Promise((resolve) => setTimeout(resolve, ms))), log: cfg.loggers.sync,
     onProgress: (h, linesTotal) => hydration.progress(h, linesTotal),
@@ -169,8 +231,42 @@ export function createApp(cfg: AppConfig) {
     send: (channel, payload) => {
       if (channel === 'connectivity.changed' && (payload as { online?: boolean }).online) sync.online();
       if (channel === 'session.changed' && (payload as { businessId?: string | null } | null)?.businessId) sync.online();
+      if (channel === 'session.changed') updates.activity.clearCart();
     },
   });
+  const openBusiness = () => { const id = session.get()?.businessId ?? null; return id && !gate.holds(id) ? id : null; };
+  const notifications = createNotifications({
+    db: cfg.db, businessId: openBusiness, now: cfg.now ?? (() => Date.now()), emit: (n) => events.emit('notification.new', n),
+    can: (p) => { const s = session.get(); return !!s && rbac.has(s, p) !== null; },
+    log: (err, kind) => cfg.loggers.app.error({ err: String(err), kind }, 'notification check failed'),
+    sources: {
+      today: () => posCtx.today(), now: cfg.now ?? (() => Date.now()), syncStatus, backupHealth: () => backupHealth(cfg.db()),
+      // Read-only: a check must not create the branch's warehouse; before it exists every product simply has none.
+      lowStock: () => listAllLowStock(cfg.db(), posCtx.businessId(), defaultWarehouseId(cfg.db(), session.require().branchId ?? '') ?? ''),
+      dues: (partyType, dueBefore) => partyDues(cfg.db(), posCtx.businessId(), partyType, dueBefore),
+      businessCreatedAt: () => business.get()?.createdAt ?? null,
+      reviewCounts: () => openReviewCounts(cfg.db(), posCtx.businessId()),
+    },
+  });  // ADR-0050: the updater's ready state is a notification for everyone; a later status resolves it.
+  function announceUpdate(status: UpdateStatus): void {
+    const release = status.availableVersion;
+    if (status.state === 'ready' && release) {
+      notifications.service.notify('update_ready', {
+        severity: 'info', entityType: 'release', entityId: release, title: `Update ${release} is ready`,
+        body: 'It installs when the register is closed, or from Settings → Updates.', link: '/settings/updates',
+      });
+    }
+  }
+
+  // ADR-0050: detectors run when a business opens and when sync's health changes; the 6-hourly timer runs them all.
+  events.attach({
+    send: (channel, payload) => {
+      if (channel === 'session.changed' && openBusiness()) notifications.runner.run();
+      if (channel === 'sync.status') notifications.runner.onSyncStatus(payload as SyncStatus);
+    },
+  });
+  const customerPrivacy = new CustomerPrivacyService(posCtx, customers, () => business.get()?.name ?? '',
+    cfg.saveFile ?? ((fileName) => Promise.resolve({ saved: false, fileName })), cfg.now ?? (() => Date.now()));
 
   const handlers: Handlers = {
     'auth.register': (i) => auth.register(i),
@@ -226,6 +322,10 @@ export function createApp(cfg: AppConfig) {
     'customers.setOpening': (i) => customerLedger.setOpening(i),
     'customers.getLedger': (i) => customerLedger.ledger(i),
     'customers.getOutstanding': (i) => customerLedger.outstanding(i),
+    'customers.setConsent': (i) => customerPrivacy.setConsent(i),
+    'customers.withdrawConsent': (i) => customerPrivacy.withdrawConsent(i),
+    'customers.exportProfile': (i) => customerPrivacy.exportProfile(i),
+    'customers.erase': (i) => customerPrivacy.erase(i),
     'suppliers.search': (i) => suppliers.search(i.query, i.limit),
     'suppliers.get': (i) => suppliers.get(i.id),
     'suppliers.create': (i) => suppliers.create(i),
@@ -268,6 +368,9 @@ export function createApp(cfg: AppConfig) {
     'accounting.lockPeriod': (i) => periods.lock(i.periodStart),
     'accounting.unlockPeriod': (i) => periods.unlock(i.periodStart, i.reason),
     'accounting.listLatePostings': () => periods.latePostings(),
+    'accounting.getYearEnd': () => yearEnd.list(),
+    'accounting.closeYear': (i) => yearEnd.close(i.fy),
+    'accounting.recloseYear': (i) => yearEnd.reclose(i.fy),
     'accounting.postBacklog': () => backlog.run(),
     'accounting.rebuildBalances': () => ({ rebuilt: backlog.rebuildBalances() }),
     'pos.getSession': () => register.current(),
@@ -275,7 +378,11 @@ export function createApp(cfg: AppConfig) {
     'pos.cashMovement': (i) => { register.cashMovement(i); return { ok: true as const }; },
     'pos.xReport': () => register.xReport(),
     'pos.zReport': (i) => register.zReport(i.sessionId),
-    'pos.closeRegister': (i) => register.close(i),
+    'pos.closeRegister': (i) => {
+      const report = register.close(i);
+      backups.scheduler.afterRegisterClose();
+      return report;
+    },
     'pos.holdBill': (i) => heldBills.hold(i.label, i.cart),
     'pos.listHeldBills': () => heldBills.list(),
     'pos.getHeldBill': (i) => heldBills.get(i.id),
@@ -285,6 +392,13 @@ export function createApp(cfg: AppConfig) {
     'sales.get': (i) => sales.get(i.id),
     'sales.list': (i) => sales.list(i),
     'sales.getReceipt': (i) => sales.receipt(i.saleId),
+    'sales.cancel': (i) => returns.cancel(i),
+    'returns.quote': (i) => returns.quote(i),
+    'returns.complete': (i) => returns.complete(i),
+    'returns.get': (i) => returns.get(i.id),
+    'returns.list': (i) => returns.list(i),
+    'returns.getReceipt': (i) => returns.receipt(i.creditNoteId),
+    'returns.reprint': (i) => { returns.get(i.creditNoteId); return { jobId: printQueue.reprint(i.creditNoteId, posCtx.userId()) }; },
     'printer.getConfig': () => printerConfig.get(),
     'printer.setConfig': (i) => printerConfig.set(i),
     'printer.testPrint': async () => { await printQueue.testPrint(); return { ok: true as const }; },
@@ -303,6 +417,15 @@ export function createApp(cfg: AppConfig) {
     'inventory.stockTake': (i) => inventory.stockTake(i),
     'inventory.importOpeningPreview': (i) => openingImport.preview(i),
     'inventory.importOpeningCommit': (i) => openingImport.commit(i.importId, i.commandId),
+    'reports.listDefinitions': () => reports.list(),
+    'reports.run': (i) => reports.run(i.id, i.params),
+    'reports.export': (i) => reports.export(i.id, i.params, i.format),
+    'gst.returnSummary': (i) => gst.returns.summary(i.month),
+    'gst.previewSetoff': (i) => gst.setoffs.preview(i.month),
+    'gst.postSetoff': (i) => gst.setoffs.post(i),
+    'gst.recordPayment': (i) => gst.payments.record(i),
+    'gst.ledger': () => gst.payments.ledger(),
+    'reports.dashboard': () => dashboard.get(),
     'sync.getStatus': () => syncStatus(),
     'sync.retry': () => { void sync.retry(); return syncStatus(); },
     ...syncScreenHandlers({
@@ -313,9 +436,12 @@ export function createApp(cfg: AppConfig) {
     'sync.hydrationStatus': () => hydration.status(),
     'diagnostics.getHealth': () => diagnostics.getHealth(),
     'diagnostics.integrityCheck': () => diagnostics.integrityCheck(),
-    'diagnostics.backupNow': () => diagnostics.backupNow('manual'),
+    'diagnostics.verifyAudit': () => diagnostics.verifyAudit(),
     'diagnostics.exportSupportBundle': () => diagnostics.exportSupportBundle(),
     'diagnostics.getLogsTail': (i) => diagnostics.getLogsTail(i.log, i.lines),
+    ...backups.handlers,
+    ...updates.handlers,
+    ...notifications.handlers,
   };
 
   printQueue.resumeUnfinished(catalogCtx.today());
@@ -323,9 +449,9 @@ export function createApp(cfg: AppConfig) {
   const gateway = createGateway({
     handlers, session, rbac, db: cfg.db, deviceId: () => device.localDeviceId(), loggers: cfg.loggers, events,
     connectivity: () => connectivity.snapshot(), isTrustedSender: cfg.isTrustedSender ?? (() => true), ...(cfg.now && { now: cfg.now }),
-    onCommitted: () => sync.nudge(), holds: (id) => gate.holds(id),
+    onCommitted: (channel) => { sync.nudge(); notifications.runner.afterCommit(channel); }, holds: (id) => gate.holds(id), onDispatch: (channel) => updates.activity.dispatch(channel),
   });
 
-  return { events, session, rbac, cloud, connectivity, device, auth, business, settings, products, catalog, pricing, productImport, customers, suppliers, customerLedger, supplierLedger, purchases, purchaseReturns, purchaseImport, payments, writeOffs, expenses, periods, backlog, statements, chart, manualJournals, register, sales, printQueue, inventory, openingImport, diagnostics, gateway, handlers, syncStatus, syncEngine, sync, hydration, hydrationGate: gate };
+  return { events, session, reports, dashboard, rbac, cloud, connectivity, device, auth, business, settings, products, catalog, pricing, productImport, customers, suppliers, customerLedger, supplierLedger, purchases, purchaseReturns, purchaseImport, payments, writeOffs, expenses, periods, yearEnd, backlog, statements, chart, manualJournals, gst, register, sales, returns, printQueue, inventory, openingImport, diagnostics, backups, closeReadConnections, gateway, handlers, syncStatus, syncEngine, sync, hydration, hydrationGate: gate, updates, notifications, customerPrivacy };
 }
 export type App = ReturnType<typeof createApp>;

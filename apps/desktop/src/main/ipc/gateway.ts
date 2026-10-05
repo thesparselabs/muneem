@@ -1,14 +1,14 @@
 import { ZodError, type z } from 'zod';
 import { AppError, contract, type Channel, type ClientError, type Contract, type IpcEnvelope, type Session } from '@muneem/contracts';
 import { newUlid } from '@muneem/domain';
-import { appendAudit, readSyncStatus, withTransaction, type Db } from '@muneem/db-sqlite';
+import { appendAudit, DEVICE_AUDIT_SCOPE, readSyncStatus, withTransaction, type Db } from '@muneem/db-sqlite';
 import type { Loggers } from '../infra/logger.js';
 import type { SessionService } from '../services/session.js';
 import type { Rbac } from '../rbac.js';
 import type { EventBus } from '../infra/events.js';
 
-/** Audit scope for events that happen before any business exists (login, device setup). */
-export const DEVICE_AUDIT_SCOPE = '_device';
+/** Audit scope for events that happen before any business exists (login, device setup); never pushed. */
+export { DEVICE_AUDIT_SCOPE };
 
 /** Handler input is the PARSED (z.output) shape; output is re-validated by the gateway. */
 export type Handler<C extends Channel> = (input: z.output<Contract[C]['input']>, ctx: Session | null) => unknown;
@@ -27,10 +27,12 @@ export interface GatewayDeps {
   now?: () => number;
   onCommitted?: (channel: string) => void;
   holds?: (businessId: string) => boolean;
+  // Called as a handler starts; the returned function runs when it settles (8i counts commands in flight).
+  onDispatch?: (channel: string) => () => void;
 }
 
 // FR-086: while a business is being imported only sign-in, sync, diagnostics and reading the business itself are open.
-const OPEN_WHILE_IMPORTING = /^(auth|sync|diagnostics|device|app)\.|^business\.(get|create)$/u;
+const OPEN_WHILE_IMPORTING = /^(auth|sync|diagnostics|device|app|update)\.|^business\.(get|create)$/u;
 
 /** Token bucket per (channel, principal). */
 class RateLimiter {
@@ -97,7 +99,13 @@ export function createGateway(d: GatewayDeps) {
         throw new AppError('INVALID_STATE', 'This device is still adding the business. Billing opens when it is ready to bill offline.');
       }
       limiter.hit(channel, ctx?.user.id ?? 'anon', spec.rateLimit.perSec);
-      const out = await (d.handlers[channel as Channel] as (i: unknown, c: Session | null) => unknown)(input, ctx);
+      const settled = d.onDispatch?.(channel);
+      let out: unknown;
+      try {
+        out = await (d.handlers[channel as Channel] as (i: unknown, c: Session | null) => unknown)(input, ctx);
+      } finally {
+        settled?.();
+      }
       if (spec.audit) {
         const after = d.session.get();
         const businessId = after?.businessId ?? ctx?.businessId ?? DEVICE_AUDIT_SCOPE;

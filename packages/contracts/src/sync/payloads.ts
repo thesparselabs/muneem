@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import type { OutboxEntityType } from './types.js';
+import { AuditEntryPayload } from './audit.js';
 
 // Version 1 of the wire is the payload each repository already records (Stage 7a). Known fields are typed so
 // the cloud and the apply path can rely on them; anything else passes through untouched.
@@ -65,6 +66,33 @@ const DebitNote = open({
   lines: z.array(open({ purchaseItemId: Id, qtyMilli: z.number().int() })).min(1), movements: z.array(MovementPayload), corrections: z.array(JournalPayload),
   entry: PartyEntryPayload, journal: JournalPayload, ...TaxHeads, ...Filing, warehouseId: Id.optional(), allocations: z.array(AllocationLine).optional(),
 });
+// ADR-0043: each line carries the sale line it came from, so a server can recompute the return from the sale's own tax.
+const SoldLine = open({ qtyMilli: z.number().int(), baseQtyMilli: z.number().int(), taxablePaise: Paise, cogsPaise: Paise, ...TaxHeads });
+const CreditNote = open({
+  id: Id, businessId: Id, saleId: Id, terminalId: Id, sessionId: Id.nullish(), customerId: Id.nullish(), docNumber: z.string(), docDate: Day,
+  kind: z.enum(['return', 'cancel']), reason: z.string(), supplyType: z.string(), taxablePaise: Paise, roundOffPaise: Paise, totalPaise: Paise, costPaise: Paise,
+  refundMethod: z.enum(['cash', 'upi', 'card', 'credit']), refundPaise: Paise, creditPaise: Paise, ...TaxHeads,
+  lines: z.array(open({
+    saleItemId: Id, productId: Id, qtyMilli: z.number().int(), baseQtyMilli: z.number().int(), returnedBeforeMilli: z.number().int(), taxablePaise: Paise,
+    totalPaise: Paise, costPaise: Paise, sold: SoldLine, ...TaxHeads,
+  })).min(1),
+  movements: z.array(MovementPayload), corrections: z.array(JournalPayload), entry: PartyEntryPayload.nullable(), allocations: z.array(AllocationLine),
+  journal: JournalPayload, ...Filing, warehouseId: Id.optional(),
+});
+// ADR-0044: a set-off carries the balances it was computed from, so a server can recompute the statutory utilisation.
+const GstHeadsPayload = open({ igstPaise: Paise, cgstPaise: Paise, sgstPaise: Paise, cessPaise: Paise });
+const GstSetoff = open({
+  id: Id, businessId: Id, terminalId: Id, docNumber: z.string(), docDate: Day, month: Day, liability: GstHeadsPayload, credit: GstHeadsPayload,
+  utilisation: open({
+    igstToIgstPaise: Paise, igstToCgstPaise: Paise, igstToSgstPaise: Paise, cgstToCgstPaise: Paise, cgstToIgstPaise: Paise, sgstToSgstPaise: Paise,
+    sgstToIgstPaise: Paise, cessToCessPaise: Paise,
+  }),
+  cash: GstHeadsPayload, journal: JournalPayload.nullable(), ...Filing,
+});
+const GstPayment = open({
+  id: Id, businessId: Id, terminalId: Id, docNumber: z.string(), docDate: Day, month: Day.nullish(), challanRef: z.string().min(1), totalPaise: Paise,
+  ...TaxHeads, journal: JournalPayload, ...Filing,
+});
 const Payment = open({
   id: Id, businessId: Id, partyType: z.enum(['customer', 'supplier']), partyId: Id, docNumber: z.string(), paymentDate: Day, method: z.string(),
   amountPaise: Paise, allocations: z.array(AllocationLine), entry: PartyEntryPayload, journal: JournalPayload, ...Filing, terminalId: Id.nullish(),
@@ -92,12 +120,27 @@ const SessionClose = open({ sessionId: Id, closedAt: Ts, countedCashPaise: Paise
 const CashMovement = open({ id: Id, sessionId: Id, kind: z.string(), amountPaise: Paise, reason: z.string() });
 const Allocation = open({ creditType: z.string(), creditId: Id, allocations: z.array(AllocationLine) });
 const Period = open({ id: Id, periodStart: Day, periodEnd: Day, status: z.enum(['open', 'locked']) });
+// ADR-0045: the whole close each time — version 1 closes the year, each later version adds one adjusting closing.
+const ClosingBalance = open({ code: z.string(), type: z.enum(['income', 'expense']), netPaise: Paise });
+const FyClose = open({
+  id: Id, businessId: Id, fy: z.string().regex(/^\d{4}-\d{2}$/u), fyEnd: Day, version: z.number().int().positive(),
+  closings: z.array(open({ version: z.number().int().positive(), journal: JournalPayload.nullable(), balances: z.array(ClosingBalance) })),
+});
 
 const master = open({ id: Id.optional() });
+// ADR-0050: consents travel inside the customer; a withdrawal is never undone, and erasure blanks the profile for good.
+const Consent = open({
+  id: Id, purpose: z.enum(['payment_reminders']), channel: z.enum(['sms', 'whatsapp']), method: z.string(), givenAt: Ts, withdrawnAt: Ts.nullable(),
+  capturedBy: z.string(),
+});
+const CustomerMaster = open({ id: Id.optional(), consents: z.array(Consent).optional(), erasedAt: Ts.nullish() });
 const EXACT: Partial<Record<OutboxEntityType, Partial<Record<string, z.ZodTypeAny>>>> = {
   sale: { create: Sale },
   purchase: { create: Purchase, cancel: Cancel },
   debit_note: { create: DebitNote },
+  credit_note: { create: CreditNote },
+  gst_setoff: { create: GstSetoff },
+  gst_payment: { create: GstPayment },
   payment: { create: Payment, cancel: Cancel },
   write_off: { create: WriteOff },
   expense: { create: Expense, cancel: Cancel },
@@ -108,9 +151,12 @@ const EXACT: Partial<Record<OutboxEntityType, Partial<Record<string, z.ZodTypeAn
   allocation: { create: Allocation },
   journal_entry: { create: JournalPayload },
   accounting_period: { create: Period, update: Period },
+  fy_close: { create: FyClose, update: FyClose },
+  customer: { create: CustomerMaster, update: CustomerMaster },
 };
 
 // The schema a payload of this entity and operation must satisfy; masters and config are checked loosely.
 export function payloadSchema(entityType: string, operationType: string): z.ZodTypeAny {
+  if (entityType === 'audit_entry') return AuditEntryPayload;
   return EXACT[entityType as OutboxEntityType]?.[operationType] ?? master;
 }

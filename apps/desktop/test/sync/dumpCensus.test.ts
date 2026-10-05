@@ -1,7 +1,7 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
-import { describe, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { newUlid } from '@muneem/domain';
-import { CompleteSaleInput, SaleDraft } from '@muneem/contracts';
+import { CompleteReturnInput, CompleteSaleInput, CreatePurchaseInput, GstPaymentInput, PurchaseDraft, SaleDraft } from '@muneem/contracts';
 import type { Db } from '@muneem/db-sqlite';
 import { runSoak } from '../soak/generator.js';
 import { caller, ownerAtTill, testApp } from '../helpers.js';
@@ -32,7 +32,7 @@ describe('sync census dumps', () => {
     dump(soak.db, soak.businessId, 'soak.json');
   }, 600_000);
 
-  // What the soak never makes: bill and line discounts, cess, inter-state supply and change given.
+  // What the soak never makes: bill and line discounts, cess, inter-state supply and change given, and returns of such lines.
   run('sales the soak does not make', async () => {
     const { app, db } = await testApp();
     const api = caller(app);
@@ -59,14 +59,54 @@ describe('sync census dumps', () => {
       { lines: lines.slice(1, 3), billDiscount: { kind: 'percent', value: 333 }, customerId: mumbai.id },
       { lines: lines.slice(0, 1), placeOfSupplyOverride: { stateCode: '29', reason: 'delivered to Bengaluru' } },
     ];
+    const saleIds: string[] = [];
     for (const [i, d] of drafts.entries()) {
       const draft = SaleDraft.parse(d);
       const total = app.sales.quote(draft).totals.totalPaise;
       const tenders = i % 2 === 0
         ? [{ method: 'cash', amountPaise: Math.ceil((total + 1) / 10_000) * 10_000 }]
         : [{ method: 'upi', amountPaise: total - 1000 }, { method: 'cash', amountPaise: 5000 }];
-      app.sales.complete(CompleteSaleInput.parse({ ...draft, commandId: newUlid(), expectedTotalPaise: total, tenders }));
+      saleIds.push(app.sales.complete(CompleteSaleInput.parse({ ...draft, commandId: newUlid(), expectedTotalPaise: total, tenders })).saleId);
     }
+    const giveBack = (saleId: string, back: { lineNo: number; qtyMilli: number }[]) => {
+      const d = { saleId, lines: back };
+      app.returns.complete(CompleteReturnInput.parse({ ...d, commandId: newUlid(), reason: 'returned', expectedTotalPaise: app.returns.quote(d).totalPaise }));
+    };
+    giveBack(saleIds[0]!, [{ lineNo: 2, qtyMilli: 3000 }, { lineNo: 3, qtyMilli: 250 }]);
+    giveBack(saleIds[0]!, [{ lineNo: 2, qtyMilli: 4000 }]);
+    giveBack(saleIds[1]!, [{ lineNo: 1, qtyMilli: 1000 }]);
+    app.returns.cancel({ saleId: saleIds[2]!, reason: 'wrong bill' });
     dump(db, businessId, 'variety.json');
   }, 120_000);
+
+  // ADR-0044: a month's set-off with IGST credit used across heads, and the challan that pays the rest.
+  run('a GST set-off and payment', async () => {
+    let clock = Date.parse('2026-05-10T06:30:00Z');
+    const { app, db } = await testApp({ now: () => clock });
+    const api = caller(app);
+    const { businessId } = await ownerAtTill(app, { gstin: '07AAAAA0000A1Z5' });
+    const pcs = (await api.data<{ id: string; code: string }[]>('catalog.listUoms')).find((u) => u.code === 'PCS')!.id;
+    const soap = await api.data<{ id: string }>('products.create', { name: 'Soap', hsnCode: '3401', baseUomId: pcs, gstRateBp: 1800, cessRateBp: 100, sellingPricePaise: 118_000 });
+    const supplier = app.suppliers.create({ name: 'Pune Mills', stateCode: '27', gstin: '27DDDDD0000D1Z5', taxScheme: 'regular', creditDays: 30 });
+    const draft = PurchaseDraft.parse({ supplierId: supplier.id, supplierInvoiceNo: 'P-1', supplierInvoiceDate: '2026-05-02',
+      lines: [{ productId: soap.id, uomId: pcs, qtyMilli: 3000, unitPricePaise: 60_000 }] });
+    app.purchases.create(CreatePurchaseInput.parse({ ...draft, billTotalPaise: app.purchases.quote(draft).totals.totalPaise, commandId: newUlid() }));
+    await app.register.open(100_000);
+    const sale = SaleDraft.parse({ lines: [{ productId: soap.id, uomId: pcs, qtyMilli: 10_000 }] });
+    const total = app.sales.quote(sale).totals.totalPaise;
+    app.sales.complete(CompleteSaleInput.parse({ ...sale, commandId: newUlid(), expectedTotalPaise: total, tenders: [{ method: 'cash', amountPaise: total }] }));
+    clock = Date.parse('2026-06-04T06:30:00Z');
+    const setoff = app.gst.setoffs.post({ month: '2026-05-01', commandId: newUlid() });
+    app.gst.payments.record(GstPaymentInput.parse({ commandId: newUlid(), paymentDate: '2026-06-04', challanRef: 'CPIN26060400001', month: '2026-05-01', ...setoff.cash }));
+    dump(db, businessId, 'gst.json');
+  }, 120_000);
+
+  // ADR-0045: two months of a seeded soak across 1 April, then the year set off, locked and closed.
+  run('a year-end close', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    const soak = await runSoak({ seed: 11, days: 45, salesPerDay: 4, endDate: '2026-04-20', file: false, setTime: (ms) => vi.setSystemTime(ms), yearEnd: true });
+    vi.useRealTimers();
+    expect(soak.app.yearEnd.list().find((y) => y.fy === '2025-26')).toMatchObject({ status: 'closed' });
+    dump(soak.db, soak.businessId, 'yearend.json');
+  }, 600_000);
 });

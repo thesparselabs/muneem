@@ -7,7 +7,10 @@ interface Step { device: string; call: 'push' | 'pull'; request: Record<string, 
 interface Fixture { name: string; description: string; setup: { organizationId: string; userId: string; devices: string[] }; steps: Step[] }
 
 const DIR = new URL('../../contracts/fixtures/sync/', import.meta.url);
-const fixtures = readdirSync(DIR).filter((f) => f.endsWith('.json')).map((f) => JSON.parse(readFileSync(new URL(f, DIR), 'utf8')) as Fixture);
+const load = (dir: URL) => readdirSync(dir).filter((f) => f.endsWith('.json')).map((f) => JSON.parse(readFileSync(new URL(f, dir), 'utf8')) as Fixture);
+const fixtures = load(DIR);
+// ADR-0049: the previous protocol's fixtures, frozen, replayed against a server one protocol ahead.
+const previous = load(new URL('v1/', DIR));
 const deviceId = (symbol: string) => `device-${symbol}`;
 
 // README "Matching": objects on the keys listed, arrays by length and element, device symbols as that device's id.
@@ -34,20 +37,35 @@ function check(answer: PushResponse | PullResponse, expected: Record<string, unk
   return problems;
 }
 
+async function replay(f: Fixture, server: ReferenceServer): Promise<void> {
+  server.addMember(f.setup.userId, f.setup.organizationId);
+  for (const d of f.setup.devices) server.registerDevice(deviceId(d), f.setup.userId);
+  for (const [i, step] of f.steps.entries()) {
+    const answer = step.call === 'push'
+      ? await server.push(deviceId(step.device), step.request)
+      : await server.pull(deviceId(step.device), step.request as unknown as PullQuery);
+    expect(check(answer, step.expect), `step ${i} (${step.device} ${step.call})`).toEqual([]);
+  }
+}
+
 describe('protocol fixtures against the reference server (ADR-0042)', () => {
   it('finds the fixtures', () => expect(fixtures.length).toBeGreaterThanOrEqual(5));
 
-  for (const f of fixtures) {
-    it(`${f.name}: ${f.description}`, async () => {
-      const server = new ReferenceServer();
+  for (const f of fixtures) it(`${f.name}: ${f.description}`, () => replay(f, new ReferenceServer()));
+});
+
+describe('protocol N−1 against a server at N=2, min 1 (ADR-0049)', () => {
+  it('finds the frozen v1 fixtures', () => expect(previous.length).toBeGreaterThanOrEqual(5));
+
+  for (const f of previous) it(f.name, () => replay(f, new ReferenceServer({ protocol: 2, minProtocol: 1 })));
+
+  it('refuses a protocol below the minimum or above the current one', async () => {
+    const f = previous.find((x) => x.steps[0]?.call === 'push')!;
+    for (const protocol of [0, 3]) {
+      const server = new ReferenceServer({ protocol: 2, minProtocol: 1 });
       server.addMember(f.setup.userId, f.setup.organizationId);
-      for (const d of f.setup.devices) server.registerDevice(deviceId(d), f.setup.userId);
-      for (const [i, step] of f.steps.entries()) {
-        const answer = step.call === 'push'
-          ? await server.push(deviceId(step.device), step.request)
-          : await server.pull(deviceId(step.device), step.request as unknown as PullQuery);
-        expect(check(answer, step.expect), `step ${i} (${step.device} ${step.call})`).toEqual([]);
-      }
-    });
-  }
+      server.registerDevice(deviceId('A'), f.setup.userId);
+      await expect(server.push(deviceId('A'), { ...f.steps[0]!.request, protocol })).rejects.toMatchObject({ status: 426, code: 'VERSION_UNSUPPORTED' });
+    }
+  });
 });

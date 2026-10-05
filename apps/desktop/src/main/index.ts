@@ -1,13 +1,22 @@
 import { app, BrowserWindow, dialog, ipcMain, safeStorage, session, shell } from 'electron';
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { createApp, type App } from './app.js';
-import { dbPaths, DbCorruptError, latestBackup, openAndMigrate } from './infra/db.js';
+import { dbPaths, DbCorruptError, MigrationFailedError, openAndMigrate } from './infra/db.js';
+import { encryptedPreMigrationBackups, plainPreMigrationBackups, preferEncrypted } from './backups/preMigration.js';
+import { electronUpdaterAdapter } from './update/electronUpdater.js';
+import { FolderUpdater } from './update/folderUpdater.js';
+import { DEFAULT_UPDATE_BASE_URL } from './update/channels.js';
+import type { Updater } from './update/updater.js';
+import type { Loggers } from './infra/logger.js';
+import { latestBackupFile, restoreBackupFile } from './backups/recovery.js';
 import { createLoggers } from './infra/logger.js';
 import { createElectronSecretStore } from './infra/secrets.js';
+import { electronHtmlToPdf, electronSaveFile } from './infra/files.js';
 import { registerIpc } from './ipc/gateway.js';
 import { currentSchemaVersion, restoreDatabaseFile, type Db } from '@muneem/db-sqlite';
+import { rmSync } from 'node:fs';
 import { startSyncWorker } from './sync/syncWorker.js';
 
 app.setName('Muneem'); // userData → %APPDATA%/Muneem (before 'ready')
@@ -27,6 +36,21 @@ let muneem: App | null = null;
 let db: Db | null = null;
 let stopSyncWorker: (() => void) | null = null;
 
+const UPDATE_CHECK_EVERY_MS = 4 * 3600_000;
+const FIRST_UPDATE_CHECK_MS = 2 * 60_000;
+
+// Packaged builds use electron-updater; a dev run updates only from a local folder feed (MUNEEM_UPDATE_DIR), if any.
+function updateSource(loggers: Loggers): { updater: Updater | null; baseUrl: string } {
+  if (app.isPackaged) return { updater: electronUpdaterAdapter(loggers.app), baseUrl: process.env.MUNEEM_UPDATE_URL ?? DEFAULT_UPDATE_BASE_URL };
+  const dir = process.env.MUNEEM_UPDATE_DIR;
+  if (!dir) return { updater: null, baseUrl: DEFAULT_UPDATE_BASE_URL };
+  const updater = new FolderUpdater({
+    currentVersion: app.getVersion(), cacheDir: join(app.getPath('userData'), 'update-cache'),
+    onInstall: (installer) => { loggers.app.warn({ installer }, 'dev update feed: an installer would run here'); dialog.showErrorBox('Muneem (dev)', `A packaged build would now run:\n${installer}`); },
+  });
+  return { updater, baseUrl: pathToFileURL(dir).href };
+}
+
 function nativeBindingPath(): string | undefined {
   // Electron-ABI build of better-sqlite3 produced by scripts/build-native.ts (dev) / bundled under native/ (packaged).
   const candidates = [join(here, '../../native/better_sqlite3.node'), join(process.resourcesPath ?? '', 'app.asar.unpacked', 'native', 'better_sqlite3.node')];
@@ -38,34 +62,77 @@ async function boot(): Promise<void> {
   const loggers = createLoggers(join(userData, 'logs'), isDev ? 'debug' : 'info');
   loggers.app.info({ version: app.getVersion(), electron: process.versions.electron, userData }, 'boot');
   const paths = dbPaths(userData);
+  const secrets = createElectronSecretStore(join(userData, 'secrets.bin'), safeStorage, isDev, (m) => loggers.app.warn(m));
   try {
-    ({ db } = await openAndMigrate(paths, loggers, nativeBindingPath()));
+    const backups = preferEncrypted(
+      encryptedPreMigrationBackups({ dir: paths.backups, secrets, appVersion: app.getVersion(), now: () => Date.now(), log: loggers.app }),
+      plainPreMigrationBackups(paths.backups), loggers.app,
+    );
+    ({ db } = await openAndMigrate(paths, loggers, nativeBindingPath(), { backups, appVersion: app.getVersion() }));
   } catch (e) {
+    if (e instanceof MigrationFailedError) {
+      // ADR-0049: this build cannot run the old schema; the data is back as it was and the previous version can open it.
+      dialog.showMessageBoxSync({
+        type: 'error', title: 'Muneem — update could not finish', buttons: ['Quit'],
+        message: e.failure.restored ? 'This update could not upgrade your data, so your data was put back exactly as it was.' : 'This update could not upgrade your data, and putting the backup back also failed.',
+        detail: `${e.failure.restored ? 'Nothing was lost. ' : 'Do not use this computer for billing; contact support with a support bundle. '}`
+          + `To keep billing, reinstall the previous version of Muneem from muneem.app/download and contact support.\n\nReason: ${e.failure.error}`,
+      });
+      app.exit(1);
+      return;
+    }
     if (e instanceof DbCorruptError) {
       loggers.app.error({ detail: e.detail }, 'DB_CORRUPT on open');
-      const backup = latestBackup(paths.backups);
+      const backup = latestBackupFile(paths.backups);
       const { response } = await dialog.showMessageBox({
         type: 'error', title: 'Muneem — database problem', buttons: backup ? ['Restore latest backup', 'Quit'] : ['Quit'], defaultId: 0,
         message: 'The local database failed its integrity check.',
         detail: backup ? `A verified backup is available:\n${backup}\n\nRestore it? Transactions after the backup will need to be recovered from the cloud.` : 'No local backup was found. Please contact support with a support bundle.',
       });
       if (backup && response === 0) {
-        restoreDatabaseFile(backup, paths.file);
-        loggers.app.warn({ backup }, 'restored database from backup; restarting');
-        app.relaunch();
+        try {
+          await restoreBackupFile(backup, paths.file, secrets, nativeBindingPath());
+          loggers.app.warn({ backup }, 'restored database from backup; restarting');
+          app.relaunch();
+        } catch (err) {
+          loggers.app.error({ backup, err: String(err) }, 'restoring the latest backup failed');
+          dialog.showErrorBox('Muneem — restore failed', `The backup could not be restored: ${String(err instanceof Error ? err.message : err)}`);
+        }
       }
       app.exit(1);
       return;
     }
     throw e;
   }
-  const secrets = createElectronSecretStore(join(userData, 'secrets.bin'), safeStorage, isDev, (m) => loggers.app.warn(m));
   const apiBaseUrl = process.env.MUNEEM_API_URL ?? 'http://localhost:8080/v1';
   muneem = createApp({
     db: () => db!, dbFile: paths.file, receiptsDir: join(userData, 'receipts'), backupsDir: paths.backups, bundlesDir: join(userData, 'support-bundles'), secrets, loggers,
     hydrationDir: join(userData, 'hydration'),
+    saveFile: electronSaveFile(() => mainWindow), pdfRenderer: electronHtmlToPdf,
     apiBaseUrl, appVersion: app.getVersion(), platform: process.platform,
     isTrustedSender: (id) => mainWindow?.webContents.id === id,
+    // 8f: a restore closes everything, swaps the database file and relaunches; the IPC reply goes out first.
+    ...(() => { const u = updateSource(loggers); return { updater: u.updater, updateBaseUrl: u.baseUrl }; })(),
+    restoreHost: {
+      install: (restored) => {
+        setTimeout(() => {
+          try {
+            muneem?.connectivity.stop();
+            muneem?.sync.stop();
+            stopSyncWorker?.();
+            muneem?.closeReadConnections();
+            db?.close();
+            restoreDatabaseFile(restored, paths.file);
+            for (const s of ['', '-wal', '-shm']) rmSync(restored + s, { force: true });
+            loggers.app.warn('database restored from a backup; relaunching');
+          } catch (err) {
+            loggers.app.error({ err: String(err) }, 'restore swap failed; relaunching on whatever is on disk');
+          }
+          app.relaunch();
+          app.exit(0);
+        }, 250);
+      },
+    },
     // 7d: HTTP, gzip and signing run in a utility process; main stays the only writer of SQLite.
     syncTransport: (credentials) => {
       const worker = startSyncWorker(SYNC_WORKER, { baseUrl: apiBaseUrl, appVersion: app.getVersion(), schemaVersion: currentSchemaVersion(db!) }, credentials, loggers.sync);
@@ -92,15 +159,21 @@ async function boot(): Promise<void> {
       } catch (e) { loggers.app.error({ err: String(e) }, 'chart of accounts seed failed'); }
     },
   });
-  // Nightly-ish scheduled local backup (HLD §12): every 6 hours while running, first after 10 minutes.
+  // HLD §12 / ADR-0047: an encrypted local backup every 6 hours (first after 10 minutes), one a day uploaded, with the checks.
+  const scheduledBackup = () => void muneem?.backups.scheduler.scheduled().catch((e) => loggers.app.error({ err: String(e) }, 'scheduled backup failed'));
   const backupTimer = setInterval(() => {
-    void muneem?.diagnostics.backupNow('scheduled').catch((e) => loggers.app.error({ err: String(e) }, 'scheduled backup failed'));
+    scheduledBackup();
     void muneem?.diagnostics.checkStock({ slice: true }).catch((e) => loggers.app.error({ err: String(e) }, 'scheduled stock check failed'));
     try { muneem?.diagnostics.checkParties(); } catch (e) { loggers.app.error({ err: String(e) }, 'scheduled party check failed'); }
     try { muneem?.diagnostics.checkJournals(); } catch (e) { loggers.app.error({ err: String(e) }, 'scheduled journal check failed'); }
+    try { muneem?.diagnostics.checkSummaries(new Date(Date.now() - 35 * 86_400_000).toLocaleDateString('en-CA')); } catch (e) { loggers.app.error({ err: String(e) }, 'scheduled summary check failed'); }
+    try { muneem?.diagnostics.verifyAudit(); } catch (e) { loggers.app.error({ err: String(e) }, 'scheduled audit chain check failed'); }
+    muneem?.notifications.runner.run();
   }, 6 * 3600_000);
   backupTimer.unref();
-  setTimeout(() => void muneem?.diagnostics.backupNow('scheduled').catch(() => undefined), 10 * 60_000).unref();
+  muneem.updates.service.start(UPDATE_CHECK_EVERY_MS, FIRST_UPDATE_CHECK_MS);
+  muneem.notifications.runner.run(); // ADR-0050: device-wide checks at start-up; business ones follow when a session opens it
+  setTimeout(scheduledBackup, 10 * 60_000).unref();
 }
 
 function createWindow(): void {
@@ -142,6 +215,7 @@ app.whenReady().then(async () => {
 
 app.on('window-all-closed', () => { app.quit(); });
 app.on('before-quit', () => {
+  muneem?.updates.service.stop();
   muneem?.connectivity.stop();
   muneem?.sync.stop();
   stopSyncWorker?.();

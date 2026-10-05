@@ -1,18 +1,18 @@
 import { useState } from 'react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
 import { api, errorMessage } from '../api.js';
 import { useCan } from '../lib/permissions.js';
+import AuditPanel from './diagnostics/AuditPanel.js';
+import BackupsPanel from './diagnostics/BackupsPanel.js';
 import SyncPanel from './diagnostics/SyncPanel.js';
 
 export default function Diagnostics() {
-  const qc = useQueryClient();
   const canSync = useCan('sync.view');
   const health = useQuery({ queryKey: ['health'], queryFn: () => api.diagnostics.getHealth({}), refetchInterval: 15_000 });
   const [log, setLog] = useState<'app' | 'sync'>('app');
   const logs = useQuery({ queryKey: ['logs', log], queryFn: () => api.diagnostics.getLogsTail({ log, lines: 200 }) });
   const [msg, setMsg] = useState<string | null>(null);
-  const integrity = useMutation({ mutationFn: () => api.diagnostics.integrityCheck({}), onSuccess: (r) => setMsg(`Integrity: quick_check ${r.quickCheck}, foreign keys ${r.foreignKeys}, audit chain ${r.auditChain}, stock ${r.stock}, party ledgers ${r.parties}, journals ${r.journals}${r.detail.length ? ' — ' + r.detail.join('; ') : ''}`), onError: (e) => setMsg(errorMessage(e)) });
-  const backup = useMutation({ mutationFn: () => api.diagnostics.backupNow({}), onSuccess: (r) => { setMsg(`Backup ${r.verified ? 'verified' : 'FAILED verification'} (${(r.bytes / 1024).toFixed(0)} KB)`); void qc.invalidateQueries({ queryKey: ['health'] }); }, onError: (e) => setMsg(errorMessage(e)) });
+  const integrity = useMutation({ mutationFn: () => api.diagnostics.integrityCheck({}), onSuccess: (r) => setMsg(`Integrity: quick_check ${r.quickCheck}, foreign keys ${r.foreignKeys}, audit chain ${r.auditChain}, stock ${r.stock}, party ledgers ${r.parties}, journals ${r.journals}, dashboard summaries ${r.summaries}${r.detail.length ? ' — ' + r.detail.join('; ') : ''}`), onError: (e) => setMsg(errorMessage(e)) });
   const bundle = useMutation({ mutationFn: () => api.diagnostics.exportSupportBundle({}), onSuccess: (r) => setMsg(`Support bundle ready. Reference: ${r.handle}`), onError: (e) => setMsg(errorMessage(e)) });
   const h = health.data;
   const row = (k: string, v: unknown) => <tr><td className="pr-4 py-1 text-slate-500">{k}</td><td className="py-1 font-mono text-xs break-all">{String(v ?? '—')}</td></tr>;
@@ -20,6 +20,8 @@ export default function Diagnostics() {
     <div className="max-w-4xl space-y-6">
       <h1 className="text-2xl font-semibold">Diagnostics</h1>
       {canSync && <SyncPanel />}
+      <BackupsPanel />
+      <AuditPanel />
       <div className="card">
         <h2 className="font-semibold mb-3">Health</h2>
         {h && (
@@ -31,7 +33,6 @@ export default function Diagnostics() {
         )}
         <div className="flex gap-2 mt-4">
           <button className="btn-secondary" onClick={() => integrity.mutate()} disabled={integrity.isPending}>Run integrity check</button>
-          <button className="btn-secondary" onClick={() => backup.mutate()} disabled={backup.isPending}>Backup now</button>
           <button className="btn-secondary" onClick={() => bundle.mutate()} disabled={bundle.isPending}>Export support bundle</button>
         </div>
         {msg && <p className="text-sm mt-3" role="status">{msg}</p>}

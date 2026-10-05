@@ -23,12 +23,14 @@ import (
 	"github.com/oklog/ulid/v2"
 
 	"github.com/sparselabs/muneem/cloud/internal/auth"
+	"github.com/sparselabs/muneem/cloud/internal/backups"
 	"github.com/sparselabs/muneem/cloud/internal/business"
 	"github.com/sparselabs/muneem/cloud/internal/device"
 	"github.com/sparselabs/muneem/cloud/internal/devicesync"
 	"github.com/sparselabs/muneem/cloud/internal/devicesync/snapshot"
 	"github.com/sparselabs/muneem/cloud/internal/httpx"
 	"github.com/sparselabs/muneem/cloud/internal/objectstore"
+	"github.com/sparselabs/muneem/cloud/internal/reports"
 	"github.com/sparselabs/muneem/cloud/internal/store"
 	"github.com/sparselabs/muneem/cloud/internal/testdb"
 )
@@ -37,46 +39,74 @@ type authHandler = auth.Handler
 type deviceHandler = device.Handler
 type businessHandler = business.Handler
 type syncHandler = devicesync.Handler
+type backupHandler = backups.Handler
+type reportHandler = reports.Handler
 
 type handlers struct {
 	*authHandler
 	*deviceHandler
 	*businessHandler
 	*syncHandler
+	*backupHandler
+	*reportHandler
 	httpx.Health
 }
 
 // cloud is the real Echo server with the real auth and signature middleware, over the test Postgres.
 type cloud struct {
-	t      *testing.T
-	db     *store.DB
-	e      *echo.Echo
-	signer *auth.Signer
-	snaps  *snapshot.Service
-	user   string
-	org    string
+	t       *testing.T
+	db      *store.DB
+	e       *echo.Echo
+	signer  *auth.Signer
+	snaps   *snapshot.Service
+	objects testObjects
+	user    string
+	org     string
+	// protocol is the X-Sync-Protocol every request carries, unless noProtocolHeader.
+	protocol         int
+	noProtocolHeader bool
 }
 
 func newCloud(t *testing.T) *cloud {
+	return newCloudWith(t, httpx.DefaultProtocols())
+}
+
+// newCloudWith is the server configured to accept the given sync protocols.
+func newCloudWith(t *testing.T, protocols httpx.Protocols) *cloud {
 	db := testdb.Open(t)
 	testdb.Reset(t, db)
 	signer := auth.NewSigner("test-secret")
 	verifier := device.NewVerifier(db)
 	log := slog.New(slog.NewTextHandler(io.Discard, nil))
-	snaps := snapshot.NewService(db, testObjectStore(t), log, snapshot.DefaultOptions)
+	objects := testObjectStore(t)
+	snaps := snapshot.NewService(db, objects, log, snapshot.DefaultOptions)
+	wrapper, err := backups.NewWrapper(TestMasterKey)
+	if err != nil {
+		t.Fatal(err)
+	}
 	t.Cleanup(snaps.Wait)
 	h := handlers{
 		authHandler:     &auth.Handler{DB: db, Signer: signer},
 		deviceHandler:   &device.Handler{DB: db, Verifier: verifier, Revocations: devicesync.Control{}},
 		businessHandler: &business.Handler{DB: db},
-		syncHandler:     &devicesync.Handler{Ingest: &devicesync.Ingest{DB: db, Log: log}, Feed: &devicesync.Feed{DB: db}, Snapshots: snaps},
+		syncHandler:     &devicesync.Handler{Ingest: &devicesync.Ingest{DB: db, Log: log}, Feed: &devicesync.Feed{DB: db}, Snapshots: snaps, Protocols: protocols},
+		backupHandler:   &backups.Handler{Service: backups.NewService(db, objects, wrapper, log, backups.DefaultOptions)},
+		reportHandler:   &reports.Handler{DB: db},
 	}
-	e := httpx.New(httpx.Deps{Handlers: h, RequireAuth: signer.Require, DeviceVerifier: verifier.Middleware, Logger: log})
-	return &cloud{t: t, db: db, e: e, signer: signer, snaps: snaps}
+	e := httpx.New(httpx.Deps{Handlers: h, RequireAuth: signer.Require, DeviceVerifier: verifier.Middleware, Logger: log, Protocols: protocols})
+	return &cloud{t: t, db: db, e: e, signer: signer, snaps: snaps, objects: objects, protocol: httpx.SyncProtocol}
+}
+
+// TestMasterKey wraps escrowed backup keys in tests (base64 of 32 bytes).
+const TestMasterKey = "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8="
+
+type testObjects interface {
+	snapshot.ObjectStore
+	backups.ObjectStore
 }
 
 // testObjectStore is MinIO when MUNEEM_TEST_S3_ENDPOINT is set, else an in-memory store served over HTTP.
-func testObjectStore(t *testing.T) snapshot.ObjectStore {
+func testObjectStore(t *testing.T) testObjects {
 	if endpoint := os.Getenv("MUNEEM_TEST_S3_ENDPOINT"); endpoint != "" {
 		s3, err := objectstore.NewS3(context.Background(), objectstore.S3Config{Endpoint: endpoint, Bucket: envOr("MUNEEM_TEST_S3_BUCKET", "muneem-test"),
 			AccessKey: os.Getenv("MUNEEM_TEST_S3_ACCESS_KEY"), SecretKey: os.Getenv("MUNEEM_TEST_S3_SECRET_KEY"), Region: os.Getenv("MUNEEM_TEST_S3_REGION")})
@@ -158,6 +188,9 @@ func (c *cloud) send(d *testDevice, method, path string, query url.Values, body 
 		req.Header.Set("Content-Encoding", encoding)
 	}
 	req.Header.Set("Authorization", "Bearer "+c.token(d))
+	if !c.noProtocolHeader {
+		req.Header.Set(httpx.HeaderSyncProtocol, strconv.Itoa(c.protocol))
+	}
 	req.Header.Set(device.HeaderDeviceID, d.id)
 	req.Header.Set(device.HeaderTimestamp, ts)
 	req.Header.Set(device.HeaderSignature, base64.StdEncoding.EncodeToString(ed25519.Sign(d.key, device.SigningString(method, path, ts, body))))

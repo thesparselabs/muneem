@@ -1,4 +1,5 @@
 import type { Change, SyncError } from '@muneem/contracts';
+import { AuditLedger } from './audit.js';
 
 export type Payload = Record<string, unknown>;
 
@@ -12,7 +13,7 @@ export interface OperationRecord { status: 'applied' | 'rejected'; payloadHash: 
 export interface DeadLetter { operationId: string; deviceId: string; entityType: string; entityId: string; payload: Payload; error: SyncError; at: string }
 
 export interface ConflictLogRow {
-  id: string; kind: 'conflict' | 'duplicate_barcode' | 'late_arrival' | 'tombstone'; entityType: string; entityId: string; deviceId: string;
+  id: string; kind: 'conflict' | 'duplicate_barcode' | 'late_arrival' | 'tombstone' | 'audit_chain_broken'; entityType: string; entityId: string; deviceId: string;
   rule: string; winner: 'cloud' | 'device'; field?: string; cloudValue?: unknown; deviceValue?: unknown; at: string;
 }
 
@@ -25,6 +26,7 @@ export class BusinessState {
   readonly deadLetters: DeadLetter[] = [];
   readonly conflictLog: ConflictLogRow[] = [];
   readonly lockedMonths = new Set<string>();
+  readonly audit = new AuditLedger();
 
   constructor(readonly id: string, readonly organizationId: string) {}
 

@@ -8,3 +8,4 @@ export { verifyOperation } from './verify.js';
 export { mergeStale, matchesSent } from './conflicts.js';
 export { requiredRefs } from './references.js';
 export * from './bundle.js';
+export * from './audit.js';

@@ -1,4 +1,4 @@
-import { getSyncDevice, reclaimStale, recordPull, recordPush, retryNow, setSyncDeviceStatus, type Db, type PageResult } from '@muneem/db-sqlite';
+import { getSyncDevice, queueUnsentAudit, reclaimStale, recordPull, recordPush, retryNow, setSyncDeviceStatus, type Db, type PageResult } from '@muneem/db-sqlite';
 import type { Loggers } from '../infra/logger.js';
 import { Puller } from './puller.js';
 import { Pusher, type PushOutcome } from './pusher.js';
@@ -38,10 +38,12 @@ export class SyncEngine {
 
   private iso(): string { return new Date(this.d.now()).toISOString(); }
 
-  // Start-up recovery: operations claimed by a process that died mid-push go back to pending, and a version block is
-  // lifted so an updated app asks the server again.
+  // Start-up recovery: operations claimed by a process that died mid-push go back to pending, a version block is
+  // lifted so an updated app asks the server again, and audit rows not yet queued (from before 8g, or a restore) are.
   recover(): number {
     if (getSyncDevice(this.d.db())?.status === 'upgrade_required') setSyncDeviceStatus(this.d.db(), 'active', null);
+    const audit = queueUnsentAudit(this.d.db());
+    if (audit > 0) this.d.log.info({ audit }, 'queued audit rows for the cloud');
     const n = reclaimStale(this.d.db(), new Date(this.d.now() - RECLAIM_AFTER_MS).toISOString());
     if (n > 0) this.d.log.warn({ reclaimed: n }, 'reclaimed in-flight sync operations');
     return n;

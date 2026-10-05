@@ -48,6 +48,18 @@ export function listStock(db: Db, businessId: string, warehouseId: string, f: { 
   return { items: page.map(toStockRow), nextCursor: rows.length > f.limit && last ? encode({ n: last.name_norm, id: last.id }) : null };
 }
 
+// Every product at or below its reorder level, page by page, for checks that need all of them (ADR-0050).
+export function listAllLowStock(db: Db, businessId: string, warehouseId: string): StockRow[] {
+  const rows: StockRow[] = [];
+  let cursor: string | undefined;
+  do {
+    const page = listStock(db, businessId, warehouseId, { lowOnly: true, limit: 500, ...(cursor && { cursor }) });
+    rows.push(...page.items);
+    cursor = page.nextCursor ?? undefined;
+  } while (cursor);
+  return rows;
+}
+
 // Newest first, each with the running quantity and value after it (FR-024 traceability).
 export function productMovements(db: Db, businessId: string, productId: string, f: { limit: number; cursor?: string | undefined }): MovementPage {
   const after = decode<{ r: number }>(f.cursor);

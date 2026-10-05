@@ -34,7 +34,7 @@ func TestProtocolFixtures(t *testing.T) {
 		t.Fatalf("no protocol fixtures: %v", err)
 	}
 	for _, f := range files {
-		t.Run(strings.TrimSuffix(filepath.Base(f), ".json"), func(t *testing.T) { runFixture(t, f) })
+		t.Run(strings.TrimSuffix(filepath.Base(f), ".json"), func(t *testing.T) { runFixture(t, f, newCloud(t)) })
 	}
 }
 
@@ -54,7 +54,7 @@ func TestPartialMatchCatchesDifferences(t *testing.T) {
 	}
 }
 
-func runFixture(t *testing.T, path string) {
+func runFixture(t *testing.T, path string, c *cloud) {
 	raw, err := os.ReadFile(path)
 	if err != nil {
 		t.Fatal(err)
@@ -63,7 +63,6 @@ func runFixture(t *testing.T, path string) {
 	if err := json.Unmarshal(raw, &fx); err != nil {
 		t.Fatal(err)
 	}
-	c := newCloud(t)
 	c.seedOwner(fx.Setup.UserID, fx.Setup.OrganizationID)
 	devices := map[string]*testDevice{}
 	for _, symbol := range fx.Setup.Devices {

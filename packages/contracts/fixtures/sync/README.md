@@ -27,3 +27,10 @@ An expectation is a **partial match**:
 - values not listed (`serverSeq`, `serverTime`, `seq`, `version`, error `detail`) are not checked.
 
 `lastChangeFor` matches the last change in the page for that entity.
+
+## Previous protocol (`v1/`)
+
+ADR-0049: the cloud accepts protocol N and N−1. `v1/` is a frozen copy of these fixtures as protocol 1 left them; the
+Go server (`TestPreviousProtocolFixturesOnNextServer`) and the reference server replay it against a server configured
+as N=2, min 1. When the protocol becomes 2, regenerate the top-level fixtures and keep `v1/` unchanged; when it becomes
+3, freeze the protocol-2 set as `v2/` and retire `v1/`.

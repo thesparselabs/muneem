@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# §37 and the sync simulation against the real Go API, Postgres and MinIO (ADR-0042).
+# §37, the sync simulation and the 8f cloud backup restore against the real Go API, Postgres and MinIO (ADR-0042).
 # Needs Postgres and MinIO up (`docker compose up -d postgres minio`) and the desktop's workspace packages built.
 set -euo pipefail
 
@@ -34,6 +34,7 @@ DATABASE_URL="$api_url" JWT_SECRET=e2e-secret PORT="$port" \
   MUNEEM_S3_ENDPOINT="${MUNEEM_S3_ENDPOINT:-http://localhost:9000}" MUNEEM_S3_BUCKET="${MUNEEM_S3_BUCKET:-muneem-snapshots}" \
   MUNEEM_S3_ACCESS_KEY="${MUNEEM_S3_ACCESS_KEY:-muneem}" MUNEEM_S3_SECRET_KEY="${MUNEEM_S3_SECRET_KEY:-muneem-dev-secret}" \
   MUNEEM_S3_REGION="${MUNEEM_S3_REGION:-us-east-1}" \
+  MUNEEM_BACKUP_MASTER_KEY="${MUNEEM_BACKUP_MASTER_KEY:-$(head -c 32 /dev/urandom | base64)}" \
   nice -n 10 "$work/muneem-api" >"$work/api.log" 2>&1 &
 api_pid=$!
 

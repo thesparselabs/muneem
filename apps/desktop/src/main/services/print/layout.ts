@@ -53,6 +53,8 @@ export function layoutReceipt(doc: ReceiptDoc, width: number): PrintLine[] {
     if (doc.customer.phone) left(`Ph: ${doc.customer.phone}`);
   }
   left(`Place of supply: ${doc.placeOfSupply}`);
+  if (doc.against) left(`Against: ${doc.against.docNumber} of ${doc.against.docDate}`);
+  if (doc.reason) wrap(`Reason: ${doc.reason}`, width).forEach((t) => left(t));
   rule();
   pair('Item', 'Amount', true);
   for (const l of doc.lines) {

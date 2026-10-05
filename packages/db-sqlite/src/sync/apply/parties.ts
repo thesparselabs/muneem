@@ -1,5 +1,7 @@
+import type { CustomerConsent } from '@muneem/contracts';
 import { normalizeName } from '@muneem/domain';
-import { hasUnsentEdit, type ApplyContext } from './context.js';
+import { mergeConsents } from '../../repositories/customerConsent.js';
+import { hasUnsentEdit, syncedAt, type ApplyContext } from './context.js';
 import type { MasterSpec } from './master.js';
 import { exists, pick, updateRow } from './rows.js';
 import { cleared, type UniqueField } from './uniqueClash.js';
@@ -15,8 +17,13 @@ export const CUSTOMER: MasterSpec = {
   columns: (_ctx, p) => ({
     ...pick(p, { name: 'name', ...CONTACT, stateCode: 'state_code' }, true), name_norm: normalizeName(String(p.name)), credit_days: p.creditDays ?? 0,
     ...('creditLimitPaise' in p && { credit_limit_paise: p.creditLimitPaise ?? null }),
+    ...('erasedAt' in p && { erased_at: p.erasedAt ?? null }),
   }),
   unique: [GSTIN],
+  after: (ctx, id) => {
+    const p = ctx.change.payload;
+    if (Array.isArray(p.consents)) mergeConsents(ctx.db, ctx.businessId, id, p.consents as CustomerConsent[], typeof p.updatedAt === 'string' ? p.updatedAt : syncedAt(p));
+  },
 };
 
 export const SUPPLIER: MasterSpec = {

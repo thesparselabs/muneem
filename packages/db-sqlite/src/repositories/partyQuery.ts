@@ -107,6 +107,22 @@ export function partyOutstanding(
   return { asOf, rows: [...byParty.values()], totals };
 }
 
+export interface PartyDue { partyId: string; name: string; duePaise: number; oldestDueDate: string; documents: number }
+
+// Per party, the open charges falling due before `dueBefore`, less any unapplied credit; for reminders and notifications (FR-074).
+export function partyDues(db: Db, businessId: string, partyType: PartyType, dueBefore: string): PartyDue[] {
+  const party = partyType === 'customer' ? 'customer' : 'supplier';
+  const due = "d.role = 'charge' AND d.due_date < @dueBefore";
+  return (stmt(db, `SELECT d.party_id, n.name, SUM(CASE WHEN ${due} THEN d.amount_paise - d.used_paise ELSE 0 END)
+        - SUM(CASE WHEN d.role = 'settlement' THEN d.amount_paise - d.used_paise ELSE 0 END) AS due_paise,
+        MIN(CASE WHEN ${due} THEN d.due_date END) AS oldest, SUM(${due}) AS documents
+      FROM (${partyDocumentsSql({ partyType })}) d JOIN ${party} n ON n.id = d.party_id
+      WHERE d.live = 1 AND d.amount_paise > d.used_paise
+      GROUP BY d.party_id HAVING due_paise > 0 AND oldest IS NOT NULL ORDER BY oldest, d.party_id`).all({ businessId, partyType, dueBefore }) as {
+    party_id: string; name: string; due_paise: number; oldest: string; documents: number;
+  }[]).map((r) => ({ partyId: r.party_id, name: r.name, duePaise: r.due_paise, oldestDueDate: r.oldest, documents: r.documents }));
+}
+
 export const partyBalance = (db: Db, p: PartyRef): number =>
   stmt(db, `SELECT COALESCE(SUM(amount_paise), 0) FROM party_ledger_entry WHERE business_id = @businessId AND party_type = @partyType
     AND party_id = @partyId`).pluck().get(p) as number;

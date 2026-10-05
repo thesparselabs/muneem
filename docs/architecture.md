@@ -45,7 +45,7 @@ docs/             this folder (reality, with reasons)
 - `Σ apportion(total, w) = total`, always
 - `cgst + sgst = pctOf(taxable, rate)`; `|cgst − sgst| ≤ 1`
 - `total = taxable + taxes + round_off`
-- `replay(audit rows) → hash chain verifies`, gap-free `seq` per device
+- `replay(audit rows) → hash chain verifies`, gap-free `seq` per device, on the device and again on the cloud (8g)
 - After a SIGKILL mid-write: no orphan audit or outbox row, `local_sequence` consistent
 - A failed product save or import leaves no product, barcode, price, category, audit or outbox row behind
 - An inclusive selling price never exceeds MRP; one live barcode code per business
@@ -67,6 +67,10 @@ docs/             this folder (reality, with reasons)
 - A supplier return leaves at its landed cost and replay = projection still holds; an issue that leaves stock on hand
   never takes more than the stock is worth (ADR-0027)
 - After repeated SIGKILLs mid-billing: one ledger entry per credit sale and the party ledgers reconcile
+- A sale line returned in any number of parts adds up to the line exactly, and a whole bill returned is exactly the
+  bill (domain properties, Go-shared golden vectors); a credit note never returns more than was sold on a line
+  (trigger); output tax in the ledger = sales tax − credit-note tax (tie-out); after SIGKILLs mid-return no credit note
+  is missing its lines, stock movements, party entry, journal, receipt, audit or outbox row (ADR-0043)
 - `purchases.create` (200 lines) p95 < 1 s; a payment settling 500 bills < 250 ms; reconciliation of 10,000 documents
   < 2 s
 - Every journal balances (engine + CHECK) and equals its lines; a document has one journal and at most one reversal; no
@@ -126,7 +130,7 @@ docs/             this folder (reality, with reasons)
 
 - **Sub-ledger** (ADR-0022): `party_ledger_entry` is append-only and written only by `postPartyEntry`, in the same
   transaction as its document. Positive means the party owes the business. Documents are charges (credit sales,
-  purchases, credit expenses, openings) or settlements (payments, debit notes, write-offs, opening advances).
+  purchases, credit expenses, openings) or settlements (payments, debit notes, credit notes, write-offs, opening advances).
   `PARTY_DOCUMENTS_SQL` reads them all in one shape, and `reconcilePartiesDb` checks entries against them.
   Diagnostics and the 6-hourly timer run it and report a mismatch; they never heal it.
 - **Allocation** (ADR-0025): settlements are applied to charges in `allocation` rows, oldest due date first or as
@@ -164,6 +168,8 @@ docs/             this folder (reality, with reasons)
   - **The backfill** posts anything saved before Stage 6. Each business gets it once per run, with the terminal and user
     fixed when it starts, and each journal is queued for sync after its document.
   - **Diagnostics and the 6-hourly timer** rebuild a drifted balance cache and report everything else.
+- **Year end** (ADR-0045): a closing journal moves the year's income and expense to 3300. `postClosingJournal` is the
+  only posting into a locked month, and statements leave closing journals out of P&L.
 - **Manual journals** (ADR-0035) never touch AR, AP, Inventory or tax accounts, so the tie-outs hold by construction.
 - **Statements:** Trial Balance, P&L and Balance Sheet read the journal. Retained earnings are computed until Stage 8's
   closing journal, and customer advances and supplier debits are presented apart.
@@ -184,6 +190,9 @@ docs/             this folder (reality, with reasons)
   - **Conflicts:** masters merge by field, the cloud wins on price, tax and config, a tombstone wins, and every
     resolution is logged.
   - **Ordering:** pushes for one business are serialized.
+  - **Audit chain** (8g, ADR-0048): audit rows arrive as push-only `audit_entry` operations and are kept per device
+    chain in `audit_entry`, never in `change_log`. `devicesync/auditchain` recomputes each hash with a Go port of
+    `canonicalJson` (shared fixtures in `packages/contracts/fixtures/canonical`); a break is `AUDIT_CHAIN_BROKEN`.
 - **Device** (`apps/desktop/src/main/sync`, ADR-0040):
   - **Push:** the `SyncEngine` claims the outbox in seq order and settles each result: sent, retry with backoff,
     failed, dead after 12 attempts, or superseded. HTTP and gzip run in a utility process.
@@ -200,6 +209,45 @@ docs/             this folder (reality, with reasons)
   - the protocol fixtures on both servers;
   - NFR-022 throughput.
 
+## Reports, compliance, backup and update (Stage 8)
+
+- **Reports** (ADR-0046): a `ReportDefinition` catalogue of 25 business, statement and GST reports runs on a
+  read-only connection. CSV, XLSX and PDF writers share one document shape with the business header. The user picks
+  where an export goes, so the renderer never sees a path.
+- **Dashboard:** it reads daily summary tables that triggers keep current in the same transaction as each document,
+  including pulled ones. Diagnostics checks for drift and heals it. The cloud keeps the same aggregates.
+- **Returns** (ADR-0043): credit notes have their own tables and `C` series, price each line from the sale's own tax,
+  and post through `SALE_RETURN_RULE`.
+- **GST** (ADR-0044): GSTR-1, GSTR-3B, the HSN summary and the ITC register are built from documents and must equal
+  each month's tax-account movements. `gst_setoff` and `gst_payment` documents clear the tax accounts in the
+  statutory order.
+- **Year end** (ADR-0045): see Accounting.
+- **Backups** (ADR-0047): AES-256-GCM `.mbk` archives with a device-signed manifest, kept by retention and uploaded
+  nightly. The data key is escrowed with the cloud, wrapped by a server master key. Restore works locally, from the
+  cloud, or by hydration.
+- **Audit chain** (ADR-0048): audit rows sync on a push-only stream. Both servers check sequence, link and hash, and
+  a break is dead-lettered, alerted and shown on every device.
+- **Updates** (ADR-0049): channels and a staged rollout by installation cohort; installs only when the POS is idle.
+  The migration guard takes a backup, migrates in one transaction, checks, and restores on failure. The cloud accepts
+  sync protocols N and N−1.
+- **Invariants checked:**
+  - a restored device (hydrated or from a cloud backup) has the **byte-identical** Trial Balance at every month end,
+    equal to the cloud's;
+  - each month's returns equal the tax accounts;
+  - a closed year's reports are unchanged;
+  - a tampered backup or audit row is refused.
+## Notifications and customer privacy (Stage 8h)
+
+- `apps/desktop/src/main/notifications/`: detectors (pure functions over injected sources) → `NotificationService`
+  (raise-or-update and resolve per kind and entity, ADR-0050) → the `notification` table, which is **local and
+  never synced**. The runner is driven by start-up, a business opening, the 6-hourly timer, `sync.status` changes
+  and stock-moving commits; other modules raise through `notifications.service.notify(kind, …)`. The renderer reads
+  it through `notifications.*` and hears `notification.new`.
+- DPDP consent rides inside the customer master (`consents`); erasure blanks the profile, keeps the row, the ledger
+  and every sale's customer snapshot, and the cloud refuses to un-erase a customer.
+- Invariants (tests): a detector run twice changes nothing; at most one open notification per (business, kind,
+  entity); erasure leaves the tie-outs and party reconciliation clean and is refused with a balance.
+
 ## Identity and trust
 
 - Cloud is authoritative for users, roles and permissions; the device caches a **permission snapshot** and enforces
@@ -211,9 +259,9 @@ docs/             this folder (reality, with reasons)
 
 ## What is not built yet
 
-Reports and exports, attachments upload (FR-075) and typed cloud report tables. In accounting: the year-end closing and opening journals, and GST returns with
-set-off (Stage 8). In inventory: transfers, multiple warehouses per branch, batch/serial tracking. In billing: sale
-cancel, returns/credit notes and manager PIN override; USB/Windows printers and non-ASCII receipt text. In purchases and
-payments: purchase orders and GRN, reverse charge, debit-note cancellation, refunding a customer's advance, payment
-reminders, TDS/TCS. Product variants, weighed barcodes and label printing are deferred (ADR-0008). See
-`build-stages.md`.
+Attachments upload (FR-075), SMS/WhatsApp reminders, e-invoice and e-way bill, GST portal JSON and composition
+returns (GSTR-4/CMP-08), a cloud owner web UI and FR-103 retention. In inventory: transfers, multiple warehouses per
+branch, batch/serial tracking. In billing: manager PIN override; USB/Windows printers and non-ASCII receipt text
+(Stage 9). In purchases and payments: purchase orders and GRN, reverse charge, debit-note cancellation, refunding a
+customer's advance, TDS/TCS. Product variants, weighed barcodes and label printing are deferred (ADR-0008). Production
+deployment, monitoring, signed releases and the pilot are Stage 9. See `build-stages.md`.

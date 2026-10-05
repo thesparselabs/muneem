@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import fc from 'fast-check';
 import {
   ACCOUNT_ROLES, buildJournal, CASH_MOVEMENT_RULE, CHART_OF_ACCOUNTS, COST_CORRECTION_RULE, DEBIT_NOTE_RULE, EXPENSE_RULE, OPENING_STOCK_RULE,
-  PARTY_OPENING_RULE, PURCHASE_RULE, RECEIPT_RULE, REGISTER_VARIANCE_RULE, reverse, SALE_RULE, STOCK_ADJUSTMENT_RULE, SUPPLIER_PAYMENT_RULE,
+  PARTY_OPENING_RULE, PURCHASE_RULE, RECEIPT_RULE, REGISTER_VARIANCE_RULE, reverse, SALE_RETURN_RULE, SALE_RULE, STOCK_ADJUSTMENT_RULE, SUPPLIER_PAYMENT_RULE,
   totals, WRITE_OFF_RULE, type JournalLine, type PostingRule, type TaxHeads,
 } from '../src/index.js';
 
@@ -27,6 +27,25 @@ describe('posting rules, pinned to the posting matrix (ADR-0032)', () => {
       ['cash', 50_000, 0], ['clearing', 30_000, 0], ['ar@C1', 37_960, 0], ['sales_goods', 0, 100_000],
       ['output_cgst', 0, 9000], ['output_sgst', 0, 9000], ['round_off', 40, 0], ['cogs', 70_000, 0], ['inventory', 0, 70_000],
     ]);
+  });
+
+  it('a sale return: revenue, tax and round-off reversed, the refund in cash and on account, the goods back at cost', () => {
+    // The whole of the sale above comes back: ₹879.60 refunded in cash, ₹300 credited to the customer.
+    const lines = buildJournal(SALE_RETURN_RULE, {
+      cashPaise: 87_960, clearingPaise: 0, creditPaise: 30_000, customerId: 'C1', taxablePaise: 100_000,
+      tax: { cgstPaise: 9000, sgstPaise: 9000, igstPaise: 0, cessPaise: 0 }, roundOffPaise: -40, costPaise: 70_000,
+    });
+    expect(show(lines)).toEqual([
+      ['sales_goods', 100_000, 0], ['output_cgst', 9000, 0], ['output_sgst', 9000, 0], ['round_off', 0, 40], ['cash', 0, 87_960], ['ar@C1', 0, 30_000],
+      ['inventory', 70_000, 0], ['cogs', 0, 70_000],
+    ]);
+  });
+
+  it('property: returning a whole sale on the same tenders is exactly the sale reversed', () => {
+    fc.assert(fc.property(sale, (f) => {
+      const back = buildJournal(SALE_RETURN_RULE, { ...f, costPaise: f.cogsPaise });
+      for (const v of net([...buildJournal(SALE_RULE, f), ...back]).values()) expect(v).toBe(0);
+    }), { numRuns: 300 });
   });
 
   it('a purchase: stock at landed cost, claimable tax, round-off and the bill owed', () => {
@@ -128,6 +147,7 @@ const signed = fc.integer({ min: -10_000_000, max: 10_000_000 });
 
 const RULES: [string, PostingRule<never>, fc.Arbitrary<unknown>][] = [
   ['sale', SALE_RULE as PostingRule<never>, sale],
+  ['sale return', SALE_RETURN_RULE as PostingRule<never>, sale.map((f) => ({ ...f, costPaise: f.cogsPaise }))],
   ['purchase', PURCHASE_RULE as PostingRule<never>, purchase],
   ['debit note', DEBIT_NOTE_RULE as PostingRule<never>, debitNote],
   ['receipt', RECEIPT_RULE as PostingRule<never>, fc.record({ partyType: fc.constant('customer'), partyId: fc.constant('C1'), method, amountPaise: paise() })],

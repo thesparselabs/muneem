@@ -115,6 +115,9 @@ export function books(db: Db, businessId: string) {
   return {
     sales: rows(db, 'SELECT id, doc_number, status, total_paise, credit_paise, settled_paise, cogs_paise FROM sale WHERE business_id = ? ORDER BY id', businessId),
     saleLines: rows(db, 'SELECT i.id, i.product_id, i.base_qty_milli, i.total_paise, i.cogs_paise FROM sale_item i JOIN sale s ON s.id = i.sale_id WHERE s.business_id = ? ORDER BY i.id', businessId),
+    creditNotes: rows(db, `SELECT id, doc_number, sale_id, kind, total_paise, refund_method, refund_paise, credit_paise, allocated_paise, cost_paise, gstr1_bucket
+      FROM credit_note WHERE business_id = ? ORDER BY id`, businessId),
+    creditNoteLines: rows(db, 'SELECT i.id, i.sale_item_id, i.qty_milli, i.total_paise, i.cost_paise FROM credit_note_item i JOIN credit_note n ON n.id = i.credit_note_id WHERE n.business_id = ? ORDER BY i.id', businessId),
     purchases: rows(db, 'SELECT id, doc_number, status, total_paise, settled_paise FROM purchase WHERE business_id = ? ORDER BY id', businessId),
     debitNotes: rows(db, 'SELECT id, doc_number, status, total_paise, allocated_paise FROM debit_note WHERE business_id = ? ORDER BY id', businessId),
     payments: rows(db, 'SELECT id, doc_number, status, amount_paise, allocated_paise FROM payment WHERE business_id = ? ORDER BY id', businessId),

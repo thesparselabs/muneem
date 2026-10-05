@@ -76,6 +76,11 @@ func (s *Ingest) reject(ctx context.Context, c Caller, businessID string, op Ope
 		if err := insertDeadLetter(ctx, tx, businessID, c.DeviceID, op, f.Code, f.Detail); err != nil {
 			return err
 		}
+		if f.Code == CodeAuditChainBroken {
+			if err := recordChainBreak(ctx, tx, businessID, c.DeviceID, op, f.Detail); err != nil {
+				return err
+			}
+		}
 		return recordOperation(ctx, tx, businessID, c.DeviceID, op, StatusRejected, nil, &f.Code)
 	})
 	if err != nil {

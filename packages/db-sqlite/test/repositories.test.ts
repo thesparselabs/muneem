@@ -15,7 +15,9 @@ describe('business setup writes are atomic with audit + outbox', () => {
     const b = createBusiness(db, biz, ACTOR);
     expect(b.name).toBe('Sharma General Store');
     expect(db.prepare('SELECT COUNT(*) AS n FROM audit_log').get()).toEqual({ n: 1 });
-    expect(db.prepare("SELECT entity_type, operation_type, status FROM sync_outbox").all()).toEqual([{ entity_type: 'business', operation_type: 'create', status: 'pending' }]);
+    expect(db.prepare("SELECT entity_type, operation_type, status FROM sync_outbox").all()).toEqual([
+      { entity_type: 'business', operation_type: 'create', status: 'pending' }, { entity_type: 'audit_entry', operation_type: 'create', status: 'pending' },
+    ]);
     expect(db.prepare('SELECT next_seq FROM local_sequence').get()).toEqual({ next_seq: 2 });
     expect(verifyAuditChain(db, b.id, ACTOR.deviceId).ok).toBe(true);
   });
@@ -28,7 +30,7 @@ describe('business setup writes are atomic with audit + outbox', () => {
     })).toThrow('boom');
     expect(listBranches(db, b.id)).toEqual([]);
     expect(db.prepare('SELECT COUNT(*) AS n FROM audit_log').get()).toEqual({ n: 1 });
-    expect(outboxDepth(db).depth).toBe(1);
+    expect(outboxDepth(db).depth).toBe(2);
     expect(db.prepare('SELECT next_seq FROM local_sequence').get()).toEqual({ next_seq: 2 });
   });
   it('branch/terminal creation, first branch becomes default, terminal binding is exclusive per device', async () => {
@@ -72,7 +74,7 @@ describe('business setup writes are atomic with audit + outbox', () => {
     expect(readSyncStatus(db, false, null).state).toBe('never');
     createBusiness(db, biz, ACTOR);
     const s = readSyncStatus(db, false, null);
-    expect(s.state).toBe('queued'); expect(s.pending).toBe(1);
+    expect(s.state).toBe('queued'); expect(s.pending).toBe(2);
   });
 });
 

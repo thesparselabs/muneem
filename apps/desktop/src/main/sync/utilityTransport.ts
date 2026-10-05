@@ -1,11 +1,14 @@
 import type { PullResponse, PushRequest, PushResponse, Snapshot } from '@muneem/contracts';
+import type {
+  BackupObjectUpload, BackupPresignRequest, BackupTransport, BackupUploadTarget, CloudBackupDownload, CloudBackupDto, EscrowedKey,
+} from '../backups/transport.js';
 import { NETWORK_UNREACHABLE, TransportError, type BundleDownload, type BundleFetcher, type Credentials, type PullQuery, type Transport } from './transport.js';
 import type { Channel, WorkerOp, WorkerReply } from './workerProtocol.js';
 
 interface Waiting { resolve(v: unknown): void; reject(e: unknown): void; timer: NodeJS.Timeout; onProgress?: (bytes: number) => void }
 
 // Main's side of the utility process (7d): every call goes over the port with fresh credentials and comes back as data or a TransportError.
-export class UtilityTransport implements Transport, BundleFetcher {
+export class UtilityTransport implements Transport, BundleFetcher, BackupTransport {
   private nextId = 1;
   private readonly waiting = new Map<number, Waiting>();
 
@@ -21,6 +24,20 @@ export class UtilityTransport implements Transport, BundleFetcher {
   // A download may run for minutes; it times out only when no progress arrives for the timeout.
   download(request: BundleDownload, onProgress: (bytes: number) => void): Promise<number> {
     return this.call('download', request, onProgress) as Promise<number>;
+  }
+
+  presignBackup(request: BackupPresignRequest): Promise<BackupUploadTarget> { return this.call('backupPresign', request) as Promise<BackupUploadTarget>; }
+  confirmBackup(backupId: string): Promise<CloudBackupDto> { return this.call('backupConfirm', backupId) as Promise<CloudBackupDto>; }
+  listBackups(businessId: string): Promise<CloudBackupDto[]> { return this.call('backupList', businessId) as Promise<CloudBackupDto[]>; }
+  getBackup(backupId: string): Promise<CloudBackupDownload> { return this.call('backupGet', backupId) as Promise<CloudBackupDownload>; }
+  async escrowBackupKey(key: EscrowedKey): Promise<void> { await this.call('backupKeyPut', key); }
+  fetchBackupKey(businessId: string, keyId?: string): Promise<EscrowedKey | null> {
+    return this.call('backupKeyGet', { businessId, ...(keyId && { keyId }) }) as Promise<EscrowedKey | null>;
+  }
+
+  // Like a download, an upload times out only when no progress arrives for the timeout.
+  async uploadBackup(request: BackupObjectUpload, onProgress: (bytes: number) => void): Promise<void> {
+    await this.call('backupUpload', request, onProgress);
   }
 
   // A worker that died or hung fails its calls as unreachable, so the engine backs off and retries.

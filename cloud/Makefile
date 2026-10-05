@@ -7,6 +7,7 @@ export MUNEEM_S3_BUCKET     ?= muneem-snapshots
 export MUNEEM_S3_ACCESS_KEY ?= muneem
 export MUNEEM_S3_SECRET_KEY ?= muneem-dev-secret
 export MUNEEM_S3_REGION     ?= us-east-1
+export MUNEEM_BACKUP_MASTER_KEY ?= AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8=  # dev only: wraps escrowed backup keys (8f)
 OPENAPI := ../packages/contracts/openapi/muneem-v1.yaml
 
 .PHONY: gen build run test lint migrate-up migrate-down db-roles smoke

@@ -16,6 +16,7 @@ const hasReversal = (sources: string) =>
 // A document whose journal would be empty (a register that closed exact, a stock document with no value) is left out here.
 const KINDS: readonly { kind: JournalDocKind; entityType: string; sources: string; unposted: string; cancelled?: string }[] = [
   { kind: 'sale', entityType: 'sale', sources: "'sale'", unposted: 'SELECT d.id FROM sale d WHERE d.business_id = ? AND {none} ORDER BY d.doc_date, d.id' },
+  { kind: 'credit_note', entityType: 'credit_note', sources: "'sale_return'", unposted: 'SELECT d.id FROM credit_note d WHERE d.business_id = ? AND {none} ORDER BY d.doc_date, d.id' },
   { kind: 'purchase', entityType: 'purchase', sources: "'purchase'", unposted: 'SELECT d.id FROM purchase d WHERE d.business_id = ? AND {none} ORDER BY d.supplier_invoice_date, d.id',
     cancelled: "SELECT d.id, d.cancelled_at AS at FROM purchase d WHERE d.business_id = ? AND d.status = 'cancelled' AND NOT {rev}" },
   { kind: 'debit_note', entityType: 'debit_note', sources: "'purchase_return'", unposted: 'SELECT d.id FROM debit_note d WHERE d.business_id = ? AND {none} ORDER BY d.doc_date, d.id' },

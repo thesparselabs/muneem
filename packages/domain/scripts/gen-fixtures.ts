@@ -11,6 +11,8 @@ import { fileURLToPath } from 'node:url';
 import { computeInvoice } from '../src/index.js';
 import type { Discount, GstFixtureCase, GstFixtureFile, GstInvoiceInput, GstLineInput, TaxTreatment } from '../src/index.js';
 import { allocationFixtures } from './allocationFixtures.js';
+import { returnFixtures } from './returnFixtures.js';
+import { setoffFixtures } from './setoffFixtures.js';
 
 const out = fileURLToPath(new URL('../fixtures/gst/', import.meta.url));
 mkdirSync(out, { recursive: true });
@@ -111,3 +113,15 @@ mkdirSync(parties, { recursive: true });
 const allocation = allocationFixtures();
 writeFileSync(parties + 'allocation.json', JSON.stringify(allocation, null, 1) + '\n');
 console.log(`wrote ${allocation.cases.length} allocation cases`);
+
+const returns = fileURLToPath(new URL('../fixtures/returns/', import.meta.url));
+mkdirSync(returns, { recursive: true });
+const returnCases = returnFixtures();
+writeFileSync(returns + 'return-golden.json', JSON.stringify(returnCases, null, 1) + '\n');
+console.log(`wrote ${returnCases.cases.length} return cases`);
+
+const setoffDir = fileURLToPath(new URL('../fixtures/setoff/', import.meta.url));
+mkdirSync(setoffDir, { recursive: true });
+const setoff = setoffFixtures();
+writeFileSync(setoffDir + 'setoff-golden.json', JSON.stringify(setoff, null, 1) + '\n');
+console.log(`wrote ${setoff.cases.length} set-off cases`);

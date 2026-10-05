@@ -1,4 +1,5 @@
 import type { SyncErrorCode } from '@muneem/contracts';
+import { closingsHold } from './yearEnd.js';
 
 type Payload = Record<string, unknown>;
 interface Line { debitPaise: number; creditPaise: number }
@@ -13,6 +14,7 @@ function journalsOf(entityType: string, p: Payload): Payload[] {
   const out: Payload[] = [];
   if (p.journal && typeof p.journal === 'object') out.push(p.journal as Payload);
   if (Array.isArray(p.corrections)) out.push(...(p.corrections as Payload[]));
+  if (entityType === 'fy_close' && Array.isArray(p.closings)) out.push(...(p.closings as Payload[]).flatMap((c) => (c.journal ? [c.journal as Payload] : [])));
   return out;
 }
 
@@ -40,12 +42,40 @@ function purchaseTotalsHold(p: Payload): boolean {
 const debitNoteTotalsHold = (p: Payload): boolean =>
   taxed(p as Partial<Heads>) + num(p.chargesPaise) + num(p.roundOffPaise) === num(p.totalPaise);
 
-const TOTALS: Record<string, (p: Payload) => boolean> = { sale: saleTotalsHold, purchase: purchaseTotalsHold, debit_note: debitNoteTotalsHold };
+// A credit note: its lines add up to it, and what was refunded plus what was credited is the whole of it.
+function creditNoteTotalsHold(p: Payload): boolean {
+  const lines = (p.lines ?? []) as (Partial<Heads> & { totalPaise?: number })[];
+  const total = num(p.totalPaise);
+  return taxed(p as Partial<Heads>) + num(p.roundOffPaise) === total && sum(lines, (l) => num(l.totalPaise)) + num(p.roundOffPaise) === total
+    && lines.every((l) => taxed(l) === num(l.totalPaise)) && num(p.refundPaise) + num(p.creditPaise) === total;
+}
+
+// A set-off: each head's liability is met by credit or cash, and no head's credit is used beyond what was there (ADR-0044).
+function setoffTotalsHold(p: Payload): boolean {
+  const h = (k: string) => (p[k] ?? {}) as Record<string, unknown>;
+  const u = h('utilisation');
+  const [l, c, cash] = [h('liability'), h('credit'), h('cash')];
+  const met = { igst: num(u.igstToIgstPaise) + num(u.cgstToIgstPaise) + num(u.sgstToIgstPaise), cgst: num(u.igstToCgstPaise) + num(u.cgstToCgstPaise),
+    sgst: num(u.igstToSgstPaise) + num(u.sgstToSgstPaise), cess: num(u.cessToCessPaise) };
+  const used = { igst: num(u.igstToIgstPaise) + num(u.igstToCgstPaise) + num(u.igstToSgstPaise), cgst: num(u.cgstToCgstPaise) + num(u.cgstToIgstPaise),
+    sgst: num(u.sgstToSgstPaise) + num(u.sgstToIgstPaise), cess: num(u.cessToCessPaise) };
+  return (['igst', 'cgst', 'sgst', 'cess'] as const).every((k) =>
+    met[k] + num(cash[`${k}Paise`]) === num(l[`${k}Paise`]) && used[k] <= num(c[`${k}Paise`]));
+}
+
+const gstPaymentTotalsHold = (p: Payload): boolean =>
+  num(p.totalPaise) > 0 && num(p.igstPaise) + num(p.cgstPaise) + num(p.sgstPaise) + num(p.cessPaise) === num(p.totalPaise);
+
+const TOTALS: Record<string, (p: Payload) => boolean> = {
+  sale: saleTotalsHold, purchase: purchaseTotalsHold, debit_note: debitNoteTotalsHold, credit_note: creditNoteTotalsHold, gst_setoff: setoffTotalsHold,
+  gst_payment: gstPaymentTotalsHold,
+};
 
 // The light verifier (ADR-0042): document totals add up and every journal in the payload balances.
 export function verifyOperation(entityType: string, operationType: string, payload: Payload): SyncErrorCode | null {
   const totals = operationType === 'create' ? TOTALS[entityType] : undefined;
   if (totals && !totals(payload)) return 'TOTAL_MISMATCH';
+  if (entityType === 'fy_close' && !closingsHold(payload)) return 'JOURNAL_MISMATCH';
   if (!journalsOf(entityType, payload).every(balanced)) return 'JOURNAL_IMBALANCE';
   return null;
 }

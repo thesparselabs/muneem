@@ -15,12 +15,14 @@ win:
   target:
     - target: nsis
       arch: [x64]
-  # Signing (EV / Azure Trusted Signing) is configured in CI via env, never committed.
+  # Signing (EV / Azure Trusted Signing) is configured in CI via env, never committed. Its publisher name lands in
+  # app-update.yml, and electron-updater refuses an update whose Authenticode signer differs (ADR-0049).
 nsis:
   oneClick: false
   perMachine: false
   allowToChangeInstallationDirectory: true
   deleteAppDataOnUninstall: false
+# The app points the feed at <host>/<channel> at run time (ADR-0049); this is the default the build records.
 publish:
   provider: generic
   url: https://updates.muneem.app/stable

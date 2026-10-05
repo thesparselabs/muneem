@@ -1,0 +1,672 @@
+{
+ "operations": [
+  {
+   "entityType": "credit_note",
+   "operationType": "create",
+   "entityId": "01M43V8Q858BG59P0K34VK1MAM",
+   "payload": {
+    "allocatedPaise": 0,
+    "allocations": [],
+    "branchId": "01M43V8Q6FPF4DC4YVXV1ECVZF",
+    "businessId": "01M43V8Q657V7P3NDA5E355YCK",
+    "cessPaise": 953,
+    "cgstPaise": 1149,
+    "commandId": "01M43V8Q84EFABPJ4CTKAERYH6",
+    "correctionMovements": [],
+    "corrections": [],
+    "costPaise": 0,
+    "createdAt": "2026-10-04T16:17:03.238Z",
+    "createdBy": "01J00000000000000000000A01",
+    "creditPaise": 0,
+    "customerId": null,
+    "docDate": "2026-10-04",
+    "docNumber": "DE01C/2627/00001",
+    "docSeq": 1,
+    "entry": null,
+    "fy": "2026-27",
+    "gstr1Bucket": "cdnur",
+    "id": "01M43V8Q858BG59P0K34VK1MAM",
+    "igstPaise": 0,
+    "journal": {
+     "branchId": "01M43V8Q6FPF4DC4YVXV1ECVZF",
+     "docDate": "2026-10-04",
+     "entryDate": "2026-10-04",
+     "entryNo": "DE01C/2627/00001",
+     "id": "01M43V8Q87QCZXAV948KCHFNVB",
+     "latePosting": false,
+     "lines": [
+      {
+       "account": {
+        "role": "sales_goods"
+       },
+       "creditPaise": 0,
+       "debitPaise": 9443
+      },
+      {
+       "account": {
+        "role": "output_cgst"
+       },
+       "creditPaise": 0,
+       "debitPaise": 1149
+      },
+      {
+       "account": {
+        "role": "output_sgst"
+       },
+       "creditPaise": 0,
+       "debitPaise": 1150
+      },
+      {
+       "account": {
+        "role": "output_cess"
+       },
+       "creditPaise": 0,
+       "debitPaise": 953
+      },
+      {
+       "account": {
+        "role": "cash"
+       },
+       "creditPaise": 12695,
+       "debitPaise": 0
+      }
+     ],
+     "narration": null,
+     "periodId": "01M43V8Q784Z9ZYX5V8R8K9RB0",
+     "refId": "01M43V8Q858BG59P0K34VK1MAM",
+     "refType": "credit_note",
+     "reversalOf": null,
+     "source": "sale_return",
+     "terminalId": "01M43V8Q6HPRA7ADSMSM8JR27B"
+    },
+    "kind": "return",
+    "lines": [
+     {
+      "baseQtyMilli": 3000,
+      "cessPaise": 953,
+      "cgstPaise": 1111,
+      "costPaise": 0,
+      "gstRateBp": 2800,
+      "id": "01M43V8Q858BG59P0K34VK1MAP",
+      "igstPaise": 0,
+      "lineNo": 1,
+      "name": "Cola",
+      "productId": "01M43V8Q6V7H7E9D913YBCQ3N4",
+      "qtyMilli": 3000,
+      "returnedBeforeMilli": 0,
+      "saleItemId": "01M43V8Q75904P1Z3KZ31CMZEC-002",
+      "saleLineNo": 2,
+      "sgstPaise": 1112,
+      "sold": {
+       "baseQtyMilli": 7000,
+       "cessPaise": 2223,
+       "cgstPaise": 2593,
+       "cogsPaise": 0,
+       "igstPaise": 0,
+       "qtyMilli": 7000,
+       "sgstPaise": 2594,
+       "taxablePaise": 18524
+      },
+      "taxablePaise": 7939,
+      "totalPaise": 11115,
+      "uomCode": "PCS"
+     },
+     {
+      "baseQtyMilli": 250,
+      "cessPaise": 0,
+      "cgstPaise": 38,
+      "costPaise": 0,
+      "gstRateBp": 500,
+      "id": "01M43V8Q858BG59P0K34VK1MAQ",
+      "igstPaise": 0,
+      "lineNo": 2,
+      "name": "Rice",
+      "productId": "01M43V8Q6XXXMQMD8DBEKHHMGZ",
+      "qtyMilli": 250,
+      "returnedBeforeMilli": 0,
+      "saleItemId": "01M43V8Q75904P1Z3KZ31CMZEC-003",
+      "saleLineNo": 3,
+      "sgstPaise": 38,
+      "sold": {
+       "baseQtyMilli": 1250,
+       "cessPaise": 0,
+       "cgstPaise": 188,
+       "cogsPaise": 0,
+       "igstPaise": 0,
+       "qtyMilli": 1250,
+       "sgstPaise": 188,
+       "taxablePaise": 7520
+      },
+      "taxablePaise": 1504,
+      "totalPaise": 1580,
+      "uomCode": "PCS"
+     }
+    ],
+    "movements": [
+     {
+      "deviceId": "01M43V8Q50KGHWW8FCQDDMKS71",
+      "id": "01M43V8Q87QCZXAV948KCHFNV8",
+      "occurredAt": "2026-10-04T16:17:03.239Z",
+      "productId": "01M43V8Q6V7H7E9D913YBCQ3N4",
+      "provisional": false,
+      "qtyMilli": 3000,
+      "reasonCode": null,
+      "refId": "01M43V8Q858BG59P0K34VK1MAM",
+      "refLineId": "01M43V8Q858BG59P0K34VK1MAP",
+      "refType": "sale_return",
+      "type": "sale_return",
+      "unitCostPaise": 0,
+      "valuePaise": 0,
+      "warehouseId": "01M43V8Q76V8XX7SA34MCTMMX3"
+     },
+     {
+      "deviceId": "01M43V8Q50KGHWW8FCQDDMKS71",
+      "id": "01M43V8Q87QCZXAV948KCHFNV9",
+      "occurredAt": "2026-10-04T16:17:03.239Z",
+      "productId": "01M43V8Q6XXXMQMD8DBEKHHMGZ",
+      "provisional": false,
+      "qtyMilli": 250,
+      "reasonCode": null,
+      "refId": "01M43V8Q858BG59P0K34VK1MAM",
+      "refLineId": "01M43V8Q858BG59P0K34VK1MAQ",
+      "refType": "sale_return",
+      "type": "sale_return",
+      "unitCostPaise": 0,
+      "valuePaise": 0,
+      "warehouseId": "01M43V8Q76V8XX7SA34MCTMMX3"
+     }
+    ],
+    "placeOfSupplyState": "07",
+    "reason": "returned",
+    "refundMethod": "cash",
+    "refundPaise": 12695,
+    "roundOffPaise": 0,
+    "saleDocDate": "2026-10-04",
+    "saleDocNumber": "DE01/2627/000001",
+    "saleId": "01M43V8Q75904P1Z3KZ31CMZEC",
+    "seriesId": "01M43V8Q858BG59P0K34VK1MAR",
+    "sessionId": "01M43V8Q71CN8VS0GT61XM8SBY",
+    "sgstPaise": 1150,
+    "stateTaxKind": "sgst",
+    "status": "posted",
+    "supplyType": "intra",
+    "taxablePaise": 9443,
+    "terminalId": "01M43V8Q6HPRA7ADSMSM8JR27B",
+    "totalPaise": 12695,
+    "warehouseId": "01M43V8Q76V8XX7SA34MCTMMX3"
+   }
+  },
+  {
+   "entityType": "credit_note",
+   "operationType": "create",
+   "entityId": "01M43V8Q8JKCR3CY1E39T5BPW8",
+   "payload": {
+    "allocatedPaise": 0,
+    "allocations": [],
+    "branchId": "01M43V8Q6FPF4DC4YVXV1ECVZF",
+    "businessId": "01M43V8Q657V7P3NDA5E355YCK",
+    "cessPaise": 2410,
+    "cgstPaise": 0,
+    "commandId": "01M43V8Q8HBKC9HE214ZQDBGPJ",
+    "correctionMovements": [],
+    "corrections": [],
+    "costPaise": 0,
+    "createdAt": "2026-10-04T16:17:03.250Z",
+    "createdBy": "01J00000000000000000000A01",
+    "creditPaise": 0,
+    "customerId": "01M43V8Q71CN8VS0GT61XM8SBV",
+    "customerName": "Mumbai Traders",
+    "docDate": "2026-10-04",
+    "docNumber": "DE01C/2627/00004",
+    "docSeq": 4,
+    "entry": null,
+    "fy": "2026-27",
+    "gstr1Bucket": "cdnur",
+    "id": "01M43V8Q8JKCR3CY1E39T5BPW8",
+    "igstPaise": 10770,
+    "journal": {
+     "branchId": "01M43V8Q6FPF4DC4YVXV1ECVZF",
+     "docDate": "2026-10-04",
+     "entryDate": "2026-10-04",
+     "entryNo": "DE01C/2627/00004",
+     "id": "01M43V8Q8KGWHWGP2WH08C70C5",
+     "latePosting": false,
+     "lines": [
+      {
+       "account": {
+        "role": "sales_goods"
+       },
+       "creditPaise": 0,
+       "debitPaise": 59061
+      },
+      {
+       "account": {
+        "role": "output_igst"
+       },
+       "creditPaise": 0,
+       "debitPaise": 10770
+      },
+      {
+       "account": {
+        "role": "output_cess"
+       },
+       "creditPaise": 0,
+       "debitPaise": 2410
+      },
+      {
+       "account": {
+        "role": "round_off"
+       },
+       "creditPaise": 41,
+       "debitPaise": 0
+      },
+      {
+       "account": {
+        "role": "cash"
+       },
+       "creditPaise": 72200,
+       "debitPaise": 0
+      }
+     ],
+     "narration": null,
+     "periodId": "01M43V8Q784Z9ZYX5V8R8K9RB0",
+     "refId": "01M43V8Q8JKCR3CY1E39T5BPW8",
+     "refType": "credit_note",
+     "reversalOf": null,
+     "source": "sale_return",
+     "terminalId": "01M43V8Q6HPRA7ADSMSM8JR27B"
+    },
+    "kind": "cancel",
+    "lines": [
+     {
+      "baseQtyMilli": 3000,
+      "cessPaise": 0,
+      "cgstPaise": 0,
+      "costPaise": 0,
+      "gstRateBp": 1800,
+      "id": "01M43V8Q8JKCR3CY1E39T5BPWA",
+      "igstPaise": 4738,
+      "lineNo": 1,
+      "name": "Soap",
+      "productId": "01M43V8Q6PTV7N73H3T5Z1AHHS",
+      "qtyMilli": 3000,
+      "returnedBeforeMilli": 0,
+      "saleItemId": "01M43V8Q7P72CPEGKAP9Q68VCV-001",
+      "saleLineNo": 1,
+      "sgstPaise": 0,
+      "sold": {
+       "baseQtyMilli": 3000,
+       "cessPaise": 0,
+       "cgstPaise": 0,
+       "cogsPaise": 0,
+       "igstPaise": 4738,
+       "qtyMilli": 3000,
+       "sgstPaise": 0,
+       "taxablePaise": 26323
+      },
+      "taxablePaise": 26323,
+      "totalPaise": 31061,
+      "uomCode": "PCS"
+     },
+     {
+      "baseQtyMilli": 7000,
+      "cessPaise": 2410,
+      "cgstPaise": 0,
+      "costPaise": 0,
+      "gstRateBp": 2800,
+      "id": "01M43V8Q8JKCR3CY1E39T5BPWB",
+      "igstPaise": 5624,
+      "lineNo": 2,
+      "name": "Cola",
+      "productId": "01M43V8Q6V7H7E9D913YBCQ3N4",
+      "qtyMilli": 7000,
+      "returnedBeforeMilli": 0,
+      "saleItemId": "01M43V8Q7P72CPEGKAP9Q68VCV-002",
+      "saleLineNo": 2,
+      "sgstPaise": 0,
+      "sold": {
+       "baseQtyMilli": 7000,
+       "cessPaise": 2410,
+       "cgstPaise": 0,
+       "cogsPaise": 0,
+       "igstPaise": 5624,
+       "qtyMilli": 7000,
+       "sgstPaise": 0,
+       "taxablePaise": 20085
+      },
+      "taxablePaise": 20085,
+      "totalPaise": 28119,
+      "uomCode": "PCS"
+     },
+     {
+      "baseQtyMilli": 1250,
+      "cessPaise": 0,
+      "cgstPaise": 0,
+      "costPaise": 0,
+      "gstRateBp": 500,
+      "id": "01M43V8Q8JKCR3CY1E39T5BPWC",
+      "igstPaise": 408,
+      "lineNo": 3,
+      "name": "Rice",
+      "productId": "01M43V8Q6XXXMQMD8DBEKHHMGZ",
+      "qtyMilli": 1250,
+      "returnedBeforeMilli": 0,
+      "saleItemId": "01M43V8Q7P72CPEGKAP9Q68VCV-003",
+      "saleLineNo": 3,
+      "sgstPaise": 0,
+      "sold": {
+       "baseQtyMilli": 1250,
+       "cessPaise": 0,
+       "cgstPaise": 0,
+       "cogsPaise": 0,
+       "igstPaise": 408,
+       "qtyMilli": 1250,
+       "sgstPaise": 0,
+       "taxablePaise": 8153
+      },
+      "taxablePaise": 8153,
+      "totalPaise": 8561,
+      "uomCode": "PCS"
+     },
+     {
+      "baseQtyMilli": 2000,
+      "cessPaise": 0,
+      "cgstPaise": 0,
+      "costPaise": 0,
+      "gstRateBp": 0,
+      "id": "01M43V8Q8JKCR3CY1E39T5BPWD",
+      "igstPaise": 0,
+      "lineNo": 4,
+      "name": "Salt",
+      "productId": "01M43V8Q6ZPC4TZEV4T3J909FB",
+      "qtyMilli": 2000,
+      "returnedBeforeMilli": 0,
+      "saleItemId": "01M43V8Q7P72CPEGKAP9Q68VCV-004",
+      "saleLineNo": 4,
+      "sgstPaise": 0,
+      "sold": {
+       "baseQtyMilli": 2000,
+       "cessPaise": 0,
+       "cgstPaise": 0,
+       "cogsPaise": 0,
+       "igstPaise": 0,
+       "qtyMilli": 2000,
+       "sgstPaise": 0,
+       "taxablePaise": 4500
+      },
+      "taxablePaise": 4500,
+      "totalPaise": 4500,
+      "uomCode": "PCS"
+     }
+    ],
+    "movements": [
+     {
+      "deviceId": "01M43V8Q50KGHWW8FCQDDMKS71",
+      "id": "01M43V8Q8JKCR3CY1E39T5BPWE",
+      "occurredAt": "2026-10-04T16:17:03.250Z",
+      "productId": "01M43V8Q6PTV7N73H3T5Z1AHHS",
+      "provisional": false,
+      "qtyMilli": 3000,
+      "reasonCode": null,
+      "refId": "01M43V8Q8JKCR3CY1E39T5BPW8",
+      "refLineId": "01M43V8Q8JKCR3CY1E39T5BPWA",
+      "refType": "sale_return",
+      "type": "sale_return",
+      "unitCostPaise": 0,
+      "valuePaise": 0,
+      "warehouseId": "01M43V8Q76V8XX7SA34MCTMMX3"
+     },
+     {
+      "deviceId": "01M43V8Q50KGHWW8FCQDDMKS71",
+      "id": "01M43V8Q8JKCR3CY1E39T5BPWF",
+      "occurredAt": "2026-10-04T16:17:03.250Z",
+      "productId": "01M43V8Q6V7H7E9D913YBCQ3N4",
+      "provisional": false,
+      "qtyMilli": 7000,
+      "reasonCode": null,
+      "refId": "01M43V8Q8JKCR3CY1E39T5BPW8",
+      "refLineId": "01M43V8Q8JKCR3CY1E39T5BPWB",
+      "refType": "sale_return",
+      "type": "sale_return",
+      "unitCostPaise": 0,
+      "valuePaise": 0,
+      "warehouseId": "01M43V8Q76V8XX7SA34MCTMMX3"
+     },
+     {
+      "deviceId": "01M43V8Q50KGHWW8FCQDDMKS71",
+      "id": "01M43V8Q8JKCR3CY1E39T5BPWG",
+      "occurredAt": "2026-10-04T16:17:03.250Z",
+      "productId": "01M43V8Q6XXXMQMD8DBEKHHMGZ",
+      "provisional": false,
+      "qtyMilli": 1250,
+      "reasonCode": null,
+      "refId": "01M43V8Q8JKCR3CY1E39T5BPW8",
+      "refLineId": "01M43V8Q8JKCR3CY1E39T5BPWC",
+      "refType": "sale_return",
+      "type": "sale_return",
+      "unitCostPaise": 0,
+      "valuePaise": 0,
+      "warehouseId": "01M43V8Q76V8XX7SA34MCTMMX3"
+     },
+     {
+      "deviceId": "01M43V8Q50KGHWW8FCQDDMKS71",
+      "id": "01M43V8Q8KGWHWGP2WH08C70C3",
+      "occurredAt": "2026-10-04T16:17:03.251Z",
+      "productId": "01M43V8Q6ZPC4TZEV4T3J909FB",
+      "provisional": false,
+      "qtyMilli": 2000,
+      "reasonCode": null,
+      "refId": "01M43V8Q8JKCR3CY1E39T5BPW8",
+      "refLineId": "01M43V8Q8JKCR3CY1E39T5BPWD",
+      "refType": "sale_return",
+      "type": "sale_return",
+      "unitCostPaise": 0,
+      "valuePaise": 0,
+      "warehouseId": "01M43V8Q76V8XX7SA34MCTMMX3"
+     }
+    ],
+    "placeOfSupplyState": "27",
+    "reason": "wrong bill",
+    "refundMethod": "cash",
+    "refundPaise": 72200,
+    "roundOffPaise": -41,
+    "saleDocDate": "2026-10-04",
+    "saleDocNumber": "DE01/2627/000003",
+    "saleId": "01M43V8Q7P72CPEGKAP9Q68VCV",
+    "seriesId": "01M43V8Q858BG59P0K34VK1MAR",
+    "sessionId": "01M43V8Q71CN8VS0GT61XM8SBY",
+    "sgstPaise": 0,
+    "stateTaxKind": "sgst",
+    "status": "posted",
+    "supplyType": "inter",
+    "taxablePaise": 59061,
+    "terminalId": "01M43V8Q6HPRA7ADSMSM8JR27B",
+    "totalPaise": 72200,
+    "warehouseId": "01M43V8Q76V8XX7SA34MCTMMX3"
+   }
+  },
+  {
+   "entityType": "credit_note",
+   "operationType": "create",
+   "entityId": "01KJEJB5D0C1SFKWAR67TYPZV3",
+   "payload": {
+    "allocatedPaise": 49000,
+    "allocations": [
+     {
+      "allocatedOn": "2026-02-27",
+      "amountPaise": 49000,
+      "docNumber": "DE01/2526/000001",
+      "id": "01KJEJB5D0C1SFKWAR67TYPZV8",
+      "targetId": "01KJ9DHRC865PYSQ1N88QB1BH2",
+      "targetType": "sale",
+      "voided": false
+     }
+    ],
+    "branchId": "01KJ9DHBP0CCTPR69K5VDWK9KS",
+    "businessId": "01KJ9DHBP0CCTPR69K5VDWK9E9",
+    "cessPaise": 0,
+    "cgstPaise": 3737,
+    "commandId": "01KJEJB5D0C1SFKWAR67TYPZV2",
+    "correctionMovements": [],
+    "corrections": [],
+    "costPaise": 29068,
+    "createdAt": "2026-02-27T03:30:12.000Z",
+    "createdBy": "01J00000000000000000000A01",
+    "creditPaise": 49000,
+    "customerId": "01KJ9DHBP0CCTPR69K5VDWK9VN",
+    "customerName": "Customer 9",
+    "docDate": "2026-02-27",
+    "docNumber": "DE01C/2526/00002",
+    "docSeq": 2,
+    "entry": {
+     "amountPaise": -49000,
+     "businessId": "01KJ9DHBP0CCTPR69K5VDWK9E9",
+     "docDate": "2026-02-27",
+     "dueDate": null,
+     "id": "01KJEJB5D0C1SFKWAR67TYPZV7",
+     "kind": "post",
+     "partyId": "01KJ9DHBP0CCTPR69K5VDWK9VN",
+     "partyType": "customer",
+     "refId": "01KJEJB5D0C1SFKWAR67TYPZV3",
+     "refType": "credit_note"
+    },
+    "fy": "2025-26",
+    "gstr1Bucket": "cdnur",
+    "id": "01KJEJB5D0C1SFKWAR67TYPZV3",
+    "igstPaise": 0,
+    "journal": {
+     "branchId": "01KJ9DHBP0CCTPR69K5VDWK9KS",
+     "docDate": "2026-02-27",
+     "entryDate": "2026-02-27",
+     "entryNo": "DE01C/2526/00002",
+     "id": "01KJEJB5D0C1SFKWAR67TYPZV9",
+     "latePosting": false,
+     "lines": [
+      {
+       "account": {
+        "role": "sales_goods"
+       },
+       "creditPaise": 0,
+       "debitPaise": 41525
+      },
+      {
+       "account": {
+        "role": "output_cgst"
+       },
+       "creditPaise": 0,
+       "debitPaise": 3737
+      },
+      {
+       "account": {
+        "role": "output_sgst"
+       },
+       "creditPaise": 0,
+       "debitPaise": 3738
+      },
+      {
+       "account": {
+        "role": "ar"
+       },
+       "creditPaise": 49000,
+       "debitPaise": 0,
+       "party": {
+        "partyId": "01KJ9DHBP0CCTPR69K5VDWK9VN",
+        "partyType": "customer"
+       }
+      },
+      {
+       "account": {
+        "role": "inventory"
+       },
+       "creditPaise": 0,
+       "debitPaise": 29068
+      },
+      {
+       "account": {
+        "role": "cogs"
+       },
+       "creditPaise": 29068,
+       "debitPaise": 0
+      }
+     ],
+     "narration": null,
+     "periodId": "01KJ9DHBP0CCTPR69K5VDWK9X6",
+     "refId": "01KJEJB5D0C1SFKWAR67TYPZV3",
+     "refType": "credit_note",
+     "reversalOf": null,
+     "source": "sale_return",
+     "terminalId": "01KJ9DHBP0CCTPR69K5VDWK9KY"
+    },
+    "kind": "return",
+    "lines": [
+     {
+      "baseQtyMilli": 1000,
+      "cessPaise": 0,
+      "cgstPaise": 3737,
+      "costPaise": 29068,
+      "gstRateBp": 1800,
+      "id": "01KJEJB5D0C1SFKWAR67TYPZV5",
+      "igstPaise": 0,
+      "lineNo": 1,
+      "name": "Soak item 20",
+      "productId": "01KJ9DHBP0CCTPR69K5VDWK9Q9",
+      "qtyMilli": 1000,
+      "returnedBeforeMilli": 0,
+      "saleItemId": "01KJ9DHRC865PYSQ1N88QB1BH2-001",
+      "saleLineNo": 1,
+      "sgstPaise": 3738,
+      "sold": {
+       "baseQtyMilli": 1000,
+       "cessPaise": 0,
+       "cgstPaise": 3737,
+       "cogsPaise": 29068,
+       "igstPaise": 0,
+       "qtyMilli": 1000,
+       "sgstPaise": 3738,
+       "taxablePaise": 41525
+      },
+      "taxablePaise": 41525,
+      "totalPaise": 49000,
+      "uomCode": "PCS"
+     }
+    ],
+    "movements": [
+     {
+      "deviceId": "01KJ9DHBP0CCTPR69K5VDWK9E1",
+      "id": "01KJEJB5D0C1SFKWAR67TYPZV6",
+      "occurredAt": "2026-02-27T03:30:12.000Z",
+      "productId": "01KJ9DHBP0CCTPR69K5VDWK9Q9",
+      "provisional": false,
+      "qtyMilli": 1000,
+      "reasonCode": null,
+      "refId": "01KJEJB5D0C1SFKWAR67TYPZV3",
+      "refLineId": "01KJEJB5D0C1SFKWAR67TYPZV5",
+      "refType": "sale_return",
+      "type": "sale_return",
+      "unitCostPaise": 29068,
+      "valuePaise": 29068,
+      "warehouseId": "01KJ9DHBP0CCTPR69K5VDWK9VZ"
+     }
+    ],
+    "placeOfSupplyState": "07",
+    "reason": "damaged pack",
+    "refundMethod": "cash",
+    "refundPaise": 0,
+    "roundOffPaise": 0,
+    "saleDocDate": "2026-02-25",
+    "saleDocNumber": "DE01/2526/000001",
+    "saleId": "01KJ9DHRC865PYSQ1N88QB1BH2",
+    "seriesId": "01KJBZYDDR1RZKT128WFTS8Y08",
+    "sessionId": "01KJEJASP0F9WWWWMQD5B7SVE6",
+    "sgstPaise": 3738,
+    "stateTaxKind": "sgst",
+    "status": "posted",
+    "supplyType": "intra",
+    "taxablePaise": 41525,
+    "terminalId": "01KJ9DHBP0CCTPR69K5VDWK9KY",
+    "totalPaise": 49000,
+    "warehouseId": "01KJ9DHBP0CCTPR69K5VDWK9VZ"
+   }
+  }
+ ]
+}

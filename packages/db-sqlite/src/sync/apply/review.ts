@@ -3,7 +3,7 @@ import type { Db } from '../../open.js';
 import { stmt } from '../../statements.js';
 
 export interface LocalReview {
-  id: string; businessId: string; kind: 'unique_clash' | 'apply_failed'; entityType: string; entityId: string; rule: string; winner: 'cloud' | 'device';
+  id: string; businessId: string; kind: 'unique_clash' | 'apply_failed' | 'duplicate_setoff' | 'fy_close_superseded'; entityType: string; entityId: string; rule: string; winner: 'cloud' | 'device';
   field?: string; cloudValue?: unknown; deviceValue?: unknown;
 }
 

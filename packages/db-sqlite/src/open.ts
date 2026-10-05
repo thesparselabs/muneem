@@ -1,5 +1,5 @@
 import Database from 'better-sqlite3';
-import { copyFileSync, existsSync, mkdirSync, statSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdirSync, rmSync, statSync } from 'node:fs';
 import { dirname } from 'node:path';
 
 export type Db = Database.Database;
@@ -75,13 +75,16 @@ export async function backupDatabase(db: Db, destPath: string): Promise<{ bytes:
   return { bytes: statSync(destPath).size, verified };
 }
 
+/** A connection to a backup copy with none of the live database's pragmas; read-only unless asked. */
+export function openCopy(path: string, opts: { nativeBinding?: string | undefined; writable?: boolean } = {}): Db {
+  return new Database(path, { readonly: !opts.writable, fileMustExist: true, ...(opts.nativeBinding && { nativeBinding: opts.nativeBinding }) });
+}
+
 /** Restore = file copy while the DB is closed. Caller must have closed all connections. */
 export function restoreDatabaseFile(backupPath: string, dbPath: string): void {
   if (!existsSync(backupPath)) throw new Error(`backup not found: ${backupPath}`);
-  for (const suffix of ['', '-wal', '-shm']) {
-    const p = dbPath + suffix;
-    if (suffix && existsSync(p)) copyFileSync(backupPath, p); // overwritten below; keeps ordering simple
-  }
+  // A leftover WAL would be replayed onto the restored file and corrupt it.
+  for (const suffix of ['-wal', '-shm']) rmSync(dbPath + suffix, { force: true });
   copyFileSync(backupPath, dbPath);
 }
 

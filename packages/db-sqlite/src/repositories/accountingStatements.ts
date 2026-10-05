@@ -2,7 +2,8 @@ import { addDays, dayBefore, fyStartOf, monthEnd, monthStart, type AccountType }
 import type { Db } from '../open.js';
 import { stmt } from '../statements.js';
 
-export interface StatementFilter { businessId: string; from?: string | null; to: string; branchId?: string | null }
+// closingsFrom leaves out closing journals dated on or after it (ADR-0045): a P&L never shows its own year's closing.
+export interface StatementFilter { businessId: string; from?: string | null; to: string; branchId?: string | null; closingsFrom?: string | null }
 export interface AccountAmount { accountId: string; code: string; name: string; type: AccountType; role: string | null; debitPaise: number; creditPaise: number }
 
 const later = (a: string, b: string): string => (a > b ? a : b);
@@ -28,7 +29,8 @@ export function accountTotals(db: Db, f: StatementFilter): AccountAmount[] {
     return stmt(db, `SELECT a.id AS accountId, a.code, a.name, a.type, a.role, COALESCE(SUM(l.debit_paise), 0) AS debitPaise, COALESCE(SUM(l.credit_paise), 0) AS creditPaise
       FROM journal_line l JOIN journal_entry j ON j.id = l.entry_id JOIN account a ON a.id = l.account_id
       WHERE j.business_id = @businessId AND j.entry_date <= @to AND (@from IS NULL OR j.entry_date >= @from) AND (@branchId IS NULL OR j.branch_id = @branchId)
-      GROUP BY a.id ORDER BY a.code`).all({ businessId: f.businessId, from: f.from ?? null, to: f.to, branchId: f.branchId ?? null }) as AccountAmount[];
+        AND (@cf IS NULL OR j.source <> 'closing' OR j.entry_date < @cf)
+      GROUP BY a.id ORDER BY a.code`).all({ businessId: f.businessId, from: f.from ?? null, to: f.to, branchId: f.branchId ?? null, cf: f.closingsFrom ?? null }) as AccountAmount[];
   }
   return stmt(db, `SELECT a.id AS accountId, a.code, a.name, a.type, a.role, SUM(t.dr) AS debitPaise, SUM(t.cr) AS creditPaise FROM (
       SELECT b.account_id, b.debit_paise AS dr, b.credit_paise AS cr FROM account_balance b JOIN accounting_period p ON p.id = b.period_id
@@ -39,8 +41,11 @@ export function accountTotals(db: Db, f: StatementFilter): AccountAmount[] {
       UNION ALL
       SELECT l.account_id, l.debit_paise, l.credit_paise FROM journal_entry j CROSS JOIN journal_line l
         WHERE l.entry_id = j.id AND j.business_id = @businessId AND j.entry_date BETWEEN @lo2 AND @hi2
+      UNION ALL
+      SELECT l.account_id, -l.debit_paise, -l.credit_paise FROM journal_entry j CROSS JOIN journal_line l
+        WHERE l.entry_id = j.id AND j.business_id = @businessId AND j.source = 'closing' AND j.entry_date BETWEEN @cf AND @to
     ) t JOIN account a ON a.id = t.account_id
-    GROUP BY a.id ORDER BY a.code`).all({ businessId: f.businessId, ...split }) as AccountAmount[];
+    GROUP BY a.id ORDER BY a.code`).all({ businessId: f.businessId, ...split, cf: f.closingsFrom == null ? null : later(f.closingsFrom, f.from ?? ''), to: f.to }) as AccountAmount[];
 }
 
 // Σ debit − credit of one account's lines dated on or before `to`.
@@ -80,7 +85,7 @@ export interface ProfitAndLoss {
   revenue: StatementLine[]; costOfSales: StatementLine[]; grossProfitPaise: number; otherIncome: StatementLine[]; expenses: StatementLine[]; netProfitPaise: number;
 }
 export function profitAndLoss(db: Db, f: StatementFilter): ProfitAndLoss {
-  const totals = accountTotals(db, f);
+  const totals = accountTotals(db, { ...f, closingsFrom: f.from ?? '' });
   const pick = (type: AccountType, test: (code: string) => boolean, value: (a: AccountAmount) => number) =>
     totals.filter((a) => a.type === type && test(a.code)).map((a) => line(a, value(a))).filter((l) => l.amountPaise !== 0);
   const revenue = pick('income', (c) => c.startsWith('41') || c.startsWith('42'), income);
@@ -103,10 +108,16 @@ export interface BalanceSheet {
   assets: StatementLine[]; liabilities: StatementLine[]; equity: StatementLine[];
   retainedEarningsPaise: number; currentProfitPaise: number; totalAssetsPaise: number; totalLiabilitiesAndEquityPaise: number; balanced: boolean;
 }
+const netProfit = (totals: readonly AccountAmount[]): number =>
+  totals.reduce((s, a) => s + (a.type === 'income' ? income(a) : a.type === 'expense' ? -expense(a) : 0), 0);
+
+// ADR-0045: closed years sit in 3300 through their closing journals; years not closed are still computed. This year's own
+// closing is left out, so the Balance Sheet at a year end reads the same before and after the year is closed.
 export function balanceSheet(db: Db, f: StatementFilter): BalanceSheet {
-  const totals = accountTotals(db, { ...f, from: null });
   const fyStart = fyStartOf(f.to);
-  const retained = profitAndLoss(db, { ...f, from: null, to: dayBefore(fyStart) }).netProfitPaise;
+  const totals = accountTotals(db, { ...f, from: null, closingsFrom: fyStart });
+  const unclosed = netProfit(accountTotals(db, { ...f, from: null, to: dayBefore(fyStart) }));
+  const closed = totals.filter((a) => a.role === 'retained_earnings').reduce((s, a) => s + income(a), 0);
   const current = profitAndLoss(db, { ...f, from: fyStart }).netProfitPaise;
   const ar = partySplit(db, f, 'ar');
   const ap = partySplit(db, f, 'ap');
@@ -123,13 +134,13 @@ export function balanceSheet(db: Db, f: StatementFilter): BalanceSheet {
     else if (a.type === 'liability') liabilities.push(line(a, income(a)));
   }
   const equity = totals.filter((a) => a.type === 'equity').map((a) => line(a, income(a)));
-  equity.push({ accountId: '', code: '', name: 'Retained earnings (earlier years)', amountPaise: retained });
+  equity.push({ accountId: '', code: '', name: 'Retained earnings (years not closed)', amountPaise: unclosed });
   equity.push({ accountId: '', code: '', name: 'Profit for the year', amountPaise: current });
   const clean = (xs: StatementLine[]) => xs.filter((x) => x.amountPaise !== 0);
   const totalAssetsPaise = sum(assets);
   const totalLiabilitiesAndEquityPaise = sum(liabilities) + sum(equity);
   return {
-    assets: clean(assets), liabilities: clean(liabilities), equity: clean(equity), retainedEarningsPaise: retained, currentProfitPaise: current,
+    assets: clean(assets), liabilities: clean(liabilities), equity: clean(equity), retainedEarningsPaise: closed + unclosed, currentProfitPaise: current,
     totalAssetsPaise, totalLiabilitiesAndEquityPaise, balanced: totalAssetsPaise === totalLiabilitiesAndEquityPaise,
   };
 }

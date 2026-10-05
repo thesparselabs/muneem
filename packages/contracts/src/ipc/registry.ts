@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import type { Permission } from './permissions.js';
 import {
-  Branch, BranchInput, Business, BusinessInput, DeviceInfo, DocSeries, Health, Identifier, Pin, Session,
+  AuditVerification, Branch, BranchInput, Business, BusinessInput, DeviceInfo, DocSeries, Health, Identifier, Pin, Session,
   SessionUser, SyncStatus, Terminal, TerminalInput, Ulid,
 } from './schemas.js';
 import {
@@ -12,9 +12,10 @@ import {
   CashMovementInput, CloseRegisterInput, Customer, CustomerInput, CustomerSearchInput, OpenRegisterInput, RegisterReport, RegisterSession,
 } from './pos.js';
 import {
-  LedgerInput, LedgerPage, OpeningBalanceInput, Outstanding, OutstandingInput, PartyOpening, SetCreditLimitInput, Supplier, SupplierInput,
-  SupplierSearchInput,
+  EraseCustomerInput, ExportProfileInput, ExportProfileResult, LedgerInput, LedgerPage, OpeningBalanceInput, Outstanding, OutstandingInput, PartyOpening,
+  SetConsentInput, SetCreditLimitInput, Supplier, SupplierInput, SupplierSearchInput, WithdrawConsentInput,
 } from './parties.js';
+import { ListNotificationsInput, NotificationChanged, NotificationCounts, NotificationIdsInput, NotificationPage } from './notifications.js';
 import {
   CancelPurchaseInput, CreatePurchaseInput, DebitNote, Purchase, PurchaseDraft, PurchaseImportPreview, PurchaseImportPreviewInput, PurchaseListInput,
   PurchasePage, PurchaseQuote, ReturnPurchaseInput,
@@ -26,11 +27,17 @@ import {
 import {
   AccountLedgerInput, AccountLedgerPage, AccountView, AsOfInput, BacklogResult, BalanceSheet, CreateAccountInput, DayBookInput, DayBookPage, JournalView, LatePosting,
   ListAccountsInput, LockPeriodInput, ManualJournalInput, Period, ProfitAndLoss, RangeInput, RenameAccountInput, ReverseJournalInput, TrialBalance, UnlockPeriodInput,
+  FinancialYear, YearCloseInput,
 } from './accounting.js';
 import { CompleteSaleInput, CompleteSaleResult, HeldBill, HoldBillInput, Sale, SaleDraft, SaleListInput, SalePage, SaleQuote } from './sales.js';
+import { CancelSaleInput, CompleteReturnInput, CompleteReturnResult, CreditNote, CreditNoteListInput, CreditNotePage, ReturnDraft, ReturnQuote } from './returns.js';
 import { PrintJobSummary, PrinterConfig, ReceiptDoc } from './print.js';
 import { SETTING_KEYS } from './settings.js';
 import { CloudBusiness, HydrationStartInput, HydrationStatus } from './hydration.js';
+import { Dashboard, ExportReportInput, ExportReportResult, ReportDefinitionView, ReportResult, RunReportInput } from './reports.js';
+import { GstLedgerView, GstMonthInput, GstPayment, GstPaymentInput, GstReturnSummary, GstSetoff, GstSetoffPreview, PostGstSetoffInput } from './gst.js';
+import { ReportCartInput, SetChannelInput, UpdateStatus } from './updates.js';
+import { BackupList, BackupRef, BackupVerification, RestoreBackupInput, RestoreFromCloudInput, RestoreResult, RunBackupResult } from './backups.js';
 import {
   AdjustmentResult, AdjustStockInput, MovementPage, MovementsInput, OpeningImportCommitInput, OpeningImportPreview, OpeningImportPreviewInput,
   OpeningStockInput, StockListInput, StockPage, StockRow, StockTakeInput, Valuation,
@@ -141,6 +148,11 @@ export const contract = {
   'customers.setOpening': spec({ input: OpeningBalanceInput, output: PartyOpening, permission: 'customers.edit', rateLimit: { perSec: 2 }, audit: true }),
   'customers.getLedger': spec({ input: LedgerInput, output: LedgerPage, permission: 'customers.view', rateLimit: { perSec: 10 } }),
   'customers.getOutstanding': spec({ input: OutstandingInput, output: Outstanding, permission: 'customers.view', rateLimit: { perSec: 2 } }),
+  // ADR-0050: consent is captured at the counter, so a cashier can record and withdraw it; export and erasure are a manager's.
+  'customers.setConsent': spec({ input: SetConsentInput, output: Customer, permission: 'customers.create', rateLimit: { perSec: 2 }, audit: true }),
+  'customers.withdrawConsent': spec({ input: WithdrawConsentInput, output: Customer, permission: 'customers.create', rateLimit: { perSec: 2 }, audit: true }),
+  'customers.exportProfile': spec({ input: ExportProfileInput, output: ExportProfileResult, permission: 'customers.approve', rateLimit: { perSec: 1 }, audit: true }),
+  'customers.erase': spec({ input: EraseCustomerInput, output: Customer, permission: 'customers.approve', rateLimit: { perSec: 1 }, audit: true }),
 
   'suppliers.search': spec({ input: SupplierSearchInput, output: z.array(Supplier), permission: 'suppliers.view', rateLimit: { perSec: 20 } }),
   'suppliers.get': spec({ input: z.object({ id: Ulid }), output: Supplier, permission: 'suppliers.view', rateLimit: { perSec: 20 } }),
@@ -160,11 +172,20 @@ export const contract = {
   'pos.listHeldBills': spec({ input: Empty, output: z.array(HeldBill), permission: 'pos.view', rateLimit: { perSec: 10 } }),
   'pos.getHeldBill': spec({ input: z.object({ id: Ulid }), output: HeldBill, permission: 'pos.view', rateLimit: { perSec: 10 } }),
   'pos.discardBill': spec({ input: z.object({ id: Ulid }), output: Ok, permission: 'pos.create', rateLimit: { perSec: 5 }, audit: true }),
+  // 8i: the POS screen tells main whether a bill is being rung up, so an update never installs mid-sale.
+  'pos.reportCart': spec({ input: ReportCartInput, output: Ok, permission: 'pos.view', rateLimit: { perSec: 20 } }),
   'sales.quote': spec({ input: SaleDraft, output: SaleQuote, permission: 'sales.create', rateLimit: { perSec: 30 } }),
   'sales.complete': spec({ input: CompleteSaleInput, output: CompleteSaleResult, permission: 'sales.create', rateLimit: { perSec: 5 }, audit: true, idempotent: 'commandId' }),
   'sales.get': spec({ input: z.object({ id: Ulid }), output: Sale, permission: 'sales.view', rateLimit: { perSec: 20 } }),
   'sales.list': spec({ input: SaleListInput, output: SalePage, permission: 'sales.view', rateLimit: { perSec: 10 } }),
   'sales.getReceipt': spec({ input: z.object({ saleId: Ulid }), output: ReceiptDoc, permission: 'sales.view', rateLimit: { perSec: 10 } }),
+  'sales.cancel': spec({ input: CancelSaleInput, output: CompleteReturnResult, permission: 'sales.cancel', rateLimit: { perSec: 1 }, audit: true }),
+  'returns.quote': spec({ input: ReturnDraft, output: ReturnQuote, permission: 'sales.view', rateLimit: { perSec: 20 } }),
+  'returns.complete': spec({ input: CompleteReturnInput, output: CompleteReturnResult, permission: 'sales.edit', rateLimit: { perSec: 2 }, audit: true, idempotent: 'commandId' }),
+  'returns.get': spec({ input: z.object({ id: Ulid }), output: CreditNote, permission: 'sales.view', rateLimit: { perSec: 20 } }),
+  'returns.list': spec({ input: CreditNoteListInput, output: CreditNotePage, permission: 'sales.view', rateLimit: { perSec: 10 } }),
+  'returns.getReceipt': spec({ input: z.object({ creditNoteId: Ulid }), output: ReceiptDoc, permission: 'sales.view', rateLimit: { perSec: 10 } }),
+  'returns.reprint': spec({ input: z.object({ creditNoteId: Ulid }), output: z.object({ jobId: Ulid }), permission: 'pos.create', rateLimit: { perSec: 2 }, audit: true }),
 
   'printer.getConfig': spec({ input: Empty, output: PrinterConfig, permission: 'pos.view', rateLimit: { perSec: 5 } }),
   'printer.setConfig': spec({ input: PrinterConfig, output: PrinterConfig, permission: 'settings.manage', rateLimit: { perSec: 2 }, audit: true }),
@@ -225,8 +246,30 @@ export const contract = {
   'accounting.lockPeriod': spec({ input: LockPeriodInput, output: Period, permission: 'accounting.manage', rateLimit: { perSec: 1 }, audit: true }),
   'accounting.unlockPeriod': spec({ input: UnlockPeriodInput, output: Period, permission: 'accounting.manage', rateLimit: { perSec: 1 }, audit: true }),
   'accounting.listLatePostings': spec({ input: Empty, output: z.array(LatePosting), permission: 'accounting.view', rateLimit: { perSec: 5 } }),
+  'accounting.getYearEnd': spec({ input: Empty, output: z.array(FinancialYear), permission: 'accounting.view', rateLimit: { perSec: 5 } }),
+  'accounting.closeYear': spec({ input: YearCloseInput, output: FinancialYear, permission: 'accounting.close', rateLimit: { perSec: 1 }, audit: true }),
+  'accounting.recloseYear': spec({ input: YearCloseInput, output: FinancialYear, permission: 'accounting.close', rateLimit: { perSec: 1 }, audit: true }),
   'accounting.postBacklog': spec({ input: Empty, output: BacklogResult, permission: 'accounting.manage', rateLimit: { perSec: 1 }, audit: true }),
   'accounting.rebuildBalances': spec({ input: Empty, output: z.object({ rebuilt: z.number().int() }), permission: 'accounting.manage', rateLimit: { perSec: 1 }, audit: true }),
+
+  // ADR-0046: each report checks its own permission too (financial statements need reports.financial).
+  'reports.listDefinitions': spec({ input: Empty, output: z.array(ReportDefinitionView), permission: 'reports.view', rateLimit: { perSec: 5 } }),
+  'reports.run': spec({ input: RunReportInput, output: ReportResult, permission: 'reports.view', rateLimit: { perSec: 5 } }),
+  'reports.export': spec({ input: ExportReportInput, output: ExportReportResult, permission: 'reports.export', rateLimit: { perSec: 1 }, audit: true }),
+  'reports.dashboard': spec({ input: Empty, output: Dashboard, permission: 'reports.view', rateLimit: { perSec: 5 } }),
+
+  // ADR-0050: every role holds business.view; each kind is further filtered by the permission its subject needs.
+  'notifications.list': spec({ input: ListNotificationsInput, output: NotificationPage, permission: 'business.view', rateLimit: { perSec: 10 } }),
+  'notifications.counts': spec({ input: Empty, output: NotificationCounts, permission: 'business.view', rateLimit: { perSec: 10 } }),
+  'notifications.markRead': spec({ input: NotificationIdsInput, output: NotificationChanged, permission: 'business.view', rateLimit: { perSec: 5 } }),
+  'notifications.dismiss': spec({ input: NotificationIdsInput, output: NotificationChanged, permission: 'business.view', rateLimit: { perSec: 5 } }),
+
+  // ADR-0044: returns are read with gst.view; posting a set-off or a challan is gst.create (managers and accountants).
+  'gst.returnSummary': spec({ input: GstMonthInput, output: GstReturnSummary, permission: 'gst.view', rateLimit: { perSec: 2 } }),
+  'gst.previewSetoff': spec({ input: GstMonthInput, output: GstSetoffPreview, permission: 'gst.view', rateLimit: { perSec: 2 } }),
+  'gst.postSetoff': spec({ input: PostGstSetoffInput, output: GstSetoff, permission: 'gst.create', rateLimit: { perSec: 1 }, audit: true, idempotent: 'commandId' }),
+  'gst.recordPayment': spec({ input: GstPaymentInput, output: GstPayment, permission: 'gst.create', rateLimit: { perSec: 1 }, audit: true, idempotent: 'commandId' }),
+  'gst.ledger': spec({ input: Empty, output: GstLedgerView, permission: 'gst.view', rateLimit: { perSec: 5 } }),
 
   'sync.getStatus': spec({ input: Empty, output: SyncStatus, permission: null, rateLimit: { perSec: 10 } }),
   'sync.retry': spec({ input: Empty, output: SyncStatus, permission: 'sync.view', rateLimit: { perSec: 1 } }),
@@ -243,12 +286,26 @@ export const contract = {
   'diagnostics.getHealth': spec({ input: Empty, output: Health, permission: 'diagnostics.view', rateLimit: { perSec: 5 } }),
   'diagnostics.integrityCheck': spec({
     input: Empty,
-    output: z.object({ quickCheck: z.enum(['ok', 'failed']), foreignKeys: z.enum(['ok', 'failed']), auditChain: z.enum(['ok', 'broken']), stock: z.enum(['ok', 'healed', 'not_run']), parties: z.enum(['ok', 'mismatch', 'not_run']), journals: z.enum(['ok', 'healed', 'mismatch', 'not_run']), detail: z.array(z.string()) }),
+    output: z.object({ quickCheck: z.enum(['ok', 'failed']), foreignKeys: z.enum(['ok', 'failed']), auditChain: z.enum(['ok', 'broken']), stock: z.enum(['ok', 'healed', 'not_run']), parties: z.enum(['ok', 'mismatch', 'not_run']), journals: z.enum(['ok', 'healed', 'mismatch', 'not_run']), summaries: z.enum(['ok', 'healed', 'not_run']), detail: z.array(z.string()) }),
     permission: 'diagnostics.view', rateLimit: { perSec: 1 }, audit: true,
   }),
-  'diagnostics.backupNow': spec({ input: Empty, output: z.object({ path: z.string(), bytes: z.number().int(), verified: z.boolean() }), permission: 'diagnostics.view', rateLimit: { perSec: 1 }, audit: true }),
+  'diagnostics.verifyAudit': spec({ input: Empty, output: AuditVerification, permission: 'diagnostics.view', rateLimit: { perSec: 1 } }),
   'diagnostics.exportSupportBundle': spec({ input: Empty, output: z.object({ handle: z.string(), bytes: z.number().int() }), permission: 'diagnostics.view', rateLimit: { perSec: 1 }, audit: true }),
   'diagnostics.getLogsTail': spec({ input: z.object({ log: z.enum(['app', 'sync', 'sql-slow', 'hardware']), lines: z.number().int().min(1).max(2000).default(200) }), output: z.array(z.string()), permission: 'diagnostics.view', rateLimit: { perSec: 5 } }),
+
+  // ADR-0047 (8f). A restore swaps the database and restarts, so it writes its own audit row into the restored file.
+  'backups.list': spec({ input: Empty, output: BackupList, permission: 'diagnostics.view', rateLimit: { perSec: 2 } }),
+  'backups.runNow': spec({ input: Empty, output: RunBackupResult, permission: 'diagnostics.view', rateLimit: { perSec: 1 }, audit: true }),
+  'backups.verify': spec({ input: BackupRef, output: BackupVerification, permission: 'diagnostics.view', rateLimit: { perSec: 1 } }),
+  'backups.restore': spec({ input: RestoreBackupInput, output: RestoreResult, permission: 'diagnostics.manage', rateLimit: { perSec: 1 } }),
+  // A new device (setup) has a session but no business yet, so this checks the session and the membership itself, as hydration does.
+  'backups.restoreFromCloud': spec({ input: RestoreFromCloudInput, output: RestoreResult, permission: null, rateLimit: { perSec: 1 } }),
+
+  // ADR-0049 (8i). Status is readable by anyone at the till so the banner shows; installing restarts the app.
+  'update.getStatus': spec({ input: Empty, output: UpdateStatus, permission: null, rateLimit: { perSec: 5 } }),
+  'update.checkNow': spec({ input: Empty, output: UpdateStatus, permission: 'settings.view', rateLimit: { perSec: 1 } }),
+  'update.installNow': spec({ input: Empty, output: UpdateStatus, permission: 'diagnostics.manage', rateLimit: { perSec: 1 }, audit: true }),
+  'update.setChannel': spec({ input: SetChannelInput, output: UpdateStatus, permission: 'settings.manage', rateLimit: { perSec: 1 }, audit: true }),
 } as const satisfies Record<string, ContractSpec>;
 
 export type Contract = typeof contract;

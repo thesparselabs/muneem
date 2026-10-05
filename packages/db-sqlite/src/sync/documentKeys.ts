@@ -10,6 +10,9 @@ const COLUMNS = {
   expense: ['branch_id', 'terminal_id', 'session_id', 'series_id', 'doc_seq', 'fy', 'command_id', 'round_off_paise', 'supplier_id', 'vendor_name',
     'vendor_gstin', 'supply_type', 'due_date', 'reference', 'description'],
   write_off: ['command_id'],
+  credit_note: ['branch_id', 'terminal_id', 'session_id', 'warehouse_id', 'series_id', 'doc_seq', 'fy', 'command_id'],
+  gst_setoff: ['branch_id', 'terminal_id', 'series_id', 'doc_seq', 'fy', 'command_id'],
+  gst_payment: ['branch_id', 'terminal_id', 'series_id', 'doc_seq', 'fy', 'command_id'],
 } as const;
 export type KeyedDocument = keyof typeof COLUMNS;
 

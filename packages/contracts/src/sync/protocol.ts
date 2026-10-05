@@ -1,7 +1,9 @@
 import { z } from 'zod';
-import type { OutboxEntityType, SyncStream } from './types.js';
+import type { OutboxEntityType, PushStream, SyncStream } from './types.js';
 
 export const SYNC_PROTOCOL = 1;
+// ADR-0049: the oldest protocol a current server still accepts by default (N−1, never below 1).
+export const SYNC_MIN_PROTOCOL = Math.max(1, SYNC_PROTOCOL - 1);
 export const PUSH_MAX_OPERATIONS = 200;
 export const PUSH_MAX_BYTES = 2 * 1024 * 1024;
 export const PULL_MAX_LIMIT = 500;
@@ -9,21 +11,22 @@ export const PULL_MAX_LIMIT = 500;
 // LLD §7.2: control first so a revocation or lock is never stuck behind thousands of products.
 export const STREAM_ORDER: readonly SyncStream[] = ['control', 'config', 'masters', 'documents'];
 
-export const STREAM_OF: Readonly<Record<OutboxEntityType, SyncStream>> = {
-  accounting_period: 'control',
+export const STREAM_OF: Readonly<Record<OutboxEntityType, PushStream>> = {
+  accounting_period: 'control', fy_close: 'control',
   business: 'config', branch: 'config', terminal: 'config', doc_series: 'config', setting: 'config', user_pin: 'config', account: 'config',
   expense_category: 'config',
   uom: 'masters', category: 'masters', brand: 'masters', product: 'masters', barcode: 'masters', uom_conversion: 'masters', price_list: 'masters',
   price_list_item: 'masters', customer: 'masters', customer_credit_limit: 'masters', supplier: 'masters', warehouse: 'masters',
   pos_session: 'documents', cash_movement: 'documents', sale: 'documents', stock_adjustment: 'documents', party_opening: 'documents',
-  purchase: 'documents', debit_note: 'documents', payment: 'documents', write_off: 'documents', expense: 'documents', allocation: 'documents',
+  purchase: 'documents', debit_note: 'documents', credit_note: 'documents', gst_setoff: 'documents', gst_payment: 'documents', payment: 'documents', write_off: 'documents', expense: 'documents', allocation: 'documents',
   journal_entry: 'documents',
+  audit_entry: 'audit',
 };
 export const SYNC_ENTITY_TYPES = Object.keys(STREAM_OF) as OutboxEntityType[];
 
 export const SYNC_ERROR_CODES = {
   TOTAL_MISMATCH: 'permanent', JOURNAL_IMBALANCE: 'permanent', JOURNAL_MISMATCH: 'permanent', PAYLOAD_INVALID: 'permanent',
-  DEPENDENCY_MISSING: 'dependency', BUSINESS_UNKNOWN: 'transient', VERSION_UNSUPPORTED: 'transient', UNKNOWN_ENTITY: 'transient',
+  AUDIT_CHAIN_BROKEN: 'permanent', INVALID_STATE: 'permanent', DEPENDENCY_MISSING: 'dependency', BUSINESS_UNKNOWN: 'transient', VERSION_UNSUPPORTED: 'transient', UNKNOWN_ENTITY: 'transient',
 } as const;
 export type SyncErrorCode = keyof typeof SYNC_ERROR_CODES;
 
@@ -39,7 +42,8 @@ export const PushOperation = z.object({
 export type PushOperation = z.infer<typeof PushOperation>;
 
 export const PushRequest = z.object({
-  businessId: Ulid, protocol: z.literal(SYNC_PROTOCOL), schemaVersion: z.number().int().nonnegative(), clientTime: Iso,
+  // Servers accept a range (ADR-0049: N and N−1), so the schema takes any protocol and the server decides.
+  businessId: Ulid, protocol: z.number().int().nonnegative(), schemaVersion: z.number().int().nonnegative(), clientTime: Iso,
   operations: z.array(PushOperation).min(1).max(PUSH_MAX_OPERATIONS),
 });
 export type PushRequest = z.infer<typeof PushRequest>;

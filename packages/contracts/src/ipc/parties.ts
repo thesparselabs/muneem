@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { BusinessDate, Gstin, StateCode, Ulid } from './schemas.js';
-import { CustomerSearchInput } from './pos.js';
+import { CONSENT_CHANNELS, CONSENT_METHODS, CONSENT_PURPOSES, CustomerSearchInput } from './pos.js';
 
 const Paise = z.number().int().min(0).max(1_000_000_000_000);
 const Amount = z.number().int().min(1).max(1_000_000_000_000);
@@ -74,3 +74,16 @@ export type AgeingBuckets = z.infer<typeof AgeingBuckets>;
 export const OutstandingRow = AgeingBuckets.extend({ partyId: Ulid, name: z.string() });
 export const Outstanding = z.object({ asOf: BusinessDate, rows: z.array(OutstandingRow), totals: AgeingBuckets });
 export type Outstanding = z.infer<typeof Outstanding>;
+
+// FR-104 / ADR-0050: consent, a copy of what is held, and erasure that keeps the statutory invoices.
+export const SetConsentInput = z.object({
+  customerId: Ulid, purpose: z.enum(CONSENT_PURPOSES).default('payment_reminders'), channel: z.enum(CONSENT_CHANNELS), method: z.enum(CONSENT_METHODS),
+});
+export type SetConsentInput = z.infer<typeof SetConsentInput>;
+export const WithdrawConsentInput = z.object({ customerId: Ulid, consentId: Ulid });
+export type WithdrawConsentInput = z.infer<typeof WithdrawConsentInput>;
+export const ExportProfileInput = z.object({ customerId: Ulid, format: z.enum(['json', 'csv']).default('json') });
+export type ExportProfileInput = z.infer<typeof ExportProfileInput>;
+export const ExportProfileResult = z.object({ saved: z.boolean(), fileName: z.string(), bytes: z.number().int() });
+export const EraseCustomerInput = z.object({ customerId: Ulid, version: z.number().int(), reason: z.string().trim().min(3).max(200) });
+export type EraseCustomerInput = z.infer<typeof EraseCustomerInput>;

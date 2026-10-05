@@ -26,7 +26,7 @@ describe('sync round trip (7e): what device A does appears on device B', () => {
     expect(run.counts).toMatchObject({ cancelledPayments: expect.any(Number), writeOffs: expect.any(Number), periodsLocked: 1, manualJournals: expect.any(Number) });
     expect(healthy(b.db, run.businessId)).toEqual({ tieOuts: [], replay: [], partyMismatches: [], allocationFaults: [] });
     expect(healthy(run.db, run.businessId)).toEqual({ tieOuts: [], replay: [], partyMismatches: [], allocationFaults: [] });
-    expect(b.db.prepare('SELECT COUNT(*) FROM sync_outbox').pluck().get()).toBe(0);
+    expect(b.db.prepare("SELECT COUNT(*) FROM sync_outbox WHERE entity_type <> 'audit_entry'").pluck().get()).toBe(0);
     expect(b.db.prepare("SELECT COUNT(*) FROM audit_log WHERE business_id = ? AND action NOT LIKE '%auth.%'").pluck().get(run.businessId)).toBe(0);
 
     // No echo: A pulling its own changes back changes nothing.

@@ -2,7 +2,7 @@ import { NavLink } from 'react-router-dom';
 
 const TABS = [
   ['/accounts', 'Chart of accounts'], ['/accounts/statements', 'Statements'], ['/accounts/books', 'Books'],
-  ['/accounts/journal/new', 'Manual journal'], ['/accounts/periods', 'Periods'],
+  ['/accounts/journal/new', 'Manual journal'], ['/accounts/periods', 'Periods'], ['/accounts/year-end', 'Year end'],
 ] as const;
 
 export default function AccountsNav() {

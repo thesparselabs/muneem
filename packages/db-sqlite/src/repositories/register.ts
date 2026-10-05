@@ -84,16 +84,19 @@ export function sessionReport(db: Db, sessionId: string): RegisterReport {
     .all(sessionId) as { method: string; amountPaise: number }[];
   const cashTendered = stmt(db, `SELECT COALESCE(SUM(t.amount_paise), 0) FROM sale_tender t JOIN sale x ON x.id = t.sale_id
     WHERE x.session_id = ? AND x.status = 'posted' AND t.method = 'cash'`).pluck().get(sessionId) as number;
+  const returns = stmt(db, `SELECT COUNT(*) AS n, COALESCE(SUM(total_paise), 0) AS total, COALESCE(SUM(CASE WHEN refund_method = 'cash' THEN refund_paise END), 0) AS cash
+    FROM credit_note WHERE session_id = ? AND status = 'posted'`).get(sessionId) as { n: number; total: number; cash: number };
   const moved = (kind: string) =>
     stmt(db, 'SELECT COALESCE(SUM(amount_paise), 0) FROM cash_movement WHERE session_id = ? AND kind = ?').pluck().get(sessionId, kind) as number;
   const flows = {
     openingPaise: s.opening_cash_paise, cashTenderedPaise: cashTendered, changeGivenPaise: sales.change,
-    cashInPaise: moved('cash_in'), cashOutPaise: moved('cash_out'), safeDropPaise: moved('safe_drop'),
+    cashInPaise: moved('cash_in'), cashOutPaise: moved('cash_out'), safeDropPaise: moved('safe_drop'), cashRefundPaise: returns.cash,
   };
   return {
     sessionId, sessionNo: s.session_no, final: false, openedAt: s.opened_at, openingCashPaise: s.opening_cash_paise,
     salesCount: sales.n, salesTotalPaise: sales.total, taxPaise: sales.tax, byTender, changeGivenPaise: sales.change,
     cashInPaise: flows.cashInPaise, cashOutPaise: flows.cashOutPaise, safeDropPaise: flows.safeDropPaise,
+    returnsCount: returns.n, returnsTotalPaise: returns.total, cashRefundPaise: returns.cash,
     expectedCashPaise: expectedCash(flows),
   };
 }

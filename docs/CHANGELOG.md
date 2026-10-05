@@ -5,6 +5,160 @@ All notable changes, newest first. Each entry records **what** changed and **why
 
 ## [Unreleased]
 
+### Added — Stage 8 reports, compliance, backup and update
+- **Stage 8 plan (`docs/plans/stage-8-reports.md`).** Three agents surveyed the designs, what earlier stages deferred,
+  and the GST and year-end gaps; the plan's details of every part come from that. Decided with the user:
+  - **Compliance:** GST returns (GSTR-1, HSN, documents issued, GSTR-3B) with set-off and payment documents, the
+    year-end close, and sale returns and credit notes.
+  - **Backups:** encrypted, uploaded nightly, with the key escrowed by the cloud.
+  - **Notifications:** in-app now, with consent captured; SMS and WhatsApp later.
+  - **Updates:** the full updater, with channels, staged rollout and rollback.
+
+  Build stages now show Stage 7 merged (PR #8) and Stage 8 in progress.
+- **Report engine and exports (8a, ADR-0046).** Why: FR-054 and FR-077; nothing could be exported before.
+  - **Definitions:** each report declares its parameters, columns and permission. It runs on a read-only database
+    connection, and validates its options.
+  - **Exports:** CSV (UTF-8 with a BOM, numbers in rupees), XLSX (numeric cells with Indian number formats) and PDF
+    (printed from a hidden, script-free window). Each carries the business, GSTIN, title, options and time.
+  - **Files:** the user picks where an export goes in a save dialog, and the screen never sees a path.
+  - **First report:** the Trial Balance; 8e adds the rest.
+  - **IPC:** `reports.listDefinitions`, `reports.run`, `reports.export`.
+- **In-app notification centre (8h, ADR-0050 as built).** Why: FR-074; the owner sees problems without hunting for
+  them.
+  - **Where they appear:** a bell with the unread count, a notifications page, and a "Needs attention" card on the
+    dashboard.
+  - **What raises them:** low stock, overdue customers, suppliers due, blocked sync, backup failures or staleness, a
+    broken audit chain, review items and a ready update. Each is raised and resolved automatically, at start-up,
+    every 6 hours and after relevant commands.
+  - **Local only:** notifications are kept per device and filtered by each user's permissions.
+- **DPDP consent, profile export and erasure (8h, FR-104).** Why: consent and erasure rights must exist before
+  reminders are sent.
+  - **Consent:** customer consent (purpose, channel, given or withdrawn, by whom) syncs with the customer. Withdrawing
+    is as easy as giving.
+  - **Export:** owners and managers can export a profile as JSON or CSV.
+  - **Erasure:** it anonymises the profile and keeps statutory invoices and their customer snapshots. It is refused
+    while a balance remains. Neither cloud server lets a stale edit un-erase a customer.
+  - **Not built:** the SMS/WhatsApp reminder sender is designed in ADR-0050 only.
+  - **Migration:** SQLite 0020.
+- **Auto-update (8i, ADR-0049 as built).** Why: NFR-013; a shop must get fixes without losing data or a sale.
+  - **Channels and rollout:** dev, beta and stable channels, with a staged rollout by a stable installation-id cohort.
+    Settings → Updates and an update-ready banner.
+  - **Download:** in the background. A finished download is reused across restarts, but an interrupted transfer starts
+    again.
+  - **Install:** only when the POS is idle: an empty cart, no command running, and the register closed or 10 minutes
+    quiet. Quitting the app always installs a downloaded update.
+  - **Integrity:** the installer's sha512 is always checked, and on Windows its Authenticode signer too. `latest.yml`
+    itself is not signed (signing certificates are an ops task).
+  - **Release tooling:** `scripts/release-manifest.ts` writes a channel's `latest.yml` with its rollout percentage.
+- **Start-up migration guard (8i).** Why: a failed upgrade must never lose data.
+  - **Before migrating:** an encrypted pre-migration backup when a business and key exist, otherwise a verified plain
+    copy.
+  - **The migration:** every pending migration runs in one transaction, with a foreign-key check inside and no core
+    table allowed to lose rows.
+  - **On failure:** the backup is restored and the failure recorded. The data rolls back; the program does not, so
+    the user reinstalls the previous version, and ops sets the rollout to 0.
+- **The cloud accepts sync protocols N and N−1 (8i).** `MUNEEM_SYNC_MIN_PROTOCOL` sets the minimum; anything else gets
+  426. The v1 protocol fixtures are frozen and replayed against a protocol-2 server. Why: shops on mixed versions
+  during a rollout (LLD §12 takes precedence over FR-105's N−2).
+- **Year-end close (8d, ADR-0045 as built).** Why: FR-096 and the Stage 6 deferral.
+  - **The close:** an `fy_close` closes the year's income and expense to 3300 Retained Earnings with one `CL/` journal
+    dated 31 March, posted into the locked March. `postClosingJournal` is the only path allowed to post into a locked
+    month.
+  - **Before closing:** every month of the year must be locked, and a regular-scheme business must have set off GST.
+    A new permission, `accounting.close`, is held by the owner and the accountant preset; managers do not have it.
+  - **Sync:** the close is cloud-authoritative on the control stream, one per year. A device that has synced posts its
+    closing journal only when the cloud accepts it, so two devices can never both close a year.
+  - **Late arrivals:** a late journal synced into a closed year shows "needs re-close" with the amount, and an
+    adjusting closing journal follows. The adjustment is posted by a user, not automatically.
+  - **Screen:** Accounts → Year end.
+  - **Statements:** the P&L leaves out closing journals. The Balance Sheet's retained earnings are 3300 plus years not
+    yet closed, so a closed year's reports read exactly as before.
+  - **Docs:** LLD §5.2 now says there is no opening journal.
+- **Reports catalogue (8e, ADR-0046 as built).** Why: FR-054 and PRD §25; every report exports and prints from one
+  place.
+  - **What is in it:** 25 reports on the 8a engine: sales by day, month, product, category and payment method; credit
+    notes; day-end; purchases; expenses; payments; cash; stock valuation and movement; product profit; receivables and
+    payables as of a date with ageing (closing the Stage 5 carry); customer and supplier ledgers; and every Stage 6
+    statement and book. A Reports screen lists them.
+  - **Returns:** a credit note reduces sales on its own date, never back-dated, everywhere.
+- **Offline dashboard (8e, FR-072).** Why: the owner sees today's business offline, inside the 300 ms budget.
+  - **What it shows:** today's net sales, the cash/UPI/credit split, gross profit, purchases, expenses, low stock,
+    receivables and payables, top sellers and a 30-day trend.
+  - **Speed:** about 30 ms at 200k sales.
+  - **Data:** it reads daily summary tables (SQLite 0018) that triggers keep current on sales, credit notes, payments
+    and expenses, pulled documents included. Diagnostics rebuilds and heals any drift.
+- **Cloud daily aggregates (8e, Go 0006).** Why: the Stage 7 carry, for owner reports. Each pushed document updates the
+  same daily tables and `party_outstanding` on the cloud. `GET /reports/daily` is members only, and a test shows the
+  cloud's figures equal the device's.
+- **GST returns from documents (8c, ADR-0044 as built).** Why: FR-047/FR-094; filed figures must always match the books.
+  - **What is built:** the GSTR-1 sections (B2B, B2CL, B2CS, CDNR/CDNUR, exports, nil/exempt per line), the HSN
+    summary with UQC, documents issued, GSTR-3B (3.1, 4, 5) and the ITC register.
+  - **Reconciliation:** each month's figures must equal that month's tax-account movements exactly. That check is now
+    part of the integrity checks.
+  - **CA review:** six statutory interpretations are listed in ADR-0044 for a CA to confirm before the pilot.
+- **GST set-off and payment documents (8c).** Why: tax is set off without manual journals on control accounts
+  (ADR-0035).
+  - **Set-off:** a `gst_setoff` per month (letter `S`) uses credit in the statutory order. IGST credit goes first (rule
+    88A), CGST and SGST are never crossed, and cess only against cess. The rest goes to 2300.
+  - **Payment:** a `gst_payment` (letter `G`) records a challan: Dr 2300 GST Payable, Cr Bank.
+  - **Sync:** both sync, and the Go cloud verifies the set-off order and the journal (Go port with shared vectors).
+  - **Migration 0017.**
+  - **Known gap:** two offline devices can both set off the same month. Both are kept, a review item is raised, and
+    there is no set-off cancel yet.
+- **GST exports and screens (8c).** GST → Returns, Set-off and Payments. Each GSTR-1 section exports as bare CSV/XLSX in
+  the GST offline tool's column order, through a `bare` option on report definitions.
+- **HSN is required on new products** of a GST-registered regular business, and a "Products missing HSN" report lists
+  older ones. The B2CL threshold is effective-dated. Why: returns need HSN, and thresholds change by notification.
+- **The audit chain is verified on the cloud (8g, ADR-0048 as built).** Why: FR-078 and LLD §16; a tampered audit trail
+  must not go unnoticed.
+  - **Upload:** each audit row is pushed as an `audit_entry` operation on a push-only stream, exactly as stored.
+    Rows written before this change are queued once at start-up.
+  - **Cloud checks:** both servers check every row's sequence, link to the previous row and recomputed hash, with
+    `canonicalJson` ported to Go and shared fixtures. A break is rejected as `AUDIT_CHAIN_BROKEN`, dead-lettered,
+    alerted and listed as a review item.
+  - **On the device:** `diagnostics.verifyAudit` runs on demand, in the integrity check and every 6 hours. Any break,
+    found locally or reported by the cloud, turns the badge to "Needs attention · audit trail check failed".
+  - **Restore:** restoring this device's own backup carries its newer audit rows over, so its chain on the cloud is
+    not forked.
+  - **Migrations:** Go migration 0005 `audit_entry`; no SQLite migration.
+- **Sale returns and cancellation as credit notes (8b, ADR-0043 as built).** Why: Stage 3 deferred them, and GSTR-1
+  needs credit notes.
+  - **Storage:** credit notes have their own tables and a `C` number series.
+  - **Pricing:** each line takes its share of the sale line's own tax and cost (golden vectors run in TS and Go). The
+    note that completes a bill takes back its round-off.
+  - **What a return writes:** stock comes back at the stored cost; what the customer still owes on the bill is settled
+    first, and the rest is refunded by cash, UPI or card, or credited to the account. The journal posts through
+    `SALE_RETURN_RULE`.
+  - **Sync:** credit notes sync, with Go verification.
+  - **Cancel** is a full credit note dated today (`sales.cancel`, managers). Returns need `sales.edit`, so cashiers
+    cannot make them by default.
+  - **Register report:** it counts credit notes, and cash refunds lower expected cash, so the drawer reconciles after
+    refunds.
+  - **Migration 0016** rebuilds `allocation` and `party_ledger_entry` to accept credit notes, because SQLite cannot
+    widen a CHECK.
+  - **Tie-out:** output tax is now sales tax minus credit-note tax.
+  - **Workloads:** the crash suite, soak and simulation all make returns.
+- **Encrypted backups with a cloud-escrowed key (8f, ADR-0047 as built).** Why: FR-071 and NFR-010/011; backups were
+  plain local copies with no retention.
+  - **Format:** each backup is a `.mbk` archive of the SQLite copy, AES-256-GCM in 1 MiB chunks with a
+    device-signed manifest. Tampering with any byte, the order of the chunks, the manifest or the key is refused before
+    restore.
+  - **Retention:** 7 daily, 4 weekly and 3 monthly backups locally.
+  - **Upload:** nightly and after a Z report, to object storage. The data key is escrowed with the cloud, wrapped under
+    `MUNEEM_BACKUP_MASTER_KEY`, and the cloud keeps the newest 30.
+  - **Restore:** from Diagnostics, or onto a new device ("Restore from cloud backup"). A device that restores its own
+    older backup pulls back what it synced since.
+  - **Cloud:** `/backups` endpoints, Go migration 0004, and `objectstore.PresignPut`, `Get` and `Delete`.
+  - **Permissions:** managers gain `diagnostics.manage`, and `diagnostics.backupNow` is replaced by `backups.*`.
+  - **Not encrypted:** pre-migration copies stay plain, because they are taken before the secret store opens.
+- **Restoring a database removes any leftover WAL first** instead of overwriting it with the backup's bytes. A test
+  shows the old code was not actually corrupting: SQLite ignores a WAL with an invalid header. Deleting is the
+  intended behaviour, and the test guards it.
+- **Pre-migration backups are recorded in `backup_log`,** like scheduled and manual ones, so backup health sees them.
+- **Decisions for Stage 8:** ADRs 0043–0050 cover returns and credit notes, GST returns and set-off, year-end close,
+  reports and exports, backups and key escrow, the audit chain on the cloud, updates and protocol support, and
+  notifications and consent.
+
 ### Added — Stage 7 sync
 - **Stage 7 plan (`docs/plans/stage-7-sync.md`).** Decided with the user:
   - **Verification:** the cloud recomputes totals and checks journals; allocation gets a Go port.

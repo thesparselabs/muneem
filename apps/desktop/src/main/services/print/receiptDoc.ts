@@ -19,9 +19,9 @@ export function qtyText(qtyMilli: number, uomCode: string): string {
   return `${fraction ? `${whole}.${fraction}` : whole} ${uomCode}`;
 }
 
-const timeOf = (iso: string): string => new Date(iso).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: false });
+export const timeOf = (iso: string): string => new Date(iso).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: false });
 
-function headerLines(business: Business, branch: Branch): string[] {
+export function headerLines(business: Business, branch: Branch): string[] {
   const address = [branch.addressLine1 ?? business.addressLine1, branch.city ?? business.city].filter(Boolean).join(', ');
   return [business.legalName, address, business.phone ? `Ph: ${business.phone}` : undefined].filter((l): l is string => !!l);
 }

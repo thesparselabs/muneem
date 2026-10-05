@@ -254,6 +254,9 @@ CREATE TABLE sale_item (
   UNIQUE (sale_id, line_no)
 );
 
+-- As built (Stage 8b, ADR-0043): credit notes live in their own credit_note / credit_note_item tables (each item names
+-- its sale_item_id), not as sale rows; original_sale_id, returned_qty_flag and original_sale_item_id stay unused.
+
 CREATE TABLE sale_tender (
   id TEXT PRIMARY KEY, sale_id TEXT NOT NULL REFERENCES sale(id), business_id TEXT NOT NULL,
   method TEXT NOT NULL CHECK (method IN ('cash','upi','card','bank','credit','wallet','other')),
@@ -668,7 +671,7 @@ The cloud detects, per `(product, warehouse)`, whether the merged movement set e
 
 Inter-state swaps the two `Output CGST/SGST` lines for `Output IGST`. Composition/unregistered omits all tax lines. Revenue is booked **net of discount**; the optional `4200 Discount Allowed` contra presentation is a reporting toggle, not a second posting.
 
-**Sales return / credit note:** exact reversal of the above at the **original line's** rate and the **original issue cost**, with `Cr AR` or `Dr Cash` for the refund tender, and `Dr Inventory / Cr COGS` at original cost.
+**Sales return / credit note:** exact reversal of the above at the **original line's** rate and the **original issue cost**, with `Cr AR` or `Dr Cash` for the refund tender, and `Dr Inventory / Cr COGS` at original cost. *As built (ADR-0043):* the refund side is `Cr 1100 Cash` / `Cr 1250 Clearing` / `Cr 1300 AR`; part returns carry no round-off, the note that completes the bill takes back the sale's.
 
 **Purchase invoice (ITC eligible):** `Dr 1400 Inventory` (taxable + non-eligible tax + apportioned landed cost) · `Dr 1500 Input CGST/SGST/IGST` (eligible) · `Cr 2100 AP`.
 **Purchase return:** reverse, `Dr AP / Cr Inventory + Cr Input tax`.
@@ -679,7 +682,7 @@ Inter-state swaps the two `Output CGST/SGST` lines for `Output IGST`. Compositio
 **Transfer, same GSTIN:** **no journal entry** — Inventory is a single account with a warehouse dimension on the movement. (A different-GSTIN branch transfer is a taxable supply and is out of MVP — guard-railed per the FR-010 clarification.)
 **Card/UPI settlement:** `Dr Bank · Dr 5460 Bank Charges · Cr 1250 Clearing`, reconciled when the acquirer credits.
 **Register cash variance:** short → `Dr 5900 · Cr 1100`; over → `Dr 1100 · Cr 4300`, always with the approver in the audit trail.
-**Year-end close:** income/expense accounts closed to `3300 Retained Earnings`; balance-sheet accounts carried forward as an `opening` journal in the new FY.
+**Year-end close:** income/expense accounts closed to `3300 Retained Earnings` by one `closing` journal dated 31 March (ADR-0045); balance-sheet accounts need no opening journal, since the ledger is continuous.
 
 ### 5.3 Posting rules as data
 
@@ -727,7 +730,7 @@ async function allocate(tx, { businessId, docType, branchId, terminalId, docDate
 
 Rules: allocation happens **inside** the document's transaction, so a rollback returns the number; `ux_sale_doc` makes a duplicate physically impossible; the number is never rewritten by sync; a gap detected during a nightly check raises an integrity alert (a gap means a crash between allocation and commit — which cannot happen with a single transaction, so a gap is a real signal).
 
-Example series (as built, ADR-0014 — CGST Rule 46(b) caps numbers at 16 characters): `DE01/2627/000123` (sale, terminal prefix `DE01`). Credit notes and receipts will need their own short prefixes when they arrive. *As built (Stage 5, ADR-0028):* other documents put a kind letter after the terminal prefix and use 5 digits — `T1P/2627/00001` purchase, `T1D/2627/00001` debit note (R, Y, E for receipts, payments, expenses). GSTR-1 "Documents Issued" reports from–to per series directly off `doc_series` + `MIN/MAX(doc_seq)`.
+Example series (as built, ADR-0014 — CGST Rule 46(b) caps numbers at 16 characters): `DE01/2627/000123` (sale, terminal prefix `DE01`). Credit notes and receipts will need their own short prefixes when they arrive. *As built (Stage 5, ADR-0028):* other documents put a kind letter after the terminal prefix and use 5 digits — `T1P/2627/00001` purchase, `T1D/2627/00001` debit note (R, Y, E for receipts, payments, expenses). *As built (Stage 8b, ADR-0043):* credit notes use `C` — `T1C/2627/00001`. GSTR-1 "Documents Issued" reports from–to per series directly off `doc_series` + `MIN/MAX(doc_seq)`.
 
 ---
 

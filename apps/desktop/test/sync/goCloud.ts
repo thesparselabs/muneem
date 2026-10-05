@@ -53,6 +53,7 @@ export function cloudQuery<T>(sql: string, businessId: string): T {
 const SALES = "SELECT count(*) FROM entity_state WHERE business_id = :'bid' AND entity_type = 'sale';";
 const DEAD_LETTERS = `SELECT coalesce(json_agg(json_build_object('entityType', entity_type, 'code', error_code, 'detail', error_detail) ORDER BY id), '[]')
   FROM dead_letter WHERE business_id = :'bid';`;
+const AUDIT_CHAINS = "SELECT coalesce(json_object_agg(device_id, n), '{}') FROM (SELECT device_id, count(*) AS n FROM audit_entry WHERE business_id = :'bid' GROUP BY device_id) c;";
 // The cloud Trial Balance from its typed journal projection, shaped like books().trialBalance; a role line takes its code from the cloud's own chart.
 const TRIAL_BALANCE = `SELECT coalesce(json_agg(t ORDER BY t.code), '[]') FROM (
   SELECT coalesce(l.account_code, a.payload->>'code') AS code, sum(l.debit_paise) AS debit, sum(l.credit_paise) AS credit
@@ -82,5 +83,6 @@ export async function goHarness(base: string, seed: number): Promise<CloudHarnes
     cloudSales: (id) => Promise.resolve(cloudQuery<number>(SALES, id)),
     deadLetters: (id) => Promise.resolve(cloudQuery<unknown[]>(DEAD_LETTERS, id)),
     trialBalance: (id) => Promise.resolve(cloudQuery<unknown[]>(TRIAL_BALANCE, id)),
+    auditChains: (id) => Promise.resolve(cloudQuery<Record<string, number>>(AUDIT_CHAINS, id)),
   };
 }
