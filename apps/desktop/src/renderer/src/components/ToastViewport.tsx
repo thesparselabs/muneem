@@ -12,7 +12,7 @@ export default function ToastViewport() {
   const { toasts, dismiss } = useToasts();
   const reduce = usePrefersReducedMotion();
   return (
-    <div className="pointer-events-none fixed bottom-4 right-4 z-50 flex w-80 flex-col gap-2 print:hidden" role="region" aria-label="Notifications" aria-live="polite" aria-atomic="false">
+    <div className="pointer-events-none fixed bottom-20 right-5 z-50 flex w-80 flex-col gap-2 print:hidden" role="region" aria-label="Notifications" aria-live="polite" aria-atomic="false">
       <AnimatePresence initial={false}>
         {toasts.map((t) => {
           const Icon = ICON[t.variant];
