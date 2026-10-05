@@ -42,14 +42,14 @@ export default function Parties() {
       </div>
       <div className="card"><label className="label" htmlFor="party-q">Search</label><input id="party-q" className="input" value={query} onChange={(e) => setQuery(e.target.value)} /></div>
       {list.error && <p className="err" role="alert">{errorMessage(list.error)}</p>}
-      <table className="w-full rounded-lg border bg-white text-sm">
-        <thead className="bg-slate-50 text-left text-slate-600"><tr><th className="p-2">Name</th><th className="p-2">Phone</th><th className="p-2">GSTIN</th><th className="p-2 text-right">{tab === 'customer' ? 'Owes us' : 'We owe'}</th></tr></thead>
+      <table className="table-modern rounded-lg border bg-white">
+        <thead><tr><th>Name</th><th>Phone</th><th>GSTIN</th><th className="text-right">{tab === 'customer' ? 'Owes us' : 'We owe'}</th></tr></thead>
         <tbody>
           {list.data?.map((p) => (
-            <tr key={p.id} className="border-t">
-              <td className="p-2"><Link to={`/parties/${tab}/${p.id}`} className="text-blue-800">{p.name}</Link></td>
-              <td className="p-2">{p.phone ?? ''}</td><td className="p-2 font-mono text-xs">{p.gstin ?? ''}</td>
-              <td className="p-2 text-right tabular-nums">{net.has(p.id) ? formatPaise(net.get(p.id)) : '—'}</td>
+            <tr key={p.id}>
+              <td><Link to={`/parties/${tab}/${p.id}`} className="text-blue-800">{p.name}</Link></td>
+              <td>{p.phone ?? ''}</td><td className="font-mono text-xs">{p.gstin ?? ''}</td>
+              <td className="text-right tabular-nums">{net.has(p.id) ? formatPaise(net.get(p.id)) : '—'}</td>
             </tr>
           ))}
         </tbody>

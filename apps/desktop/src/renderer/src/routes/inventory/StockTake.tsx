@@ -49,7 +49,7 @@ export default function StockTake() {
       <p className="text-sm text-slate-600">Count what is on the shelf and enter it. Leave a product blank if you did not count it. Differences are worked out when you post, so sales made while counting are taken into account.</p>
       <div className="card flex items-end gap-4">
         <div><label className="label" htmlFor="st-cat">Category</label>
-          <select id="st-cat" className="input" value={categoryId} onChange={(e) => { setCategoryId(e.target.value); setReviewing(false); }}>
+          <select id="st-cat" className="select" value={categoryId} onChange={(e) => { setCategoryId(e.target.value); setReviewing(false); }}>
             <option value="">All products</option>{categories.data?.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
           </select>
         </div>
@@ -57,29 +57,29 @@ export default function StockTake() {
         <p className="pb-2 text-sm text-slate-600">{counted} counted across all categories</p>
       </div>
       {!reviewing ? (
-        <table className="w-full rounded-lg border bg-white text-sm">
-          <thead className="bg-slate-50 text-left text-slate-600"><tr><th className="p-2">Product</th><th className="p-2 text-right">System</th><th className="p-2">Counted</th></tr></thead>
+        <table className="table-modern rounded-lg border bg-white">
+          <thead><tr><th>Product</th><th className="text-right">System</th><th>Counted</th></tr></thead>
           <tbody>
             {rows.map((r) => (
-              <tr key={r.productId} className="border-t">
-                <td className="p-2">{r.name} <span className="text-slate-500">{r.sku}</span></td>
-                <td className="p-2 text-right tabular-nums">{scaledToText(r.qtyMilli, 3)} {r.uomCode}</td>
-                <td className="p-2"><input aria-label={`Counted ${r.name}`} className="input w-28 py-1" inputMode="decimal" value={counts[r.productId]?.text ?? ''} onChange={(e) => setCounts(setCount(counts, r, e.target.value))} />
+              <tr key={r.productId}>
+                <td>{r.name} <span className="text-slate-500">{r.sku}</span></td>
+                <td className="text-right tabular-nums">{scaledToText(r.qtyMilli, 3)} {r.uomCode}</td>
+                <td><input aria-label={`Counted ${r.name}`} className="input w-28 py-1" inputMode="decimal" value={counts[r.productId]?.text ?? ''} onChange={(e) => setCounts(setCount(counts, r, e.target.value))} />
                   {errors[r.productId] && <p className="err">{errors[r.productId]}</p>}</td>
               </tr>
             ))}
           </tbody>
         </table>
       ) : (
-        <table className="w-full rounded-lg border bg-white text-sm">
-          <thead className="bg-slate-50 text-left text-slate-600"><tr><th className="p-2">Product</th><th className="p-2 text-right">System</th><th className="p-2 text-right">Counted</th><th className="p-2 text-right">Difference</th></tr></thead>
+        <table className="table-modern rounded-lg border bg-white">
+          <thead><tr><th>Product</th><th className="text-right">System</th><th className="text-right">Counted</th><th className="text-right">Difference</th></tr></thead>
           <tbody>
             {diffs.map((d) => (
-              <tr key={d.productId} className="border-t">
-                <td className="p-2">{d.name}</td>
-                <td className="p-2 text-right tabular-nums">{scaledToText(d.systemMilli, 3)}</td>
-                <td className="p-2 text-right tabular-nums">{scaledToText(d.countedMilli, 3)}</td>
-                <td className={`p-2 text-right tabular-nums ${d.diffMilli < 0 ? 'text-red-700' : d.diffMilli > 0 ? 'text-green-800' : 'text-slate-500'}`}>{d.diffMilli > 0 ? '+' : ''}{scaledToText(d.diffMilli, 3)} {d.uomCode}</td>
+              <tr key={d.productId}>
+                <td>{d.name}</td>
+                <td className="text-right tabular-nums">{scaledToText(d.systemMilli, 3)}</td>
+                <td className="text-right tabular-nums">{scaledToText(d.countedMilli, 3)}</td>
+                <td className={`text-right tabular-nums ${d.diffMilli < 0 ? 'text-red-700' : d.diffMilli > 0 ? 'text-green-800' : 'text-slate-500'}`}>{d.diffMilli > 0 ? '+' : ''}{scaledToText(d.diffMilli, 3)} {d.uomCode}</td>
               </tr>
             ))}
           </tbody>

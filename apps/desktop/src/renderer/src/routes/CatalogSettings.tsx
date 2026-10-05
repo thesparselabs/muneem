@@ -76,7 +76,7 @@ function Units() {
         <div><label className="label" htmlFor="uom-code">Code</label><input id="uom-code" className="input uppercase w-28" value={f.code} onChange={(e) => setF({ ...f, code: e.target.value })} required maxLength={8} /></div>
         <div className="grow"><label className="label" htmlFor="uom-name">Name</label><input id="uom-name" className="input" value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} required /></div>
         <div><label className="label" htmlFor="uom-dec">Decimals</label>
-          <select id="uom-dec" className="input" value={f.decimals} onChange={(e) => setF({ ...f, decimals: Number(e.target.value) })}>{[0, 1, 2, 3].map((d) => <option key={d}>{d}</option>)}</select>
+          <select id="uom-dec" className="select" value={f.decimals} onChange={(e) => setF({ ...f, decimals: Number(e.target.value) })}>{[0, 1, 2, 3].map((d) => <option key={d}>{d}</option>)}</select>
         </div>
       </AddForm>
       <ul className="card divide-y text-sm">
@@ -115,7 +115,7 @@ function Categories() {
       <AddForm onSubmit={add} error={error}>
         <div className="grow"><label className="label" htmlFor="cat-name">Category name</label><input id="cat-name" className="input" value={name} onChange={(e) => setName(e.target.value)} required /></div>
         <div><label className="label" htmlFor="cat-parent">Inside</label>
-          <select id="cat-parent" className="input" value={parentId} onChange={(e) => setParentId(e.target.value)}>
+          <select id="cat-parent" className="select" value={parentId} onChange={(e) => setParentId(e.target.value)}>
             <option value="">(top level)</option>{categories.data?.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
           </select>
         </div>
@@ -165,7 +165,7 @@ function PriceLists() {
       <AddForm onSubmit={add} error={error}>
         <div className="grow"><label className="label" htmlFor="pl-name">List name</label><input id="pl-name" className="input" value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} required /></div>
         <div><label className="label" htmlFor="pl-kind">Kind</label>
-          <select id="pl-kind" className="input" value={f.kind} onChange={(e) => setF({ ...f, kind: e.target.value as PriceList['kind'] })}>
+          <select id="pl-kind" className="select" value={f.kind} onChange={(e) => setF({ ...f, kind: e.target.value as PriceList['kind'] })}>
             {['retail', 'wholesale', 'distributor', 'custom'].map((k) => <option key={k}>{k}</option>)}
           </select>
         </div>

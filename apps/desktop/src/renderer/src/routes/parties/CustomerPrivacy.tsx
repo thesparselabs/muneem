@@ -63,12 +63,12 @@ export default function CustomerPrivacy({ customer, balancePaise }: { customer: 
       {canRecord && ask.length > 0 && (
         <form onSubmit={record} className="flex items-end gap-2 text-sm">
           <Field label="Channel" htmlFor="consent-channel">
-            <select id="consent-channel" className="input" value={form.channel || ask[0]} onChange={(e) => setForm({ ...form, channel: e.target.value as CustomerConsent['channel'] })}>
+            <select id="consent-channel" className="select" value={form.channel || ask[0]} onChange={(e) => setForm({ ...form, channel: e.target.value as CustomerConsent['channel'] })}>
               {ask.map((c) => <option key={c} value={c}>{CHANNEL_LABEL[c]}</option>)}
             </select>
           </Field>
           <Field label="How it was given" htmlFor="consent-method">
-            <select id="consent-method" className="input" value={form.method} onChange={(e) => setForm({ ...form, method: e.target.value as CustomerConsent['method'] })}>
+            <select id="consent-method" className="select" value={form.method} onChange={(e) => setForm({ ...form, method: e.target.value as CustomerConsent['method'] })}>
               {CONSENT_METHODS.map((m) => <option key={m} value={m}>{METHOD_LABEL[m]}</option>)}
             </select>
           </Field>

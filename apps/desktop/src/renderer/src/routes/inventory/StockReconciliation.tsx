@@ -33,16 +33,16 @@ export default function StockReconciliation() {
             <p><Link to={`/inventory/product/${p.productId}`} className="font-medium text-blue-800">{p.productName}</Link> <span className="text-slate-500">· {p.warehouseName}</span></p>
             <p className="tabular-nums">Now <span className={p.currentQtyMilli < 0 ? 'font-medium text-red-700' : ''}>{qty(p.currentQtyMilli, p.uomCode)}</span> · lowest {qty(p.lowestMilli, p.uomCode)}</p>
           </div>
-          <table className="w-full">
-            <thead className="text-left text-slate-500"><tr><th className="p-1 font-normal">When</th><th className="p-1 font-normal">Where</th><th className="p-1 font-normal">Document</th>
-              <th className="p-1 text-right font-normal">Quantity</th><th className="p-1 text-right font-normal">Stock after</th></tr></thead>
+          <table className="table-modern">
+            <thead><tr><th className="font-normal">When</th><th className="font-normal">Where</th><th className="font-normal">Document</th>
+              <th className="text-right font-normal">Quantity</th><th className="text-right font-normal">Stock after</th></tr></thead>
             <tbody>{p.breaches.map((b) => (
-              <tr key={b.movementId} className="border-t">
-                <td className="p-1">{when(b.occurredAt)}</td>
-                <td className="p-1">{b.source}{b.viaSync && <span className="ml-2 rounded bg-blue-100 px-1.5 text-xs text-blue-900">synced</span>}</td>
-                <td className="p-1 font-mono text-xs">{b.document ?? '—'}</td>
-                <td className="p-1 text-right tabular-nums">{qty(b.qtyMilli, p.uomCode)}</td>
-                <td className="p-1 text-right tabular-nums text-red-700">{qty(b.balanceAfterMilli, p.uomCode)}</td>
+              <tr key={b.movementId}>
+                <td>{when(b.occurredAt)}</td>
+                <td>{b.source}{b.viaSync && <span className="ml-2 rounded bg-blue-100 px-1.5 text-xs text-blue-900">synced</span>}</td>
+                <td className="font-mono text-xs">{b.document ?? '—'}</td>
+                <td className="text-right tabular-nums">{qty(b.qtyMilli, p.uomCode)}</td>
+                <td className="text-right tabular-nums text-red-700">{qty(b.balanceAfterMilli, p.uomCode)}</td>
               </tr>
             ))}</tbody>
           </table>

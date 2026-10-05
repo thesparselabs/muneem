@@ -12,8 +12,8 @@ const parse = (v: string): Date | null => { const m = /^(\d{4})-(\d{2})-(\d{2})$
 const pretty = (v: string): string => { const d = parse(v); return d ? d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : ''; };
 
 // A calendar popover that stands in for <input type="date">: value is a YYYY-MM-DD string; onChange gives the same.
-export default function DatePicker({ id, value, onChange, max, min, required, className }:
-  { id?: string; value: string; onChange: (v: string) => void; max?: string; min?: string; required?: boolean; className?: string }) {
+export default function DatePicker({ id, value, onChange, max, min, required, className, 'aria-label': ariaLabel }:
+  { id?: string; value: string; onChange: (v: string) => void; max?: string; min?: string; required?: boolean; className?: string; 'aria-label'?: string }) {
   const reduce = usePrefersReducedMotion();
   const [open, setOpen] = useState(false);
   const [view, setView] = useState(() => parse(value) ?? new Date());
@@ -37,7 +37,7 @@ export default function DatePicker({ id, value, onChange, max, min, required, cl
 
   return (
     <div ref={root} className={cn('relative', className)}>
-      <button type="button" id={id} onClick={() => setOpen((o) => !o)} aria-haspopup="dialog" aria-expanded={open}
+      <button type="button" id={id} aria-label={ariaLabel} onClick={() => setOpen((o) => !o)} aria-haspopup="dialog" aria-expanded={open}
         className="flex w-full items-center justify-between gap-2 rounded-lg border border-slate-300 bg-white px-3 py-2 text-left text-sm transition-colors hover:border-slate-400 focus:border-blue-600 focus:ring-2 focus:ring-blue-600/15">
         <span className={value ? '' : 'text-slate-400'}>{value ? pretty(value) : 'Select a date'}</span>
         <CalendarDays size={16} className="shrink-0 text-slate-400" aria-hidden />

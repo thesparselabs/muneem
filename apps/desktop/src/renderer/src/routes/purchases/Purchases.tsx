@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { api, errorMessage } from '../../api.js';
+import DatePicker from '../../components/DatePicker.js';
 import { formatPaise } from '../../lib/money.js';
 import { useCan } from '../../lib/permissions.js';
 
@@ -20,20 +21,20 @@ export default function Purchases() {
     <div className="max-w-6xl space-y-4">
       <div className="flex items-center justify-between"><h1 className="text-2xl font-semibold">Purchases</h1>{canCreate && <Link to="/purchases/new" className="btn-primary">New purchase</Link>}</div>
       <div className="card flex items-end gap-3">
-        <div><label className="label" htmlFor="pl-from">From</label><input id="pl-from" type="date" className="input" value={filter.from} onChange={(e) => setFilter({ ...filter, from: e.target.value })} /></div>
-        <div><label className="label" htmlFor="pl-to">To</label><input id="pl-to" type="date" className="input" value={filter.to} onChange={(e) => setFilter({ ...filter, to: e.target.value })} /></div>
+        <div><label className="label" htmlFor="pl-from">From</label><DatePicker id="pl-from" value={filter.from} onChange={(v) => setFilter({ ...filter, from: v })} /></div>
+        <div><label className="label" htmlFor="pl-to">To</label><DatePicker id="pl-to" value={filter.to} onChange={(v) => setFilter({ ...filter, to: v })} /></div>
         <div><label className="label" htmlFor="pl-status">Status</label>
-          <select id="pl-status" className="input" value={filter.status} onChange={(e) => setFilter({ ...filter, status: e.target.value as typeof filter.status })}><option value="">All</option><option value="posted">Posted</option><option value="cancelled">Cancelled</option></select></div>
+          <select id="pl-status" className="select" value={filter.status} onChange={(e) => setFilter({ ...filter, status: e.target.value as typeof filter.status })}><option value="">All</option><option value="posted">Posted</option><option value="cancelled">Cancelled</option></select></div>
       </div>
       {list.error && <p className="err" role="alert">{errorMessage(list.error)}</p>}
-      <table className="w-full rounded-lg border bg-white text-sm">
-        <thead className="bg-slate-50 text-left text-slate-600"><tr><th className="p-2">Number</th><th className="p-2">Date</th><th className="p-2">Supplier</th><th className="p-2">Bill no.</th><th className="p-2">Due</th><th className="p-2 text-right">Total</th><th className="p-2 text-right">Owed</th></tr></thead>
+      <table className="table-modern rounded-lg border bg-white">
+        <thead><tr><th>Number</th><th>Date</th><th>Supplier</th><th>Bill no.</th><th>Due</th><th className="text-right">Total</th><th className="text-right">Owed</th></tr></thead>
         <tbody>
           {rows.map((p) => (
-            <tr key={p.id} className={`border-t ${p.status === 'cancelled' ? 'text-slate-400 line-through' : ''}`}>
-              <td className="p-2"><Link to={`/purchases/${p.id}`} className="text-blue-800">{p.docNumber}</Link></td><td className="p-2">{p.docDate}</td><td className="p-2">{p.supplierName}</td>
-              <td className="p-2">{p.supplierInvoiceNo}</td><td className="p-2">{p.dueDate}</td>
-              <td className="p-2 text-right tabular-nums">{formatPaise(p.totalPaise)}</td><td className="p-2 text-right tabular-nums">{formatPaise(p.status === 'posted' ? p.totalPaise - p.settledPaise : 0)}</td>
+            <tr key={p.id} className={p.status === 'cancelled' ? 'text-slate-400 line-through' : ''}>
+              <td><Link to={`/purchases/${p.id}`} className="text-blue-800">{p.docNumber}</Link></td><td>{p.docDate}</td><td>{p.supplierName}</td>
+              <td>{p.supplierInvoiceNo}</td><td>{p.dueDate}</td>
+              <td className="text-right tabular-nums">{formatPaise(p.totalPaise)}</td><td className="text-right tabular-nums">{formatPaise(p.status === 'posted' ? p.totalPaise - p.settledPaise : 0)}</td>
             </tr>
           ))}
         </tbody>

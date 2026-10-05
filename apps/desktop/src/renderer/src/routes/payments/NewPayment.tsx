@@ -4,6 +4,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { PAYMENT_METHODS, type PartyType } from '@muneem/contracts';
 import { newUlid } from '@muneem/domain';
 import { api, errorMessage } from '../../api.js';
+import DatePicker from '../../components/DatePicker.js';
 import Field from '../../components/Field.js';
 import PartyPicker, { type PickedParty } from '../../components/PartyPicker.js';
 import { parseOptional } from '../../lib/money.js';
@@ -62,11 +63,11 @@ export default function NewPayment() {
         {partyName ? <p className="col-span-2 font-medium">{partyName}</p> : <div className="col-span-2"><PartyPicker id="pay-party" partyType={partyType} onPick={setParty} /></div>}
         <Field label="Amount (₹)" htmlFor="pay-amount"><input id="pay-amount" className="input" inputMode="decimal" value={f.amount} onChange={(e) => setF({ ...f, amount: e.target.value })} /></Field>
         <Field label="Method" htmlFor="pay-method">
-          <select id="pay-method" className="input" value={f.method} onChange={(e) => setF({ ...f, method: e.target.value as typeof f.method })}>
+          <select id="pay-method" className="select" value={f.method} onChange={(e) => setF({ ...f, method: e.target.value as typeof f.method })}>
             {PAYMENT_METHODS.map((m) => <option key={m} value={m}>{m.toUpperCase()}</option>)}
           </select>
         </Field>
-        <Field label="Date" htmlFor="pay-date"><input id="pay-date" type="date" className="input" value={f.date} onChange={(e) => setF({ ...f, date: e.target.value })} /></Field>
+        <Field label="Date" htmlFor="pay-date"><DatePicker id="pay-date" value={f.date} onChange={(v) => setF({ ...f, date: v })} /></Field>
         <Field label="Reference" htmlFor="pay-ref" hint="Cheque or UTR number"><input id="pay-ref" className="input" value={f.reference} onChange={(e) => setF({ ...f, reference: e.target.value })} /></Field>
       </div>
       {partyId && <div className="card"><AllocationGrid items={items} mode={mode} typed={typed} summary={summary} onMode={setMode} onType={(id, v) => setTyped({ ...typed, [id]: v })} /></div>}

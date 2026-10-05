@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom';
 import { useInfiniteQuery, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { Customer, PartyType, Supplier } from '@muneem/contracts';
 import { api, errorMessage } from '../../api.js';
+import DatePicker from '../../components/DatePicker.js';
 import { formatPaise } from '../../lib/money.js';
 import { AGEING_COLUMNS } from '../../lib/parties/forms.js';
 import { useCan } from '../../lib/permissions.js';
@@ -78,23 +79,23 @@ export default function PartyPage() {
       )}
       {partyType === 'customer' && <CustomerPrivacy customer={p as Customer} balancePaise={ageing.data ? (row?.netPaise ?? 0) : undefined} />}
       <div className="card flex items-end gap-3">
-        <div><label className="label" htmlFor="st-from">From</label><input id="st-from" type="date" className="input" value={range.from} onChange={(e) => setRange({ ...range, from: e.target.value })} /></div>
-        <div><label className="label" htmlFor="st-to">To</label><input id="st-to" type="date" className="input" value={range.to} onChange={(e) => setRange({ ...range, to: e.target.value })} /></div>
+        <div><label className="label" htmlFor="st-from">From</label><DatePicker id="st-from" value={range.from} onChange={(v) => setRange({ ...range, from: v })} /></div>
+        <div><label className="label" htmlFor="st-to">To</label><DatePicker id="st-to" value={range.to} onChange={(v) => setRange({ ...range, to: v })} /></div>
       </div>
-      <table className="w-full rounded-lg border bg-white text-sm">
-        <thead className="bg-slate-50 text-left text-slate-600"><tr><th className="p-2">Date</th><th className="p-2">Document</th><th className="p-2">Due</th><th className="p-2 text-right">Amount</th><th className="p-2 text-right">Balance</th></tr></thead>
+      <table className="table-modern rounded-lg border bg-white">
+        <thead><tr><th>Date</th><th>Document</th><th>Due</th><th className="text-right">Amount</th><th className="text-right">Balance</th></tr></thead>
         <tbody>
-          {first && range.from && <tr className="border-t text-slate-600"><td className="p-2" colSpan={4}>Opening balance</td><td className="p-2 text-right tabular-nums">{formatPaise(first.openingBalancePaise)}</td></tr>}
+          {first && range.from && <tr className="text-slate-600"><td colSpan={4}>Opening balance</td><td className="text-right tabular-nums">{formatPaise(first.openingBalancePaise)}</td></tr>}
           {lines.map((l) => (
-            <tr key={l.id} className="border-t">
-              <td className="p-2">{l.docDate}</td>
-              <td className="p-2">{REF_LABEL[l.refType] ?? l.refType} {l.docNumber ?? ''}{l.kind === 'cancel' && <span className="text-amber-700"> (cancelled)</span>}</td>
-              <td className="p-2">{l.dueDate ?? ''}</td>
-              <td className="p-2 text-right tabular-nums">{formatPaise(l.amountPaise)}</td>
-              <td className="p-2 text-right tabular-nums">{formatPaise(l.balancePaise)}</td>
+            <tr key={l.id}>
+              <td>{l.docDate}</td>
+              <td>{REF_LABEL[l.refType] ?? l.refType} {l.docNumber ?? ''}{l.kind === 'cancel' && <span className="text-amber-700"> (cancelled)</span>}</td>
+              <td>{l.dueDate ?? ''}</td>
+              <td className="text-right tabular-nums">{formatPaise(l.amountPaise)}</td>
+              <td className="text-right tabular-nums">{formatPaise(l.balancePaise)}</td>
             </tr>
           ))}
-          {last && !statement.hasNextPage && <tr className="border-t font-medium"><td className="p-2" colSpan={4}>Closing balance {partyType === 'customer' ? '(they owe us)' : '(negative = we owe)'}</td><td className="p-2 text-right tabular-nums">{formatPaise(last.closingBalancePaise)}</td></tr>}
+          {last && !statement.hasNextPage && <tr className="font-medium"><td colSpan={4}>Closing balance {partyType === 'customer' ? '(they owe us)' : '(negative = we owe)'}</td><td className="text-right tabular-nums">{formatPaise(last.closingBalancePaise)}</td></tr>}
         </tbody>
       </table>
       {statement.hasNextPage && <button type="button" className="btn-secondary" onClick={() => void statement.fetchNextPage()}>Show more</button>}

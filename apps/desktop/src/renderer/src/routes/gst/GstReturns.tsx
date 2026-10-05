@@ -47,18 +47,18 @@ export default function GstReturns() {
               : 'Every head ties to the tax accounts for the month.'}
           </p>
           {s.missingHsn > 0 && <p className="text-sm text-amber-700">{s.missingHsn} lines have no HSN code. {exportButtons('gst.productsMissingHsn')}</p>}
-          <table className="w-full rounded-lg border bg-white text-sm">
-            <thead className="bg-slate-50 text-left text-slate-600"><tr>
-              <th className="p-2">GSTR-1 section</th><th className="p-2 text-right">Rows</th><th className="p-2 text-right">Taxable</th><th className="p-2 text-right">IGST</th>
-              <th className="p-2 text-right">CGST</th><th className="p-2 text-right">SGST</th><th className="p-2 text-right">Cess</th><th className="p-2">Export</th>
+          <table className="table-modern rounded-lg border bg-white">
+            <thead><tr>
+              <th>GSTR-1 section</th><th className="text-right">Rows</th><th className="text-right">Taxable</th><th className="text-right">IGST</th>
+              <th className="text-right">CGST</th><th className="text-right">SGST</th><th className="text-right">Cess</th><th>Export</th>
             </tr></thead>
             <tbody>
               {s.sections.map((x) => (
-                <tr key={x.section} className={`border-t ${open === x.reportId ? 'bg-blue-50' : ''}`}>
-                  <td className="p-2"><button type="button" className="underline" onClick={() => setOpen(open === x.reportId ? null : x.reportId)}>{x.title}</button></td>
-                  <td className="p-2 text-right">{x.rows}</td><td className="p-2 text-right">{money(x.taxablePaise)}</td><td className="p-2 text-right">{money(x.igstPaise)}</td>
-                  <td className="p-2 text-right">{money(x.cgstPaise)}</td><td className="p-2 text-right">{money(x.sgstPaise)}</td><td className="p-2 text-right">{money(x.cessPaise)}</td>
-                  <td className="p-2">{exportButtons(x.reportId)}</td>
+                <tr key={x.section} className={open === x.reportId ? 'bg-blue-50' : undefined}>
+                  <td><button type="button" className="underline" onClick={() => setOpen(open === x.reportId ? null : x.reportId)}>{x.title}</button></td>
+                  <td className="text-right">{x.rows}</td><td className="text-right">{money(x.taxablePaise)}</td><td className="text-right">{money(x.igstPaise)}</td>
+                  <td className="text-right">{money(x.cgstPaise)}</td><td className="text-right">{money(x.sgstPaise)}</td><td className="text-right">{money(x.cessPaise)}</td>
+                  <td>{exportButtons(x.reportId)}</td>
                 </tr>
               ))}
             </tbody>
@@ -66,17 +66,17 @@ export default function GstReturns() {
           {open && <SectionTable id={open} month={month} />}
           <div className="card space-y-2">
             <div className="flex items-center justify-between"><h2 className="font-semibold">GSTR-3B</h2>{exportButtons('gst.gstr3b')}</div>
-            <table className="w-full text-sm">
-              <thead className="text-left text-slate-600"><tr><th className="p-1">Table</th><th className="p-1">Description</th><th className="p-1 text-right">Taxable</th>
-                <th className="p-1 text-right">IGST</th><th className="p-1 text-right">CGST</th><th className="p-1 text-right">SGST</th><th className="p-1 text-right">Cess</th></tr></thead>
+            <table className="table-modern">
+              <thead><tr><th>Table</th><th>Description</th><th className="text-right">Taxable</th>
+                <th className="text-right">IGST</th><th className="text-right">CGST</th><th className="text-right">SGST</th><th className="text-right">Cess</th></tr></thead>
               <tbody>{s.gstr3b.map((r) => (
-                <tr key={r.code} className="border-t"><td className="p-1">{r.code}</td><td className="p-1">{r.description}</td><td className="p-1 text-right">{money(r.taxablePaise)}</td>
-                  <td className="p-1 text-right">{money(r.igstPaise)}</td><td className="p-1 text-right">{money(r.cgstPaise)}</td><td className="p-1 text-right">{money(r.sgstPaise)}</td>
-                  <td className="p-1 text-right">{money(r.cessPaise)}</td></tr>
+                <tr key={r.code}><td>{r.code}</td><td>{r.description}</td><td className="text-right">{money(r.taxablePaise)}</td>
+                  <td className="text-right">{money(r.igstPaise)}</td><td className="text-right">{money(r.cgstPaise)}</td><td className="text-right">{money(r.sgstPaise)}</td>
+                  <td className="text-right">{money(r.cessPaise)}</td></tr>
               ))}
               {s.inward.map((r) => (
-                <tr key={r.description} className="border-t"><td className="p-1">5</td><td className="p-1">{r.description}</td>
-                  <td className="p-1 text-right" colSpan={5}>inter-state {formatPaise(r.interPaise)} · intra-state {formatPaise(r.intraPaise)}</td></tr>
+                <tr key={r.description}><td>5</td><td>{r.description}</td>
+                  <td className="text-right" colSpan={5}>inter-state {formatPaise(r.interPaise)} · intra-state {formatPaise(r.intraPaise)}</td></tr>
               ))}</tbody>
             </table>
             <div className="flex items-center gap-2 text-sm">ITC register {exportButtons('gst.itcRegister')}</div>
@@ -100,12 +100,12 @@ function ResultTable({ result }: { result: ReportResult }) {
   if (result.rows.length === 0) return <p className="card text-sm text-slate-600">Nothing in this section for the month.</p>;
   return (
     <div className="overflow-auto rounded-lg border bg-white">
-      <table className="w-full text-xs">
-        <thead className="bg-slate-50 text-left text-slate-600"><tr>{result.columns.map((c) => <th key={c.key} className="p-1">{c.label}</th>)}</tr></thead>
+      <table className="table-modern text-xs">
+        <thead><tr>{result.columns.map((c) => <th key={c.key}>{c.label}</th>)}</tr></thead>
         <tbody>
           {[...result.rows, ...(result.totals ? [result.totals] : [])].map((row, i) => (
-            <tr key={i} className={`border-t ${i === result.rows.length ? 'font-semibold' : ''}`}>
-              {result.columns.map((c) => <td key={c.key} className={`p-1 ${c.kind === 'text' || c.kind === 'date' ? '' : 'text-right tabular-nums'}`}>{cell(c.kind, row[c.key] ?? null)}</td>)}
+            <tr key={i} className={i === result.rows.length ? 'font-semibold' : undefined}>
+              {result.columns.map((c) => <td key={c.key} className={c.kind === 'text' || c.kind === 'date' ? undefined : 'text-right tabular-nums'}>{cell(c.kind, row[c.key] ?? null)}</td>)}
             </tr>
           ))}
         </tbody>

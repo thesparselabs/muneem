@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import type { ExportFormat, ReportDefinitionView, ReportParamField, ReportResult } from '@muneem/contracts';
 import { api, errorMessage } from '../../api.js';
+import DatePicker from '../../components/DatePicker.js';
 import PartyPicker from '../../components/PartyPicker.js';
 import { useCan } from '../../lib/permissions.js';
 import { checkParams, defaultParams, formatCell, groupReports, isNumeric, periodLabel, runParams } from '../../lib/reports/reportForm.js';
@@ -25,15 +26,17 @@ function ParamInput({ p, value, error, onChange, branches }: {
     <div>
       <label className="label" htmlFor={id}>{p.label}</label>
       {p.kind === 'branch' ? (
-        <select id={id} className="input" value={value} onChange={(e) => onChange(e.target.value)}>
+        <select id={id} className="select" value={value} onChange={(e) => onChange(e.target.value)}>
           <option value="">All branches</option>{branches.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
         </select>
       ) : p.kind === 'select' ? (
-        <select id={id} className="input" value={value} onChange={(e) => onChange(e.target.value)}>
+        <select id={id} className="select" value={value} onChange={(e) => onChange(e.target.value)}>
           <option value="">—</option>{p.options?.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
         </select>
+      ) : p.kind === 'date' ? (
+        <DatePicker id={id} value={value} onChange={onChange} />
       ) : (
-        <input id={id} type={p.kind === 'date' ? 'date' : 'text'} className="input" value={value} onChange={(e) => onChange(e.target.value)} />
+        <input id={id} type="text" className="input" value={value} onChange={(e) => onChange(e.target.value)} />
       )}
       {error && <p className="err">{error}</p>}
     </div>
@@ -42,16 +45,16 @@ function ParamInput({ p, value, error, onChange, branches }: {
 
 function ResultTable({ r }: { r: ReportResult }) {
   return (
-    <table className="w-full text-sm">
-      <thead className="text-left text-slate-600">
-        <tr>{r.columns.map((c) => <th key={c.key} className={`p-1 ${isNumeric(c.kind) ? 'text-right' : ''}`}>{c.label}</th>)}</tr>
+    <table className="table-modern">
+      <thead>
+        <tr>{r.columns.map((c) => <th key={c.key} className={isNumeric(c.kind) ? 'text-right' : ''}>{c.label}</th>)}</tr>
       </thead>
       <tbody>
         {r.rows.map((row, i) => (
-          <tr key={i} className="border-t">{r.columns.map((c) => <td key={c.key} className={`p-1 ${isNumeric(c.kind) ? 'text-right tabular-nums' : ''}`}>{formatCell(c.kind, row[c.key])}</td>)}</tr>
+          <tr key={i}>{r.columns.map((c) => <td key={c.key} className={isNumeric(c.kind) ? 'text-right tabular-nums' : ''}>{formatCell(c.kind, row[c.key])}</td>)}</tr>
         ))}
         {r.totals && (
-          <tr className="border-t-2 border-slate-400 font-semibold">{r.columns.map((c) => <td key={c.key} className={`p-1 ${isNumeric(c.kind) ? 'text-right tabular-nums' : ''}`}>{formatCell(c.kind, r.totals![c.key])}</td>)}</tr>
+          <tr className="border-t-2 border-slate-400 font-semibold">{r.columns.map((c) => <td key={c.key} className={isNumeric(c.kind) ? 'text-right tabular-nums' : ''}>{formatCell(c.kind, r.totals![c.key])}</td>)}</tr>
         )}
       </tbody>
     </table>

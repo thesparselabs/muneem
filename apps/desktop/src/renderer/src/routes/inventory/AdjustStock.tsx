@@ -39,25 +39,25 @@ export default function AdjustStock() {
       <div className="flex items-center justify-between"><h1 className="text-2xl font-semibold">Adjust stock</h1><Link to="/inventory" className="btn-secondary">Cancel</Link></div>
       <div className="card"><ProductPicker id="adj-product" label="Add a product" onPick={add} /></div>
       {rows.length > 0 && (
-        <table className="w-full rounded-lg border bg-white text-sm">
-          <thead className="bg-slate-50 text-left text-slate-600"><tr><th className="p-2">Product</th><th className="p-2">In stock</th><th className="p-2">Change</th><th className="p-2">Quantity</th><th className="p-2">Reason</th><th /></tr></thead>
+        <table className="table-modern rounded-lg border bg-white">
+          <thead><tr><th>Product</th><th>In stock</th><th>Change</th><th>Quantity</th><th>Reason</th><th /></tr></thead>
           <tbody>
             {rows.map((r, i) => (
-              <tr key={r.productId} className="border-t">
-                <td className="p-2">{r.name}</td>
-                <td className="p-2 tabular-nums">{scaledToText(r.stockMilli, 3)} {r.uomCode}</td>
-                <td className="p-2">
-                  <select aria-label={`Direction for ${r.name}`} className="input py-1" value={r.direction} onChange={(e) => set(i, { direction: e.target.value as Row['direction'] })}>
+              <tr key={r.productId}>
+                <td>{r.name}</td>
+                <td className="tabular-nums">{scaledToText(r.stockMilli, 3)} {r.uomCode}</td>
+                <td>
+                  <select aria-label={`Direction for ${r.name}`} className="select py-1" value={r.direction} onChange={(e) => set(i, { direction: e.target.value as Row['direction'] })}>
                     <option value="out">Remove</option><option value="in">Add</option>
                   </select>
                 </td>
-                <td className="p-2"><input aria-label={`Quantity for ${r.name}`} className="input w-24 py-1" inputMode="decimal" value={r.qty} onChange={(e) => set(i, { qty: e.target.value })} /></td>
-                <td className="p-2">
-                  <select aria-label={`Reason for ${r.name}`} className="input py-1" value={r.reason} onChange={(e) => set(i, { reason: e.target.value as Reason })}>
+                <td><input aria-label={`Quantity for ${r.name}`} className="input w-24 py-1" inputMode="decimal" value={r.qty} onChange={(e) => set(i, { qty: e.target.value })} /></td>
+                <td>
+                  <select aria-label={`Reason for ${r.name}`} className="select py-1" value={r.reason} onChange={(e) => set(i, { reason: e.target.value as Reason })}>
                     {ADJUSTMENT_REASONS.map((x) => <option key={x} value={x}>{x.replace('_', ' ')}</option>)}
                   </select>
                 </td>
-                <td className="p-2"><button type="button" className="btn-secondary py-1" onClick={() => setRows(rows.filter((_, j) => j !== i))}>Remove</button></td>
+                <td><button type="button" className="btn-secondary py-1" onClick={() => setRows(rows.filter((_, j) => j !== i))}>Remove</button></td>
               </tr>
             ))}
           </tbody>

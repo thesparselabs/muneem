@@ -4,6 +4,7 @@ import { newUlid } from '@muneem/domain';
 import type { Customer, OpenItems, PartyType, Supplier } from '@muneem/contracts';
 import { api, errorMessage } from '../../api.js';
 import Dialog from '../../components/Dialog.js';
+import DatePicker from '../../components/DatePicker.js';
 import Field from '../../components/Field.js';
 import { formatPaise, parseOptional, paiseToText } from '../../lib/money.js';
 import {
@@ -35,7 +36,7 @@ export function SupplierDialog({ supplier, defaultState, onDone, onClose }: { su
       <form onSubmit={submit} className="grid grid-cols-2 gap-3">
         <Field label="Name" htmlFor="sp-name"><input id="sp-name" className="input" value={f.name} onChange={(e) => set({ name: e.target.value })} required /></Field>
         <Field label="GST scheme" htmlFor="sp-scheme">
-          <select id="sp-scheme" className="input" value={f.taxScheme} onChange={(e) => set({ taxScheme: e.target.value as SupplierForm['taxScheme'] })}>
+          <select id="sp-scheme" className="select" value={f.taxScheme} onChange={(e) => set({ taxScheme: e.target.value as SupplierForm['taxScheme'] })}>
             <option value="regular">Regular (charges GST)</option><option value="composition">Composition</option><option value="unregistered">Unregistered</option>
           </select>
         </Field>
@@ -121,12 +122,12 @@ export function OpeningDialog({ partyType, partyId, onDone, onClose }: { partyTy
       <form onSubmit={submit} className="space-y-3">
         <p className="text-sm text-slate-600">Entering a new opening replaces the current one.</p>
         <Field label="Who owes whom" htmlFor="op-side">
-          <select id="op-side" className="input" value={f.side} onChange={(e) => setF({ ...f, side: e.target.value as typeof f.side })}>
+          <select id="op-side" className="select" value={f.side} onChange={(e) => setF({ ...f, side: e.target.value as typeof f.side })}>
             <option value="receivable">They owe us</option><option value="payable">We owe them</option>
           </select>
         </Field>
         <Field label="Amount (₹)" htmlFor="op-amount"><input id="op-amount" className="input" inputMode="decimal" value={f.amount} onChange={(e) => setF({ ...f, amount: e.target.value })} /></Field>
-        <Field label="As of" htmlFor="op-date"><input id="op-date" type="date" className="input" value={f.asOf} onChange={(e) => setF({ ...f, asOf: e.target.value })} /></Field>
+        <Field label="As of" htmlFor="op-date"><DatePicker id="op-date" value={f.asOf} onChange={(v) => setF({ ...f, asOf: v })} /></Field>
         <Errors errors={error} />
         <button type="submit" className="btn-primary">Save opening balance</button>
       </form>
@@ -156,11 +157,11 @@ export function WriteOffDialog({ customer, items, onDone, onClose }: { customer:
   return (
     <Dialog title={`Write off · ${customer.name}`} onClose={onClose} wide>
       <form onSubmit={submit} className="space-y-3">
-        <table className="w-full text-sm">
-          <thead className="text-left text-slate-600"><tr><th className="p-1">Document</th><th className="p-1">Due</th><th className="p-1 text-right">Open</th><th className="p-1">Write off (₹)</th></tr></thead>
+        <table className="table-modern">
+          <thead><tr><th>Document</th><th>Due</th><th className="text-right">Open</th><th>Write off (₹)</th></tr></thead>
           <tbody>{items.map((i) => (
-            <tr key={i.id} className="border-t"><td className="p-1">{i.docNumber ?? i.type}</td><td className="p-1">{i.dueDate}</td><td className="p-1 text-right">{formatPaise(i.openPaise)}</td>
-              <td className="p-1"><input aria-label={`Write off ${i.docNumber ?? i.type}`} className="input py-1" inputMode="decimal" value={amounts[i.id] ?? ''} onChange={(e) => setAmounts({ ...amounts, [i.id]: e.target.value })} /></td></tr>
+            <tr key={i.id}><td>{i.docNumber ?? i.type}</td><td>{i.dueDate}</td><td className="text-right">{formatPaise(i.openPaise)}</td>
+              <td><input aria-label={`Write off ${i.docNumber ?? i.type}`} className="input py-1" inputMode="decimal" value={amounts[i.id] ?? ''} onChange={(e) => setAmounts({ ...amounts, [i.id]: e.target.value })} /></td></tr>
           ))}</tbody>
         </table>
         <Field label="Reason" htmlFor="wo-reason"><input id="wo-reason" className="input" value={reason} onChange={(e) => setReason(e.target.value)} required /></Field>

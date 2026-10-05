@@ -4,6 +4,7 @@ import type { Product, Uom } from '@muneem/contracts';
 import { api, errorMessage } from '../api.js';
 import { itemToRow, rowsToItems, type PriceRow } from '../lib/priceItems.js';
 import UomSelect from '../components/UomSelect.js';
+import DatePicker from '../components/DatePicker.js';
 
 const today = () => new Date().toLocaleDateString('en-CA');
 
@@ -42,24 +43,24 @@ export default function PriceListItems({ product, uoms }: { product: Product; uo
       <div className="flex items-end gap-3">
         <div>
           <label className="label" htmlFor="price-list">Price list</label>
-          <select id="price-list" className="input" value={activeList} onChange={(e) => setListId(e.target.value)}>
+          <select id="price-list" className="select" value={activeList} onChange={(e) => setListId(e.target.value)}>
             {lists.data?.map((l) => <option key={l.id} value={l.id}>{l.name}{l.isDefault ? ' (default)' : ''}</option>)}
           </select>
         </div>
         <p className="text-sm text-slate-500 pb-2">Add a row per unit and quantity break. The newest price that is in effect wins.</p>
       </div>
-      <table className="w-full text-sm">
-        <thead className="text-left text-slate-600"><tr><th className="p-1">Unit</th><th className="p-1">From qty</th><th className="p-1">Price (₹)</th><th className="p-1">Incl. GST</th><th className="p-1">From date</th><th className="p-1">Until</th><th /></tr></thead>
+      <table className="table-modern">
+        <thead><tr><th>Unit</th><th>From qty</th><th>Price (₹)</th><th>Incl. GST</th><th>From date</th><th>Until</th><th /></tr></thead>
         <tbody>
           {rows.map((r, i) => (
             <tr key={i}>
-              <td className="p-1"><UomSelect id={`pli-uom-${i}`} uoms={uoms} value={r.uomId} onChange={(v) => update(i, { uomId: v })} /></td>
-              <td className="p-1"><input aria-label="From quantity" className="input" inputMode="decimal" value={r.minQty} onChange={(e) => update(i, { minQty: e.target.value })} /></td>
-              <td className="p-1"><input aria-label="Price" className="input" inputMode="decimal" value={r.price} onChange={(e) => update(i, { price: e.target.value })} />{errors[`items.${i}.pricePaise`] && <p className="err">{errors[`items.${i}.pricePaise`]}</p>}</td>
-              <td className="p-1 text-center"><input aria-label="Price includes GST" type="checkbox" checked={r.isInclusive} onChange={(e) => update(i, { isInclusive: e.target.checked })} /></td>
-              <td className="p-1"><input aria-label="Effective from" type="date" className="input" value={r.effectiveFrom} onChange={(e) => update(i, { effectiveFrom: e.target.value })} /></td>
-              <td className="p-1"><input aria-label="Effective until" type="date" className="input" value={r.effectiveTo} onChange={(e) => update(i, { effectiveTo: e.target.value })} /></td>
-              <td className="p-1"><button type="button" className="btn-secondary py-1" onClick={() => setRows(rows.filter((_, j) => j !== i))}>Remove</button></td>
+              <td><UomSelect id={`pli-uom-${i}`} uoms={uoms} value={r.uomId} onChange={(v) => update(i, { uomId: v })} /></td>
+              <td><input aria-label="From quantity" className="input" inputMode="decimal" value={r.minQty} onChange={(e) => update(i, { minQty: e.target.value })} /></td>
+              <td><input aria-label="Price" className="input" inputMode="decimal" value={r.price} onChange={(e) => update(i, { price: e.target.value })} />{errors[`items.${i}.pricePaise`] && <p className="err">{errors[`items.${i}.pricePaise`]}</p>}</td>
+              <td className="text-center"><input aria-label="Price includes GST" type="checkbox" checked={r.isInclusive} onChange={(e) => update(i, { isInclusive: e.target.checked })} /></td>
+              <td><DatePicker aria-label="Effective from" value={r.effectiveFrom} onChange={(v) => update(i, { effectiveFrom: v })} /></td>
+              <td><DatePicker aria-label="Effective to" value={r.effectiveTo} onChange={(v) => update(i, { effectiveTo: v })} /></td>
+              <td><button type="button" className="btn-secondary py-1" onClick={() => setRows(rows.filter((_, j) => j !== i))}>Remove</button></td>
             </tr>
           ))}
         </tbody>

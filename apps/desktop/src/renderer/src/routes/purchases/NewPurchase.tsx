@@ -4,6 +4,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { PURCHASE_CHARGE_KINDS, type ProductHit } from '@muneem/contracts';
 import { newUlid } from '@muneem/domain';
 import { api, errorMessage } from '../../api.js';
+import DatePicker from '../../components/DatePicker.js';
 import PartyPicker, { type PickedParty } from '../../components/PartyPicker.js';
 import ProductPicker from '../../components/ProductPicker.js';
 import { fileToBase64 } from '../../lib/fileToBase64.js';
@@ -57,8 +58,8 @@ export default function NewPurchase() {
         <div className="col-span-2">{supplier ? <p className="pt-6 font-medium">{supplier.name} <button type="button" className="btn-secondary py-0" onClick={() => { setSupplier(null); set({ supplierId: '' }); }}>Change</button></p>
           : <PartyPicker id="pu-supplier" partyType="supplier" onPick={(p) => { setSupplier(p); set({ supplierId: p.id }); }} />}</div>
         <div><label className="label" htmlFor="pu-inv">Bill number</label><input id="pu-inv" className="input" value={form.invoiceNo} onChange={(e) => set({ invoiceNo: e.target.value })} /></div>
-        <div><label className="label" htmlFor="pu-date">Bill date</label><input id="pu-date" type="date" className="input" value={form.invoiceDate} onChange={(e) => set({ invoiceDate: e.target.value })} /></div>
-        <div><label className="label" htmlFor="pu-due">Due date</label><input id="pu-due" type="date" className="input" value={form.dueDate || q?.dueDate || ''} onChange={(e) => set({ dueDate: e.target.value })} /></div>
+        <div><label className="label" htmlFor="pu-date">Bill date</label><DatePicker id="pu-date" value={form.invoiceDate} onChange={(v) => set({ invoiceDate: v })} /></div>
+        <div><label className="label" htmlFor="pu-due">Due date</label><DatePicker id="pu-due" value={form.dueDate || q?.dueDate || ''} onChange={(v) => set({ dueDate: v })} /></div>
       </div>
       <div className="card flex items-end gap-4">
         <div className="grow"><ProductPicker id="pu-product" label="Add a product" onPick={(h) => void addProduct(h)} /></div>
@@ -66,27 +67,27 @@ export default function NewPurchase() {
       </div>
       {importErrors.length > 0 && <div className="card text-sm text-amber-800" role="status"><p className="font-medium">Rows not imported:</p><ul>{importErrors.slice(0, 20).map((t) => <li key={t}>{t}</li>)}</ul></div>}
       {form.lines.length > 0 && (
-        <table className="w-full rounded-lg border bg-white text-sm">
-          <thead className="bg-slate-50 text-left text-slate-600"><tr>
-            <th className="p-2">Product</th><th className="p-2">Unit</th><th className="p-2">Qty</th><th className="p-2">Rate</th><th className="p-2">Incl. GST</th><th className="p-2">Disc %</th>
-            <th className="p-2">GST %</th><th className="p-2">ITC</th><th className="p-2 text-right">Taxable</th><th className="p-2 text-right">Landed / unit</th><th />
+        <table className="table-modern rounded-lg border bg-white">
+          <thead><tr>
+            <th>Product</th><th>Unit</th><th>Qty</th><th>Rate</th><th>Incl. GST</th><th>Disc %</th>
+            <th>GST %</th><th>ITC</th><th className="text-right">Taxable</th><th className="text-right">Landed / unit</th><th />
           </tr></thead>
           <tbody>
             {form.lines.map((l, i) => {
               const ql = quoted.get(i + 1);
               return (
-                <tr key={`${l.productId}-${i}`} className="border-t">
-                  <td className="p-2">{l.name}</td>
-                  <td className="p-2"><select aria-label={`Unit for ${l.name}`} className="input py-1" value={l.uomId} onChange={(e) => setLine(i, { uomId: e.target.value })}>{l.units.map((u) => <option key={u.id} value={u.id}>{u.code}</option>)}</select></td>
-                  <td className="p-2"><input aria-label={`Quantity for ${l.name}`} className="input w-20 py-1" inputMode="decimal" value={l.qty} onChange={(e) => setLine(i, { qty: e.target.value })} /></td>
-                  <td className="p-2"><input aria-label={`Rate for ${l.name}`} className="input w-24 py-1" inputMode="decimal" value={l.rate} onChange={(e) => setLine(i, { rate: e.target.value })} /></td>
-                  <td className="p-2"><input type="checkbox" aria-label={`Rate includes GST for ${l.name}`} checked={l.inclusive} onChange={(e) => setLine(i, { inclusive: e.target.checked })} /></td>
-                  <td className="p-2"><input aria-label={`Discount for ${l.name}`} className="input w-16 py-1" inputMode="decimal" value={l.discountPct} onChange={(e) => setLine(i, { discountPct: e.target.value })} /></td>
-                  <td className="p-2"><input aria-label={`GST rate for ${l.name}`} className="input w-16 py-1" inputMode="decimal" value={l.gstRate} onChange={(e) => setLine(i, { gstRate: e.target.value })} /></td>
-                  <td className="p-2"><input type="checkbox" aria-label={`Claim ITC for ${l.name}`} checked={l.itc} onChange={(e) => setLine(i, { itc: e.target.checked })} /></td>
-                  <td className="p-2 text-right tabular-nums">{ql ? formatPaise(ql.taxablePaise) : ''}</td>
-                  <td className="p-2 text-right tabular-nums">{ql ? formatPaise(ql.unitCostPaise) : ''}</td>
-                  <td className="p-2"><button type="button" className="btn-secondary py-1" onClick={() => set({ lines: form.lines.filter((_, j) => j !== i) })}>Remove</button></td>
+                <tr key={`${l.productId}-${i}`}>
+                  <td>{l.name}</td>
+                  <td><select aria-label={`Unit for ${l.name}`} className="select py-1" value={l.uomId} onChange={(e) => setLine(i, { uomId: e.target.value })}>{l.units.map((u) => <option key={u.id} value={u.id}>{u.code}</option>)}</select></td>
+                  <td><input aria-label={`Quantity for ${l.name}`} className="input w-20 py-1" inputMode="decimal" value={l.qty} onChange={(e) => setLine(i, { qty: e.target.value })} /></td>
+                  <td><input aria-label={`Rate for ${l.name}`} className="input w-24 py-1" inputMode="decimal" value={l.rate} onChange={(e) => setLine(i, { rate: e.target.value })} /></td>
+                  <td><input type="checkbox" aria-label={`Rate includes GST for ${l.name}`} checked={l.inclusive} onChange={(e) => setLine(i, { inclusive: e.target.checked })} /></td>
+                  <td><input aria-label={`Discount for ${l.name}`} className="input w-16 py-1" inputMode="decimal" value={l.discountPct} onChange={(e) => setLine(i, { discountPct: e.target.value })} /></td>
+                  <td><input aria-label={`GST rate for ${l.name}`} className="input w-16 py-1" inputMode="decimal" value={l.gstRate} onChange={(e) => setLine(i, { gstRate: e.target.value })} /></td>
+                  <td><input type="checkbox" aria-label={`Claim ITC for ${l.name}`} checked={l.itc} onChange={(e) => setLine(i, { itc: e.target.checked })} /></td>
+                  <td className="text-right tabular-nums">{ql ? formatPaise(ql.taxablePaise) : ''}</td>
+                  <td className="text-right tabular-nums">{ql ? formatPaise(ql.unitCostPaise) : ''}</td>
+                  <td><button type="button" className="btn-secondary py-1" onClick={() => set({ lines: form.lines.filter((_, j) => j !== i) })}>Remove</button></td>
                 </tr>
               );
             })}
@@ -99,7 +100,7 @@ export default function NewPurchase() {
           <p className="label">Charges (freight, loading…) spread into cost by value</p>
           {form.charges.map((c, i) => (
             <div key={i} className="flex gap-2">
-              <select aria-label="Charge kind" className="input py-1" value={c.kind} onChange={(e) => set({ charges: form.charges.map((x, j) => (j === i ? { ...x, kind: e.target.value as typeof c.kind } : x)) })}>{PURCHASE_CHARGE_KINDS.map((k) => <option key={k} value={k}>{k}</option>)}</select>
+              <select aria-label="Charge kind" className="select py-1" value={c.kind} onChange={(e) => set({ charges: form.charges.map((x, j) => (j === i ? { ...x, kind: e.target.value as typeof c.kind } : x)) })}>{PURCHASE_CHARGE_KINDS.map((k) => <option key={k} value={k}>{k}</option>)}</select>
               <input aria-label="Charge amount" className="input w-28 py-1" inputMode="decimal" value={c.amount} onChange={(e) => set({ charges: form.charges.map((x, j) => (j === i ? { ...x, amount: e.target.value } : x)) })} />
               <button type="button" className="btn-secondary py-1" onClick={() => set({ charges: form.charges.filter((_, j) => j !== i) })}>Remove</button>
             </div>

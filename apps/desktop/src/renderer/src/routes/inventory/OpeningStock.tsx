@@ -70,7 +70,7 @@ export default function OpeningStock() {
             <div className="grid grid-cols-4 gap-3">
               {OPENING_IMPORT_FIELDS.map((f) => (
                 <div key={f}><label className="label" htmlFor={`om-${f}`}>{FIELD_LABEL[f]}</label>
-                  <select id={`om-${f}`} className="input" value={preview.mapping[f] ?? ''} onChange={(e) => {
+                  <select id={`om-${f}`} className="select" value={preview.mapping[f] ?? ''} onChange={(e) => {
                     const next = { ...preview.mapping };
                     if (e.target.value === '') delete next[f]; else next[f] = Number(e.target.value);
                     void remap(next);

@@ -37,16 +37,16 @@ export default function StockList() {
             <label className="flex items-center gap-2 pb-2 text-sm"><input type="checkbox" checked={lowOnly} onChange={(e) => setLowOnly(e.target.checked)} />Low stock only</label>
           </div>
           {stock.error && <p className="err" role="alert">{errorMessage(stock.error)}</p>}
-          <table className="w-full rounded-lg border bg-white text-sm">
-            <thead className="bg-slate-50 text-left text-slate-600"><tr><th className="p-2">Product</th><th className="p-2 text-right">On hand</th><th className="p-2 text-right">Reorder at</th><th className="p-2 text-right">Avg cost</th><th className="p-2 text-right">Value</th></tr></thead>
+          <table className="table-modern rounded-lg border bg-white">
+            <thead><tr><th>Product</th><th className="text-right">On hand</th><th className="text-right">Reorder at</th><th className="text-right">Avg cost</th><th className="text-right">Value</th></tr></thead>
             <tbody>
               {rows.map((r) => (
-                <tr key={r.productId} className="border-t">
-                  <td className="p-2"><Link to={`/inventory/product/${r.productId}`} className="font-medium text-blue-800">{r.name}</Link> {r.low && <span className="ml-2 rounded bg-amber-100 px-1.5 text-xs text-amber-900">Low</span>}</td>
-                  <td className={`p-2 text-right tabular-nums ${r.qtyMilli < 0 ? 'text-red-700' : ''}`}>{scaledToText(r.qtyMilli, 3)} {r.uomCode}</td>
-                  <td className="p-2 text-right tabular-nums">{r.reorderLevelMilli !== undefined ? `${scaledToText(r.reorderLevelMilli, 3)} ${r.uomCode}` : '—'}</td>
-                  <td className="p-2 text-right tabular-nums">{formatPaise(r.avgCostPaise)}</td>
-                  <td className="p-2 text-right tabular-nums">{formatPaise(r.valuePaise)}</td>
+                <tr key={r.productId}>
+                  <td><Link to={`/inventory/product/${r.productId}`} className="font-medium text-blue-800">{r.name}</Link> {r.low && <span className="ml-2 rounded bg-amber-100 px-1.5 text-xs text-amber-900">Low</span>}</td>
+                  <td className={`text-right tabular-nums ${r.qtyMilli < 0 ? 'text-red-700' : ''}`}>{scaledToText(r.qtyMilli, 3)} {r.uomCode}</td>
+                  <td className="text-right tabular-nums">{r.reorderLevelMilli !== undefined ? `${scaledToText(r.reorderLevelMilli, 3)} ${r.uomCode}` : '—'}</td>
+                  <td className="text-right tabular-nums">{formatPaise(r.avgCostPaise)}</td>
+                  <td className="text-right tabular-nums">{formatPaise(r.valuePaise)}</td>
                 </tr>
               ))}
             </tbody>
@@ -69,9 +69,9 @@ function ValuationView() {
         <div><p className="text-slate-500">Products below zero</p><p className="text-2xl font-semibold">{v.data.negativeCount}</p></div>
         <div><p className="text-slate-500">Ledger check</p><p className={`text-lg font-semibold ${v.data.balanced ? 'text-green-700' : 'text-red-700'}`}>{v.data.balanced ? 'Balanced' : `Off by ${formatPaise(v.data.totalValuePaise - v.data.movementValuePaise)}`}</p></div>
       </div>
-      <table className="w-full rounded-lg border bg-white text-sm">
-        <thead className="bg-slate-50 text-left text-slate-600"><tr><th className="p-2">Product</th><th className="p-2 text-right">Qty</th><th className="p-2 text-right">Avg cost</th><th className="p-2 text-right">Value</th></tr></thead>
-        <tbody>{v.data.rows.map((r) => <tr key={r.productId} className="border-t"><td className="p-2">{r.name}</td><td className="p-2 text-right tabular-nums">{scaledToText(r.qtyMilli, 3)} {r.uomCode}</td><td className="p-2 text-right tabular-nums">{formatPaise(r.avgCostPaise)}</td><td className="p-2 text-right tabular-nums">{formatPaise(r.valuePaise)}</td></tr>)}</tbody>
+      <table className="table-modern rounded-lg border bg-white">
+        <thead><tr><th>Product</th><th className="text-right">Qty</th><th className="text-right">Avg cost</th><th className="text-right">Value</th></tr></thead>
+        <tbody>{v.data.rows.map((r) => <tr key={r.productId}><td>{r.name}</td><td className="text-right tabular-nums">{scaledToText(r.qtyMilli, 3)} {r.uomCode}</td><td className="text-right tabular-nums">{formatPaise(r.avgCostPaise)}</td><td className="text-right tabular-nums">{formatPaise(r.valuePaise)}</td></tr>)}</tbody>
       </table>
     </div>
   );

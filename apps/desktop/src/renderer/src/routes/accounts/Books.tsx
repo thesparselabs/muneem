@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react';
 import { useInfiniteQuery, useQuery, useQueryClient } from '@tanstack/react-query';
 import { monthStart } from '@muneem/domain';
 import { api, errorMessage } from '../../api.js';
+import DatePicker from '../../components/DatePicker.js';
 import Dialog from '../../components/Dialog.js';
 import { formatPaise } from '../../lib/money.js';
 import { useCan } from '../../lib/permissions.js';
@@ -34,11 +35,11 @@ export default function Books() {
         ))}
       </div>
       <div className="card flex items-end gap-3">
-        <div><label className="label" htmlFor="bk-from">From</label><input id="bk-from" type="date" className="input" value={range.from} onChange={(e) => setRange({ ...range, from: e.target.value })} /></div>
-        <div><label className="label" htmlFor="bk-to">To</label><input id="bk-to" type="date" className="input" value={range.to} onChange={(e) => setRange({ ...range, to: e.target.value })} /></div>
+        <div><label className="label" htmlFor="bk-from">From</label><DatePicker id="bk-from" value={range.from} onChange={(v) => setRange({ ...range, from: v })} /></div>
+        <div><label className="label" htmlFor="bk-to">To</label><DatePicker id="bk-to" value={range.to} onChange={(v) => setRange({ ...range, to: v })} /></div>
         {tab === 'bank' && banks.length > 1 && (
           <div><label className="label" htmlFor="bk-bank">Bank account</label>
-            <select id="bk-bank" className="input" value={bankId} onChange={(e) => setBankId(e.target.value)}>{banks.map((b) => <option key={b.id} value={b.role === 'bank' ? '' : b.id}>{b.code} {b.name}</option>)}</select></div>
+            <select id="bk-bank" className="select" value={bankId} onChange={(e) => setBankId(e.target.value)}>{banks.map((b) => <option key={b.id} value={b.role === 'bank' ? '' : b.id}>{b.code} {b.name}</option>)}</select></div>
         )}
       </div>
       {book.error && <p className="err" role="alert">{errorMessage(book.error)}</p>}

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { api, errorMessage } from '../../api.js';
+import DatePicker from '../../components/DatePicker.js';
 import AccountsNav from './AccountsNav.js';
 import LedgerView from './LedgerView.js';
 
@@ -19,8 +20,8 @@ export default function AccountLedger() {
       <h1 className="text-2xl font-semibold">{account.data ? `${account.data.code} ${account.data.name}` : 'Ledger'}</h1>
       <AccountsNav />
       <div className="card flex items-end gap-3">
-        <div><label className="label" htmlFor="lg-from">From</label><input id="lg-from" type="date" className="input" value={range.from} onChange={(e) => setRange({ ...range, from: e.target.value })} /></div>
-        <div><label className="label" htmlFor="lg-to">To</label><input id="lg-to" type="date" className="input" value={range.to} onChange={(e) => setRange({ ...range, to: e.target.value })} /></div>
+        <div><label className="label" htmlFor="lg-from">From</label><DatePicker id="lg-from" value={range.from} onChange={(v) => setRange({ ...range, from: v })} /></div>
+        <div><label className="label" htmlFor="lg-to">To</label><DatePicker id="lg-to" value={range.to} onChange={(v) => setRange({ ...range, to: v })} /></div>
       </div>
       {ledger.error && <p className="err" role="alert">{errorMessage(ledger.error)}</p>}
       <LedgerView pages={ledger.data?.pages ?? []} from={range.from} more={!!ledger.hasNextPage} onMore={() => void ledger.fetchNextPage()} />
