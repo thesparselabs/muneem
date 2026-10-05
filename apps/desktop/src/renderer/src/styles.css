@@ -35,6 +35,8 @@
 * :focus-visible { outline: 3px solid #2563eb; outline-offset: 2px; }
 
 @keyframes shimmer { 100% { transform: translateX(200%); } }
+/* A newly added cart row flashes green once, so the cashier sees the item went in. */
+@keyframes row-in { from { background-color: #dcfce7; } to { background-color: transparent; } }
 
 /* A hard floor under every animation for reduced-motion users; components also guard in JS. */
 @media (prefers-reduced-motion: reduce) {

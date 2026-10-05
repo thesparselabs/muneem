@@ -12,7 +12,7 @@ export default function ToastViewport() {
   const { toasts, dismiss } = useToasts();
   const reduce = usePrefersReducedMotion();
   return (
-    <div className="pointer-events-none fixed bottom-4 right-4 z-50 flex w-80 flex-col gap-2 print:hidden" role="region" aria-label="Notifications">
+    <div className="pointer-events-none fixed bottom-4 right-4 z-50 flex w-80 flex-col gap-2 print:hidden" role="region" aria-label="Notifications" aria-live="polite" aria-atomic="false">
       <AnimatePresence initial={false}>
         {toasts.map((t) => {
           const Icon = ICON[t.variant];
@@ -20,7 +20,7 @@ export default function ToastViewport() {
             <motion.div key={t.id} layout={!reduce}
               initial={reduce ? false : { opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
               exit={reduce ? { opacity: 0 } : { opacity: 0, y: 8 }} transition={{ duration: MOTION_FAST, ease: 'easeOut' }}
-              className={`pointer-events-auto flex items-start gap-2 rounded-lg border bg-white px-3 py-2 text-sm shadow-sm ${TONE[t.variant]}`} role="status">
+              className={`pointer-events-auto flex items-start gap-2 rounded-lg border bg-white px-3 py-2 text-sm shadow-sm ${TONE[t.variant]}`}>
               <Icon size={16} className="mt-0.5 shrink-0" aria-hidden />
               <span className="flex-1">{t.message}</span>
               <button onClick={() => dismiss(t.id)} aria-label="Dismiss" className="shrink-0 text-slate-400 hover:text-slate-700"><X size={14} /></button>

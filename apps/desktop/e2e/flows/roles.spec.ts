@@ -46,7 +46,9 @@ test.describe.serial('a cashier on the owner’s till', () => {
     await go(page, '/pos');
     await page.getByLabel('Opening cash (₹)').fill('0');
     await page.keyboard.press('Enter');
+    await expect(page.getByLabel('Scan or search a product (F2)')).toBeFocused();
     await scan(page, '8901262010016');
+    await expect(page.getByRole('cell', { name: 'Amul Butter 100g', exact: true })).toBeVisible();
     await page.keyboard.press('F4');
     await page.getByRole('radio', { name: 'Percent' }).check();
     await page.getByRole('dialog', { name: 'Bill discount (F4)' }).getByRole('textbox').fill('20');

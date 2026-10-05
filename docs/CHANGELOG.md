@@ -5,6 +5,18 @@ All notable changes, newest first. Each entry records **what** changed and **why
 
 ## [Unreleased]
 
+### Added — UI micro-interactions and icons
+- **Small animations that explain, and icons, across POS, dashboard, sales and the menu (ADR-0061).** Why: the owner
+  asked for a simple, sleek UI that a first-time or low-literacy shopkeeper can follow. Agents surveyed Magic UI,
+  Wensity UI and opensourceui.in; the patterns were adapted into our own components instead of taking a library.
+  - **POS:** the Total counts to its new value; a newly added cart row flashes green once; "Complete sale" carries the
+    one accent sheen; a saved sale shows a tick and a toast; icons on every action button.
+  - **Dashboard:** KPI figures count up, and placeholders replace the "Loading…" line.
+  - **Sales:** "Cancel whole bill" is press-and-hold, since it cannot be undone.
+  - **Menu:** an icon beside every item.
+  - **Foundation:** `motion`, `lucide-react`, `clsx` and `tailwind-merge`; a `cn()` helper; shadcn-style tokens mapped
+    to the current palette; reduced motion honoured in CSS and in the components.
+
 ### Added — Stage 9 hardening and pilot
 - **Stage 9 plan (`docs/plans/stage-9-hardening.md`).** Three agents surveyed the designs, every deferred item and
   operational readiness. Decided with the user:
