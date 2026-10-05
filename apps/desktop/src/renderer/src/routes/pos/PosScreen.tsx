@@ -17,6 +17,10 @@ import PaymentDialog from './PaymentDialog.js';
 import { CashMovementDialog, CloseRegisterDialog, OpenRegister, ReportView, XReportDialog } from './RegisterPanel.js';
 import Dialog from '../../components/Dialog.js';
 import StockStaleness from '../../components/StockStaleness.js';
+import NumberTicker from '../../components/NumberTicker.js';
+import SuccessCheck from '../../components/SuccessCheck.js';
+import { useToasts } from '../../lib/toast.js';
+import { CreditCard, Pause, Percent, Printer, RotateCcw, Wallet, FileBarChart, Lock } from 'lucide-react';
 
 type Modal = 'customer' | 'discount' | 'payment' | 'held' | 'cash' | 'x' | 'close' | { lineDiscount: string } | null;
 const NEAR_DUPLICATE_MS = 60_000;
@@ -33,6 +37,8 @@ export default function PosScreen() {
   const [busy, setBusy] = useState(false);
   const [lastSale, setLastSale] = useState<{ result: CompleteSaleResult; customerId: string | null; at: number } | null>(null);
   const [zReport, setZReport] = useState<RegisterReport | null>(null);
+  const [paid, setPaid] = useState(false);
+  const toast = useToasts((s) => s.push);
   const search = useRef<HTMLInputElement>(null);
   const [query, setQuery] = useState('');
   const quoteSeq = useRef(0);
@@ -94,6 +100,9 @@ export default function PosScreen() {
       setCart(emptyCart());
       setModal(null);
       setMessage({ kind: 'ok', text: `Saved ${result.docNumber}${result.changePaise ? ` · give change ${formatPaise(result.changePaise)}` : ''}` });
+      setPaid(true);
+      setTimeout(() => setPaid(false), 1100);
+      toast(`Saved ${result.docNumber}`, 'success');
       void qc.invalidateQueries(); // a sale changes stock, balances and the books
     } catch (e) {
       setModal(null);
@@ -179,18 +188,18 @@ export default function PosScreen() {
             <Row label="GST" value={formatPaise(totals.cgstPaise + totals.sgstPaise + totals.igstPaise + totals.cessPaise)} />
             {totals.roundOffPaise !== 0 && <Row label="Round off" value={formatPaise(totals.roundOffPaise)} />}
           </>}
-          <div className="flex justify-between border-t pt-2 text-2xl font-semibold"><span>Total</span><span>{formatPaise(totals?.totalPaise ?? 0)}</span></div>
+          <div className="flex justify-between border-t pt-2 text-2xl font-semibold"><span>Total</span><NumberTicker value={totals?.totalPaise ?? 0} format={(n) => formatPaise(Math.round(n))} /></div>
         </div>
         <div className="grid grid-cols-2 gap-2 text-sm">
-          <button className="btn-primary col-span-2 py-3 text-base" onClick={() => void startPayment()} disabled={cart.lines.length === 0}>Pay (F5)</button>
-          <button className="btn-secondary" onClick={() => setModal('discount')}>Bill discount (F4)</button>
-          <button className="btn-secondary" onClick={() => void hold()}>Hold (F6)</button>
-          <button className="btn-secondary" onClick={() => setModal('held')}>Held bills (F7)</button>
-          <button className="btn-secondary" onClick={() => void reprintLast()} disabled={!lastSale}>Reprint last (F9)</button>
-          <button className="btn-secondary" onClick={() => setModal('cash')}>Cash in/out</button>
-          <button className="btn-secondary" onClick={() => setModal('x')}>X report</button>
-          <button className="btn-secondary" onClick={() => setModal('close')}>Close register</button>
-          <Link className="btn-secondary" to="/settings/printer">Printer</Link>
+          <button className="btn-primary col-span-2 gap-2 py-3 text-base" onClick={() => void startPayment()} disabled={cart.lines.length === 0}><Wallet size={18} aria-hidden /> Pay (F5)</button>
+          <button className="btn-secondary gap-1.5" onClick={() => setModal('discount')}><Percent size={14} aria-hidden /> Bill discount (F4)</button>
+          <button className="btn-secondary gap-1.5" onClick={() => void hold()}><Pause size={14} aria-hidden /> Hold (F6)</button>
+          <button className="btn-secondary gap-1.5" onClick={() => setModal('held')}><RotateCcw size={14} aria-hidden /> Held bills (F7)</button>
+          <button className="btn-secondary gap-1.5" onClick={() => void reprintLast()} disabled={!lastSale}><Printer size={14} aria-hidden /> Reprint last (F9)</button>
+          <button className="btn-secondary gap-1.5" onClick={() => setModal('cash')}><CreditCard size={14} aria-hidden /> Cash in/out</button>
+          <button className="btn-secondary gap-1.5" onClick={() => setModal('x')}><FileBarChart size={14} aria-hidden /> X report</button>
+          <button className="btn-secondary gap-1.5" onClick={() => setModal('close')}><Lock size={14} aria-hidden /> Close register</button>
+          <Link className="btn-secondary gap-1.5" to="/settings/printer"><Printer size={14} aria-hidden /> Printer</Link>
         </div>
       </aside>
 
@@ -205,6 +214,7 @@ export default function PosScreen() {
       {modal === 'cash' && <CashMovementDialog onClose={() => setModal(null)} />}
       {modal === 'x' && <XReportDialog onClose={() => setModal(null)} />}
       {modal === 'close' && <CloseRegisterDialog onClose={() => setModal(null)} onClosed={(z) => { setModal(null); setZReport(z); void qc.invalidateQueries({ queryKey: ['posSession'] }); }} />}
+      {paid && <div className="pointer-events-none fixed inset-0 z-40 flex items-center justify-center" aria-hidden><SuccessCheck size={88} /></div>}
     </div>
   );
 }
@@ -241,7 +251,7 @@ function CartTable({ cart, onQty, onRemove, onDiscount }: { cart: Cart; onQty: (
         <thead className="sticky top-0 bg-slate-50 text-left text-slate-600"><tr><th className="p-2">Item</th><th className="p-2 w-28">Qty</th><th className="p-2 text-right">Rate</th><th className="p-2 text-right">GST</th><th className="p-2 text-right">Discount</th><th className="p-2" /></tr></thead>
         <tbody>
           {cart.lines.map((l) => (
-            <tr key={l.key} className="border-t">
+            <tr key={l.key} className="border-t animate-[row-in_0.8s_ease-out]">
               <td className="p-2">{l.name}{l.issue && <p className="err mt-0">{l.issue}</p>}
                 {l.stockWarning && <p className={`mt-0 text-xs ${l.stockWarning.blocking ? 'text-red-700' : 'text-amber-800'}`}>{l.stockWarning.message}</p>}</td>
               <td className="p-2"><QtyInput qtyMilli={l.qtyMilli} uomCode={l.uomCode} onChange={(q) => onQty(l.key, q)} /></td>

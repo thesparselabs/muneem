@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { TENDER_METHODS, type SaleQuote, type TenderLine } from '@muneem/contracts';
 import Dialog from '../../components/Dialog.js';
+import ShimmerButton from '../../components/ShimmerButton.js';
 import { formatPaise, paiseToText } from '../../lib/money.js';
 import { previewSettlement, rowsToTenders, type TenderRow } from '../../lib/pos/payment.js';
 
@@ -37,7 +38,7 @@ export default function PaymentDialog({ totalPaise, credit, busy, warning, onPay
         ))}
         <p className={`text-sm font-medium ${preview.ok ? 'text-green-800' : 'text-amber-800'}`} role="status">{status}</p>
         {warning && <p className="text-sm text-amber-800" role="alert">{warning}</p>}
-        <button type="submit" className="btn-primary w-full" disabled={busy || !preview.ok}>{busy ? 'Saving…' : 'Complete sale (Enter)'}</button>
+        <ShimmerButton type="submit" className="w-full" disabled={busy || !preview.ok}>{busy ? 'Saving…' : 'Complete sale (Enter)'}</ShimmerButton>
       </form>
     </Dialog>
   );

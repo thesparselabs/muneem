@@ -18,7 +18,7 @@ export function MonthPicker({ value, onChange, id = 'gst-month' }: { value: stri
   return (
     <label className="flex items-center gap-2 text-sm" htmlFor={id}>
       Month
-      <select id={id} className="input w-40" value={value} onChange={(e) => onChange(e.target.value)}>
+      <select id={id} className="select w-40" value={value} onChange={(e) => onChange(e.target.value)}>
         {months.map((m) => <option key={m} value={m}>{monthLabel(m)}</option>)}
       </select>
     </label>

@@ -35,13 +35,13 @@ export default function GstSetoff() {
       {p && (
         <div className="card space-y-3">
           <p className="text-sm text-slate-600">Balances on {p.docDate}. IGST credit is used first — on IGST, then on CGST and SGST; CGST and SGST credit never pay each other; cess pays only cess.</p>
-          <table className="w-full text-sm">
-            <thead className="text-left text-slate-600"><tr><th className="p-1">Head</th><th className="p-1 text-right">Liability</th><th className="p-1 text-right">Credit</th>
-              <th className="p-1 text-right">Credit used</th><th className="p-1 text-right">Credit left</th><th className="p-1 text-right">Pay in cash</th></tr></thead>
+          <table className="table-modern">
+            <thead><tr><th>Head</th><th className="text-right">Liability</th><th className="text-right">Credit</th>
+              <th className="text-right">Credit used</th><th className="text-right">Credit left</th><th className="text-right">Pay in cash</th></tr></thead>
             <tbody>{HEAD_LABELS.map(([k, label]) => (
-              <tr key={k} className="border-t tabular-nums"><td className="p-1">{label}</td><td className="p-1 text-right">{formatPaise(p.liability[k])}</td>
-                <td className="p-1 text-right">{formatPaise(p.credit[k])}</td><td className="p-1 text-right">{formatPaise(p.creditUsed[k])}</td>
-                <td className="p-1 text-right">{formatPaise(p.creditLeft[k])}</td><td className="p-1 text-right">{formatPaise(p.cash[k])}</td></tr>
+              <tr key={k} className="tabular-nums"><td>{label}</td><td className="text-right">{formatPaise(p.liability[k])}</td>
+                <td className="text-right">{formatPaise(p.credit[k])}</td><td className="text-right">{formatPaise(p.creditUsed[k])}</td>
+                <td className="text-right">{formatPaise(p.creditLeft[k])}</td><td className="text-right">{formatPaise(p.cash[k])}</td></tr>
             ))}</tbody>
           </table>
           <ul className="text-sm">{utilisationRows(p.utilisation).map((u) => <li key={`${u.from}-${u.to}`}>{u.from} credit → {u.to}: {formatPaise(u.paise)}</li>)}</ul>
@@ -53,10 +53,10 @@ export default function GstSetoff() {
       <div className="card">
         <h2 className="mb-2 font-semibold">Set-offs posted</h2>
         {ledger.data?.setoffs.length ? (
-          <table className="w-full text-sm"><thead className="text-left text-slate-600"><tr><th className="p-1">Number</th><th className="p-1">Month</th><th className="p-1 text-right">Paid in cash</th></tr></thead>
+          <table className="table-modern"><thead><tr><th>Number</th><th>Month</th><th className="text-right">Paid in cash</th></tr></thead>
             <tbody>{ledger.data.setoffs.map((s) => (
-              <tr key={s.id} className="border-t"><td className="p-1 font-mono">{s.docNumber}</td><td className="p-1">{monthLabel(s.month)}</td>
-                <td className="p-1 text-right tabular-nums">{formatPaise(s.cash.igstPaise + s.cash.cgstPaise + s.cash.sgstPaise + s.cash.cessPaise)}</td></tr>
+              <tr key={s.id}><td className="font-mono">{s.docNumber}</td><td>{monthLabel(s.month)}</td>
+                <td className="text-right tabular-nums">{formatPaise(s.cash.igstPaise + s.cash.cgstPaise + s.cash.sgstPaise + s.cash.cessPaise)}</td></tr>
             ))}</tbody></table>
         ) : <p className="text-sm text-slate-600">None yet.</p>}
       </div>

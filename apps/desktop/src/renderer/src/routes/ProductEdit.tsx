@@ -85,12 +85,12 @@ export default function ProductEdit() {
           <Field label="Name" htmlFor="name"><input id="name" className="input" value={form.name} onChange={(e) => set('name', e.target.value)} required autoFocus />{err('name')}</Field>
           <Field label="SKU / item code" htmlFor="sku"><input id="sku" className="input" value={form.sku} onChange={(e) => set('sku', e.target.value)} />{err('sku')}</Field>
           <Field label="Category" htmlFor="category">
-            <select id="category" className="input" value={form.categoryId} onChange={(e) => set('categoryId', e.target.value)}>
+            <select id="category" className="select" value={form.categoryId} onChange={(e) => set('categoryId', e.target.value)}>
               <option value="">None</option>{categories.data?.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
           </Field>
           <Field label="Brand" htmlFor="brand">
-            <select id="brand" className="input" value={form.brandId} onChange={(e) => set('brandId', e.target.value)}>
+            <select id="brand" className="select" value={form.brandId} onChange={(e) => set('brandId', e.target.value)}>
               <option value="">None</option>{brands.data?.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
             </select>
           </Field>
@@ -103,13 +103,13 @@ export default function ProductEdit() {
         <Section title="Tax">
           <Field label="HSN / SAC" htmlFor="hsn"><input id="hsn" className="input" inputMode="numeric" value={form.hsnCode} onChange={(e) => set('hsnCode', e.target.value)} />{err('hsnCode')}</Field>
           <Field label="Tax treatment" htmlFor="treatment">
-            <select id="treatment" className="input" value={form.taxTreatment} onChange={(e) => set('taxTreatment', e.target.value as ProductForm['taxTreatment'])}>
+            <select id="treatment" className="select" value={form.taxTreatment} onChange={(e) => set('taxTreatment', e.target.value as ProductForm['taxTreatment'])}>
               {TAX_TREATMENTS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
             </select>
           </Field>
           {form.taxTreatment === 'taxable' && (
             <Field label="GST rate" htmlFor="gst">
-              <select id="gst" className="input" value={form.gstRateBp} onChange={(e) => set('gstRateBp', Number(e.target.value))}>
+              <select id="gst" className="select" value={form.gstRateBp} onChange={(e) => set('gstRateBp', Number(e.target.value))}>
                 {GST_RATES_BP.map((r) => <option key={r} value={r}>{formatRateBp(r)}</option>)}
               </select>{err('gstRateBp')}
             </Field>

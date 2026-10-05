@@ -80,7 +80,7 @@ function Review({ preview, busy, policy, onPolicy, onRemap, onCommit, onRestart 
           {IMPORT_FIELDS.map((field) => (
             <div key={field}>
               <label className="label" htmlFor={`map-${field}`}>{FIELD_LABELS[field]}</label>
-              <select id={`map-${field}`} className="input" value={preview.mapping[field] ?? ''} disabled={busy} onChange={(e) => setColumn(field, e.target.value)}>
+              <select id={`map-${field}`} className="select" value={preview.mapping[field] ?? ''} disabled={busy} onChange={(e) => setColumn(field, e.target.value)}>
                 <option value="">— not in file —</option>
                 {preview.columns.map((c, i) => <option key={i} value={i}>{c || `Column ${i + 1}`}</option>)}
               </select>
@@ -129,16 +129,16 @@ function RowTable({ preview }: { preview: ImportPreview }) {
   const hidden = preview.counts.errors + preview.counts.duplicates - problems.length;
   return (
     <>
-      <table className="w-full text-sm">
-        <thead className="text-left text-slate-600"><tr><th className="p-1">Row</th><th className="p-1">Name</th><th className="p-1">SKU</th><th className="p-1">Status</th><th className="p-1">Details</th></tr></thead>
+      <table className="table-modern">
+        <thead><tr><th>Row</th><th>Name</th><th>SKU</th><th>Status</th><th>Details</th></tr></thead>
         <tbody>
           {shown.map((r) => (
-            <tr key={r.line} className="border-t">
-              <td className="p-1 tabular-nums">{r.line}</td>
-              <td className="p-1">{r.name ?? ''}</td>
-              <td className="p-1 font-mono text-xs">{r.sku ?? ''}</td>
-              <td className={`p-1 ${r.status === 'error' ? 'text-red-700' : r.status === 'duplicate' ? 'text-amber-700' : 'text-green-700'}`}>{r.status === 'ok' ? 'Ready' : r.status === 'duplicate' ? 'Exists' : 'Error'}</td>
-              <td className="p-1">{Object.entries(r.errors).map(([f, m]) => `${FIELD_LABELS[f as ImportField] ?? f}: ${m}`).join('; ')}</td>
+            <tr key={r.line}>
+              <td className="tabular-nums">{r.line}</td>
+              <td>{r.name ?? ''}</td>
+              <td className="font-mono text-xs">{r.sku ?? ''}</td>
+              <td className={r.status === 'error' ? 'text-red-700' : r.status === 'duplicate' ? 'text-amber-700' : 'text-green-700'}>{r.status === 'ok' ? 'Ready' : r.status === 'duplicate' ? 'Exists' : 'Error'}</td>
+              <td>{Object.entries(r.errors).map(([f, m]) => `${FIELD_LABELS[f as ImportField] ?? f}: ${m}`).join('; ')}</td>
             </tr>
           ))}
         </tbody>

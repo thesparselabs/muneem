@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { AccountView } from '@muneem/contracts';
 import { api, errorMessage } from '../../api.js';
+import DatePicker from '../../components/DatePicker.js';
 import Dialog from '../../components/Dialog.js';
 import { chartTree, normalBalance } from '../../lib/accounting/chartTree.js';
 import { formatPaise } from '../../lib/money.js';
@@ -21,18 +22,18 @@ export default function ChartOfAccounts() {
     <div className="max-w-5xl space-y-4">
       <div className="flex items-center justify-between"><h1 className="text-2xl font-semibold">Accounts</h1>{canManage && <button type="button" className="btn-primary" onClick={() => setAdding(true)}>Add account</button>}</div>
       <AccountsNav />
-      <div className="card"><label className="label" htmlFor="coa-asof">Balances as of</label><input id="coa-asof" type="date" className="input w-48" value={asOf} onChange={(e) => setAsOf(e.target.value)} /></div>
+      <div className="card"><label className="label" htmlFor="coa-asof">Balances as of</label><DatePicker id="coa-asof" className="w-48" value={asOf} onChange={(v) => setAsOf(v)} /></div>
       {accounts.error && <p className="err" role="alert">{errorMessage(accounts.error)}</p>}
       {groups.map((g) => (
-        <table key={g.group.id} className="w-full rounded-lg border bg-white text-sm">
-          <thead className="bg-slate-50 text-left"><tr><th className="p-2 w-20">{g.group.code}</th><th className="p-2">{g.group.name}</th><th className="p-2 text-right">{formatPaise(g.totalPaise)}</th><th className="w-24" /></tr></thead>
+        <table key={g.group.id} className="table-modern rounded-lg border bg-white">
+          <thead><tr><th className="w-20">{g.group.code}</th><th>{g.group.name}</th><th className="text-right">{formatPaise(g.totalPaise)}</th><th className="w-24" /></tr></thead>
           <tbody>
             {g.accounts.map((a) => (
-              <tr key={a.id} className="border-t">
-                <td className="p-2 font-mono">{a.code}</td>
-                <td className="p-2"><Link to={`/accounts/ledger/${a.id}`} className="text-blue-800">{a.name}</Link>{!a.isSystem && <span className="text-xs text-slate-500"> (added)</span>}</td>
-                <td className="p-2 text-right tabular-nums">{formatPaise(normalBalance(a))}</td>
-                <td className="p-2">{canManage && <button type="button" className="btn-secondary py-0" onClick={() => setRenaming(a)}>Rename</button>}</td>
+              <tr key={a.id}>
+                <td className="font-mono">{a.code}</td>
+                <td><Link to={`/accounts/ledger/${a.id}`} className="text-blue-800">{a.name}</Link>{!a.isSystem && <span className="text-xs text-slate-500"> (added)</span>}</td>
+                <td className="text-right tabular-nums">{formatPaise(normalBalance(a))}</td>
+                <td>{canManage && <button type="button" className="btn-secondary py-0" onClick={() => setRenaming(a)}>Rename</button>}</td>
               </tr>
             ))}
           </tbody>
@@ -54,7 +55,7 @@ function AddAccount({ groups, onClose, onDone }: { groups: AccountView[]; onClos
   return (
     <Dialog title="Add account" onClose={onClose}>
       <form onSubmit={submit} className="space-y-3">
-        <div><label className="label" htmlFor="aa-group">Group</label><select id="aa-group" className="input" value={f.parentCode} onChange={(e) => setF({ ...f, parentCode: e.target.value })}>{groups.map((g) => <option key={g.id} value={g.code}>{g.code} {g.name}</option>)}</select></div>
+        <div><label className="label" htmlFor="aa-group">Group</label><select id="aa-group" className="select" value={f.parentCode} onChange={(e) => setF({ ...f, parentCode: e.target.value })}>{groups.map((g) => <option key={g.id} value={g.code}>{g.code} {g.name}</option>)}</select></div>
         <div><label className="label" htmlFor="aa-code">Code</label><input id="aa-code" className="input" inputMode="numeric" maxLength={4} placeholder={`${f.parentCode[0] ?? ''}xxx`} value={f.code} onChange={(e) => setF({ ...f, code: e.target.value })} /></div>
         <div><label className="label" htmlFor="aa-name">Name</label><input id="aa-name" className="input" value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} required /></div>
         {error && <p className="err" role="alert">{error}</p>}

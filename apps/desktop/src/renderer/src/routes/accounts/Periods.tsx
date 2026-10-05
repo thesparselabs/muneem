@@ -29,15 +29,15 @@ export default function Periods() {
         </div>
       )}
       {message && <p className="text-sm" role="status">{message}</p>}
-      <table className="w-full rounded-lg border bg-white text-sm">
-        <thead className="bg-slate-50 text-left text-slate-600"><tr><th className="p-2">Month</th><th className="p-2">FY</th><th className="p-2">Status</th><th className="p-2 text-right">Journals</th><th className="p-2 text-right">Late postings</th><th /></tr></thead>
+      <table className="table-modern rounded-lg border bg-white">
+        <thead><tr><th>Month</th><th>FY</th><th>Status</th><th className="text-right">Journals</th><th className="text-right">Late postings</th><th /></tr></thead>
         <tbody>
           {periods.data?.map((p) => (
-            <tr key={p.id} className="border-t">
-              <td className="p-2">{p.periodStart.slice(0, 7)}</td><td className="p-2">{p.fy}</td>
-              <td className="p-2">{p.status === 'locked' ? 'Locked' : 'Open'}{p.unlockReason && p.status === 'open' && <span className="text-xs text-slate-500"> (reopened: {p.unlockReason})</span>}</td>
-              <td className="p-2 text-right">{p.journals}</td><td className="p-2 text-right">{p.latePostings}</td>
-              <td className="p-2">{canManage && (p.status === 'locked'
+            <tr key={p.id}>
+              <td>{p.periodStart.slice(0, 7)}</td><td>{p.fy}</td>
+              <td>{p.status === 'locked' ? 'Locked' : 'Open'}{p.unlockReason && p.status === 'open' && <span className="text-xs text-slate-500"> (reopened: {p.unlockReason})</span>}</td>
+              <td className="text-right">{p.journals}</td><td className="text-right">{p.latePostings}</td>
+              <td>{canManage && (p.status === 'locked'
                 ? <button type="button" className="btn-secondary py-0" onClick={() => setUnlocking(p.periodStart)}>Unlock</button>
                 : p.periodStart < thisMonth() && <button type="button" className="btn-secondary py-0" onClick={() => void run(async () => { await api.accounting.lockPeriod({ periodStart: p.periodStart }); return `Locked ${p.periodStart.slice(0, 7)}`; })}>Lock</button>)}</td>
             </tr>
@@ -47,8 +47,8 @@ export default function Periods() {
       <div className="card">
         <h2 className="mb-2 font-semibold">Late postings</h2>
         {late.data?.length ? (
-          <table className="w-full text-sm"><thead className="text-left text-slate-600"><tr><th className="p-1">Entry</th><th className="p-1">Source</th><th className="p-1">Document date</th><th className="p-1">Posted on</th><th className="p-1 text-right">Amount</th></tr></thead>
-            <tbody>{late.data.map((l) => <tr key={l.id} className="border-t"><td className="p-1 font-mono">{l.entryNo}</td><td className="p-1">{l.source}</td><td className="p-1">{l.docDate}</td><td className="p-1">{l.entryDate}</td><td className="p-1 text-right tabular-nums">{formatPaise(l.totalPaise)}</td></tr>)}</tbody></table>
+          <table className="table-modern"><thead><tr><th>Entry</th><th>Source</th><th>Document date</th><th>Posted on</th><th className="text-right">Amount</th></tr></thead>
+            <tbody>{late.data.map((l) => <tr key={l.id}><td className="font-mono">{l.entryNo}</td><td>{l.source}</td><td>{l.docDate}</td><td>{l.entryDate}</td><td className="text-right tabular-nums">{formatPaise(l.totalPaise)}</td></tr>)}</tbody></table>
         ) : <p className="text-sm text-slate-600">None. A document dated into a locked month would appear here.</p>}
       </div>
       {unlocking && <UnlockDialog periodStart={unlocking} onClose={() => setUnlocking(null)} onDone={() => { setUnlocking(null); void qc.invalidateQueries(); }} />}

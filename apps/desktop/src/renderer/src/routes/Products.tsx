@@ -42,7 +42,7 @@ export default function Products() {
         </div>
         <div>
           <label className="label" htmlFor="category-filter">Category</label>
-          <select id="category-filter" className="input" value={categoryId} onChange={(e) => setCategoryId(e.target.value)} disabled={q !== ''}>
+          <select id="category-filter" className="select" value={categoryId} onChange={(e) => setCategoryId(e.target.value)} disabled={q !== ''}>
             <option value="">All</option>
             {categories.data?.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
           </select>
@@ -65,21 +65,21 @@ function ProductTable({ rows, loading, empty }: { rows: ProductHit[]; loading: b
   if (loading) return <p className="text-sm text-slate-500" role="status">Loading…</p>;
   if (rows.length === 0) return <p className="card text-sm text-slate-600">{empty}</p>;
   return (
-    <table className="w-full text-sm bg-white border rounded-lg overflow-hidden">
-      <thead className="bg-slate-50 text-left text-slate-600">
-        <tr><th className="p-2">Name</th><th className="p-2">SKU</th><th className="p-2">Barcode</th><th className="p-2">Brand</th><th className="p-2">Category</th><th className="p-2 text-right">Price</th><th className="p-2 text-right">GST</th><th className="p-2">Status</th></tr>
+    <table className="table-modern bg-white border rounded-lg overflow-hidden">
+      <thead>
+        <tr><th>Name</th><th>SKU</th><th>Barcode</th><th>Brand</th><th>Category</th><th className="text-right">Price</th><th className="text-right">GST</th><th>Status</th></tr>
       </thead>
       <tbody>
         {rows.map((r) => (
-          <tr key={`${r.productId}-${r.uomId}`} className="border-t hover:bg-blue-50 cursor-pointer" onClick={() => nav(`/products/${r.productId}`)}>
-            <td className="p-2"><Link to={`/products/${r.productId}`} className="font-medium text-blue-800" onClick={(e) => e.stopPropagation()}>{r.name}</Link></td>
-            <td className="p-2 font-mono text-xs">{r.sku ?? ''}</td>
-            <td className="p-2 font-mono text-xs">{r.barcode ?? ''}</td>
-            <td className="p-2">{r.brandName ?? ''}</td>
-            <td className="p-2">{r.categoryName ?? ''}</td>
-            <td className="p-2 text-right tabular-nums">{formatPaise(r.pricePaise)}<span className="text-xs text-slate-500"> /{r.uomCode}</span></td>
-            <td className="p-2 text-right">{r.taxTreatment === 'taxable' ? formatRateBp(r.gstRateBp) : r.taxTreatment.replace('_', ' ')}</td>
-            <td className="p-2">{r.isActive ? 'Active' : <span className="text-slate-500">Deactivated</span>}</td>
+          <tr key={`${r.productId}-${r.uomId}`} className="hover:bg-blue-50 cursor-pointer" onClick={() => nav(`/products/${r.productId}`)}>
+            <td><Link to={`/products/${r.productId}`} className="font-medium text-blue-800" onClick={(e) => e.stopPropagation()}>{r.name}</Link></td>
+            <td className="font-mono text-xs">{r.sku ?? ''}</td>
+            <td className="font-mono text-xs">{r.barcode ?? ''}</td>
+            <td>{r.brandName ?? ''}</td>
+            <td>{r.categoryName ?? ''}</td>
+            <td className="text-right tabular-nums">{formatPaise(r.pricePaise)}<span className="text-xs text-slate-500"> /{r.uomCode}</span></td>
+            <td className="text-right">{r.taxTreatment === 'taxable' ? formatRateBp(r.gstRateBp) : r.taxTreatment.replace('_', ' ')}</td>
+            <td>{r.isActive ? 'Active' : <span className="text-slate-500">Deactivated</span>}</td>
           </tr>
         ))}
       </tbody>

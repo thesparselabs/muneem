@@ -32,9 +32,9 @@ export default function PaymentPage() {
         {p.drawerSessionId && <p>Through the register drawer</p>}
         {p.cancelReason && <p>Cancelled: {p.cancelReason}</p>}
       </div>
-      <table className="w-full rounded-lg border bg-white text-sm">
-        <thead className="bg-slate-50 text-left text-slate-600"><tr><th className="p-2">Settled</th><th className="p-2 text-right">Amount</th></tr></thead>
-        <tbody>{p.allocations.map((a) => <tr key={a.id} className={`border-t ${a.voided ? 'text-slate-400 line-through' : ''}`}><td className="p-2">{a.docNumber ?? a.targetType}</td><td className="p-2 text-right tabular-nums">{formatPaise(a.amountPaise)}</td></tr>)}</tbody>
+      <table className="table-modern rounded-lg border bg-white">
+        <thead><tr><th>Settled</th><th className="text-right">Amount</th></tr></thead>
+        <tbody>{p.allocations.map((a) => <tr key={a.id} className={a.voided ? 'text-slate-400 line-through' : ''}><td>{a.docNumber ?? a.targetType}</td><td className="text-right tabular-nums">{formatPaise(a.amountPaise)}</td></tr>)}</tbody>
       </table>
       {p.status === 'posted' && canCancel && (
         <div className="card flex items-end gap-2">

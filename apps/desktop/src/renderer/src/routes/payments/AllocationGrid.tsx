@@ -12,13 +12,13 @@ export default function AllocationGrid({ items, mode, typed, summary, onMode, on
         <label className="flex items-center gap-2"><input type="radio" name="alloc-mode" checked={mode === 'auto'} onChange={() => onMode('auto')} />Oldest due first</label>
         <label className="flex items-center gap-2"><input type="radio" name="alloc-mode" checked={mode === 'choose'} onChange={() => onMode('choose')} />Choose</label>
       </div>
-      <table className="w-full text-sm">
-        <thead className="text-left text-slate-600"><tr><th className="p-1">Document</th><th className="p-1">Due</th><th className="p-1 text-right">Open</th><th className="p-1 text-right">Settle</th></tr></thead>
+      <table className="table-modern">
+        <thead><tr><th>Document</th><th>Due</th><th className="text-right">Open</th><th className="text-right">Settle</th></tr></thead>
         <tbody>
           {items.map((i) => (
-            <tr key={i.id} className="border-t">
-              <td className="p-1">{i.docNumber ?? i.type}</td><td className="p-1">{i.dueDate}</td><td className="p-1 text-right tabular-nums">{formatPaise(i.openPaise)}</td>
-              <td className="p-1 text-right">
+            <tr key={i.id}>
+              <td>{i.docNumber ?? i.type}</td><td>{i.dueDate}</td><td className="text-right tabular-nums">{formatPaise(i.openPaise)}</td>
+              <td className="text-right">
                 {mode === 'auto' ? <span className="tabular-nums">{formatPaise(summary.amounts.get(i.id) ?? 0)}</span>
                   : <input aria-label={`Settle ${i.docNumber ?? i.type}`} className="input w-28 py-1 text-right" inputMode="decimal" value={typed[i.id] ?? ''} onChange={(e) => onType(i.id, e.target.value)} />}
                 {summary.errors[i.id] && <p className="text-xs text-red-700">{summary.errors[i.id]}</p>}

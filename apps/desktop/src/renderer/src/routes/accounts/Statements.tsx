@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { fyStartOf } from '@muneem/domain';
 import { api, errorMessage } from '../../api.js';
+import DatePicker from '../../components/DatePicker.js';
 import { balanceSheetSides, profitAndLossSections, type Section } from '../../lib/accounting/statementLayout.js';
 import { formatPaise } from '../../lib/money.js';
 import AccountsNav from './AccountsNav.js';
@@ -46,23 +47,23 @@ export default function Statements() {
       </div>
       <div className="card flex items-end gap-3">
         {tab === 'pl' ? <>
-          <div><label className="label" htmlFor="st-from">From</label><input id="st-from" type="date" className="input" value={range.from} onChange={(e) => setRange({ ...range, from: e.target.value })} /></div>
-          <div><label className="label" htmlFor="st-to">To</label><input id="st-to" type="date" className="input" value={range.to} onChange={(e) => setRange({ ...range, to: e.target.value })} /></div>
-        </> : <div><label className="label" htmlFor="st-asof">As at</label><input id="st-asof" type="date" className="input" value={asOf} onChange={(e) => setAsOf(e.target.value)} /></div>}
+          <div><label className="label" htmlFor="st-from">From</label><DatePicker id="st-from" value={range.from} onChange={(v) => setRange({ ...range, from: v })} /></div>
+          <div><label className="label" htmlFor="st-to">To</label><DatePicker id="st-to" value={range.to} onChange={(v) => setRange({ ...range, to: v })} /></div>
+        </> : <div><label className="label" htmlFor="st-asof">As at</label><DatePicker id="st-asof" value={asOf} onChange={(v) => setAsOf(v)} /></div>}
         {(branches.data?.length ?? 0) > 1 && (
           <div><label className="label" htmlFor="st-branch">Branch</label>
-            <select id="st-branch" className="input" value={branchId} onChange={(e) => setBranchId(e.target.value)}><option value="">All branches</option>{branches.data!.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}</select></div>
+            <select id="st-branch" className="select" value={branchId} onChange={(e) => setBranchId(e.target.value)}><option value="">All branches</option>{branches.data!.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}</select></div>
         )}
       </div>
       {error && <p className="err" role="alert">{errorMessage(error)}</p>}
       {tab === 'tb' && tb.data && (
         <div className="card space-y-2">
           <div className="flex justify-between"><h2 className="font-semibold">Trial Balance as at {tb.data.asOf}</h2><Badge ok={tb.data.balanced} /></div>
-          <table className="w-full text-sm">
-            <thead className="text-left text-slate-600"><tr><th className="p-1">Code</th><th className="p-1">Account</th><th className="p-1 text-right">Debit</th><th className="p-1 text-right">Credit</th></tr></thead>
+          <table className="table-modern">
+            <thead><tr><th>Code</th><th>Account</th><th className="text-right">Debit</th><th className="text-right">Credit</th></tr></thead>
             <tbody>
-              {tb.data.rows.map((r) => <tr key={r.accountId} className="border-t"><td className="p-1 font-mono">{r.code}</td><td className="p-1">{r.name}</td><td className="p-1 text-right tabular-nums">{r.debitPaise ? formatPaise(r.debitPaise) : ''}</td><td className="p-1 text-right tabular-nums">{r.creditPaise ? formatPaise(r.creditPaise) : ''}</td></tr>)}
-              <tr className="border-t font-semibold"><td className="p-1" colSpan={2}>Total</td><td className="p-1 text-right tabular-nums">{formatPaise(tb.data.debitPaise)}</td><td className="p-1 text-right tabular-nums">{formatPaise(tb.data.creditPaise)}</td></tr>
+              {tb.data.rows.map((r) => <tr key={r.accountId}><td className="font-mono">{r.code}</td><td>{r.name}</td><td className="text-right tabular-nums">{r.debitPaise ? formatPaise(r.debitPaise) : ''}</td><td className="text-right tabular-nums">{r.creditPaise ? formatPaise(r.creditPaise) : ''}</td></tr>)}
+              <tr className="font-semibold"><td colSpan={2}>Total</td><td className="text-right tabular-nums">{formatPaise(tb.data.debitPaise)}</td><td className="text-right tabular-nums">{formatPaise(tb.data.creditPaise)}</td></tr>
             </tbody>
           </table>
         </div>

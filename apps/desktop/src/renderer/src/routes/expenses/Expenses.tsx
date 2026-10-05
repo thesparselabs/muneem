@@ -3,6 +3,7 @@ import { useInfiniteQuery, useQuery, useQueryClient } from '@tanstack/react-quer
 import { EXPENSE_METHODS } from '@muneem/contracts';
 import { newUlid } from '@muneem/domain';
 import { api, errorMessage } from '../../api.js';
+import DatePicker from '../../components/DatePicker.js';
 import Dialog from '../../components/Dialog.js';
 import PartyPicker, { type PickedParty } from '../../components/PartyPicker.js';
 import { emptyExpenseForm, expenseFormToInput, gstAllowed, type ExpenseForm } from '../../lib/expenses/form.js';
@@ -31,15 +32,15 @@ export default function Expenses() {
     <div className="max-w-6xl space-y-4">
       <div className="flex items-center justify-between"><h1 className="text-2xl font-semibold">Expenses</h1>{canCreate && <button type="button" className="btn-primary" onClick={() => setAdding(true)}>New expense</button>}</div>
       {(list.error || error) && <p className="err" role="alert">{error ?? errorMessage(list.error)}</p>}
-      <table className="w-full rounded-lg border bg-white text-sm">
-        <thead className="bg-slate-50 text-left text-slate-600"><tr><th className="p-2">Number</th><th className="p-2">Date</th><th className="p-2">Category</th><th className="p-2">Paid by</th><th className="p-2">Description</th><th className="p-2 text-right">GST</th><th className="p-2 text-right">Total</th><th /></tr></thead>
+      <table className="table-modern rounded-lg border bg-white">
+        <thead><tr><th>Number</th><th>Date</th><th>Category</th><th>Paid by</th><th>Description</th><th className="text-right">GST</th><th className="text-right">Total</th><th /></tr></thead>
         <tbody>
           {rows.map((x) => (
-            <tr key={x.id} className={`border-t ${x.status === 'cancelled' ? 'text-slate-400 line-through' : ''}`}>
-              <td className="p-2">{x.docNumber}</td><td className="p-2">{x.expenseDate}</td><td className="p-2">{x.categoryName}</td><td className="p-2">{x.method.toUpperCase()}</td>
-              <td className="p-2">{x.description ?? x.vendorName ?? ''}</td><td className="p-2 text-right tabular-nums">{formatPaise(x.cgstPaise + x.sgstPaise + x.igstPaise + x.cessPaise)}</td>
-              <td className="p-2 text-right tabular-nums">{formatPaise(x.totalPaise)}</td>
-              <td className="p-2">{x.status === 'posted' && canCancel && x.settledPaise === 0 && <button type="button" className="btn-secondary py-1" onClick={() => setCancelling(x.id)}>Cancel</button>}</td>
+            <tr key={x.id} className={x.status === 'cancelled' ? 'text-slate-400 line-through' : ''}>
+              <td>{x.docNumber}</td><td>{x.expenseDate}</td><td>{x.categoryName}</td><td>{x.method.toUpperCase()}</td>
+              <td>{x.description ?? x.vendorName ?? ''}</td><td className="text-right tabular-nums">{formatPaise(x.cgstPaise + x.sgstPaise + x.igstPaise + x.cessPaise)}</td>
+              <td className="text-right tabular-nums">{formatPaise(x.totalPaise)}</td>
+              <td>{x.status === 'posted' && canCancel && x.settledPaise === 0 && <button type="button" className="btn-secondary py-1" onClick={() => setCancelling(x.id)}>Cancel</button>}</td>
             </tr>
           ))}
         </tbody>
@@ -76,10 +77,10 @@ function NewExpense({ categories, onClose, onDone }: { categories: { id: string;
   return (
     <Dialog title="New expense" onClose={onClose} wide>
       <form onSubmit={submit} className="grid grid-cols-2 gap-3">
-        <div><label className="label" htmlFor="ex-cat">Category</label><select id="ex-cat" className="input" value={f.categoryId} onChange={(e) => set({ categoryId: e.target.value })}>{categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</select></div>
-        <div><label className="label" htmlFor="ex-date">Date</label><input id="ex-date" type="date" className="input" value={f.date} onChange={(e) => set({ date: e.target.value })} /></div>
+        <div><label className="label" htmlFor="ex-cat">Category</label><select id="ex-cat" className="select" value={f.categoryId} onChange={(e) => set({ categoryId: e.target.value })}>{categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</select></div>
+        <div><label className="label" htmlFor="ex-date">Date</label><DatePicker id="ex-date" value={f.date} onChange={(v) => set({ date: v })} /></div>
         <div><label className="label" htmlFor="ex-amount">Amount (₹)</label><input id="ex-amount" className="input" inputMode="decimal" value={f.amount} onChange={(e) => set({ amount: e.target.value })} /></div>
-        <div><label className="label" htmlFor="ex-method">Paid by</label><select id="ex-method" className="input" value={f.method} onChange={(e) => set({ method: e.target.value as ExpenseForm['method'] })}>{EXPENSE_METHODS.map((m) => <option key={m} value={m}>{m === 'credit' ? 'On credit (supplier)' : m.toUpperCase()}</option>)}</select></div>
+        <div><label className="label" htmlFor="ex-method">Paid by</label><select id="ex-method" className="select" value={f.method} onChange={(e) => set({ method: e.target.value as ExpenseForm['method'] })}>{EXPENSE_METHODS.map((m) => <option key={m} value={m}>{m === 'credit' ? 'On credit (supplier)' : m.toUpperCase()}</option>)}</select></div>
         <div className="col-span-2">{supplier ? <p className="text-sm">Supplier: <span className="font-medium">{supplier.name}</span> <button type="button" className="btn-secondary py-0" onClick={() => { setSupplier(null); set({ supplierId: '' }); }}>Change</button></p>
           : <PartyPicker id="ex-supplier" partyType="supplier" onPick={(p) => { setSupplier(p); set({ supplierId: p.id }); }} />}</div>
         {!supplier && <>

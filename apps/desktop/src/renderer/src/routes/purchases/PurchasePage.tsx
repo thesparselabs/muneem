@@ -40,16 +40,16 @@ export default function PurchasePage() {
         <p>Total <span className="font-semibold">{formatPaise(p.totals.totalPaise)}</span></p><p>Settled {formatPaise(p.settledPaise)}</p><p>ITC {formatPaise(p.totals.itcPaise)}</p>
         {p.cancelReason && <p className="col-span-3">Cancelled: {p.cancelReason}</p>}
       </div>
-      <table className="w-full rounded-lg border bg-white text-sm">
-        <thead className="bg-slate-50 text-left text-slate-600"><tr><th className="p-2">Product</th><th className="p-2 text-right">Qty</th><th className="p-2 text-right">Rate</th><th className="p-2 text-right">GST</th><th className="p-2 text-right">Taxable</th><th className="p-2 text-right">Charges</th><th className="p-2 text-right">Landed</th><th className="p-2 text-right">Unit cost</th><th className="p-2 text-right">Returned</th></tr></thead>
+      <table className="table-modern rounded-lg border bg-white">
+        <thead><tr><th>Product</th><th className="text-right">Qty</th><th className="text-right">Rate</th><th className="text-right">GST</th><th className="text-right">Taxable</th><th className="text-right">Charges</th><th className="text-right">Landed</th><th className="text-right">Unit cost</th><th className="text-right">Returned</th></tr></thead>
         <tbody>
           {p.lines.map((l) => (
-            <tr key={l.id} className="border-t">
-              <td className="p-2">{l.name}{!l.itcEligible && <span className="text-xs text-slate-500"> (no ITC)</span>}</td>
-              <td className="p-2 text-right">{scaledToText(l.qtyMilli, 3)} {l.uomCode}</td><td className="p-2 text-right tabular-nums">{formatPaise(l.unitPricePaise)}</td>
-              <td className="p-2 text-right">{formatRateBp(l.gstRateBp)}</td><td className="p-2 text-right tabular-nums">{formatPaise(l.taxablePaise)}</td>
-              <td className="p-2 text-right tabular-nums">{formatPaise(l.chargesPaise)}</td><td className="p-2 text-right tabular-nums">{formatPaise(l.landedValuePaise)}</td>
-              <td className="p-2 text-right tabular-nums">{formatPaise(l.unitCostPaise)}</td><td className="p-2 text-right">{l.returnedQtyMilli ? scaledToText(l.returnedQtyMilli, 3) : ''}</td>
+            <tr key={l.id}>
+              <td>{l.name}{!l.itcEligible && <span className="text-xs text-slate-500"> (no ITC)</span>}</td>
+              <td className="text-right">{scaledToText(l.qtyMilli, 3)} {l.uomCode}</td><td className="text-right tabular-nums">{formatPaise(l.unitPricePaise)}</td>
+              <td className="text-right">{formatRateBp(l.gstRateBp)}</td><td className="text-right tabular-nums">{formatPaise(l.taxablePaise)}</td>
+              <td className="text-right tabular-nums">{formatPaise(l.chargesPaise)}</td><td className="text-right tabular-nums">{formatPaise(l.landedValuePaise)}</td>
+              <td className="text-right tabular-nums">{formatPaise(l.unitCostPaise)}</td><td className="text-right">{l.returnedQtyMilli ? scaledToText(l.returnedQtyMilli, 3) : ''}</td>
             </tr>
           ))}
         </tbody>
@@ -81,11 +81,11 @@ function ReturnDialog({ purchase, onClose, onDone }: { purchase: Purchase; onClo
   return (
     <Dialog title={`Return goods · ${purchase.docNumber}`} onClose={onClose} wide>
       <form onSubmit={submit} className="space-y-3">
-        <table className="w-full text-sm">
-          <thead className="text-left text-slate-600"><tr><th className="p-1">Product</th><th className="p-1 text-right">Left to return</th><th className="p-1">Return</th></tr></thead>
+        <table className="table-modern">
+          <thead><tr><th>Product</th><th className="text-right">Left to return</th><th>Return</th></tr></thead>
           <tbody>{rows.map((r, i) => (
-            <tr key={r.purchaseItemId} className="border-t"><td className="p-1">{r.name}</td><td className="p-1 text-right">{scaledToText(r.leftMilli, 3)} {r.uomCode}</td>
-              <td className="p-1"><input aria-label={`Return quantity for ${r.name}`} className="input w-24 py-1" inputMode="decimal" disabled={r.leftMilli === 0} value={r.qty} onChange={(e) => setRows(rows.map((x, j) => (j === i ? { ...x, qty: e.target.value } : x)))} /></td></tr>
+            <tr key={r.purchaseItemId}><td>{r.name}</td><td className="text-right">{scaledToText(r.leftMilli, 3)} {r.uomCode}</td>
+              <td><input aria-label={`Return quantity for ${r.name}`} className="input w-24 py-1" inputMode="decimal" disabled={r.leftMilli === 0} value={r.qty} onChange={(e) => setRows(rows.map((x, j) => (j === i ? { ...x, qty: e.target.value } : x)))} /></td></tr>
           ))}</tbody>
         </table>
         <div><label className="label" htmlFor="rt-reason">Reason</label><input id="rt-reason" className="input" value={reason} onChange={(e) => setReason(e.target.value)} required /></div>

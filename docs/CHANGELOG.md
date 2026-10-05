@@ -6,12 +6,40 @@ All notable changes, newest first. Each entry records **what** changed and **why
 ## [Unreleased]
 
 ### Added — Marketing landing site (`apps/landing`)
-- **A premium, production-ready landing page (ADR-0062).** A standalone Vite + React 18 + Tailwind v4 app that reuses
-  the workspace's existing deps (`motion`, `lucide-react`, `clsx`, `tailwind-merge`) with no new dependency. The product
-  UI is the hero visual; interactive product tabs, scroll reveals, count-up stats, an animated chart and a smooth FAQ,
-  all honouring `prefers-reduced-motion`. A light/dark theme with a system-aware toggle. No fake logos, testimonials or
-  invented metrics — the figures are real product capabilities. Name "Muneem"; palette is token-driven and swappable.
-  Self-reviewed at 1440/820/390px in both themes: no overflow, no console errors.
+- **A premium, production-ready landing page (ADR-0062).** Why: the product needed a modern fintech-style marketing
+  site built on the stack the team already uses. A standalone Vite + React 18 + Tailwind v4 app that reuses the
+  workspace's existing deps (`motion`, `lucide-react`, `clsx`, `tailwind-merge`) with no new dependency. The product UI
+  is the hero visual; interactive product tabs, scroll reveals, count-up stats, an animated chart and a smooth FAQ, all
+  honouring `prefers-reduced-motion`. No fake logos, testimonials or invented metrics. Working brand name "Lekha" in
+  `src/site.ts`, pending the final name and a trademark/domain check. Self-reviewed at 1440/820/390px with no overflow
+  and no console errors.
+- **Dark theme.** A toggle in the navbar (sun/moon) that defaults to the visitor's system preference and remembers
+  their choice; a no-flash init script sets it before first paint. Every surface flips through CSS variables, so the
+  product mock reads as a real dark-mode app. Light and dark both verified: no overflow, no console errors.
+
+### Added — Modern UI refresh (design system, logo, login, date picker)
+- **A design-system pass and a logo, applied across every screen (ADR-0061 extended).** Why: the owner asked for a
+  modern, sleek look that a first-time shopkeeper finds easy. Buttons gained radius, a soft shadow and a press
+  response; inputs and selects gained a focus ring and a chevron; data tables share one `.table-modern` style (sticky
+  header, hairline rows, hover); a light background lets cards lift. A geometric logo (rising bars, a ledger line and a
+  rupee) sits on the login screen and in the header.
+- **Login redesigned:** a gradient backdrop, the logo, an online/offline pill, icon-leading fields and a gentle
+  entrance.
+- **A calendar DatePicker replaces native date inputs** on 15 screens; every data select and row-listing table across
+  accounts, parties, inventory, purchases, payments, GST, expenses and the catalog now uses the shared styles.
+  Summary and key-value tables were left unchanged. Motion stays short and honours reduced motion.
+
+### Added — UI micro-interactions and icons
+- **Small animations that explain, and icons, across POS, dashboard, sales and the menu (ADR-0061).** Why: the owner
+  asked for a simple, sleek UI that a first-time or low-literacy shopkeeper can follow. Agents surveyed Magic UI,
+  Wensity UI and opensourceui.in; the patterns were adapted into our own components instead of taking a library.
+  - **POS:** the Total counts to its new value; a newly added cart row flashes green once; "Complete sale" carries the
+    one accent sheen; a saved sale shows a tick and a toast; icons on every action button.
+  - **Dashboard:** KPI figures count up, and placeholders replace the "Loading…" line.
+  - **Sales:** "Cancel whole bill" is press-and-hold, since it cannot be undone.
+  - **Menu:** an icon beside every item.
+  - **Foundation:** `motion`, `lucide-react`, `clsx` and `tailwind-merge`; a `cn()` helper; shadcn-style tokens mapped
+    to the current palette; reduced motion honoured in CSS and in the components.
 
 ### Added — Stage 9 hardening and pilot
 - **Stage 9 plan (`docs/plans/stage-9-hardening.md`).** Three agents surveyed the designs, every deferred item and
