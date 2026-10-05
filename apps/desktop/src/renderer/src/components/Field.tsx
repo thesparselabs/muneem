@@ -4,7 +4,7 @@ export default function Field({ label, htmlFor, children, hint }: { label: strin
     <div>
       <label className="label" htmlFor={htmlFor}>{label}</label>
       {children}
-      {hint && <p className="text-xs text-slate-500 mt-1">{hint}</p>}
+      {hint && <p className="text-xs text-muted-foreground mt-1">{hint}</p>}
     </div>
   );
 }

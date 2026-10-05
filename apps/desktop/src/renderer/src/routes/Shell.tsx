@@ -6,6 +6,7 @@ import SyncBadge from '../components/SyncBadge.js';
 import UpdateBanner from '../components/UpdateBanner.js';
 import NotificationBell from '../components/NotificationBell.js';
 import ToastViewport from '../components/ToastViewport.js';
+import ThemeToggle from '../components/ThemeToggle.js';
 import { LogoMark } from '../components/Logo.js';
 import type { Permission } from '@muneem/contracts';
 import { can } from '../lib/permissions.js';
@@ -51,6 +52,7 @@ export default function Shell() {
         <div className="flex items-center gap-3 text-sm">
           <span className={`text-xs ${online ? 'text-green-700' : 'text-amber-700'}`}>{online ? '● Online' : '● Offline'}</span>
           <SyncBadge />
+          <ThemeToggle />
           <NotificationBell />
           <span className="text-slate-700">{session?.user.name}{session?.mode === 'offline' && <span className="text-xs text-amber-700"> (offline{session.offlineDaysRemaining !== null ? `, ${session.offlineDaysRemaining}d left` : ''})</span>}</span>
           <button className="btn-secondary py-1" onClick={() => nav('/switch')}>Switch user</button>

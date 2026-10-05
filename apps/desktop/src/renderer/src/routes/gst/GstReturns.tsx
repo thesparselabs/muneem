@@ -5,6 +5,7 @@ import { api, errorMessage } from '../../api.js';
 import { formatPaise } from '../../lib/money.js';
 import { previousMonth } from '../../lib/gst/gstForm.js';
 import GstNav, { MonthPicker } from './GstNav.js';
+import { FileText } from 'lucide-react';
 
 const money = (p: number) => <span className="tabular-nums">{formatPaise(p)}</span>;
 
@@ -29,32 +30,32 @@ export default function GstReturns() {
     </span>
   );
   return (
-    <div className="max-w-6xl space-y-4">
-      <h1 className="text-2xl font-semibold">GST returns</h1>
+    <div className="space-y-4">
+      <h1 className="flex items-center gap-2 text-2xl font-semibold"><FileText size={22} className="text-primary" aria-hidden />GST returns</h1>
       <GstNav />
       <div className="flex items-center gap-4">
         <MonthPicker value={month} onChange={(m) => { setMonth(m); setOpen(null); }} />
-        {s?.locked && <span className="rounded bg-slate-100 px-2 py-0.5 text-xs">Month locked</span>}
-        {s?.setoffId && <span className="rounded bg-green-50 px-2 py-0.5 text-xs text-green-800">Set off</span>}
+        {s?.locked && <span className="rounded bg-muted px-2 py-0.5 text-xs">Month locked</span>}
+        {s?.setoffId && <span className="rounded bg-green-50 dark:bg-green-500/20 px-2 py-0.5 text-xs text-green-800 dark:text-green-400">Set off</span>}
       </div>
       {message && <p className="text-sm" role="status">{message}</p>}
       {summary.error && <p className="err" role="alert">{errorMessage(summary.error)}</p>}
       {s && !s.applicable && <p className="card text-sm">This business is not under the regular scheme, so it files no GSTR-1 or GSTR-3B here.</p>}
       {s?.applicable && (
         <>
-          <p className={`text-sm ${off.length ? 'text-red-700' : 'text-green-700'}`} role="status">
+          <p className={`text-sm ${off.length ? 'text-destructive' : 'text-green-700 dark:text-green-400'}`} role="status">
             {off.length ? `The return does not tie to the books: ${off.map((t) => `${t.name} (${formatPaise(t.returnPaise)} vs ${formatPaise(t.booksPaise)})`).join('; ')}`
               : 'Every head ties to the tax accounts for the month.'}
           </p>
-          {s.missingHsn > 0 && <p className="text-sm text-amber-700">{s.missingHsn} lines have no HSN code. {exportButtons('gst.productsMissingHsn')}</p>}
-          <table className="table-modern rounded-lg border bg-white">
+          {s.missingHsn > 0 && <p className="text-sm text-amber-700 dark:text-amber-300">{s.missingHsn} lines have no HSN code. {exportButtons('gst.productsMissingHsn')}</p>}
+          <table className="table-modern rounded-lg border border-border bg-card">
             <thead><tr>
               <th>GSTR-1 section</th><th className="text-right">Rows</th><th className="text-right">Taxable</th><th className="text-right">IGST</th>
               <th className="text-right">CGST</th><th className="text-right">SGST</th><th className="text-right">Cess</th><th>Export</th>
             </tr></thead>
             <tbody>
               {s.sections.map((x) => (
-                <tr key={x.section} className={open === x.reportId ? 'bg-blue-50' : undefined}>
+                <tr key={x.section} className={open === x.reportId ? 'bg-accent' : undefined}>
                   <td><button type="button" className="underline" onClick={() => setOpen(open === x.reportId ? null : x.reportId)}>{x.title}</button></td>
                   <td className="text-right">{x.rows}</td><td className="text-right">{money(x.taxablePaise)}</td><td className="text-right">{money(x.igstPaise)}</td>
                   <td className="text-right">{money(x.cgstPaise)}</td><td className="text-right">{money(x.sgstPaise)}</td><td className="text-right">{money(x.cessPaise)}</td>
@@ -90,16 +91,16 @@ export default function GstReturns() {
 function SectionTable({ id, month }: { id: string; month: string }) {
   const r = useQuery({ queryKey: ['gst', 'section', id, month], queryFn: () => api.reports.run({ id, params: { month } }) });
   if (r.error) return <p className="err" role="alert">{errorMessage(r.error)}</p>;
-  if (!r.data) return <p className="text-sm text-slate-500">Loading…</p>;
+  if (!r.data) return <p className="text-sm text-muted-foreground">Loading…</p>;
   return <ResultTable result={r.data} />;
 }
 
 function ResultTable({ result }: { result: ReportResult }) {
   const cell = (kind: string, v: string | number | null) =>
     v === null ? '' : kind === 'money' && typeof v === 'number' ? formatPaise(v) : kind === 'qty' && typeof v === 'number' ? String(v / 1000) : String(v);
-  if (result.rows.length === 0) return <p className="card text-sm text-slate-600">Nothing in this section for the month.</p>;
+  if (result.rows.length === 0) return <p className="card text-sm text-muted-foreground">Nothing in this section for the month.</p>;
   return (
-    <div className="overflow-auto rounded-lg border bg-white">
+    <div className="overflow-auto rounded-lg border border-border bg-card">
       <table className="table-modern text-xs">
         <thead><tr>{result.columns.map((c) => <th key={c.key}>{c.label}</th>)}</tr></thead>
         <tbody>

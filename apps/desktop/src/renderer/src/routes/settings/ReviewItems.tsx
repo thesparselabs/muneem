@@ -4,6 +4,7 @@ import type { ReviewItem } from '@muneem/contracts';
 import { api, errorMessage } from '../../api.js';
 import { useCan } from '../../lib/permissions.js';
 import { diffVersions, groupReviewItems, ruleLabel, winnerLabel } from '../../lib/sync/review.js';
+import { Inbox, Check } from 'lucide-react';
 
 type Filter = 'open' | 'reviewed' | 'all';
 const FILTERS: [Filter, string][] = [['open', 'Open'], ['reviewed', 'Reviewed'], ['all', 'All']];
@@ -25,20 +26,20 @@ export default function ReviewItems() {
   };
   const groups = groupReviewItems(items.data ?? []);
   return (
-    <div className="max-w-5xl space-y-4">
-      <h1 className="text-2xl font-semibold">Review items</h1>
-      <p className="text-sm text-slate-600">How the cloud settled edits that crossed between terminals. Nothing here needs undoing; each item says which version was kept and keeps the other.</p>
+    <div className="space-y-4">
+      <h1 className="flex items-center gap-2 text-2xl font-semibold"><Inbox size={22} className="text-primary" aria-hidden />Review items</h1>
+      <p className="text-sm text-muted-foreground">How the cloud settled edits that crossed between terminals. Nothing here needs undoing; each item says which version was kept and keeps the other.</p>
       <div className="flex gap-1" role="tablist">
-        {FILTERS.map(([f, label]) => <button key={f} type="button" role="tab" aria-selected={filter === f} className={`btn-secondary py-1 ${filter === f ? 'bg-slate-200' : ''}`} onClick={() => setFilter(f)}>{label}</button>)}
+        {FILTERS.map(([f, label]) => <button key={f} type="button" role="tab" aria-selected={filter === f} className={`btn-secondary py-1 ${filter === f ? 'bg-accent text-accent-foreground' : ''}`} onClick={() => setFilter(f)}>{label}</button>)}
       </div>
       {message && <p className="text-sm" role="status">{message}</p>}
-      {items.isSuccess && groups.length === 0 && <p className="text-sm text-slate-600">{filter === 'open' ? 'Nothing to review.' : 'No items.'}</p>}
+      {items.isSuccess && groups.length === 0 && <p className="text-sm text-muted-foreground">{filter === 'open' ? 'Nothing to review.' : 'No items.'}</p>}
       {groups.map((g) => {
         const open = g.items.filter((i) => !i.reviewedAt).map((i) => i.id);
         return (
           <section key={g.label} className="space-y-2">
             <div className="flex items-center justify-between">
-              <h2 className="font-semibold">{g.label} <span className="text-sm font-normal text-slate-500">({g.items.length})</span></h2>
+              <h2 className="font-semibold">{g.label} <span className="text-sm font-normal text-muted-foreground">({g.items.length})</span></h2>
               {canManage && open.length > 1 && <button type="button" className="btn-secondary py-1" onClick={() => void mark(open.slice(0, 200))}>Mark all reviewed</button>}
             </div>
             {g.items.map((i) => <ReviewCard key={i.id} item={i} canManage={canManage} onReviewed={() => void mark([i.id])} />)}
@@ -56,10 +57,10 @@ function ReviewCard({ item, canManage, onReviewed }: { item: ReviewItem; canMana
     <article className="card space-y-2 text-sm">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <p className="font-medium">{item.entityLabel ?? item.entityType} {item.field && <span className="text-slate-500">· {item.field}</span>}</p>
-          <p className="font-mono text-xs text-slate-500">{item.entityType} {item.entityId}</p>
+          <p className="font-medium">{item.entityLabel ?? item.entityType} {item.field && <span className="text-muted-foreground">· {item.field}</span>}</p>
+          <p className="font-mono text-xs text-muted-foreground">{item.entityType} {item.entityId}</p>
         </div>
-        <div className="text-right text-xs text-slate-600">
+        <div className="text-right text-xs text-muted-foreground">
           <p>{when(item.occurredAt)}</p>
           {item.deviceId && <p>from device <span className="font-mono">{item.deviceId}</span></p>}
         </div>
@@ -67,19 +68,19 @@ function ReviewCard({ item, canManage, onReviewed }: { item: ReviewItem; canMana
       <p>{ruleLabel(item.rule)} · kept: <span className="font-medium">{winnerLabel(item.winner)}</span></p>
       {rows.length > 0 && (
         <table className="w-full table-fixed text-xs">
-          <thead className="text-left text-slate-500"><tr><th className="w-1/5 p-1 font-normal">Field</th>
-            <th className={`p-1 font-normal ${cloudWon ? 'text-green-800' : ''}`}>Cloud{cloudWon && ' (kept)'}</th>
-            <th className={`p-1 font-normal ${cloudWon ? '' : 'text-green-800'}`}>Device edit{!cloudWon && ' (kept)'}</th></tr></thead>
+          <thead className="text-left text-muted-foreground"><tr><th className="w-1/5 p-1 font-normal">Field</th>
+            <th className={`p-1 font-normal ${cloudWon ? 'text-green-800 dark:text-green-400' : ''}`}>Cloud{cloudWon && ' (kept)'}</th>
+            <th className={`p-1 font-normal ${cloudWon ? '' : 'text-green-800 dark:text-green-400'}`}>Device edit{!cloudWon && ' (kept)'}</th></tr></thead>
           <tbody>{rows.map((r) => (
-            <tr key={r.key} className={`border-t ${r.differs ? 'bg-amber-50' : ''}`}>
+            <tr key={r.key} className={`border-t ${r.differs ? 'bg-amber-50 dark:bg-amber-500/20' : ''}`}>
               <td className="p-1 font-medium">{r.key}</td><td className="break-all p-1 font-mono">{r.cloud}</td><td className="break-all p-1 font-mono">{r.device}</td>
             </tr>
           ))}</tbody>
         </table>
       )}
       <div className="flex items-center justify-between">
-        {item.reviewedAt ? <p className="text-xs text-slate-500">Reviewed {when(item.reviewedAt)}</p> : <span />}
-        {canManage && !item.reviewedAt && <button type="button" className="btn-secondary py-1" onClick={onReviewed}>Mark reviewed</button>}
+        {item.reviewedAt ? <p className="text-xs text-muted-foreground">Reviewed {when(item.reviewedAt)}</p> : <span />}
+        {canManage && !item.reviewedAt && <button type="button" className="btn-secondary py-1" onClick={onReviewed}><Check size={14} aria-hidden />Mark reviewed</button>}
       </div>
     </article>
   );

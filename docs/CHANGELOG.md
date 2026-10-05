@@ -5,6 +5,18 @@ All notable changes, newest first. Each entry records **what** changed and **why
 
 ## [Unreleased]
 
+### Added — UI overhaul: theme, full-screen, icons, onboarding (ADR-0064)
+- **Light + dark theme (Whispr, from tweakcn).** Teal primary / lilac accent as CSS variables mapped into Tailwind v4;
+  a header toggle (remembered, no-flash) switches `.dark`. Shared component classes and ~76 screens now use theme
+  tokens, so dark mode works app-wide.
+- **Full-screen desktop layouts.** List and report pages run full width; long tables use an internal scroll container
+  with a sticky header, fixing Chromium double-scrollbar / scroll-jump issues. Icons (lucide) added across headings,
+  buttons, empty states and status chips.
+- **Onboarding tour.** A guided, view-changing walkthrough (spotlight + narrated tooltips) across setup → POS →
+  products → reports → invoice design, auto-starting once on first run (never under automation) with a floating
+  "Take a tour" button; built on existing deps, honours reduced motion.
+- Verified: typecheck, lint, build clean; all 33 Playwright UI tests pass.
+
 ### Added — Invoice templates & branded PDF (`invoice.*`)
 - **A shop can render any sale as a styled A4 or thermal invoice (10 templates) and save it as a PDF (ADR-0063).**
   Why: the receipt layer prints till rolls, but customers and GST filing need a proper invoice document with the

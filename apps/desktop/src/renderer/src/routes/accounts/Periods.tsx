@@ -5,6 +5,7 @@ import Dialog from '../../components/Dialog.js';
 import { formatPaise } from '../../lib/money.js';
 import { useCan } from '../../lib/permissions.js';
 import AccountsNav from './AccountsNav.js';
+import { CalendarRange, LockOpen } from 'lucide-react';
 
 const thisMonth = () => `${new Date().toLocaleDateString('en-CA').slice(0, 7)}-01`;
 
@@ -19,8 +20,8 @@ export default function Periods() {
     try { setMessage(await f()); await qc.invalidateQueries(); } catch (e) { setMessage(errorMessage(e)); }
   };
   return (
-    <div className="max-w-5xl space-y-4">
-      <h1 className="text-2xl font-semibold">Periods</h1>
+    <div className="space-y-4">
+      <h1 className="flex items-center gap-2 text-2xl font-semibold"><CalendarRange size={22} className="text-primary" aria-hidden />Periods</h1>
       <AccountsNav />
       {canManage && (
         <div className="card flex gap-2">
@@ -29,13 +30,13 @@ export default function Periods() {
         </div>
       )}
       {message && <p className="text-sm" role="status">{message}</p>}
-      <table className="table-modern rounded-lg border bg-white">
+      <table className="table-modern rounded-lg border border-border bg-card">
         <thead><tr><th>Month</th><th>FY</th><th>Status</th><th className="text-right">Journals</th><th className="text-right">Late postings</th><th /></tr></thead>
         <tbody>
           {periods.data?.map((p) => (
             <tr key={p.id}>
               <td>{p.periodStart.slice(0, 7)}</td><td>{p.fy}</td>
-              <td>{p.status === 'locked' ? 'Locked' : 'Open'}{p.unlockReason && p.status === 'open' && <span className="text-xs text-slate-500"> (reopened: {p.unlockReason})</span>}</td>
+              <td>{p.status === 'locked' ? 'Locked' : 'Open'}{p.unlockReason && p.status === 'open' && <span className="text-xs text-muted-foreground"> (reopened: {p.unlockReason})</span>}</td>
               <td className="text-right">{p.journals}</td><td className="text-right">{p.latePostings}</td>
               <td>{canManage && (p.status === 'locked'
                 ? <button type="button" className="btn-secondary py-0" onClick={() => setUnlocking(p.periodStart)}>Unlock</button>
@@ -49,7 +50,7 @@ export default function Periods() {
         {late.data?.length ? (
           <table className="table-modern"><thead><tr><th>Entry</th><th>Source</th><th>Document date</th><th>Posted on</th><th className="text-right">Amount</th></tr></thead>
             <tbody>{late.data.map((l) => <tr key={l.id}><td className="font-mono">{l.entryNo}</td><td>{l.source}</td><td>{l.docDate}</td><td>{l.entryDate}</td><td className="text-right tabular-nums">{formatPaise(l.totalPaise)}</td></tr>)}</tbody></table>
-        ) : <p className="text-sm text-slate-600">None. A document dated into a locked month would appear here.</p>}
+        ) : <p className="text-sm text-muted-foreground">None. A document dated into a locked month would appear here.</p>}
       </div>
       {unlocking && <UnlockDialog periodStart={unlocking} onClose={() => setUnlocking(null)} onDone={() => { setUnlocking(null); void qc.invalidateQueries(); }} />}
     </div>
@@ -66,10 +67,10 @@ function UnlockDialog({ periodStart, onClose, onDone }: { periodStart: string; o
   return (
     <Dialog title={`Unlock ${periodStart.slice(0, 7)}`} onClose={onClose}>
       <form onSubmit={submit} className="space-y-3">
-        <p className="text-sm text-slate-600">Reopening a month lets documents post into it again. Say why — it is kept on the period.</p>
+        <p className="text-sm text-muted-foreground">Reopening a month lets documents post into it again. Say why — it is kept on the period.</p>
         <div><label className="label" htmlFor="ul-reason">Reason</label><input id="ul-reason" className="input" value={reason} onChange={(e) => setReason(e.target.value)} required /></div>
         {error && <p className="err" role="alert">{error}</p>}
-        <button type="submit" className="btn-primary">Unlock</button>
+        <button type="submit" className="btn-primary"><LockOpen size={16} aria-hidden />Unlock</button>
       </form>
     </Dialog>
   );

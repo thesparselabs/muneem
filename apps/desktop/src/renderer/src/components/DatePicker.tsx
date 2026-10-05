@@ -38,9 +38,9 @@ export default function DatePicker({ id, value, onChange, max, min, required, cl
   return (
     <div ref={root} className={cn('relative', className)}>
       <button type="button" id={id} aria-label={ariaLabel} onClick={() => setOpen((o) => !o)} aria-haspopup="dialog" aria-expanded={open}
-        className="flex w-full items-center justify-between gap-2 rounded-lg border border-slate-300 bg-white px-3 py-2 text-left text-sm transition-colors hover:border-slate-400 focus:border-blue-600 focus:ring-2 focus:ring-blue-600/15">
-        <span className={value ? '' : 'text-slate-400'}>{value ? pretty(value) : 'Select a date'}</span>
-        <CalendarDays size={16} className="shrink-0 text-slate-400" aria-hidden />
+        className="flex w-full items-center justify-between gap-2 rounded-lg border border-input bg-card px-3 py-2 text-left text-sm transition-colors hover:border-input focus:border-primary focus:ring-2 focus:ring-primary/15">
+        <span className={value ? '' : 'text-muted-foreground'}>{value ? pretty(value) : 'Select a date'}</span>
+        <CalendarDays size={16} className="shrink-0 text-muted-foreground" aria-hidden />
         {required && <input tabIndex={-1} aria-hidden required value={value} onChange={() => undefined} className="sr-only" />}
       </button>
       <AnimatePresence>
@@ -48,25 +48,25 @@ export default function DatePicker({ id, value, onChange, max, min, required, cl
           <motion.div role="dialog" aria-label="Choose a date"
             initial={reduce ? false : { opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={reduce ? { opacity: 0 } : { opacity: 0, y: -4 }}
             transition={{ duration: MOTION_FAST }}
-            className="absolute z-30 mt-1 w-64 rounded-xl border border-slate-200 bg-white p-3 shadow-lg">
+            className="absolute z-30 mt-1 w-64 rounded-xl border border-border bg-card p-3 shadow-lg">
             <div className="mb-2 flex items-center justify-between">
               <button type="button" className="btn-ghost p-1" aria-label="Previous month" onClick={() => setView(new Date(view.getFullYear(), view.getMonth() - 1, 1))}><ChevronLeft size={16} /></button>
               <span className="text-sm font-semibold">{MONTHS[view.getMonth()]} {view.getFullYear()}</span>
               <button type="button" className="btn-ghost p-1" aria-label="Next month" onClick={() => setView(new Date(view.getFullYear(), view.getMonth() + 1, 1))}><ChevronRight size={16} /></button>
             </div>
-            <div className="grid grid-cols-7 gap-0.5 text-center text-xs text-slate-400">{WEEKDAYS.map((w) => <span key={w} className="py-1">{w}</span>)}</div>
+            <div className="grid grid-cols-7 gap-0.5 text-center text-xs text-muted-foreground">{WEEKDAYS.map((w) => <span key={w} className="py-1">{w}</span>)}</div>
             <div className="grid grid-cols-7 gap-0.5">
               {cells.map((d, i) => d === null ? <span key={`e${i}`} /> : (
                 <button key={iso(d)} type="button" disabled={!!outOfRange(d)}
                   onClick={() => { onChange(iso(d)); setOpen(false); }}
                   aria-current={selected && iso(d) === iso(selected) ? 'date' : undefined}
-                  className={cn('rounded-md py-1.5 text-sm transition-colors disabled:cursor-not-allowed disabled:text-slate-300',
-                    selected && iso(d) === iso(selected) ? 'bg-blue-700 font-semibold text-white' : 'hover:bg-blue-50')}>{d.getDate()}</button>
+                  className={cn('rounded-md py-1.5 text-sm transition-colors disabled:cursor-not-allowed disabled:opacity-40',
+                    selected && iso(d) === iso(selected) ? 'bg-primary font-semibold text-primary-foreground' : 'hover:bg-accent')}>{d.getDate()}</button>
               ))}
             </div>
-            <div className="mt-2 flex justify-between border-t border-slate-100 pt-2 text-xs">
-              <button type="button" className="text-blue-700 hover:underline" onClick={() => { onChange(iso(new Date())); setOpen(false); }}>Today</button>
-              {!required && value && <button type="button" className="text-slate-500 hover:underline" onClick={() => { onChange(''); setOpen(false); }}>Clear</button>}
+            <div className="mt-2 flex justify-between border-t border-border pt-2 text-xs">
+              <button type="button" className="text-primary hover:underline" onClick={() => { onChange(iso(new Date())); setOpen(false); }}>Today</button>
+              {!required && value && <button type="button" className="text-muted-foreground hover:underline" onClick={() => { onChange(''); setOpen(false); }}>Clear</button>}
             </div>
           </motion.div>
         )}

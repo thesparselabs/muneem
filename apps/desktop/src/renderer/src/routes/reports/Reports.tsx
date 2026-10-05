@@ -6,6 +6,7 @@ import DatePicker from '../../components/DatePicker.js';
 import PartyPicker from '../../components/PartyPicker.js';
 import { useCan } from '../../lib/permissions.js';
 import { checkParams, defaultParams, formatCell, groupReports, isNumeric, periodLabel, runParams } from '../../lib/reports/reportForm.js';
+import { BarChart3, Download, Play, Printer } from 'lucide-react';
 
 const today = () => new Date().toLocaleDateString('en-CA');
 
@@ -17,7 +18,7 @@ function ParamInput({ p, value, error, onChange, branches }: {
     return (
       <div className="min-w-64">
         <PartyPicker id={id} partyType={p.kind} onPick={(picked) => onChange(`${picked.id}|${picked.name}`)} />
-        {value && <p className="text-xs text-slate-600">{value.split('|')[1]}</p>}
+        {value && <p className="text-xs text-muted-foreground">{value.split('|')[1]}</p>}
         {error && <p className="err">{error}</p>}
       </div>
     );
@@ -54,7 +55,7 @@ function ResultTable({ r }: { r: ReportResult }) {
           <tr key={i}>{r.columns.map((c) => <td key={c.key} className={isNumeric(c.kind) ? 'text-right tabular-nums' : ''}>{formatCell(c.kind, row[c.key])}</td>)}</tr>
         ))}
         {r.totals && (
-          <tr className="border-t-2 border-slate-400 font-semibold">{r.columns.map((c) => <td key={c.key} className={isNumeric(c.kind) ? 'text-right tabular-nums' : ''}>{formatCell(c.kind, r.totals![c.key])}</td>)}</tr>
+          <tr className="border-t-2 border-input font-semibold">{r.columns.map((c) => <td key={c.key} className={isNumeric(c.kind) ? 'text-right tabular-nums' : ''}>{formatCell(c.kind, r.totals![c.key])}</td>)}</tr>
         )}
       </tbody>
     </table>
@@ -83,21 +84,21 @@ export default function Reports() {
   };
 
   return (
-    <div className="grid grid-cols-[240px_1fr] gap-6 print:block">
-      <aside className="space-y-4 print:hidden" aria-label="Reports">
-        <h1 className="text-2xl font-semibold">Reports</h1>
+    <div className="grid h-full grid-cols-[240px_minmax(0,1fr)] grid-rows-[minmax(0,1fr)] gap-6 print:block print:h-auto">
+      <aside className="min-h-0 space-y-4 overflow-y-auto pr-1 print:hidden" aria-label="Reports">
+        <h1 className="flex items-center gap-2 text-2xl font-semibold"><BarChart3 size={22} className="text-primary" aria-hidden />Reports</h1>
         {defs.error && <p className="err" role="alert">{errorMessage(defs.error)}</p>}
         {groupReports(defs.data ?? []).map((g) => (
           <div key={g.group}>
-            <h2 className="text-xs font-semibold uppercase text-slate-500">{g.group}</h2>
+            <h2 className="text-xs font-semibold uppercase text-muted-foreground">{g.group}</h2>
             <ul>{g.reports.map((r) => (
-              <li key={r.id}><button type="button" className={`w-full rounded px-2 py-1 text-left text-sm ${def?.id === r.id ? 'bg-blue-50 font-medium text-blue-800' : 'hover:bg-slate-50'}`} onClick={() => pick(r)}>{r.title}</button></li>
+              <li key={r.id}><button type="button" className={`w-full rounded px-2 py-1 text-left text-sm ${def?.id === r.id ? 'bg-accent font-medium text-primary' : 'hover:bg-muted'}`} onClick={() => pick(r)}>{r.title}</button></li>
             ))}</ul>
           </div>
         ))}
       </aside>
-      <section className="min-w-0 space-y-4">
-        {!def && <p className="text-slate-500">Choose a report.</p>}
+      <section className="min-h-0 min-w-0 space-y-4 overflow-auto print:overflow-visible">
+        {!def && <p className="card flex items-center gap-2 text-muted-foreground"><BarChart3 size={18} aria-hidden />Choose a report.</p>}
         {def && (
           <>
             <div className="card flex flex-wrap items-end gap-3 print:hidden">
@@ -105,22 +106,22 @@ export default function Reports() {
                 <ParamInput key={p.key} p={p} value={values[p.key] ?? ''} error={errors[p.key]} branches={branches.data ?? []}
                   onChange={(v) => setValues({ ...values, [p.key]: v })} />
               ))}
-              <button type="button" className="btn-primary" onClick={submit} disabled={run.isPending}>Run</button>
+              <button type="button" className="btn-primary" onClick={submit} disabled={run.isPending}><Play size={16} aria-hidden />Run</button>
               {run.data && canExport && (['csv', 'xlsx', 'pdf'] as const).map((f) => (
-                <button key={f} type="button" className="btn-secondary" disabled={exp.isPending} onClick={() => exp.mutate(f)}>Export {f.toUpperCase()}</button>
+                <button key={f} type="button" className="btn-secondary" disabled={exp.isPending} onClick={() => exp.mutate(f)}><Download size={14} aria-hidden />Export {f.toUpperCase()}</button>
               ))}
-              {run.data && <button type="button" className="btn-secondary" onClick={() => window.print()}>Print</button>}
+              {run.data && <button type="button" className="btn-secondary" onClick={() => window.print()}><Printer size={14} aria-hidden />Print</button>}
             </div>
             {(run.error ?? exp.error) && <p className="err" role="alert">{errorMessage(run.error ?? exp.error)}</p>}
-            {exp.data?.saved && <p className="text-sm text-green-700">Saved {exp.data.fileName}</p>}
+            {exp.data?.saved && <p className="text-sm text-green-700 dark:text-green-400">Saved {exp.data.fileName}</p>}
             {run.data && (
               <div className="card space-y-2 overflow-x-auto">
                 <header>
-                  <p className="font-semibold">{business.data?.name}{business.data?.gstin && <span className="ml-2 text-sm font-normal text-slate-600">GSTIN {business.data.gstin}</span>}</p>
+                  <p className="font-semibold">{business.data?.name}{business.data?.gstin && <span className="ml-2 text-sm font-normal text-muted-foreground">GSTIN {business.data.gstin}</span>}</p>
                   <h2 className="text-lg font-semibold">{run.data.title}</h2>
-                  <p className="text-xs text-slate-600">{periodLabel(values)} · generated {new Date(run.data.generatedAt).toLocaleString('en-IN')}</p>
+                  <p className="text-xs text-muted-foreground">{periodLabel(values)} · generated {new Date(run.data.generatedAt).toLocaleString('en-IN')}</p>
                 </header>
-                {run.data.truncated && <p className="text-sm text-amber-800">Showing the first rows only; narrow the dates or export.</p>}
+                {run.data.truncated && <p className="text-sm text-amber-800 dark:text-amber-300">Showing the first rows only; narrow the dates or export.</p>}
                 <ResultTable r={run.data} />
               </div>
             )}

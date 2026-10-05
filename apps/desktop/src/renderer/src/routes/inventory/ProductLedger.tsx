@@ -2,6 +2,7 @@ import { Link, useParams } from 'react-router-dom';
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { api, errorMessage } from '../../api.js';
 import { formatPaise, scaledToText } from '../../lib/money.js';
+import { BookOpen, ArrowLeft } from 'lucide-react';
 
 const TYPE_LABEL: Record<string, string> = { opening: 'Opening stock', sale: 'Sale', adjustment: 'Adjustment', cost_correction: 'Cost correction', purchase: 'Purchase' };
 
@@ -15,22 +16,22 @@ export default function ProductLedger() {
   });
   const rows = moves.data?.pages.flatMap((p) => p.items) ?? [];
   return (
-    <div className="max-w-6xl space-y-4">
+    <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">{product.data?.name ?? '…'} — stock ledger</h1>
-        <Link to="/inventory" className="btn-secondary">Back to inventory</Link>
+        <h1 className="flex items-center gap-2 text-2xl font-semibold"><BookOpen size={22} className="text-primary" aria-hidden />{product.data?.name ?? '…'} — stock ledger</h1>
+        <Link to="/inventory" className="btn-secondary"><ArrowLeft size={16} aria-hidden />Back to inventory</Link>
       </div>
       {moves.error && <p className="err" role="alert">{errorMessage(moves.error)}</p>}
-      {rows.length === 0 && !moves.isLoading && <p className="card text-sm text-slate-600">No stock movements yet.</p>}
+      {rows.length === 0 && !moves.isLoading && <p className="card text-sm text-muted-foreground">No stock movements yet.</p>}
       {rows.length > 0 && (
-        <table className="table-modern rounded-lg border bg-white">
+        <table className="table-modern rounded-lg border border-border bg-card">
           <thead><tr><th>When</th><th>What</th><th className="text-right">Qty</th><th className="text-right">Unit cost</th><th className="text-right">Value</th><th className="text-right">Balance</th><th className="text-right">Balance value</th></tr></thead>
           <tbody>
             {rows.map((m) => (
               <tr key={m.id}>
                 <td>{new Date(m.at).toLocaleString('en-IN')}</td>
-                <td>{TYPE_LABEL[m.type] ?? m.type}{m.reason && <span className="text-slate-500"> · {m.reason.replace('_', ' ')}</span>}{m.provisional && <span className="ml-1 text-xs text-amber-800">(provisional cost)</span>}</td>
-                <td className={`text-right tabular-nums ${m.qtyMilli < 0 ? 'text-red-700' : ''}`}>{m.qtyMilli ? scaledToText(m.qtyMilli, 3) : '—'}</td>
+                <td>{TYPE_LABEL[m.type] ?? m.type}{m.reason && <span className="text-muted-foreground"> · {m.reason.replace('_', ' ')}</span>}{m.provisional && <span className="ml-1 text-xs text-amber-800 dark:text-amber-300">(provisional cost)</span>}</td>
+                <td className={`text-right tabular-nums ${m.qtyMilli < 0 ? 'text-destructive' : ''}`}>{m.qtyMilli ? scaledToText(m.qtyMilli, 3) : '—'}</td>
                 <td className="text-right tabular-nums">{m.unitCostPaise ? formatPaise(m.unitCostPaise) : '—'}</td>
                 <td className="text-right tabular-nums">{formatPaise(m.valuePaise)}</td>
                 <td className="text-right tabular-nums">{scaledToText(m.balanceQtyMilli, 3)}</td>

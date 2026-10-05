@@ -6,6 +6,7 @@ import { api, errorMessage } from '../../api.js';
 import { formatPaise, scaledToText } from '../../lib/money.js';
 import { countDiffs, countProblems, setCount, type Counts } from '../../lib/inventory/stockTake.js';
 import { useDebounced } from '../../lib/useDebounced.js';
+import { ClipboardCheck, ArrowLeft, X } from 'lucide-react';
 
 export default function StockTake() {
   const qc = useQueryClient();
@@ -37,16 +38,16 @@ export default function StockTake() {
   if (result) {
     return (
       <div className="card max-w-xl space-y-3" role="status">
-        <h1 className="text-xl font-semibold">Stock take posted</h1>
+        <h1 className="flex items-center gap-2 text-xl font-semibold"><ClipboardCheck size={20} className="text-primary" aria-hidden />Stock take posted</h1>
         <p className="text-sm">{result.lines.length} product(s) corrected, {result.unchanged} already right. Value change {formatPaise(result.lines.reduce((s, l) => s + l.valuePaise, 0))}.</p>
-        <div className="flex gap-2"><button className="btn-primary" onClick={() => setResult(null)}>Count more</button><Link to="/inventory" className="btn-secondary">Back to inventory</Link></div>
+        <div className="flex gap-2"><button className="btn-primary" onClick={() => setResult(null)}>Count more</button><Link to="/inventory" className="btn-secondary"><ArrowLeft size={16} aria-hidden />Back to inventory</Link></div>
       </div>
     );
   }
   return (
-    <div className="max-w-5xl space-y-4">
-      <div className="flex items-center justify-between"><h1 className="text-2xl font-semibold">Stock take</h1><Link to="/inventory" className="btn-secondary">Cancel</Link></div>
-      <p className="text-sm text-slate-600">Count what is on the shelf and enter it. Leave a product blank if you did not count it. Differences are worked out when you post, so sales made while counting are taken into account.</p>
+    <div className="space-y-4">
+      <div className="flex items-center justify-between"><h1 className="text-2xl font-semibold">Stock take</h1><Link to="/inventory" className="btn-secondary"><X size={16} aria-hidden />Cancel</Link></div>
+      <p className="text-sm text-muted-foreground">Count what is on the shelf and enter it. Leave a product blank if you did not count it. Differences are worked out when you post, so sales made while counting are taken into account.</p>
       <div className="card flex items-end gap-4">
         <div><label className="label" htmlFor="st-cat">Category</label>
           <select id="st-cat" className="select" value={categoryId} onChange={(e) => { setCategoryId(e.target.value); setReviewing(false); }}>
@@ -54,15 +55,15 @@ export default function StockTake() {
           </select>
         </div>
         <div className="grow"><label className="label" htmlFor="st-q">Search</label><input id="st-q" className="input" value={query} onChange={(e) => setQuery(e.target.value)} /></div>
-        <p className="pb-2 text-sm text-slate-600">{counted} counted across all categories</p>
+        <p className="pb-2 text-sm text-muted-foreground">{counted} counted across all categories</p>
       </div>
       {!reviewing ? (
-        <table className="table-modern rounded-lg border bg-white">
+        <table className="table-modern rounded-lg border border-border bg-card">
           <thead><tr><th>Product</th><th className="text-right">System</th><th>Counted</th></tr></thead>
           <tbody>
             {rows.map((r) => (
               <tr key={r.productId}>
-                <td>{r.name} <span className="text-slate-500">{r.sku}</span></td>
+                <td>{r.name} <span className="text-muted-foreground">{r.sku}</span></td>
                 <td className="text-right tabular-nums">{scaledToText(r.qtyMilli, 3)} {r.uomCode}</td>
                 <td><input aria-label={`Counted ${r.name}`} className="input w-28 py-1" inputMode="decimal" value={counts[r.productId]?.text ?? ''} onChange={(e) => setCounts(setCount(counts, r, e.target.value))} />
                   {errors[r.productId] && <p className="err">{errors[r.productId]}</p>}</td>
@@ -71,7 +72,7 @@ export default function StockTake() {
           </tbody>
         </table>
       ) : (
-        <table className="table-modern rounded-lg border bg-white">
+        <table className="table-modern rounded-lg border border-border bg-card">
           <thead><tr><th>Product</th><th className="text-right">System</th><th className="text-right">Counted</th><th className="text-right">Difference</th></tr></thead>
           <tbody>
             {diffs.map((d) => (
@@ -79,7 +80,7 @@ export default function StockTake() {
                 <td>{d.name}</td>
                 <td className="text-right tabular-nums">{scaledToText(d.systemMilli, 3)}</td>
                 <td className="text-right tabular-nums">{scaledToText(d.countedMilli, 3)}</td>
-                <td className={`text-right tabular-nums ${d.diffMilli < 0 ? 'text-red-700' : d.diffMilli > 0 ? 'text-green-800' : 'text-slate-500'}`}>{d.diffMilli > 0 ? '+' : ''}{scaledToText(d.diffMilli, 3)} {d.uomCode}</td>
+                <td className={`text-right tabular-nums ${d.diffMilli < 0 ? 'text-destructive' : d.diffMilli > 0 ? 'text-green-800 dark:text-green-400' : 'text-muted-foreground'}`}>{d.diffMilli > 0 ? '+' : ''}{scaledToText(d.diffMilli, 3)} {d.uomCode}</td>
               </tr>
             ))}
           </tbody>

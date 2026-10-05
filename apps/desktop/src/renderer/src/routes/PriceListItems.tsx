@@ -47,7 +47,7 @@ export default function PriceListItems({ product, uoms }: { product: Product; uo
             {lists.data?.map((l) => <option key={l.id} value={l.id}>{l.name}{l.isDefault ? ' (default)' : ''}</option>)}
           </select>
         </div>
-        <p className="text-sm text-slate-500 pb-2">Add a row per unit and quantity break. The newest price that is in effect wins.</p>
+        <p className="text-sm text-muted-foreground pb-2">Add a row per unit and quantity break. The newest price that is in effect wins.</p>
       </div>
       <table className="table-modern">
         <thead><tr><th>Unit</th><th>From qty</th><th>Price (₹)</th><th>Incl. GST</th><th>From date</th><th>Until</th><th /></tr></thead>

@@ -5,6 +5,7 @@ import { api, errorMessage } from '../../api.js';
 import DatePicker from '../../components/DatePicker.js';
 import AccountsNav from './AccountsNav.js';
 import LedgerView from './LedgerView.js';
+import { BookOpen } from 'lucide-react';
 
 export default function AccountLedger() {
   const { id } = useParams<{ id: string }>();
@@ -16,8 +17,8 @@ export default function AccountLedger() {
     initialPageParam: '', getNextPageParam: (last) => last.nextCursor ?? undefined,
   });
   return (
-    <div className="max-w-6xl space-y-4">
-      <h1 className="text-2xl font-semibold">{account.data ? `${account.data.code} ${account.data.name}` : 'Ledger'}</h1>
+    <div className="space-y-4">
+      <h1 className="flex items-center gap-2 text-2xl font-semibold"><BookOpen size={22} className="text-primary" aria-hidden />{account.data ? `${account.data.code} ${account.data.name}` : 'Ledger'}</h1>
       <AccountsNav />
       <div className="card flex items-end gap-3">
         <div><label className="label" htmlFor="lg-from">From</label><DatePicker id="lg-from" value={range.from} onChange={(v) => setRange({ ...range, from: v })} /></div>

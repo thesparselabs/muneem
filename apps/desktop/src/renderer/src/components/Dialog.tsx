@@ -18,7 +18,7 @@ export default function Dialog({ title, onClose, children, wide }: { title: stri
     };
   }, []);
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-slate-900/40" role="presentation">
+    <div className="fixed inset-0 z-50 grid place-items-center bg-black/50" role="presentation">
       <div role="dialog" aria-modal="true" aria-label={title} className={`card max-h-[90vh] overflow-auto ${wide ? 'w-[720px]' : 'w-[460px]'}`}>
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-lg font-semibold">{title}</h2>

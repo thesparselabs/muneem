@@ -19,10 +19,10 @@ export default function PartyPicker({ id, partyType, onPick }: { id: string; par
       <label className="label" htmlFor={id}>{partyType === 'customer' ? 'Customer' : 'Supplier'}</label>
       <input id={id} className="input" placeholder="Name, phone or GSTIN" value={query} onChange={(e) => setQuery(e.target.value)} autoComplete="off" />
       {hits.data && hits.data.length > 0 && (
-        <ul className="absolute z-10 mt-1 w-full divide-y rounded border bg-white text-sm shadow">
+        <ul className="absolute z-10 mt-1 w-full divide-y rounded border border-border bg-card text-sm shadow">
           {hits.data.map((p) => (
-            <li key={p.id}><button type="button" className="w-full px-3 py-2 text-left hover:bg-blue-50" onClick={() => { onPick({ partyType, id: p.id, name: p.name }); setQuery(''); }}>
-              <span className="font-medium">{p.name}</span> <span className="text-slate-500">{[p.phone, p.gstin].filter(Boolean).join(' · ')}</span>
+            <li key={p.id}><button type="button" className="w-full px-3 py-2 text-left hover:bg-accent" onClick={() => { onPick({ partyType, id: p.id, name: p.name }); setQuery(''); }}>
+              <span className="font-medium">{p.name}</span> <span className="text-muted-foreground">{[p.phone, p.gstin].filter(Boolean).join(' · ')}</span>
             </button></li>
           ))}
         </ul>

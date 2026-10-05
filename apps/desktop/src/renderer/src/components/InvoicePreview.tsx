@@ -21,10 +21,10 @@ export default function InvoicePreview({ saleId, onClose }: { saleId: string; on
   return (
     <Dialog title="Invoice" onClose={onClose} wide>
       <div className="space-y-3">
-        {doc.isLoading && <p className="text-sm text-slate-500">Loading…</p>}
+        {doc.isLoading && <p className="text-sm text-muted-foreground">Loading…</p>}
         {doc.error && <p className="err" role="alert">{errorMessage(doc.error)}</p>}
         {doc.data && (
-          <iframe ref={frame} title="Invoice preview" srcDoc={doc.data.html} className="h-[60vh] w-full rounded-lg border border-slate-200 bg-white" />
+          <iframe ref={frame} title="Invoice preview" srcDoc={doc.data.html} className="h-[60vh] w-full rounded-lg border border-border bg-card" />
         )}
         <div className="flex justify-end gap-2">
           <button type="button" className="btn-secondary gap-1.5" onClick={() => frame.current?.contentWindow?.print()} disabled={!doc.data}>

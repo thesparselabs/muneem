@@ -45,12 +45,12 @@ export default function ReturnDialog({ saleId, onClose, onDone }: { saleId: stri
       {base.error && <p className="err" role="alert">{errorMessage(base.error)}</p>}
       {base.data && inputs && (
         <div className="space-y-4">
-          {base.data.customerName && <p className="text-sm text-slate-600">Customer: {base.data.customerName}</p>}
+          {base.data.customerName && <p className="text-sm text-muted-foreground">Customer: {base.data.customerName}</p>}
           <table className="w-full text-sm">
-            <thead className="text-left text-slate-600"><tr><th className="p-1">Item</th><th className="p-1 text-right">Sold</th><th className="p-1 text-right">Returned</th><th className="p-1 text-right">Return now</th><th className="p-1 text-right">Amount</th></tr></thead>
+            <thead className="text-left text-muted-foreground"><tr><th className="p-1">Item</th><th className="p-1 text-right">Sold</th><th className="p-1 text-right">Returned</th><th className="p-1 text-right">Return now</th><th className="p-1 text-right">Amount</th></tr></thead>
             <tbody>
               {base.data.lines.map((l) => (
-                <tr key={l.lineNo} className="border-t">
+                <tr key={l.lineNo} className="border-t border-border">
                   <td className="p-1">{l.name}</td>
                   <td className="p-1 text-right tabular-nums">{l.soldQtyMilli / 1000} {l.uomCode}</td>
                   <td className="p-1 text-right tabular-nums">{l.returnedQtyMilli / 1000}</td>

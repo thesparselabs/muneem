@@ -2,7 +2,7 @@ import { useEffect, useState, type ChangeEvent, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { motion } from 'motion/react';
-import { ImageUp, Palette, Save } from 'lucide-react';
+import { ImageUp, Palette, Save, ArrowLeft } from 'lucide-react';
 import type { InvoiceBranding, InvoiceTemplateId, InvoiceTemplateMeta } from '@muneem/contracts';
 import { api, errorMessage } from '../../api.js';
 import Field from '../../components/Field.js';
@@ -23,7 +23,7 @@ export default function InvoiceSettings() {
   const saleId = sample.data?.items[0]?.id ?? null;
 
   useEffect(() => { if (branding.data && !form) setForm(branding.data); }, [branding.data, form]);
-  if (!form) return <p className="text-sm text-slate-500">Loading…</p>;
+  if (!form) return <p className="text-sm text-muted-foreground">Loading…</p>;
 
   const set = (patch: Partial<InvoiceBranding>) => setForm((f) => ({ ...f!, ...patch }));
 
@@ -39,16 +39,16 @@ export default function InvoiceSettings() {
   }
 
   return (
-    <form onSubmit={save} className="max-w-5xl space-y-6">
+    <form onSubmit={save} className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="flex items-center gap-2 text-2xl font-semibold"><Palette size={22} aria-hidden /> Invoice design</h1>
-        <Link to="/pos" className="btn-secondary">Back to billing</Link>
+        <Link to="/pos" className="btn-secondary"><ArrowLeft size={16} aria-hidden />Back to billing</Link>
       </div>
 
       <section className="space-y-3" aria-label="Templates">
         <h2 className="text-lg font-semibold">Template</h2>
         {templates.error && <p className="err" role="alert">{errorMessage(templates.error)}</p>}
-        <div className="grid grid-cols-2 gap-4 md:grid-cols-3">
+        <div className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-4">
           {templates.data?.templates.map((t) => (
             <TemplateCard key={t.id} template={t} saleId={saleId}
               active={form.templateId === t.id} onSelect={() => set({ templateId: t.id })} />
@@ -63,9 +63,9 @@ export default function InvoiceSettings() {
           <div>
             <label className="label" htmlFor="accent">Accent colour</label>
             <div className="flex items-center gap-3">
-              <input id="accent" type="color" className="h-10 w-14 cursor-pointer rounded-lg border border-slate-300 bg-white p-1"
+              <input id="accent" type="color" className="h-10 w-14 cursor-pointer rounded-lg border border-input bg-card p-1"
                 value={form.accentColor} onChange={(e) => set({ accentColor: e.target.value })} />
-              <span className="font-mono text-sm text-slate-600">{form.accentColor}</span>
+              <span className="font-mono text-sm text-muted-foreground">{form.accentColor}</span>
             </div>
           </div>
           <Field label="Page size" htmlFor="pagesize" hint="For A4-style templates; thermal rolls use their own width.">
@@ -120,19 +120,19 @@ function TemplateCard({ template, saleId, active, onSelect }:
   return (
     <motion.button type="button" onClick={onSelect} aria-pressed={active}
       {...(reduce ? {} : { whileHover: { y: -4 } })} transition={{ duration: MOTION_FAST, ease: 'easeOut' }}
-      className={cn('relative block w-full rounded-xl border bg-white p-3 text-left shadow-sm transition-shadow hover:shadow-md',
-        active ? 'border-blue-600' : 'border-slate-200')}>
-      {active && <motion.span layoutId="tpl-ring" className="pointer-events-none absolute inset-0 rounded-xl ring-2 ring-blue-600" aria-hidden />}
-      <div className="mb-2 aspect-[3/4] overflow-hidden rounded-lg border border-slate-100 bg-slate-50">
+      className={cn('relative block w-full rounded-xl border border-border bg-card p-3 text-left shadow-sm transition-shadow hover:shadow-md',
+        active ? 'border-primary' : 'border-border')}>
+      {active && <motion.span layoutId="tpl-ring" className="pointer-events-none absolute inset-0 rounded-xl ring-2 ring-primary" aria-hidden />}
+      <div className="mb-2 aspect-[3/4] overflow-hidden rounded-lg border border-border bg-muted">
         {doc.data
           ? <iframe title={`${template.name} preview`} srcDoc={doc.data.html} tabIndex={-1} className="pointer-events-none h-full w-full origin-top-left scale-[0.5]" style={{ width: '200%', height: '200%' }} />
-          : <div className="grid h-full place-items-center p-3 text-center text-xs text-slate-400">{saleId ? 'Loading…' : 'Make a sale to preview'}</div>}
+          : <div className="grid h-full place-items-center p-3 text-center text-xs text-muted-foreground">{saleId ? 'Loading…' : 'Make a sale to preview'}</div>}
       </div>
       <div className="flex items-center justify-between gap-2">
         <span className="font-medium">{template.name}</span>
-        <span className={cn('rounded px-1.5 py-0.5 text-xs font-medium', template.kind === 'thermal' ? 'bg-amber-100 text-amber-800' : 'bg-blue-100 text-blue-800')}>{template.kind === 'thermal' ? template.size : 'A4'}</span>
+        <span className={cn('rounded px-1.5 py-0.5 text-xs font-medium', template.kind === 'thermal' ? 'bg-amber-100 dark:bg-amber-500/20 text-amber-800 dark:text-amber-300' : 'bg-accent text-primary')}>{template.kind === 'thermal' ? template.size : 'A4'}</span>
       </div>
-      <p className="mt-0.5 text-xs text-slate-500">{template.description}</p>
+      <p className="mt-0.5 text-xs text-muted-foreground">{template.description}</p>
     </motion.button>
   );
 }
@@ -143,9 +143,9 @@ function PreviewPane({ saleId, templateId }: { saleId: string | null; templateId
     queryFn: () => api.invoice.renderHtml({ saleId: saleId!, templateId }),
     enabled: !!saleId,
   });
-  if (!saleId) return <div className="grid h-[70vh] place-items-center rounded-xl border border-slate-200 bg-white text-sm text-slate-500">Make a sale to preview</div>;
+  if (!saleId) return <div className="grid h-[70vh] place-items-center rounded-xl border border-border bg-card text-sm text-muted-foreground">Make a sale to preview</div>;
   if (doc.error) return <p className="err" role="alert">{errorMessage(doc.error)}</p>;
-  return <iframe title="Invoice preview" srcDoc={doc.data?.html ?? ''} className="h-[70vh] w-full rounded-xl border border-slate-200 bg-white" />;
+  return <iframe title="Invoice preview" srcDoc={doc.data?.html ?? ''} className="h-[70vh] w-full rounded-xl border border-border bg-card" />;
 }
 
 // opensourceui-style upload: a styled trigger over a hidden file input, with a thumbnail and clear action.
@@ -161,8 +161,8 @@ function ImageField({ label, value, onChange }: { label: string; value: string |
       <span className="label">{label}</span>
       <div className="flex items-center gap-3">
         {value
-          ? <img src={dataUrl(value)} alt={`${label} preview`} className="h-12 w-12 rounded-lg border border-slate-200 object-contain" />
-          : <div className="grid h-12 w-12 place-items-center rounded-lg border border-dashed border-slate-300 text-slate-400"><ImageUp size={18} aria-hidden /></div>}
+          ? <img src={dataUrl(value)} alt={`${label} preview`} className="h-12 w-12 rounded-lg border border-border object-contain" />
+          : <div className="grid h-12 w-12 place-items-center rounded-lg border border-dashed border-input text-muted-foreground"><ImageUp size={18} aria-hidden /></div>}
         <label htmlFor={id} className="btn-secondary py-1">{value ? 'Replace' : 'Upload'}<input id={id} type="file" accept="image/*" className="sr-only" onChange={(e) => void pick(e)} /></label>
         {value && <button type="button" className="btn-ghost py-1" onClick={() => onChange('')}>Remove</button>}
       </div>
@@ -174,8 +174,8 @@ function ImageField({ label, value, onChange }: { label: string; value: string |
 function Toggle({ checked, onChange, label }: { checked: boolean; onChange: (v: boolean) => void; label: string }) {
   return (
     <button type="button" role="switch" aria-checked={checked} aria-label={label} onClick={() => onChange(!checked)}
-      className={cn('relative h-6 w-11 shrink-0 rounded-full transition-colors', checked ? 'bg-blue-600' : 'bg-slate-300')}>
-      <span className={cn('absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform', checked ? 'translate-x-5' : 'translate-x-0.5')} />
+      className={cn('relative h-6 w-11 shrink-0 rounded-full transition-colors', checked ? 'bg-primary' : 'bg-muted')}>
+      <span className={cn('absolute top-0.5 h-5 w-5 rounded-full bg-card shadow transition-transform', checked ? 'translate-x-5' : 'translate-x-0.5')} />
     </button>
   );
 }

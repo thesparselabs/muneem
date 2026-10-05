@@ -1,47 +1,114 @@
 @import "tailwindcss";
 
-/* shadcn-style tokens mapped to the existing slate/blue palette, so copied components resolve to our look. */
+/* `dark:` variants follow the `.dark` class on <html> (set by the theme toggle), not the OS media query. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* Bare `border`/`border-t` default to currentColor in Tailwind v4; make them use the theme border. */
+@layer base {
+  *, ::before, ::after { border-color: var(--border); }
+}
+
+/* Whispr theme (tweakcn) — teal primary / lilac accent, light + dark. shadcn `.dark` class convention. */
 :root {
-  --background: #ffffff;
-  --foreground: #1e293b;        /* slate-800 */
-  --muted: #f1f5f9;             /* slate-100 */
-  --muted-foreground: #475569;  /* slate-600 */
-  --primary: #1d4ed8;           /* blue-700 */
-  --primary-foreground: #ffffff;
-  --border: #e2e8f0;            /* slate-200 */
-  --input: #cbd5e1;             /* slate-300 */
-  --ring: #2563eb;              /* blue-600 */
-  --destructive: #b91c1c;       /* red-700 */
-  --destructive-foreground: #ffffff;
-  --radius: 0.5rem;
+  --background: oklch(0.9947 0.0261 106.8648);
+  --foreground: oklch(0.2178 0 0);
+  --card: oklch(1.0000 0 0);
+  --card-foreground: oklch(0.2178 0 0);
+  --popover: oklch(1.0000 0 0);
+  --popover-foreground: oklch(0.2178 0 0);
+  --primary: oklch(0.3840 0.0681 181.8438);
+  --primary-foreground: oklch(1.0000 0 0);
+  --secondary: oklch(0.9135 0.0266 106.9154);
+  --secondary-foreground: oklch(0.2178 0 0);
+  --muted: oklch(0.9135 0.0266 106.9154);
+  --muted-foreground: oklch(0.4836 0.0094 106.7460);
+  --accent: oklch(0.9119 0.0598 312.8731);
+  --accent-foreground: oklch(0.2178 0 0);
+  --destructive: oklch(0.6256 0.1933 23.0261);
+  --destructive-foreground: oklch(1.0000 0 0);
+  --border: oklch(0.9135 0.0266 106.9154);
+  --input: oklch(0.9135 0.0266 106.9154);
+  --ring: oklch(0.3840 0.0681 181.8438);
+  --sidebar: oklch(1.0000 0 0);
+  --sidebar-foreground: oklch(0.2178 0 0);
+  --sidebar-primary: oklch(0.3840 0.0681 181.8438);
+  --sidebar-primary-foreground: oklch(1.0000 0 0);
+  --sidebar-accent: oklch(0.9119 0.0598 312.8731);
+  --sidebar-accent-foreground: oklch(0.2178 0 0);
+  --sidebar-border: oklch(0.9135 0.0266 106.9154);
+  --radius: 0.75rem;
+}
+
+.dark {
+  --background: oklch(0.1800 0 0);
+  --foreground: oklch(1.0000 0 0);
+  --card: oklch(0.2178 0 0);
+  --card-foreground: oklch(1.0000 0 0);
+  --popover: oklch(0.2178 0 0);
+  --popover-foreground: oklch(1.0000 0 0);
+  --primary: oklch(0.9119 0.0598 312.8731);
+  --primary-foreground: oklch(0.2178 0 0);
+  --secondary: oklch(0.3211 0 0);
+  --secondary-foreground: oklch(1.0000 0 0);
+  --muted: oklch(0.3211 0 0);
+  --muted-foreground: oklch(0.6304 0.0146 106.8123);
+  --accent: oklch(0.3840 0.0681 181.8438);
+  --accent-foreground: oklch(1.0000 0 0);
+  --destructive: oklch(0.6984 0.1925 21.7509);
+  --destructive-foreground: oklch(1.0000 0 0);
+  --border: oklch(0.3211 0 0);
+  --input: oklch(0.3211 0 0);
+  --ring: oklch(0.9119 0.0598 312.8731);
+  --sidebar: oklch(0.2178 0 0);
+  --sidebar-foreground: oklch(1.0000 0 0);
+  --sidebar-primary: oklch(0.9119 0.0598 312.8731);
+  --sidebar-primary-foreground: oklch(0.2178 0 0);
+  --sidebar-accent: oklch(0.3840 0.0681 181.8438);
+  --sidebar-accent-foreground: oklch(1.0000 0 0);
+  --sidebar-border: oklch(0.3211 0 0);
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --color-muted: var(--muted);
-  --color-muted-foreground: var(--muted-foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
-  --color-destructive: var(--destructive);
-  --color-destructive-foreground: var(--destructive-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
   --radius-base: var(--radius);
+  --font-sans: Figtree, Inter, ui-sans-serif, system-ui, "Segoe UI", Roboto, sans-serif;
 }
 
-:root { font-family: ui-sans-serif, system-ui, "Segoe UI", Roboto, sans-serif; font-size: 15px; }
-body { background-color: #f8fafc; color: #1e293b; }
-@media print { body { background-color: #ffffff; } }
-* :focus-visible { outline: 3px solid #2563eb; outline-offset: 2px; }
+:root { font-family: Figtree, Inter, ui-sans-serif, system-ui, "Segoe UI", Roboto, sans-serif; font-size: 15px; }
+body { background-color: var(--background); color: var(--foreground); }
+@media print { body { background-color: #ffffff; color: #000; } }
+* :focus-visible { outline: 2.5px solid var(--ring); outline-offset: 2px; }
 
 @keyframes shimmer { 100% { transform: translateX(200%); } }
 @keyframes fade-up { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
-/* A newly added cart row flashes green once, so the cashier sees the item went in. */
-@keyframes row-in { from { background-color: #dcfce7; } to { background-color: transparent; } }
+/* A newly added cart row flashes the accent once, so the cashier sees the item went in. */
+@keyframes row-in { from { background-color: color-mix(in oklch, var(--primary) 18%, transparent); } to { background-color: transparent; } }
 
-/* A hard floor under every animation for reduced-motion users; components also guard in JS. */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
 }
@@ -50,17 +117,16 @@ body { background-color: #f8fafc; color: #1e293b; }
 }
 
 @layer components {
-  .btn-primary { @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 font-medium text-sm border shadow-sm transition-all duration-150 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100 bg-blue-700 text-white border-blue-700 hover:bg-blue-800 hover:shadow; }
-  .btn-secondary { @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 font-medium text-sm border shadow-sm transition-all duration-150 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100 bg-white text-slate-700 border-slate-300 hover:bg-slate-50 hover:border-slate-400; }
-  .btn-ghost { @apply inline-flex items-center justify-center gap-2 rounded-lg px-3 py-2 font-medium text-sm transition-colors duration-150 text-slate-600 hover:bg-slate-100 hover:text-slate-900 disabled:opacity-50 disabled:cursor-not-allowed; }
-  .input { @apply w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm transition-colors placeholder:text-slate-400 hover:border-slate-400 focus:border-blue-600 focus:ring-2 focus:ring-blue-600/15; }
-  .select { @apply w-full appearance-none rounded-lg border border-slate-300 bg-white bg-no-repeat px-3 py-2 pr-9 text-sm transition-colors hover:border-slate-400 focus:border-blue-600 focus:ring-2 focus:ring-blue-600/15; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E"); background-position: right 0.6rem center; }
-  .label { @apply block text-sm font-medium text-slate-700 mb-1; }
-  .card { @apply rounded-xl border border-slate-200 bg-white p-5 shadow-sm; }
-  .err { @apply text-sm text-red-700 mt-2; }
-  /* A consistent data table: sticky zinc header, hairline rows, hover highlight, tabular figures. */
+  .btn-primary { @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 font-medium text-sm border border-transparent shadow-sm transition-all duration-150 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100 bg-primary text-primary-foreground hover:brightness-110 hover:shadow; }
+  .btn-secondary { @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 font-medium text-sm border border-border shadow-sm transition-all duration-150 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100 bg-card text-foreground hover:bg-muted; }
+  .btn-ghost { @apply inline-flex items-center justify-center gap-2 rounded-lg px-3 py-2 font-medium text-sm transition-colors duration-150 text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-50 disabled:cursor-not-allowed; }
+  .input { @apply w-full rounded-lg border border-input bg-card text-foreground px-3 py-2 text-sm transition-colors placeholder:text-muted-foreground hover:border-ring/60 focus:border-ring focus:ring-2 focus:ring-ring/20; }
+  .select { @apply w-full appearance-none rounded-lg border border-input bg-card text-foreground bg-no-repeat px-3 py-2 pr-9 text-sm transition-colors hover:border-ring/60 focus:border-ring focus:ring-2 focus:ring-ring/20; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E"); background-position: right 0.6rem center; }
+  .label { @apply block text-sm font-medium text-foreground mb-1; }
+  .card { @apply rounded-xl border border-border bg-card text-card-foreground p-5 shadow-sm; }
+  .err { @apply text-sm text-destructive mt-2; }
   .table-modern { @apply w-full border-collapse text-sm; }
-  .table-modern thead th { @apply sticky top-0 z-10 bg-slate-50/95 px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 backdrop-blur; }
-  .table-modern tbody td { @apply border-t border-slate-100 px-3 py-2.5 align-middle; }
-  .table-modern tbody tr { @apply transition-colors hover:bg-blue-50/40; }
+  .table-modern thead th { @apply sticky top-0 z-10 bg-muted/90 px-3 py-2.5 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground backdrop-blur; }
+  .table-modern tbody td { @apply border-t border-border px-3 py-2.5 align-middle; }
+  .table-modern tbody tr { @apply transition-colors hover:bg-muted/50; }
 }

@@ -5,6 +5,7 @@ import { ADJUSTMENT_REASONS, type ProductHit } from '@muneem/contracts';
 import { api, errorMessage } from '../../api.js';
 import ProductPicker from '../../components/ProductPicker.js';
 import { parseOptional, scaledToText } from '../../lib/money.js';
+import { SlidersHorizontal, Check, X } from 'lucide-react';
 
 type Reason = (typeof ADJUSTMENT_REASONS)[number];
 interface Row { productId: string; name: string; uomCode: string; stockMilli: number; direction: 'out' | 'in'; qty: string; reason: Reason }
@@ -35,11 +36,11 @@ export default function AdjustStock() {
   }
 
   return (
-    <form onSubmit={submit} className="max-w-4xl space-y-4">
-      <div className="flex items-center justify-between"><h1 className="text-2xl font-semibold">Adjust stock</h1><Link to="/inventory" className="btn-secondary">Cancel</Link></div>
+    <form onSubmit={submit} className="max-w-6xl space-y-4">
+      <div className="flex items-center justify-between"><h1 className="flex items-center gap-2 text-2xl font-semibold"><SlidersHorizontal size={22} className="text-primary" aria-hidden />Adjust stock</h1><Link to="/inventory" className="btn-secondary"><X size={16} aria-hidden />Cancel</Link></div>
       <div className="card"><ProductPicker id="adj-product" label="Add a product" onPick={add} /></div>
       {rows.length > 0 && (
-        <table className="table-modern rounded-lg border bg-white">
+        <table className="table-modern rounded-lg border border-border bg-card">
           <thead><tr><th>Product</th><th>In stock</th><th>Change</th><th>Quantity</th><th>Reason</th><th /></tr></thead>
           <tbody>
             {rows.map((r, i) => (
@@ -65,7 +66,7 @@ export default function AdjustStock() {
       )}
       <div><label className="label" htmlFor="adj-note">Note (optional)</label><input id="adj-note" className="input" maxLength={200} value={note} onChange={(e) => setNote(e.target.value)} /></div>
       {error && <p className="err" role="alert">{error}</p>}
-      <button type="submit" className="btn-primary" disabled={rows.length === 0}>Post adjustment</button>
+      <button type="submit" className="btn-primary" disabled={rows.length === 0}><Check size={16} aria-hidden />Post adjustment</button>
     </form>
   );
 }

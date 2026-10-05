@@ -5,6 +5,7 @@ import { IMPORT_FIELDS, IMPORT_MAX_ROWS, type ImportField, type ImportMapping, t
 import { newUlid } from '@muneem/domain';
 import { api, errorMessage } from '../api.js';
 import { fileToBase64 } from '../lib/fileToBase64.js';
+import { Upload, ArrowLeft } from 'lucide-react';
 
 const FIELD_LABELS: Record<ImportField, string> = {
   name: 'Name', sku: 'SKU / item code', barcodes: 'Barcode(s)', hsnCode: 'HSN / SAC', category: 'Category', brand: 'Brand',
@@ -31,10 +32,10 @@ export default function ImportProducts() {
   });
 
   return (
-    <div className="max-w-5xl space-y-4">
+    <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">Import products</h1>
-        <Link to="/products" className="btn-secondary">Back to products</Link>
+        <h1 className="flex items-center gap-2 text-2xl font-semibold"><Upload size={22} className="text-primary" aria-hidden />Import products</h1>
+        <Link to="/products" className="btn-secondary"><ArrowLeft size={16} aria-hidden />Back to products</Link>
       </div>
       {error && <p className="err" role="alert">{error}</p>}
       {summary ? <Summary summary={summary} />
@@ -47,13 +48,13 @@ export default function ImportProducts() {
 function Choose({ busy, onFile }: { busy: boolean; onFile: (f: File) => void }) {
   return (
     <div className="card space-y-3">
-      <p className="text-sm text-slate-700">Choose a CSV or Excel (.xlsx) file with one product per row and a header row. Columns such as
+      <p className="text-sm text-muted-foreground">Choose a CSV or Excel (.xlsx) file with one product per row and a header row. Columns such as
         "Item Name", "Barcode", "MRP", "Sale Price" and "GST %" are recognised automatically; you can change the matching on the next step.
         Several barcodes go in one cell separated by <code>;</code>. Up to {IMPORT_MAX_ROWS.toLocaleString('en-IN')} rows or 10 MB.</p>
       <label className="label" htmlFor="import-file">File</label>
       <input id="import-file" type="file" accept=".csv,.xlsx,text/csv" disabled={busy}
         onChange={(e) => { const f = e.target.files?.[0]; if (f) onFile(f); }} />
-      {busy && <p className="text-sm text-slate-500" role="status">Reading the file…</p>}
+      {busy && <p className="text-sm text-muted-foreground" role="status">Reading the file…</p>}
     </div>
   );
 }
@@ -93,12 +94,12 @@ function Review({ preview, busy, policy, onPolicy, onRemap, onCommit, onRestart 
         <h2 className="font-semibold">Check</h2>
         <ul className="grid grid-cols-4 gap-3 text-sm">
           <li><span className="block text-2xl font-semibold">{counts.total}</span>rows</li>
-          <li><span className="block text-2xl font-semibold text-green-700">{counts.ok}</span>ready</li>
-          <li><span className="block text-2xl font-semibold text-amber-700">{counts.duplicates}</span>already exist</li>
-          <li><span className="block text-2xl font-semibold text-red-700">{counts.errors}</span>have errors (skipped)</li>
+          <li><span className="block text-2xl font-semibold text-green-700 dark:text-green-400">{counts.ok}</span>ready</li>
+          <li><span className="block text-2xl font-semibold text-amber-700 dark:text-amber-300">{counts.duplicates}</span>already exist</li>
+          <li><span className="block text-2xl font-semibold text-destructive">{counts.errors}</span>have errors (skipped)</li>
         </ul>
         {(willCreate.categories.length + willCreate.brands.length + willCreate.uoms.length > 0) && (
-          <p className="text-sm text-slate-700">Will also create —
+          <p className="text-sm text-muted-foreground">Will also create —
             {willCreate.categories.length > 0 && <> categories: {willCreate.categories.join(', ')}.</>}
             {willCreate.brands.length > 0 && <> brands: {willCreate.brands.join(', ')}.</>}
             {willCreate.uoms.length > 0 && <> units: {willCreate.uoms.join(', ')}.</>}
@@ -109,7 +110,7 @@ function Review({ preview, busy, policy, onPolicy, onRemap, onCommit, onRestart 
             <legend className="label">Products that already exist (same SKU or barcode)</legend>
             <label className="flex items-center gap-2 text-sm"><input type="radio" name="dup" checked={policy === 'skip'} onChange={() => onPolicy('skip')} /> Leave them as they are</label>
             <label className="flex items-center gap-2 text-sm"><input type="radio" name="dup" checked={policy === 'update'} onChange={() => onPolicy('update')} /> Update them with the columns in this file</label>
-            {notUpdatable > 0 && <p className="text-sm text-amber-800 mt-1">{notUpdatable} of them can't be updated with this file (see the rows below) and will be left as they are.</p>}
+            {notUpdatable > 0 && <p className="text-sm text-amber-800 dark:text-amber-300 mt-1">{notUpdatable} of them can't be updated with this file (see the rows below) and will be left as they are.</p>}
           </fieldset>
         )}
         <RowTable preview={preview} />
@@ -137,13 +138,13 @@ function RowTable({ preview }: { preview: ImportPreview }) {
               <td className="tabular-nums">{r.line}</td>
               <td>{r.name ?? ''}</td>
               <td className="font-mono text-xs">{r.sku ?? ''}</td>
-              <td className={r.status === 'error' ? 'text-red-700' : r.status === 'duplicate' ? 'text-amber-700' : 'text-green-700'}>{r.status === 'ok' ? 'Ready' : r.status === 'duplicate' ? 'Exists' : 'Error'}</td>
+              <td className={r.status === 'error' ? 'text-destructive' : r.status === 'duplicate' ? 'text-amber-700 dark:text-amber-300' : 'text-green-700 dark:text-green-400'}>{r.status === 'ok' ? 'Ready' : r.status === 'duplicate' ? 'Exists' : 'Error'}</td>
               <td>{Object.entries(r.errors).map(([f, m]) => `${FIELD_LABELS[f as ImportField] ?? f}: ${m}`).join('; ')}</td>
             </tr>
           ))}
         </tbody>
       </table>
-      {hidden > 0 && <p className="text-xs text-slate-500">…and {hidden} more rows not shown.</p>}
+      {hidden > 0 && <p className="text-xs text-muted-foreground">…and {hidden} more rows not shown.</p>}
     </>
   );
 }
@@ -153,9 +154,9 @@ function Summary({ summary }: { summary: ImportSummary }) {
     <div className="card space-y-2" role="status">
       <h2 className="font-semibold">Import finished</h2>
       <p className="text-sm">{summary.created} products added, {summary.updated} updated, {summary.skippedDuplicates} existing left unchanged, {summary.skippedErrors} rows skipped because of errors.</p>
-      <p className="text-sm text-slate-600">Also created {summary.categoriesCreated} categories, {summary.brandsCreated} brands and {summary.uomsCreated} units.</p>
+      <p className="text-sm text-muted-foreground">Also created {summary.categoriesCreated} categories, {summary.brandsCreated} brands and {summary.uomsCreated} units.</p>
       {summary.skippedAtCommit.length > 0 && (
-        <ul className="text-sm text-amber-800 list-disc pl-5">
+        <ul className="text-sm text-amber-800 dark:text-amber-300 list-disc pl-5">
           {summary.skippedAtCommit.map((s) => <li key={s.line}>Row {s.line}: {s.reason}</li>)}
         </ul>
       )}

@@ -9,6 +9,7 @@ import { AGEING_COLUMNS } from '../../lib/parties/forms.js';
 import { useCan } from '../../lib/permissions.js';
 import { CreditLimitDialog, CustomerEditDialog, OpeningDialog, SupplierDialog, WriteOffDialog } from './PartyDialogs.js';
 import CustomerPrivacy from './CustomerPrivacy.js';
+import { User } from 'lucide-react';
 
 type Modal = 'edit' | 'opening' | 'limit' | 'writeOff' | null;
 const REF_LABEL: Record<string, string> = { sale: 'Sale', purchase: 'Purchase', debit_note: 'Debit note', credit_note: 'Credit note', payment: 'Payment', write_off: 'Write-off', opening: 'Opening balance', expense: 'Expense' };
@@ -45,11 +46,11 @@ export default function PartyPage() {
   if (party.error) return <p className="err" role="alert">{errorMessage(party.error)}</p>;
   if (!p) return <p>Loading…</p>;
   return (
-    <div className="max-w-6xl space-y-4">
+    <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold">{p.name}</h1>
-          <p className="text-sm text-slate-600">{partyType === 'customer' ? 'Customer' : 'Supplier'}{p.gstin && ` · ${p.gstin}`} · {p.creditDays} credit days
+          <h1 className="flex items-center gap-2 text-2xl font-semibold"><User size={22} className="text-primary" aria-hidden />{p.name}</h1>
+          <p className="text-sm text-muted-foreground">{partyType === 'customer' ? 'Customer' : 'Supplier'}{p.gstin && ` · ${p.gstin}`} · {p.creditDays} credit days
             {'creditLimitPaise' in p && ` · limit ${p.creditLimitPaise === null ? 'not set' : formatPaise(p.creditLimitPaise)}`}</p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -63,7 +64,7 @@ export default function PartyPage() {
       {error && <p className="err" role="alert">{error}</p>}
       {row && (
         <div className="card grid grid-cols-7 gap-2 text-sm">
-          {AGEING_COLUMNS.map(([k, label]) => <div key={k}><p className="text-xs text-slate-500">{label}</p><p className="font-semibold tabular-nums">{formatPaise(row[k])}</p></div>)}
+          {AGEING_COLUMNS.map(([k, label]) => <div key={k}><p className="text-xs text-muted-foreground">{label}</p><p className="font-semibold tabular-nums">{formatPaise(row[k])}</p></div>)}
         </div>
       )}
       {canPay && open.data && open.data.credits.length > 0 && open.data.charges.length > 0 && (
@@ -82,14 +83,14 @@ export default function PartyPage() {
         <div><label className="label" htmlFor="st-from">From</label><DatePicker id="st-from" value={range.from} onChange={(v) => setRange({ ...range, from: v })} /></div>
         <div><label className="label" htmlFor="st-to">To</label><DatePicker id="st-to" value={range.to} onChange={(v) => setRange({ ...range, to: v })} /></div>
       </div>
-      <table className="table-modern rounded-lg border bg-white">
+      <table className="table-modern rounded-lg border border-border bg-card">
         <thead><tr><th>Date</th><th>Document</th><th>Due</th><th className="text-right">Amount</th><th className="text-right">Balance</th></tr></thead>
         <tbody>
-          {first && range.from && <tr className="text-slate-600"><td colSpan={4}>Opening balance</td><td className="text-right tabular-nums">{formatPaise(first.openingBalancePaise)}</td></tr>}
+          {first && range.from && <tr className="text-muted-foreground"><td colSpan={4}>Opening balance</td><td className="text-right tabular-nums">{formatPaise(first.openingBalancePaise)}</td></tr>}
           {lines.map((l) => (
             <tr key={l.id}>
               <td>{l.docDate}</td>
-              <td>{REF_LABEL[l.refType] ?? l.refType} {l.docNumber ?? ''}{l.kind === 'cancel' && <span className="text-amber-700"> (cancelled)</span>}</td>
+              <td>{REF_LABEL[l.refType] ?? l.refType} {l.docNumber ?? ''}{l.kind === 'cancel' && <span className="text-amber-700 dark:text-amber-300"> (cancelled)</span>}</td>
               <td>{l.dueDate ?? ''}</td>
               <td className="text-right tabular-nums">{formatPaise(l.amountPaise)}</td>
               <td className="text-right tabular-nums">{formatPaise(l.balancePaise)}</td>

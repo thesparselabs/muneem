@@ -7,6 +7,7 @@ import { useCan } from '../../lib/permissions.js';
 import { EMPTY_CHALLAN, HEAD_LABELS, monthLabel, parseChallan, previousMonth, recentMonths, type ChallanText } from '../../lib/gst/gstForm.js';
 import GstNav from './GstNav.js';
 import DatePicker from '../../components/DatePicker.js';
+import { Landmark, Check } from 'lucide-react';
 
 // GST → Payments: a challan paid from the bank clears GST Payable (ADR-0044).
 export default function GstPayments() {
@@ -34,8 +35,8 @@ export default function GstPayments() {
     } catch (err) { setMessage(errorMessage(err)); }
   }
   return (
-    <div className="max-w-5xl space-y-4">
-      <h1 className="text-2xl font-semibold">GST payments</h1>
+    <div className="space-y-4">
+      <h1 className="flex items-center gap-2 text-2xl font-semibold"><Landmark size={22} className="text-primary" aria-hidden />GST payments</h1>
       <GstNav />
       <p className="text-sm">GST payable (2300): <span className="font-semibold tabular-nums">{formatPaise(ledger.data?.payablePaise)}</span></p>
       {canRecord && (
@@ -51,11 +52,11 @@ export default function GstPayments() {
             <div key={k}><label className="label" htmlFor={`gp-${k}`}>{label} (₹)</label>
               <input id={`gp-${k}`} className="input" inputMode="decimal" value={amounts[k]} onChange={(e) => setAmounts({ ...amounts, [k]: e.target.value })} /></div>
           ))}
-          <div className="col-span-4"><button type="submit" className="btn-primary">Record payment</button></div>
+          <div className="col-span-4"><button type="submit" className="btn-primary"><Check size={16} aria-hidden />Record payment</button></div>
         </form>
       )}
       {message && <p className="text-sm" role="status">{message}</p>}
-      <table className="table-modern rounded-lg border bg-white">
+      <table className="table-modern rounded-lg border border-border bg-card">
         <thead><tr><th>Number</th><th>Date</th><th>Challan</th><th>Return</th>
           <th className="text-right">Total</th></tr></thead>
         <tbody>{ledger.data?.payments.map((p) => (

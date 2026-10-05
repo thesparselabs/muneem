@@ -25,8 +25,8 @@ export default function HoldToDelete({ onConfirm, label = 'Hold to delete', clas
       onPointerDown={begin} onPointerUp={stop} onPointerLeave={stop}
       onKeyDown={(e) => { if ((e.key === 'Enter' || e.key === ' ') && !e.repeat) { e.preventDefault(); begin(); } }}
       onKeyUp={(e) => { if (e.key === 'Enter' || e.key === ' ') stop(); }}
-      className={cn('relative overflow-hidden rounded-md border border-red-300 px-4 py-2 text-sm font-medium text-red-700 disabled:opacity-50', className)}>
-      <span className="absolute inset-y-0 left-0 bg-red-100" style={{ width: `${progress * 100}%` }} aria-hidden />
+      className={cn('relative overflow-hidden rounded-md border border-red-300 px-4 py-2 text-sm font-medium text-destructive disabled:opacity-50', className)}>
+      <span className="absolute inset-y-0 left-0 bg-red-100 dark:bg-red-500/20" style={{ width: `${progress * 100}%` }} aria-hidden />
       <span className="relative inline-flex items-center gap-1.5"><Trash2 size={14} aria-hidden /> {label}</span>
     </button>
   );

@@ -46,6 +46,9 @@ import ReviewItems from './routes/settings/ReviewItems.js';
 import Reports from './routes/reports/Reports.js';
 import Updates from './routes/settings/Updates.js';
 import Notifications from './routes/Notifications.js';
+import { TourProvider } from './components/tour/TourProvider.js';
+import TourOverlay from './components/tour/TourOverlay.js';
+import TourHelpButton from './components/tour/TourHelpButton.js';
 
 export default function App() {
   const { session, setSession, setSync, setOnline } = useUi();
@@ -67,7 +70,10 @@ export default function App() {
   if (session && !session.businessId && loc.pathname !== '/setup') return <Navigate to="/setup" replace />;
   if (session && session.businessId && !session.terminalId && loc.pathname !== '/setup') return <Navigate to="/setup" replace />;
 
+  const inApp = !['/login', '/switch', '/setup'].includes(loc.pathname);
+
   return (
+    <TourProvider>
     <Routes>
       <Route path="/login" element={<Login />} />
       <Route path="/switch" element={<SwitchUser />} />
@@ -117,5 +123,8 @@ export default function App() {
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
+    {inApp && <TourOverlay />}
+    {inApp && <TourHelpButton />}
+    </TourProvider>
   );
 }

@@ -7,7 +7,7 @@ import { cloudLabel, healthSummary, KIND_LABEL, size } from '../../lib/backups.j
 import { useCan } from '../../lib/permissions.js';
 import { useNow } from '../../lib/useNow.js';
 
-const TONE = { ok: 'text-emerald-700', warn: 'text-amber-700', error: 'text-red-700' } as const;
+const TONE = { ok: 'text-emerald-700 dark:text-green-400', warn: 'text-amber-700 dark:text-amber-300', error: 'text-destructive' } as const;
 const when = (iso: string) => new Date(iso).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' });
 
 interface Pending { ref: BackupRef; label: string }
@@ -60,29 +60,29 @@ export default function BackupsPanel() {
       {data && (
         <>
           <section>
-            <h3 className="mb-1 text-sm text-slate-600">On this device</h3>
+            <h3 className="mb-1 text-sm text-muted-foreground">On this device</h3>
             <table className="w-full text-sm"><tbody>
               {data.local.map((b) => (
-                <tr key={b.id} className="border-t">
+                <tr key={b.id} className="border-t border-border">
                   <td className="py-1">{when(b.createdAt)}</td><td className="py-1">{KIND_LABEL[b.kind]}</td><td className="py-1 tabular-nums">{size(b.bytes)}</td>
                   <td className="py-1">{b.encrypted ? cloudLabel(b) : 'Unencrypted copy'}</td>
                   {actions({ source: 'local', id: b.id }, `the ${KIND_LABEL[b.kind].toLowerCase()} backup of ${when(b.createdAt)}`)}
                 </tr>
               ))}
-              {data.local.length === 0 && <tr><td className="py-1 text-slate-500">No backups on this device yet.</td></tr>}
+              {data.local.length === 0 && <tr><td className="py-1 text-muted-foreground">No backups on this device yet.</td></tr>}
             </tbody></table>
           </section>
           <section>
-            <h3 className="mb-1 text-sm text-slate-600">In the cloud</h3>
-            {data.cloudError && <p className="text-sm text-amber-700">Cloud backups could not be listed: {data.cloudError}</p>}
+            <h3 className="mb-1 text-sm text-muted-foreground">In the cloud</h3>
+            {data.cloudError && <p className="text-sm text-amber-700 dark:text-amber-300">Cloud backups could not be listed: {data.cloudError}</p>}
             <table className="w-full text-sm"><tbody>
               {data.cloud.map((b) => (
-                <tr key={b.backupId} className="border-t">
+                <tr key={b.backupId} className="border-t border-border">
                   <td className="py-1">{when(b.createdAt)}</td><td className="py-1 tabular-nums">{size(b.bytes)}</td><td className="py-1 font-mono text-xs">{b.deviceId.slice(-6)}</td>
                   {actions({ source: 'cloud', id: b.backupId }, `the cloud backup of ${when(b.createdAt)}`)}
                 </tr>
               ))}
-              {data.cloud.length === 0 && !data.cloudError && <tr><td className="py-1 text-slate-500">No cloud backups yet.</td></tr>}
+              {data.cloud.length === 0 && !data.cloudError && <tr><td className="py-1 text-muted-foreground">No cloud backups yet.</td></tr>}
             </tbody></table>
           </section>
         </>
@@ -90,7 +90,7 @@ export default function BackupsPanel() {
       {confirming && (
         <Dialog title="Restore this backup?" onClose={() => setConfirming(null)}>
           <p className="text-sm">The database on this device will be replaced by {confirming.label}. A safety backup of the current database is made first, then Muneem restarts.</p>
-          <p className="text-sm mt-2 text-slate-600">Anything this device synced after that backup comes back from the cloud. Anything made after it and never synced is only in the safety backup.</p>
+          <p className="text-sm mt-2 text-muted-foreground">Anything this device synced after that backup comes back from the cloud. Anything made after it and never synced is only in the safety backup.</p>
           <div className="flex justify-end gap-2 mt-4">
             <button type="button" className="btn-secondary" onClick={() => setConfirming(null)}>Cancel</button>
             <button type="button" className="btn-primary" disabled={restore.isPending} onClick={() => restore.mutate(confirming.ref)}>{restore.isPending ? 'Restoring…' : 'Restore and restart'}</button>

@@ -11,6 +11,7 @@ import { useUi } from '../store.js';
 import Field from '../components/Field.js';
 import { GST_STATES } from '../states.js';
 import SetupAddDevice from './SetupAddDevice.js';
+import { ArrowRight, Check } from 'lucide-react';
 
 type Step = 1 | 2 | 3;
 
@@ -38,8 +39,8 @@ export default function Setup() {
       <div className="card w-[720px]">
         <ol className="flex gap-6 text-sm mb-6" aria-label="Setup progress">
           {(['Business', 'Branch', 'Terminal'] as const).map((t, i) => (
-            <li key={t} className={`flex items-center gap-2 ${step === i + 1 ? 'font-semibold text-blue-700' : step > i + 1 ? 'text-green-700' : 'text-slate-400'}`} aria-current={step === i + 1 ? 'step' : undefined}>
-              <span className="w-6 h-6 rounded-full border grid place-items-center text-xs">{step > i + 1 ? '✓' : i + 1}</span>{t}
+            <li key={t} className={`flex items-center gap-2 ${step === i + 1 ? 'font-semibold text-primary' : step > i + 1 ? 'text-green-700 dark:text-green-400' : 'text-muted-foreground'}`} aria-current={step === i + 1 ? 'step' : undefined}>
+              <span className="w-6 h-6 rounded-full border border-border grid place-items-center text-xs">{step > i + 1 ? '✓' : i + 1}</span>{t}
             </li>
           ))}
         </ol>
@@ -99,7 +100,7 @@ function BusinessForm({ onSubmit, busy }: { onSubmit: (v: BusinessInputT) => voi
         <Field label="GSTIN" htmlFor="gstin" hint="15 characters, e.g. 07AAAAA0000A1Z5"><input id="gstin" className="input uppercase" value={f.gstin} onChange={set('gstin')} maxLength={15} />{err.gstin && <p className="err">{err.gstin}</p>}</Field>
       )}
       <Field label="PAN (optional)" htmlFor="pan"><input id="pan" className="input uppercase" value={f.pan} onChange={set('pan')} maxLength={10} />{err.pan && <p className="err">{err.pan}</p>}</Field>
-      <div className="col-span-2 flex justify-end"><button type="submit" className="btn-primary" disabled={busy}>Save and continue</button></div>
+      <div className="col-span-2 flex justify-end"><button type="submit" className="btn-primary" disabled={busy}><ArrowRight size={16} aria-hidden />Save and continue</button></div>
     </form>
   );
 }
@@ -122,7 +123,7 @@ function BranchForm({ onSubmit, busy, businessState, gstin }: { onSubmit: (v: Br
       <Field label="Address" htmlFor="addr"><input id="addr" className="input" value={f.addressLine1} onChange={set('addressLine1')} /></Field>
       <Field label="City" htmlFor="bcity"><input id="bcity" className="input" value={f.city} onChange={set('city')} /></Field>
       <Field label="State" htmlFor="bstate"><select id="bstate" className="input" value={f.stateCode} onChange={set('stateCode')}>{GST_STATES.map(([c, n]) => <option key={c} value={c}>{c} · {n}</option>)}</select></Field>
-      <div className="col-span-2 flex justify-end"><button type="submit" className="btn-primary" disabled={busy}>Save and continue</button></div>
+      <div className="col-span-2 flex justify-end"><button type="submit" className="btn-primary" disabled={busy}><ArrowRight size={16} aria-hidden />Save and continue</button></div>
     </form>
   );
 }
@@ -141,11 +142,11 @@ function TerminalForm({ branchId, existing, onCreate, onSelect, busy }: { branch
       <h2 className="text-lg font-semibold">This computer’s till (terminal)</h2>
       {existing.length > 0 && (
         <div>
-          <p className="text-sm text-slate-600 mb-2">Use an existing terminal on this computer:</p>
-          <ul className="divide-y border rounded-md">
+          <p className="text-sm text-muted-foreground mb-2">Use an existing terminal on this computer:</p>
+          <ul className="divide-y border border-border rounded-md">
             {existing.map((t) => (
               <li key={t.id} className="flex items-center justify-between px-3 py-2 text-sm">
-                <span><b>{t.code}</b> · {t.name} · invoices {t.invoicePrefix}/…{t.deviceId && <span className="ml-2 text-xs text-slate-500">(bound to a device)</span>}</span>
+                <span><b>{t.code}</b> · {t.name} · invoices {t.invoicePrefix}/…{t.deviceId && <span className="ml-2 text-xs text-muted-foreground">(bound to a device)</span>}</span>
                 <button type="button" className="btn-secondary" disabled={busy} onClick={() => onSelect(t.id)}>Use this terminal</button>
               </li>
             ))}
@@ -153,13 +154,13 @@ function TerminalForm({ branchId, existing, onCreate, onSelect, busy }: { branch
         </div>
       )}
       <form onSubmit={submit} className="grid grid-cols-2 gap-4">
-        <p className="col-span-2 text-sm text-slate-600">Or create a new one. Each terminal keeps its own invoice series, so two tills never clash — even offline.</p>
+        <p className="col-span-2 text-sm text-muted-foreground">Or create a new one. Each terminal keeps its own invoice series, so two tills never clash — even offline.</p>
         <Field label="Terminal code" htmlFor="tcode"><input id="tcode" className="input uppercase" value={f.code} onChange={(e) => setF({ ...f, code: e.target.value })} required autoFocus />{err.code && <p className="err">{err.code}</p>}</Field>
         <Field label="Terminal name" htmlFor="tname"><input id="tname" className="input" value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} required /></Field>
         <Field label="Invoice prefix (optional)" htmlFor="tprefix" hint="1–4 letters or digits, e.g. D1. Bills are numbered D1/2627/000001. Leave empty to have one suggested.">
           <input id="tprefix" className="input uppercase" maxLength={4} value={f.invoicePrefix} onChange={(e) => setF({ ...f, invoicePrefix: e.target.value })} />{err.invoicePrefix && <p className="err">{err.invoicePrefix}</p>}
         </Field>
-        <div className="col-span-2 flex justify-end"><button type="submit" className="btn-primary" disabled={busy}>Create terminal</button></div>
+        <div className="col-span-2 flex justify-end"><button type="submit" className="btn-primary" disabled={busy}><Check size={16} aria-hidden />Create terminal</button></div>
       </form>
     </div>
   );

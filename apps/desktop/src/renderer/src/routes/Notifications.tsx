@@ -6,8 +6,9 @@ import { api, errorMessage } from '../api.js';
 import { groupBySeverity, kindLabel } from '../lib/notifications.js';
 import { ago } from '../lib/sync/status.js';
 import { useNow } from '../lib/useNow.js';
+import { Bell, CheckCheck, CheckCircle2, ExternalLink } from 'lucide-react';
 
-const BORDER: Record<NotificationSeverity, string> = { critical: 'border-l-red-600', warning: 'border-l-amber-500', info: 'border-l-blue-500' };
+const BORDER: Record<NotificationSeverity, string> = { critical: 'border-l-red-600', warning: 'border-l-amber-500', info: 'border-l-primary' };
 
 export default function Notifications() {
   const [status, setStatus] = useState<'open' | 'all'>('open');
@@ -30,38 +31,38 @@ export default function Notifications() {
   });
   const items = list.data?.pages.flatMap((p) => p.items) ?? [];
   return (
-    <div className="max-w-4xl space-y-4">
+    <div className="max-w-6xl space-y-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">Notifications</h1>
+        <h1 className="flex items-center gap-2 text-2xl font-semibold"><Bell size={22} className="text-primary" aria-hidden />Notifications</h1>
         <div className="flex gap-2">
-          <div role="tablist" aria-label="Which notifications" className="flex rounded border bg-white text-sm">
+          <div role="tablist" aria-label="Which notifications" className="flex rounded border border-border bg-card text-sm">
             {(['open', 'all'] as const).map((s) => (
-              <button key={s} type="button" role="tab" aria-selected={status === s} className={`px-3 py-1 ${status === s ? 'bg-blue-50 font-medium text-blue-800' : ''}`} onClick={() => setStatus(s)}>
+              <button key={s} type="button" role="tab" aria-selected={status === s} className={`px-3 py-1 ${status === s ? 'bg-accent font-medium text-primary' : ''}`} onClick={() => setStatus(s)}>
                 {s === 'open' ? 'Open' : 'All, with resolved'}
               </button>
             ))}
           </div>
-          <button type="button" className="btn-secondary py-1" onClick={() => void act(() => api.notifications.markRead({}))}>Mark all read</button>
+          <button type="button" className="btn-secondary gap-1.5 py-1" onClick={() => void act(() => api.notifications.markRead({}))}><CheckCheck size={14} aria-hidden />Mark all read</button>
         </div>
       </div>
       {error && <p className="err" role="alert">{error}</p>}
       {list.error && <p className="err" role="alert">{errorMessage(list.error)}</p>}
-      {list.data && items.length === 0 && <p className="text-slate-500">Nothing needs your attention.</p>}
+      {list.data && items.length === 0 && <p className="card flex items-center gap-2 text-muted-foreground"><CheckCircle2 size={18} className="text-green-700 dark:text-green-400" aria-hidden />Nothing needs your attention.</p>}
       {groupBySeverity(items).map((g) => (
         <section key={g.severity} aria-labelledby={`sev-${g.severity}`} className="space-y-2">
-          <h2 id={`sev-${g.severity}`} className="text-sm font-semibold uppercase tracking-wide text-slate-600">{g.label} ({g.items.length})</h2>
+          <h2 id={`sev-${g.severity}`} className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">{g.label} ({g.items.length})</h2>
           <ul className="space-y-2">
             {g.items.map((n) => (
               <li key={n.id} className={`card border-l-4 ${BORDER[n.severity]} ${n.readAt || n.resolvedAt ? 'opacity-75' : ''}`}>
                 <div className="flex items-start justify-between gap-4">
                   <div>
-                    <p className="text-xs text-slate-500">{kindLabel(n.kind)} · {ago(n.updatedAt, now)}{n.resolvedAt && ' · resolved'}{n.dismissedAt && !n.resolvedAt && ' · dismissed'}</p>
+                    <p className="text-xs text-muted-foreground">{kindLabel(n.kind)} · {ago(n.updatedAt, now)}{n.resolvedAt && ' · resolved'}{n.dismissedAt && !n.resolvedAt && ' · dismissed'}</p>
                     <p className={n.readAt ? '' : 'font-semibold'}>{n.title}</p>
-                    <p className="text-sm text-slate-700">{n.body}</p>
+                    <p className="text-sm text-muted-foreground">{n.body}</p>
                   </div>
                   {!n.resolvedAt && (
                     <div className="flex shrink-0 gap-2 text-sm">
-                      {n.link && <button type="button" className="btn-primary py-1" onClick={() => void open(n)}>Open</button>}
+                      {n.link && <button type="button" className="btn-primary gap-1.5 py-1" onClick={() => void open(n)}><ExternalLink size={14} aria-hidden />Open</button>}
                       {!n.readAt && <button type="button" className="btn-secondary py-1" onClick={() => void act(() => api.notifications.markRead({ ids: [n.id] }))}>Mark read</button>}
                       {!n.dismissedAt && <button type="button" className="btn-secondary py-1" onClick={() => void act(() => api.notifications.dismiss({ ids: [n.id] }))}>Dismiss</button>}
                     </div>

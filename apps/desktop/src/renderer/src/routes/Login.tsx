@@ -37,15 +37,15 @@ export default function Login() {
   }
 
   return (
-    <main className="relative grid min-h-screen place-items-center overflow-hidden bg-gradient-to-br from-slate-50 via-white to-blue-50 p-6">
-      <div aria-hidden className="pointer-events-none absolute -top-24 -right-24 h-80 w-80 rounded-full bg-blue-200/30 blur-3xl" />
-      <div aria-hidden className="pointer-events-none absolute -bottom-24 -left-24 h-80 w-80 rounded-full bg-indigo-200/30 blur-3xl" />
+    <main className="relative grid min-h-screen place-items-center overflow-hidden bg-gradient-to-br from-background via-card to-accent p-6">
+      <div aria-hidden className="pointer-events-none absolute -top-24 -right-24 h-80 w-80 rounded-full bg-primary/20 blur-3xl" />
+      <div aria-hidden className="pointer-events-none absolute -bottom-24 -left-24 h-80 w-80 rounded-full bg-accent/40 blur-3xl" />
       <form onSubmit={submit} aria-labelledby="login-title"
-        className={`relative w-[420px] max-w-full rounded-2xl border border-slate-200 bg-white/90 p-8 shadow-xl backdrop-blur ${reduce ? '' : 'animate-[fade-up_0.4s_ease-out]'}`}>
+        className={`relative w-[420px] max-w-full rounded-2xl border border-border bg-card/90 p-8 shadow-xl backdrop-blur ${reduce ? '' : 'animate-[fade-up_0.4s_ease-out]'}`}>
         <div className="mb-6 flex flex-col items-center text-center">
           <Logo size={52} wordmark={false} />
           <h1 id="login-title" className="mt-3 text-2xl font-semibold tracking-tight">Muneem</h1>
-          <span className={`mt-2 inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ${online ? 'bg-green-50 text-green-700' : 'bg-amber-50 text-amber-700'}`}>
+          <span className={`mt-2 inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ${online ? 'bg-green-50 dark:bg-green-500/20 text-green-700 dark:text-green-400' : 'bg-amber-50 dark:bg-amber-500/20 text-amber-700 dark:text-amber-300'}`}>
             {online ? <Wifi size={12} /> : <WifiOff size={12} />}{online ? 'Connected to Muneem cloud' : 'Offline — using saved sign-in'}
           </span>
         </div>
@@ -68,10 +68,10 @@ export default function Login() {
           <button type="submit" className="btn-primary w-full py-2.5" disabled={busy}>{busy ? 'Please wait…' : mode === 'register' ? 'Create account' : online ? 'Sign in' : 'Sign in offline'}</button>
         </div>
         <div className="mt-5 flex justify-between text-sm">
-          {online && <button type="button" className="font-medium text-blue-700 hover:underline" onClick={() => setMode(mode === 'login' ? 'register' : 'login')}>{mode === 'login' ? 'New here? Create an account' : 'Have an account? Sign in'}</button>}
-          {!!cached.data?.length && <button type="button" className="font-medium text-blue-700 hover:underline" onClick={() => nav('/switch')}>Switch user with PIN</button>}
+          {online && <button type="button" className="font-medium text-primary hover:underline" onClick={() => setMode(mode === 'login' ? 'register' : 'login')}>{mode === 'login' ? 'New here? Create an account' : 'Have an account? Sign in'}</button>}
+          {!!cached.data?.length && <button type="button" className="font-medium text-primary hover:underline" onClick={() => nav('/switch')}>Switch user with PIN</button>}
         </div>
-        {!online && !cached.data?.length && <p className="mt-4 text-xs text-amber-700">No one has signed in on this computer yet. Connect to the internet once to sign in.</p>}
+        {!online && !cached.data?.length && <p className="mt-4 text-xs text-amber-700 dark:text-amber-300">No one has signed in on this computer yet. Connect to the internet once to sign in.</p>}
       </form>
     </main>
   );
@@ -80,7 +80,7 @@ export default function Login() {
 function IconInput({ icon: Icon, children }: { icon: typeof User; children: React.ReactNode }) {
   return (
     <div className="relative">
-      <Icon size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" aria-hidden />
+      <Icon size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" aria-hidden />
       {children}
     </div>
   );

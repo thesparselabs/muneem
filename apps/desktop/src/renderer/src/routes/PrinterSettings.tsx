@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { api, errorMessage } from '../api.js';
 import Field from '../components/Field.js';
 import { configToForm, formToConfig, type PrinterForm } from '../lib/printerForm.js';
+import { Printer, ArrowLeft, Save } from 'lucide-react';
 
 const KINDS = [
   ['simulator', 'No printer yet: save receipts as files (for checking)'],
@@ -20,7 +21,7 @@ export default function PrinterSettings() {
   useEffect(() => {
     if (config.data && !f) setF(configToForm(config.data));
   }, [config.data, f]);
-  if (!f) return <p className="text-sm text-slate-500">Loading…</p>;
+  if (!f) return <p className="text-sm text-muted-foreground">Loading…</p>;
 
   async function save(e: FormEvent) {
     e.preventDefault();
@@ -36,7 +37,7 @@ export default function PrinterSettings() {
 
   return (
     <form onSubmit={save} className="card max-w-xl space-y-4">
-      <div className="flex items-center justify-between"><h1 className="text-xl font-semibold">Receipt printer</h1><Link to="/pos" className="btn-secondary">Back to billing</Link></div>
+      <div className="flex items-center justify-between"><h1 className="flex items-center gap-2 text-xl font-semibold"><Printer size={20} className="text-primary" aria-hidden />Receipt printer</h1><Link to="/pos" className="btn-secondary"><ArrowLeft size={16} aria-hidden />Back to billing</Link></div>
       <fieldset className="space-y-1">
         <legend className="label">Printer</legend>
         {KINDS.map(([k, label]) => (
@@ -61,7 +62,7 @@ export default function PrinterSettings() {
               <button type="button" className="btn-secondary" onClick={() => void installed.refetch()}>Refresh</button>
             </div>
           </Field>
-          {installed.isError && <p className="text-sm text-red-700" role="alert">{errorMessage(installed.error)}</p>}
+          {installed.isError && <p className="text-sm text-destructive" role="alert">{errorMessage(installed.error)}</p>}
           <fieldset className="space-y-1">
             <legend className="label">How to send receipts</legend>
             <label className="flex items-center gap-2 text-sm"><input type="radio" name="mode" checked={f.mode === 'escpos'} onChange={() => setF({ ...f, mode: 'escpos' })} />Receipt printer commands (ESC/POS) — fastest; most thermal printers</label>
@@ -81,9 +82,9 @@ export default function PrinterSettings() {
       </fieldset>
       <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={f.openDrawer} onChange={(e) => setF({ ...f, openDrawer: e.target.checked })} />Open the cash drawer after cash sales</label>
       {message && <p className="text-sm" role="status">{message}</p>}
-      <p className="text-xs text-slate-500">Save first, then print a test page: it shows ₹, Hindi and Tamil so you can check them on paper.</p>
+      <p className="text-xs text-muted-foreground">Save first, then print a test page: it shows ₹, Hindi and Tamil so you can check them on paper.</p>
       <div className="flex gap-2">
-        <button type="submit" className="btn-primary">Save</button>
+        <button type="submit" className="btn-primary"><Save size={16} aria-hidden />Save</button>
         <button type="button" className="btn-secondary" onClick={() => void run(() => api.printer.testPrint({}), 'Test page sent.')}>Print test page</button>
         <button type="button" className="btn-secondary" onClick={() => void run(() => api.drawer.open({}), 'Drawer opened.')}>Open drawer</button>
       </div>
