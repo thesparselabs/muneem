@@ -131,7 +131,7 @@ export function dashboardFigures(db: Db, q: { businessId: string; today: string;
       JOIN product p ON p.id = t.productId JOIN uom u ON u.id = p.base_uom_id ORDER BY t.netSalesPaise DESC`).all({ ...win, n: q.topN }) as TopProduct[],
     from: win.from, to: win.to, windowDays,
     previous: totalsFor(db, prev),
-    newCustomers: stmt(db, `SELECT COUNT(*) FROM customer WHERE business_id = @businessId AND deleted_at IS NULL AND substr(created_at, 1, 10) BETWEEN @from AND @to`).pluck().get(win) as number,
+    newCustomers: stmt(db, `SELECT COUNT(*) FROM customer WHERE business_id = @businessId AND deleted_at IS NULL AND created_at >= @from AND created_at <= @to || 'T99'`).pluck().get(win) as number,
     productsSold: stmt(db, `SELECT COUNT(*) FROM (SELECT product_id FROM product_sales_daily WHERE business_id = @businessId AND day BETWEEN @from AND @to
       GROUP BY product_id HAVING SUM(sold_qty_milli - returned_qty_milli) > 0)`).pluck().get(win) as number,
     topCategories: topCategories(db, win, q.topN),
