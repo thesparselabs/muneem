@@ -11,7 +11,11 @@ import type { ColdStart } from '../src/main/sync/hydration/hydrationGate.js';
 import type { SaveFile } from '../src/main/reports/service.js';
 import type { PdfRenderer } from '../src/main/reports/exports/pdf.js';
 import type { BackupTransport, RestoreHost } from '../src/main/backups/index.js';
+import type { CrashSend } from '../src/main/telemetry/crashReports.js';
 import type { Updater } from '../src/main/update/updater.js';
+import type { SpoolerTransport } from '../src/main/services/print/spooler.js';
+import type { LineRasteriser } from '../src/main/services/print/raster.js';
+import { WorkerReads, type BackgroundReads } from '../src/main/background/backgroundReads.js';
 
 export interface FakeServer { calls: { method: string; path: string; body: unknown; headers: Record<string, string> }[]; online: boolean; respond: (method: string, path: string, body: unknown) => { status: number; body: unknown } }
 
@@ -65,14 +69,17 @@ export interface TestAppOptions {
   coldStart?: ColdStart; bundleFetcher?: BundleFetcher; apiBaseUrl?: string; secrets?: SecretStore;
   saveFile?: SaveFile; pdfRenderer?: PdfRenderer;
   backupTransport?: (credentials: () => Credentials | null) => BackupTransport; restoreHost?: RestoreHost;
-  updater?: Updater; updateBaseUrl?: string; registerIdleMs?: number; appVersion?: string;
+  updater?: Updater; updateBaseUrl?: string; registerIdleMs?: number; appVersion?: string; crashSend?: CrashSend;
+  printSpooler?: SpoolerTransport; lineRasteriser?: LineRasteriser;
+  openDb?: (file: string) => Promise<Db>;
+  backgroundReads?: BackgroundReads;
 }
 
 export async function testApp(opts: TestAppOptions = {}): Promise<{ app: App; db: Db; server: FakeServer; dir: string }> {
   const server = opts.server ?? defaultServer();
   const dir = opts.dbFile ? dirname(opts.dbFile) : mkdtempSync(join(tmpdir(), 'muneem-desktop-'));
   const file = opts.dbFile ?? (opts.file ? join(dir, 'muneem.sqlite') : ':memory:');
-  const db = openDatabase(file, { quickCheck: false });
+  const db = opts.openDb ? await opts.openDb(file) : openDatabase(file, { quickCheck: false });
   await migrate(db);
   const app = createApp({
     db: () => db, dbFile: file, receiptsDir: join(dir, 'receipts'), backupsDir: join(dir, 'backups'), bundlesDir: join(dir, 'bundles'), secrets: opts.secrets ?? new MemorySecretStore(), loggers: silentLoggers(),
@@ -81,13 +88,18 @@ export async function testApp(opts: TestAppOptions = {}): Promise<{ app: App; db
     ...(opts.saveFile && { saveFile: opts.saveFile }), ...(opts.pdfRenderer && { pdfRenderer: opts.pdfRenderer }),
     ...(opts.backupTransport && { backupTransport: opts.backupTransport }), ...(opts.restoreHost && { restoreHost: opts.restoreHost }),
     ...(opts.updater && { updater: opts.updater }), ...(opts.updateBaseUrl && { updateBaseUrl: opts.updateBaseUrl }),
-    ...(opts.registerIdleMs !== undefined && { registerIdleMs: opts.registerIdleMs }),
+    ...(opts.registerIdleMs !== undefined && { registerIdleMs: opts.registerIdleMs }), ...(opts.crashSend && { crashSend: opts.crashSend }),
+    ...(opts.printSpooler && { printSpooler: opts.printSpooler }), ...(opts.lineRasteriser && { lineRasteriser: opts.lineRasteriser }),
+    ...(opts.backgroundReads && { backgroundReads: opts.backgroundReads }),
     coldStart: opts.coldStart ?? 'pull', ...(opts.bundleFetcher && { bundleFetcher: opts.bundleFetcher }), sleep: async () => undefined,
   });
   app.device.ensureIdentity();
   await app.connectivity.probe();
   return { app, db, server, dir };
 }
+
+// The shipped read worker, run from its TypeScript source.
+export const readWorker = (dbFile: string) => new WorkerReads(new URL('../src/read-worker/index.ts', import.meta.url), { dbFile }, ['--import', 'tsx']);
 
 export type Envelope<T> = { ok: true; data: T } | { ok: false; error: { code: string; message: string; fields?: Record<string, string> } };
 

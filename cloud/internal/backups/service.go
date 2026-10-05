@@ -48,7 +48,13 @@ var (
 
 type Caller = devicesync.Caller
 
+// JobObserver records each confirmation's outcome and duration; metrics.Metrics implements it.
+type JobObserver interface {
+	ObserveJob(job, outcome string, took time.Duration)
+}
+
 type Service struct {
+	Jobs    JobObserver
 	db      *store.DB
 	objects ObjectStore
 	wrapper *Wrapper
@@ -115,6 +121,30 @@ func (s *Service) Presign(ctx context.Context, c Caller, in PresignInput) (*Uplo
 
 // Confirm checks the stored object against the size and SHA-256 the device declared, then prunes past the newest Keep.
 func (s *Service) Confirm(ctx context.Context, c Caller, backupID string) (*row, error) {
+	started := time.Now()
+	r, err := s.confirm(ctx, c, backupID)
+	if s.Jobs != nil {
+		s.Jobs.ObserveJob("backup_confirm", confirmOutcome(err), time.Since(started))
+	}
+	return r, err
+}
+
+func confirmOutcome(err error) string {
+	switch {
+	case err == nil:
+		return "ok"
+	case errors.Is(err, ErrChecksum):
+		return "checksum_mismatch"
+	case errors.Is(err, ErrNotUploaded):
+		return "not_uploaded"
+	case errors.Is(err, ErrNotFound), errors.Is(err, ErrNotMember):
+		return "refused"
+	default:
+		return "failed"
+	}
+}
+
+func (s *Service) confirm(ctx context.Context, c Caller, backupID string) (*row, error) {
 	if s.objects == nil {
 		return nil, ErrUnconfigured
 	}
@@ -256,7 +286,7 @@ func (s *Service) Escrow(ctx context.Context, c Caller, businessID, keyID string
 	if s.wrapper == nil {
 		return ErrUnconfigured
 	}
-	nonce, wrapped, err := s.wrapper.Wrap(businessID, keyID, key)
+	version, nonce, wrapped, err := s.wrapper.Wrap(businessID, keyID, key)
 	if err != nil {
 		return err
 	}
@@ -264,14 +294,14 @@ func (s *Service) Escrow(ctx context.Context, c Caller, businessID, keyID string
 		if err := devicesync.CanBootstrap(ctx, tx, c, businessID); err != nil {
 			return err
 		}
-		if err := insertKey(ctx, tx, businessID, keyID, c.DeviceID, nonce, wrapped); err != nil {
+		if err := insertKey(ctx, tx, businessID, keyID, c.DeviceID, version, nonce, wrapped); err != nil {
 			return err
 		}
 		stored, err := getKey(ctx, tx, businessID, &keyID)
 		if err != nil {
 			return err
 		}
-		have, err := s.wrapper.Unwrap(businessID, keyID, stored.Nonce, stored.Wrapped)
+		have, err := s.wrapper.Unwrap(stored.Version, businessID, keyID, stored.Nonce, stored.Wrapped)
 		if err != nil {
 			return err
 		}
@@ -306,7 +336,7 @@ func (s *Service) Key(ctx context.Context, c Caller, businessID string, keyID *s
 	if k == nil {
 		return "", nil, ErrKeyNotFound
 	}
-	key, err := s.wrapper.Unwrap(businessID, k.KeyID, k.Nonce, k.Wrapped)
+	key, err := s.wrapper.Unwrap(k.Version, businessID, k.KeyID, k.Nonce, k.Wrapped)
 	if err != nil {
 		return "", nil, err
 	}

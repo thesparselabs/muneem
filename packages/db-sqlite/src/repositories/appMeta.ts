@@ -13,7 +13,11 @@ export const META_KEYS = {
   serverSkewMs: 'server_skew_ms',
   lastServerContactAt: 'last_server_contact_at',
   restoreCatchUp: 'restore_catch_up_own', // 8f: after restoring this device's own backup, pull its own changes back too
+  integrityReport: 'integrity_report', // ADR-0054: JSON of the last scheduled integrity run, carried on the sync heartbeat
+  crashReportLast: 'crash_report_last', // ADR-0053: when the last crash or error report was sent, for Diagnostics
 } as const;
+
+export const integrityReportKey = (businessId: string) => `${META_KEYS.integrityReport}:${businessId}`;
 
 export function getMeta(db: Db, key: string): string | null {
   const r = db.prepare('SELECT value FROM app_meta WHERE key = ?').get(key) as { value: string } | undefined;

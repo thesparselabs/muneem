@@ -15,7 +15,8 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
     "lint": "eslint src test scripts",
-    "gen:fixtures": "tsx scripts/gen-fixtures.ts"
+    "gen:fixtures": "tsx scripts/gen-fixtures.ts",
+    "gen:compliance": "tsx scripts/gen-compliance-docs.ts"
   },
   "dependencies": {
     "ulid": "^3.0.0"

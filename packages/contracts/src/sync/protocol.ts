@@ -41,10 +41,22 @@ export const PushOperation = z.object({
 });
 export type PushOperation = z.infer<typeof PushOperation>;
 
+const Count = z.number().int().nonnegative();
+// ADR-0054: the device's latest scheduled integrity run, with its journal totals as of its documents cursor.
+export const IntegrityReport = z.object({
+  checkedAt: Iso, tieOutFailures: Count, replayMismatches: Count, auditChainOk: z.boolean(),
+  journalCount: Count, journalDebitPaise: Count, journalCreditPaise: Count, documentsSeq: Count, outboxDepth: Count,
+});
+export type IntegrityReport = z.infer<typeof IntegrityReport>;
+
+// ADR-0053: the outbox as it stands once this batch lands; telemetry for the cloud's business-health probes.
+export const PushHeartbeat = z.object({ outboxDepth: Count, oldestPendingAt: Iso.nullable(), negativeStockCount: Count, integrity: IntegrityReport.optional() });
+export type PushHeartbeat = z.infer<typeof PushHeartbeat>;
+
 export const PushRequest = z.object({
   // Servers accept a range (ADR-0049: N and N−1), so the schema takes any protocol and the server decides.
   businessId: Ulid, protocol: z.number().int().nonnegative(), schemaVersion: z.number().int().nonnegative(), clientTime: Iso,
-  operations: z.array(PushOperation).min(1).max(PUSH_MAX_OPERATIONS),
+  operations: z.array(PushOperation).min(1).max(PUSH_MAX_OPERATIONS), heartbeat: PushHeartbeat.optional(),
 });
 export type PushRequest = z.infer<typeof PushRequest>;
 

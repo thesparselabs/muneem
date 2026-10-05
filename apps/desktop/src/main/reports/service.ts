@@ -1,5 +1,5 @@
 import { AppError, type ExportFormat, type ExportReportResult, type Permission, type ReportDefinitionView, type ReportParams, type ReportResult } from '@muneem/contracts';
-import type { Db } from '@muneem/db-sqlite';
+import type { BackgroundReads } from '../background/backgroundReads.js';
 import type { ReportCatalogue } from './catalogue.js';
 import type { ReportDefinition, Row } from './definition.js';
 import type { ExportDocument, ExportWriter } from './exports/writer.js';
@@ -11,7 +11,7 @@ export interface SaveFile { (suggestedName: string, bytes: Buffer): Promise<{ sa
 
 export interface ReportServiceDeps {
   catalogue: ReportCatalogue;
-  readDb: () => Db;
+  reads: BackgroundReads;
   businessId: () => string;
   today: () => string;
   can: (permission: Permission) => boolean;
@@ -21,7 +21,7 @@ export interface ReportServiceDeps {
   now?: () => Date;
 }
 
-// ADR-0046: runs a report on a read-only connection and hands the same result to the screen or an export writer.
+// ADR-0046/0057: runs a report on the read worker's connection and hands the same result to the screen or an export writer.
 export class ReportService {
   constructor(private readonly d: ReportServiceDeps) {}
 
@@ -30,9 +30,9 @@ export class ReportService {
       .map((r) => ({ id: r.id, title: r.title, group: r.group, params: r.params, columns: r.columns }));
   }
 
-  run(id: string, params: ReportParams): ReportResult {
+  async run(id: string, params: ReportParams): Promise<ReportResult> {
     const def = this.allowed(id);
-    const out = def.run({ db: this.d.readDb(), businessId: this.d.businessId(), today: this.d.today() }, this.checked(def, params));
+    const out = await this.d.reads.run('report', { id: def.id, params: this.checked(def, params), businessId: this.d.businessId(), today: this.d.today() });
     return {
       id: def.id, title: def.title, columns: def.columns, rows: out.rows.slice(0, MAX_ROWS), totals: out.totals ?? null,
       truncated: out.rows.length > MAX_ROWS, generatedAt: (this.d.now?.() ?? new Date()).toISOString(),
@@ -42,7 +42,7 @@ export class ReportService {
   async export(id: string, params: ReportParams, format: ExportFormat): Promise<ExportReportResult> {
     const writer = this.d.writers.find((w) => w.format === format);
     if (!writer) throw new AppError('VALIDATION_FAILED', 'This export format is not available', { format: 'unsupported' });
-    const result = this.run(id, params);
+    const result = await this.run(id, params);
     const bytes = await writer.write(this.document(this.d.catalogue.get(id), params, result));
     const name = `${result.title} ${params.to ?? params.asOf ?? this.d.today()}.${writer.extension}`.replace(/[\\/:*?"<>|]/gu, '-');
     const saved = await this.d.saveFile(name, bytes);

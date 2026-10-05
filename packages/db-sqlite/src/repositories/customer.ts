@@ -51,10 +51,14 @@ export function getCustomer(db: Db, id: string): Customer | null {
 export function searchCustomers(db: Db, businessId: string, query: string, limit: number): Customer[] {
   const q = query.trim();
   const norm = normalizeName(q);
-  return (stmt(db, `SELECT * FROM customer WHERE business_id = @businessId AND deleted_at IS NULL AND erased_at IS NULL
-      AND (@q = '' OR (name_norm >= @norm AND name_norm < @normEnd) OR phone LIKE @phone OR gstin = @gstin)
-    ORDER BY name_norm, id LIMIT @limit`).all({
-    businessId, q, norm, normEnd: norm + '\uffff', phone: `${q.replace(/[%_]/gu, '')}%`, gstin: q.toUpperCase(), limit,
+  // One indexed range per way of finding someone, so a till with 50,000 customers never walks them all (9f).
+  const matches = q === '' ? 'SELECT id FROM customer WHERE business_id = @businessId'
+    : `SELECT id FROM customer WHERE business_id = @businessId AND name_norm >= @norm AND name_norm < @normEnd
+      UNION SELECT id FROM customer WHERE business_id = @businessId AND phone >= @phone AND phone < @phoneEnd
+      UNION SELECT id FROM customer WHERE business_id = @businessId AND gstin = @gstin AND gstin IS NOT NULL AND deleted_at IS NULL`;
+  const phone = q.replace(/[%_]/gu, '');
+  return (stmt(db, `SELECT * FROM customer WHERE id IN (${matches}) AND deleted_at IS NULL AND erased_at IS NULL ORDER BY name_norm, id LIMIT @limit`).all({
+    businessId, norm, normEnd: norm + '\uffff', phone, phoneEnd: phone + '\uffff', gstin: q.toUpperCase(), limit,
   }) as CustomerRow[]).map((r) => toCustomer(r));
 }
 

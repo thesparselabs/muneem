@@ -50,6 +50,7 @@ type handlers struct {
 	*backupHandler
 	*reportHandler
 	httpx.Health
+	httpx.Readiness
 }
 
 // cloud is the real Echo server with the real auth and signature middleware, over the test Postgres.

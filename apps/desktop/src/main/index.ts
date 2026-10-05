@@ -1,4 +1,4 @@
-import { app, BrowserWindow, dialog, ipcMain, safeStorage, session, shell } from 'electron';
+import { app, BrowserWindow, crashReporter, dialog, ipcMain, safeStorage, session, shell } from 'electron';
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -10,14 +10,21 @@ import { FolderUpdater } from './update/folderUpdater.js';
 import { DEFAULT_UPDATE_BASE_URL } from './update/channels.js';
 import type { Updater } from './update/updater.js';
 import type { Loggers } from './infra/logger.js';
-import { latestBackupFile, restoreBackupFile } from './backups/recovery.js';
+import { recoverCorruptDatabase, type CorruptDbChoice } from './backups/recovery.js';
 import { createLoggers } from './infra/logger.js';
 import { createElectronSecretStore } from './infra/secrets.js';
 import { electronHtmlToPdf, electronSaveFile } from './infra/files.js';
 import { registerIpc } from './ipc/gateway.js';
-import { currentSchemaVersion, restoreDatabaseFile, type Db } from '@muneem/db-sqlite';
+import { currentSchemaVersion, getMeta, restoreDatabaseFile, setMeta, type Db } from '@muneem/db-sqlite';
 import { rmSync } from 'node:fs';
 import { startSyncWorker } from './sync/syncWorker.js';
+import { WorkerReads } from './background/backgroundReads.js';
+import { markCleanExit, takeCleanExit } from './infra/cleanExit.js';
+import { ElectronPagePrinter, ElectronPrinterDirectory, ElectronRasteriser, HiddenPrintPage, receiptFontsDir } from './infra/printSurface.js';
+import { PowerShellRawJob } from './services/print/rawSpoolJob.js';
+import { WindowsSpooler } from './services/print/spooler.js';
+import { installProcessHooks, reportNativeCrashes } from './telemetry/hooks.js';
+import { DEFAULT_CRASH_DSN } from './telemetry/crashReports.js';
 
 app.setName('Muneem'); // userData → %APPDATA%/Muneem (before 'ready')
 const isDev = !app.isPackaged;
@@ -25,18 +32,24 @@ const here = fileURLToPath(new URL('.', import.meta.url));
 const PRELOAD = join(here, '../preload/index.cjs');
 const RENDERER_INDEX = join(here, '../renderer/index.html');
 const SYNC_WORKER = join(here, 'sync-worker.js');
+const READ_WORKER = join(here, 'read-worker.js');
 const CSP = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; font-src 'self' data:; object-src 'none'; base-uri 'none'; frame-ancestors 'none'";
 // Vite's dev server injects an inline React Refresh preamble and talks to its HMR websocket; packaged builds never use this.
 const DEV_SERVER_CSP = CSP.replace("script-src 'self'", "script-src 'self' 'unsafe-inline'").replace("connect-src 'self'", "connect-src 'self' ws://localhost:*");
 
 if (!app.requestSingleInstanceLock()) app.quit();
+// ADR-0053: native crashes become local minidumps only; they hold process memory, so they are never uploaded.
+crashReporter.start({ uploadToServer: false, compress: true });
 
 let mainWindow: BrowserWindow | null = null;
 let muneem: App | null = null;
 let db: Db | null = null;
 let stopSyncWorker: (() => void) | null = null;
+let printPage: HiddenPrintPage | null = null;
+const SPOOLER_TIMEOUT_MS = 20_000; // a cold PowerShell compiles its P/Invoke helper first
 
 const UPDATE_CHECK_EVERY_MS = 4 * 3600_000;
+const CRASH_DUMPS_CHECKED = 'crash_dumps_checked_at';
 const FIRST_UPDATE_CHECK_MS = 2 * 60_000;
 
 // Packaged builds use electron-updater; a dev run updates only from a local folder feed (MUNEEM_UPDATE_DIR), if any.
@@ -51,10 +64,34 @@ function updateSource(loggers: Loggers): { updater: Updater | null; baseUrl: str
   return { updater, baseUrl: pathToFileURL(dir).href };
 }
 
+// ADR-0055: ₹ and Indic lines are drawn everywhere; installed-printer (spooler) jobs exist only on Windows.
+function printing(loggers: Loggers) {
+  printPage = new HiddenPrintPage(receiptFontsDir(app.isPackaged, here), loggers.hardware);
+  const lineRasteriser = new ElectronRasteriser(printPage, 10_000);
+  if (process.platform !== 'win32') return { lineRasteriser };
+  const printSpooler = new WindowsSpooler({
+    directory: new ElectronPrinterDirectory(printPage), raw: new PowerShellRawJob({ timeoutMs: SPOOLER_TIMEOUT_MS }), pages: new ElectronPagePrinter(SPOOLER_TIMEOUT_MS),
+  });
+  return { lineRasteriser, printSpooler };
+}
+
 function nativeBindingPath(): string | undefined {
   // Electron-ABI build of better-sqlite3 produced by scripts/build-native.ts (dev) / bundled under native/ (packaged).
   const candidates = [join(here, '../../native/better_sqlite3.node'), join(process.resourcesPath ?? '', 'app.asar.unpacked', 'native', 'better_sqlite3.node')];
   return candidates.find((p) => existsSync(p));
+}
+
+// NFR-019: the damaged file is set aside either way; a fresh start is restored from the cloud after signing in.
+async function askCorruptChoice(backup: string | null): Promise<CorruptDbChoice> {
+  const all: [string, CorruptDbChoice][] = [['Restore latest backup', 'restore_local'], ['Start empty and restore from the cloud', 'start_fresh'], ['Quit', 'quit']];
+  const choices = backup ? all : all.slice(1);
+  const { response } = await dialog.showMessageBox({
+    type: 'error', title: 'Muneem — database problem', buttons: choices.map(([label]) => label), defaultId: 0, cancelId: choices.length - 1,
+    message: 'The local database failed its integrity check.',
+    detail: (backup ? `A verified backup is available:\n${backup}\n\nRestoring it brings back everything this computer synced after it.` : 'No local backup was found on this computer.')
+      + '\n\nOr start empty: sign in, then restore this business from its cloud backup. The damaged file is kept for support either way.',
+  });
+  return choices[response]?.[1] ?? 'quit';
 }
 
 async function boot(): Promise<void> {
@@ -68,7 +105,7 @@ async function boot(): Promise<void> {
       encryptedPreMigrationBackups({ dir: paths.backups, secrets, appVersion: app.getVersion(), now: () => Date.now(), log: loggers.app }),
       plainPreMigrationBackups(paths.backups), loggers.app,
     );
-    ({ db } = await openAndMigrate(paths, loggers, nativeBindingPath(), { backups, appVersion: app.getVersion() }));
+    ({ db } = await openAndMigrate(paths, loggers, nativeBindingPath(), { backups, appVersion: app.getVersion(), quickCheck: !takeCleanExit(paths.file) }));
   } catch (e) {
     if (e instanceof MigrationFailedError) {
       // ADR-0049: this build cannot run the old schema; the data is back as it was and the previous version can open it.
@@ -83,21 +120,18 @@ async function boot(): Promise<void> {
     }
     if (e instanceof DbCorruptError) {
       loggers.app.error({ detail: e.detail }, 'DB_CORRUPT on open');
-      const backup = latestBackupFile(paths.backups);
-      const { response } = await dialog.showMessageBox({
-        type: 'error', title: 'Muneem — database problem', buttons: backup ? ['Restore latest backup', 'Quit'] : ['Quit'], defaultId: 0,
-        message: 'The local database failed its integrity check.',
-        detail: backup ? `A verified backup is available:\n${backup}\n\nRestore it? Transactions after the backup will need to be recovered from the cloud.` : 'No local backup was found. Please contact support with a support bundle.',
-      });
-      if (backup && response === 0) {
-        try {
-          await restoreBackupFile(backup, paths.file, secrets, nativeBindingPath());
-          loggers.app.warn({ backup }, 'restored database from backup; restarting');
+      try {
+        const nativeBinding = nativeBindingPath();
+        const r = await recoverCorruptDatabase({
+          dbFile: paths.file, backupsDir: paths.backups, secrets, now: () => Date.now(), choose: askCorruptChoice, ...(nativeBinding && { nativeBinding }),
+        });
+        if (r.choice !== 'quit') {
+          loggers.app.warn(r, 'database recovered after DB_CORRUPT; restarting');
           app.relaunch();
-        } catch (err) {
-          loggers.app.error({ backup, err: String(err) }, 'restoring the latest backup failed');
-          dialog.showErrorBox('Muneem — restore failed', `The backup could not be restored: ${String(err instanceof Error ? err.message : err)}`);
         }
+      } catch (err) {
+        loggers.app.error({ err: String(err) }, 'restoring the latest backup failed');
+        dialog.showErrorBox('Muneem — restore failed', `The backup could not be restored: ${String(err instanceof Error ? err.message : err)}`);
       }
       app.exit(1);
       return;
@@ -108,8 +142,11 @@ async function boot(): Promise<void> {
   muneem = createApp({
     db: () => db!, dbFile: paths.file, receiptsDir: join(userData, 'receipts'), backupsDir: paths.backups, bundlesDir: join(userData, 'support-bundles'), secrets, loggers,
     hydrationDir: join(userData, 'hydration'),
+    backgroundReads: new WorkerReads(READ_WORKER, { dbFile: paths.file, nativeBinding: nativeBindingPath() }),
     saveFile: electronSaveFile(() => mainWindow), pdfRenderer: electronHtmlToPdf,
-    apiBaseUrl, appVersion: app.getVersion(), platform: process.platform,
+    ...printing(loggers),
+    apiBaseUrl, appVersion: app.getVersion(), platform: process.platform, isDev,
+    crashDsn: process.env.MUNEEM_CRASH_DSN ?? (app.isPackaged ? DEFAULT_CRASH_DSN : null),
     isTrustedSender: (id) => mainWindow?.webContents.id === id,
     // 8f: a restore closes everything, swaps the database file and relaunches; the IPC reply goes out first.
     ...(() => { const u = updateSource(loggers); return { updater: u.updater, updateBaseUrl: u.baseUrl }; })(),
@@ -141,6 +178,9 @@ async function boot(): Promise<void> {
     },
   });
   muneem.device.ensureIdentity();
+  installProcessHooks(muneem.telemetry.crashReports, process, app, (reason) => loggers.app.error({ err: String(reason) }, 'unhandled rejection'));
+  const dumpsCheckedAt = { get: () => Number(getMeta(db!, CRASH_DUMPS_CHECKED) ?? Date.now()), set: (at: number) => setMeta(db!, CRASH_DUMPS_CHECKED, String(at)) };
+  reportNativeCrashes(muneem.telemetry.crashReports, app.getPath('crashDumps'), dumpsCheckedAt, Date.now());
   registerIpc(ipcMain, muneem.gateway);
   muneem.events.attach({ send: (ch, p) => mainWindow?.webContents.send(ch, p) });
   muneem.connectivity.start();
@@ -163,17 +203,14 @@ async function boot(): Promise<void> {
   const scheduledBackup = () => void muneem?.backups.scheduler.scheduled().catch((e) => loggers.app.error({ err: String(e) }, 'scheduled backup failed'));
   const backupTimer = setInterval(() => {
     scheduledBackup();
-    void muneem?.diagnostics.checkStock({ slice: true }).catch((e) => loggers.app.error({ err: String(e) }, 'scheduled stock check failed'));
-    try { muneem?.diagnostics.checkParties(); } catch (e) { loggers.app.error({ err: String(e) }, 'scheduled party check failed'); }
-    try { muneem?.diagnostics.checkJournals(); } catch (e) { loggers.app.error({ err: String(e) }, 'scheduled journal check failed'); }
-    try { muneem?.diagnostics.checkSummaries(new Date(Date.now() - 35 * 86_400_000).toLocaleDateString('en-CA')); } catch (e) { loggers.app.error({ err: String(e) }, 'scheduled summary check failed'); }
-    try { muneem?.diagnostics.verifyAudit(); } catch (e) { loggers.app.error({ err: String(e) }, 'scheduled audit chain check failed'); }
+    void muneem?.diagnostics.scheduledChecks();
     muneem?.notifications.runner.run();
   }, 6 * 3600_000);
   backupTimer.unref();
   muneem.updates.service.start(UPDATE_CHECK_EVERY_MS, FIRST_UPDATE_CHECK_MS);
   muneem.notifications.runner.run(); // ADR-0050: device-wide checks at start-up; business ones follow when a session opens it
   setTimeout(scheduledBackup, 10 * 60_000).unref();
+  setTimeout(() => void muneem?.diagnostics.backgroundQuickCheck().catch((e) => loggers.app.error({ err: String(e) }, 'background quick_check failed')), 15 * 60_000).unref();
 }
 
 function createWindow(): void {
@@ -190,7 +227,7 @@ function createWindow(): void {
     const allowed = process.env.ELECTRON_RENDERER_URL ? url.startsWith(process.env.ELECTRON_RENDERER_URL) : url.startsWith('file://');
     if (!allowed) e.preventDefault();
   });
-  mainWindow.on('closed', () => { mainWindow = null; });
+  mainWindow.on('closed', () => { mainWindow = null; printPage?.close(); });
   if (isDev && process.env.ELECTRON_RENDERER_URL) void mainWindow.loadURL(process.env.ELECTRON_RENDERER_URL);
   else void mainWindow.loadFile(RENDERER_INDEX);
 }
@@ -219,5 +256,9 @@ app.on('before-quit', () => {
   muneem?.connectivity.stop();
   muneem?.sync.stop();
   stopSyncWorker?.();
-  try { db?.close(); } catch { /* already closed */ }
+  muneem?.closeReadConnections();
+  try {
+    db?.close();
+    markCleanExit(dbPaths(app.getPath('userData')).file);
+  } catch { /* already closed */ }
 });

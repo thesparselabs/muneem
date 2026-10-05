@@ -127,6 +127,7 @@ commit, hardware after · 0016 renderer totals vs authoritative recompute · 001
 - `pnpm turbo run gen build typecheck lint test`, `pnpm schema-lint`, Go job green.
 - Exit criterion evidence: golden-flow test and the 20-iteration kill -9 test in CI; 200-iteration
   `pnpm --filter @muneem/desktop crash-loop --scenario sales` run locally with its PASS output recorded.
+- **9j:** the manual step below moved to [docs/qa/manual-checklist.md](../qa/manual-checklist.md) (POS and register), where it is automated or kept manual with results.
 - Manual: `pnpm --filter @muneem/desktop dev`, open register, scan/type products, F-key flow to payment, check the
   receipt file in `userData/receipts/`, close register and read the Z report; stop the Go API and bill again offline.
 

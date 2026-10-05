@@ -1,0 +1,60 @@
+# Production on one VM (ADR-0051): the API behind Caddy. Postgres and object storage are managed services outside it.
+# Run through deploy.sh, which pins MUNEEM_TAG; every ${VAR} comes from deploy/.env (see .env.example).
+name: muneem
+services:
+  api:
+    image: ${MUNEEM_IMAGE:?set MUNEEM_IMAGE}:${MUNEEM_TAG:?run through deploy.sh}
+    restart: unless-stopped
+    # Only these reach the container: the owner database URL in .env never does.
+    environment:
+      DATABASE_URL: ${DATABASE_URL:?}
+      JWT_SECRETS: ${JWT_SECRETS:-}
+      JWT_SECRET: ${JWT_SECRET:-}
+      PORT: "8080"
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      MUNEEM_SYNC_MIN_PROTOCOL: ${MUNEEM_SYNC_MIN_PROTOCOL:-}
+      MUNEEM_S3_ENDPOINT: ${MUNEEM_S3_ENDPOINT:?}
+      MUNEEM_S3_BUCKET: ${MUNEEM_S3_BUCKET:?}
+      MUNEEM_S3_ACCESS_KEY: ${MUNEEM_S3_ACCESS_KEY:?}
+      MUNEEM_S3_SECRET_KEY: ${MUNEEM_S3_SECRET_KEY:?}
+      MUNEEM_S3_REGION: ${MUNEEM_S3_REGION:-}
+      MUNEEM_BACKUP_MASTER_KEYS: ${MUNEEM_BACKUP_MASTER_KEYS:-}
+      MUNEEM_BACKUP_MASTER_KEY: ${MUNEEM_BACKUP_MASTER_KEY:-}
+      # ADR-0053: /metrics listens inside the container; the published port below decides who can reach it.
+      MUNEEM_METRICS_ADDR: 0.0.0.0:9090
+      MUNEEM_HEALTH_PROBE_INTERVAL: ${MUNEEM_HEALTH_PROBE_INTERVAL:-60s}
+      MUNEEM_HEALTH_LEDGER_INTERVAL: ${MUNEEM_HEALTH_LEDGER_INTERVAL:-15m}
+      MUNEEM_HEALTH_TOP_DEVICES: ${MUNEEM_HEALTH_TOP_DEVICES:-50}
+      # ADR-0057: operator tooling on its own listener; empty MUNEEM_ADMIN_DATABASE_URL turns it off.
+      MUNEEM_ADMIN_DATABASE_URL: ${MUNEEM_ADMIN_DATABASE_URL:-}
+      MUNEEM_ADMIN_ADDR: 0.0.0.0:8081
+      MUNEEM_ADMIN_PUBLIC: ${MUNEEM_ADMIN_PUBLIC:-false}
+    expose: ["8080"]
+    # Metrics on the private/WireGuard address only (loopback by default); the admin page on loopback only, for an SSH
+    # tunnel. Caddy proxies neither.
+    ports: ["${MUNEEM_METRICS_BIND:-127.0.0.1}:9090:9090", "127.0.0.1:8081:8081"]
+    stop_grace_period: 30s   # the API drains HTTP and snapshot builds within 25 s
+    read_only: true
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: [ALL]
+    logging:
+      driver: json-file
+      options: { max-size: "50m", max-file: "5" }
+  caddy:
+    image: caddy:2.10-alpine
+    restart: unless-stopped
+    depends_on: [api]
+    ports: ["80:80", "443:443", "443:443/udp"]
+    environment:
+      MUNEEM_API_DOMAIN: ${MUNEEM_API_DOMAIN:?}
+      ACME_EMAIL: ${ACME_EMAIL:?}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data        # certificates: keep across restarts or Let's Encrypt rate limits bite
+      - caddy_config:/config
+    logging:
+      driver: json-file
+      options: { max-size: "50m", max-file: "5" }
+volumes:
+  caddy_data:
+  caddy_config:

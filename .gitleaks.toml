@@ -1,0 +1,12 @@
+# Secrets scan (Stage 9k). Test fixtures and the dev-only Makefile defaults hold obviously fake keys; real secrets
+# live only in the deploy host's .env and CI secrets (ADR-0051/0052).
+[extend]
+useDefault = true
+
+[allowlist]
+description = "test fixtures and dev-only defaults"
+paths = [
+  '''(^|/)[^/]+_test\.go$''',
+  '''^apps/desktop/test/''',
+  '''^cloud/Makefile$''',
+]

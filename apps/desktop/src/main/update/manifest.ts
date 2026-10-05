@@ -23,10 +23,14 @@ export async function sha512Base64(path: string): Promise<string> {
 
 export interface ManifestInput { version: string; installers: string[]; releaseDate: string; rolloutPercentage?: number | null }
 
+export function assertRollout(pct: number | null | undefined): void {
+  if (pct !== undefined && pct !== null && (!Number.isInteger(pct) || pct < 0 || pct > 100)) throw new Error('the rollout percentage must be a whole number from 0 to 100');
+}
+
 export async function buildManifest(i: ManifestInput): Promise<LatestManifest> {
   if (i.installers.length === 0) throw new Error('no installer to describe');
   const pct = i.rolloutPercentage;
-  if (pct !== undefined && pct !== null && (!Number.isInteger(pct) || pct < 0 || pct > 100)) throw new Error('the rollout percentage must be a whole number from 0 to 100');
+  assertRollout(pct);
   const files = await Promise.all(i.installers.map(async (p) => ({ url: basename(p), sha512: await sha512Base64(p), size: statSync(p).size })));
   const main = files[0]!;
   return { version: i.version, files, path: main.url, sha512: main.sha512, releaseDate: i.releaseDate, ...(pct !== undefined && pct !== null && pct < 100 && { stagingPercentage: pct }) };

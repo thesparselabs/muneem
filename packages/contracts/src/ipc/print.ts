@@ -36,14 +36,26 @@ export const ReceiptDoc = z.object({
 });
 export type ReceiptDoc = z.infer<typeof ReceiptDoc>;
 
+// A Windows printer name reaches the spooler helper only as data; control characters never belong in one.
+export const PrinterName = z.string().trim().min(1).max(256).regex(/^[^\u0000-\u001f\u007f]+$/u, 'not a valid printer name');
+
 export const PrinterConfig = z.object({
-  kind: z.enum(['none', 'simulator', 'network']),
+  kind: z.enum(['none', 'simulator', 'network', 'spooler']),
   host: z.string().trim().max(255).optional(),
   port: z.number().int().min(1).max(65_535).default(9100),
+  printerName: PrinterName.optional(),
+  mode: z.enum(['escpos', 'image']).default('escpos'),
+  rupee: z.enum(['symbol', 'Rs']).default('Rs'),
   widthChars: z.union([z.literal(32), z.literal(42), z.literal(48)]).default(42),
   openDrawer: z.boolean().default(true),
-}).refine((c) => c.kind !== 'network' || !!c.host, { message: 'enter the printer address', path: ['host'] });
+})
+  .refine((c) => c.kind !== 'network' || !!c.host, { message: 'enter the printer address', path: ['host'] })
+  .refine((c) => c.kind !== 'spooler' || !!c.printerName, { message: 'choose a Windows printer', path: ['printerName'] })
+  .refine((c) => c.mode === 'escpos' || c.kind === 'spooler', { message: 'image printing needs a Windows printer', path: ['mode'] });
 export type PrinterConfig = z.infer<typeof PrinterConfig>;
+
+export const InstalledPrinter = z.object({ name: PrinterName, displayName: z.string().max(256) });
+export type InstalledPrinter = z.infer<typeof InstalledPrinter>;
 
 export const PrintJobSummary = z.object({
   id: z.string(),

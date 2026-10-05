@@ -1,0 +1,42 @@
+{{define "content"}}
+{{template "shopHeader" .Data}}
+{{$csrf := .CSRF}}{{$shop := .Data.Shop.BusinessId}}
+<h2>Devices</h2>
+<table>
+  <caption>Clock skew is the device clock minus the server's, from its last signed request.</caption>
+  <thead>
+    <tr>
+      <th scope="col">Device</th><th scope="col">Status</th><th scope="col">App</th><th scope="col">Schema</th>
+      <th scope="col">Last seen</th><th scope="col">Last push seq</th><th scope="col">Last pull seq</th>
+      <th scope="col">Outbox</th><th scope="col">Clock skew (ms)</th><th scope="col">Action</th>
+    </tr>
+  </thead>
+  <tbody>
+    {{range .Data.Body}}
+    <tr>
+      <th scope="row">{{with str .Name}}{{.}}<br>{{end}}<code>{{.Id}}</code><br><span class="muted">{{.Platform}}</span></th>
+      <td>{{.Status}}{{if .Silent}} <strong>(silent)</strong>{{end}}</td>
+      <td>{{.AppVersion}}</td>
+      <td>{{.SchemaVersion}}</td>
+      <td>{{ago .LastSeenAt}}<br><span class="muted">{{when .LastSeenAt}}</span></td>
+      <td>{{num .LastPushSeq}}</td>
+      <td>{{num .LastPullSeq}}</td>
+      <td>{{num .OutboxDepth}}</td>
+      <td>{{num .ClockSkewMs}}</td>
+      <td>
+        {{if ne (str .Status) "revoked"}}
+        <form method="post" action="/admin/devices/{{seg .Id}}/revoke" class="action">
+          <input type="hidden" name="csrf" value="{{$csrf}}">
+          <input type="hidden" name="business" value="{{$shop}}">
+          {{template "reason"}}
+          <button type="submit" class="danger">Revoke</button>
+        </form>
+        {{else}}—{{end}}
+      </td>
+    </tr>
+    {{else}}
+    <tr><td colspan="10">No devices.</td></tr>
+    {{end}}
+  </tbody>
+</table>
+{{end}}

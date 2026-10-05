@@ -71,6 +71,11 @@ export function toClientError(e: unknown, requestId: string, log: Loggers['app']
     return { code: 'VALIDATION_FAILED', class: 'validation', message: 'Invalid input', fields, requestId };
   }
   const msg = e instanceof Error ? e.message : String(e);
+  // SQLite rolls a commit back whole on ENOSPC; a retry of the same command posts it once, even if only the IPC audit row failed.
+  if ((e as { code?: unknown } | null)?.code === 'SQLITE_FULL') {
+    log.error({ requestId, err: msg }, 'disk full');
+    return { code: 'DISK_FULL', class: 'transient', message: 'The disk is full. Free some space on this computer, then try the same action again.', requestId };
+  }
   if (/UNIQUE constraint/.test(msg)) return { code: 'ALREADY_EXISTS', class: 'business_rule', message: 'Already exists', requestId };
   if (msg === 'NOT_FOUND') return { code: 'NOT_FOUND', class: 'business_rule', message: 'Not found', requestId };
   if (msg === 'VERSION_CONFLICT') return { code: 'INVALID_STATE', class: 'business_rule', message: 'Changed elsewhere; reload and retry', requestId };

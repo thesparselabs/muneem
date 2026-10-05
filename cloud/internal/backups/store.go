@@ -80,28 +80,59 @@ func collect(rows pgx.Rows, err error) ([]row, error) {
 }
 
 type wrappedKey struct {
-	KeyID   string
-	Nonce   []byte
-	Wrapped []byte
+	BusinessID string
+	KeyID      string
+	Version    string
+	Nonce      []byte
+	Wrapped    []byte
 }
 
-func getKey(ctx context.Context, tx pgx.Tx, businessID string, keyID *string) (*wrappedKey, error) {
+const keyColumns = `business_id, key_id, master_key_version, nonce, wrapped`
+
+func scanKey(r pgx.Row) (*wrappedKey, error) {
 	var k wrappedKey
-	var err error
-	if keyID != nil {
-		err = tx.QueryRow(ctx, `SELECT key_id, nonce, wrapped FROM backup_key WHERE business_id = $1 AND key_id = $2`, businessID, *keyID).Scan(&k.KeyID, &k.Nonce, &k.Wrapped)
-	} else {
-		err = tx.QueryRow(ctx, `SELECT key_id, nonce, wrapped FROM backup_key WHERE business_id = $1 ORDER BY created_at, key_id LIMIT 1`, businessID).Scan(&k.KeyID, &k.Nonce, &k.Wrapped)
-	}
+	err := r.Scan(&k.BusinessID, &k.KeyID, &k.Version, &k.Nonce, &k.Wrapped)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, nil
 	}
 	return &k, err
 }
 
-func insertKey(ctx context.Context, tx pgx.Tx, businessID, keyID, deviceID string, nonce, wrapped []byte) error {
-	_, err := tx.Exec(ctx, `INSERT INTO backup_key (business_id, key_id, nonce, wrapped, device_id) VALUES ($1, $2, $3, $4, $5)
+func getKey(ctx context.Context, tx pgx.Tx, businessID string, keyID *string) (*wrappedKey, error) {
+	if keyID != nil {
+		return scanKey(tx.QueryRow(ctx, `SELECT `+keyColumns+` FROM backup_key WHERE business_id = $1 AND key_id = $2`, businessID, *keyID))
+	}
+	return scanKey(tx.QueryRow(ctx, `SELECT `+keyColumns+` FROM backup_key WHERE business_id = $1 ORDER BY created_at, key_id LIMIT 1`, businessID))
+}
+
+func insertKey(ctx context.Context, tx pgx.Tx, businessID, keyID, deviceID, version string, nonce, wrapped []byte) error {
+	_, err := tx.Exec(ctx, `INSERT INTO backup_key (business_id, key_id, nonce, wrapped, device_id, master_key_version) VALUES ($1, $2, $3, $4, $5, $6)
 		ON CONFLICT (business_id, key_id) DO NOTHING`,
-		businessID, keyID, nonce, wrapped, deviceID)
+		businessID, keyID, nonce, wrapped, deviceID, version)
 	return err
+}
+
+// keysNotUnder is every escrowed key wrapped under a master key other than version (owner role: no tenant scope).
+func keysNotUnder(ctx context.Context, q pgx.Tx, version string) ([]wrappedKey, error) {
+	rows, err := q.Query(ctx, `SELECT `+keyColumns+` FROM backup_key WHERE master_key_version <> $1 ORDER BY business_id, key_id`, version)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []wrappedKey
+	for rows.Next() {
+		k, err := scanKey(rows)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, *k)
+	}
+	return out, rows.Err()
+}
+
+// replaceWrapping swaps one key's wrapping only if it is still under the version it was read under.
+func replaceWrapping(ctx context.Context, tx pgx.Tx, k wrappedKey, version string, nonce, wrapped []byte) (bool, error) {
+	tag, err := tx.Exec(ctx, `UPDATE backup_key SET master_key_version = $4, nonce = $5, wrapped = $6
+		WHERE business_id = $1 AND key_id = $2 AND master_key_version = $3`, k.BusinessID, k.KeyID, k.Version, version, nonce, wrapped)
+	return tag.RowsAffected() == 1, err
 }

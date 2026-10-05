@@ -1,0 +1,22 @@
+{
+  "Rules": [
+    {
+      "ID": "hydration-bundles-expire-after-2-days",
+      "Filter": { "Prefix": "snapshots/" },
+      "Status": "Enabled",
+      "Expiration": { "Days": 2 }
+    },
+    {
+      "ID": "device-backups-safety-net-60-days",
+      "Filter": { "Prefix": "backups/" },
+      "Status": "Enabled",
+      "Expiration": { "Days": 60 }
+    },
+    {
+      "ID": "abort-incomplete-multipart-uploads",
+      "Filter": { "Prefix": "" },
+      "Status": "Enabled",
+      "AbortIncompleteMultipartUpload": { "DaysAfterInitiation": 1 }
+    }
+  ]
+}

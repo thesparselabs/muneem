@@ -22,19 +22,29 @@ type Claims struct {
 	Device   string   `json:"device,omitempty"`
 	Roles    []string `json:"roles,omitempty"`
 	PermVer  int      `json:"perm_ver"`
+	// Scope is empty on shop tokens; "op" marks an operator token (ADR-0057), which shop routes refuse.
+	Scope string `json:"scope,omitempty"`
 	jwt.RegisteredClaims
 }
 
-type Signer struct{ secret []byte }
+// Signer issues access tokens under the keyring's active key and verifies them by their kid header (ADR-0052).
+type Signer struct{ keys *Keyring }
 
-func NewSigner(secret string) *Signer { return &Signer{secret: []byte(secret)} }
+// NewSigner is a signer over one legacy secret: its tokens carry no kid.
+func NewSigner(secret string) *Signer { return &Signer{keys: LegacyKeyring(secret)} }
+
+func NewKeyringSigner(keys *Keyring) *Signer { return &Signer{keys: keys} }
 
 func (s *Signer) Issue(c Claims) (string, error) {
 	now := time.Now()
 	c.IssuedAt = jwt.NewNumericDate(now)
 	c.ExpiresAt = jwt.NewNumericDate(now.Add(AccessTTL))
 	c.Issuer = "muneem"
-	return jwt.NewWithClaims(jwt.SigningMethodHS256, c).SignedString(s.secret)
+	t := jwt.NewWithClaims(jwt.SigningMethodHS256, c)
+	if s.keys.active.ID != "" {
+		t.Header["kid"] = s.keys.active.ID
+	}
+	return t.SignedString(s.keys.active.Secret)
 }
 
 func (s *Signer) Parse(token string) (*Claims, error) {
@@ -43,7 +53,7 @@ func (s *Signer) Parse(token string) (*Claims, error) {
 		if t.Method != jwt.SigningMethodHS256 {
 			return nil, errors.New("unexpected signing method")
 		}
-		return s.secret, nil
+		return s.keys.verifying(t.Header["kid"])
 	}, jwt.WithIssuer("muneem"), jwt.WithLeeway(30*time.Second))
 	if err != nil || !t.Valid {
 		return nil, errors.New("invalid token")
@@ -61,7 +71,7 @@ func (s *Signer) Require(next echo.HandlerFunc) echo.HandlerFunc {
 			return httpx.Unauthorized(c, "NOT_AUTHENTICATED", "missing bearer token")
 		}
 		claims, err := s.Parse(strings.TrimPrefix(h, "Bearer "))
-		if err != nil {
+		if err != nil || claims.Scope != "" {
 			return httpx.Unauthorized(c, "SESSION_EXPIRED", "invalid or expired token")
 		}
 		c.Set(claimsKey, claims)

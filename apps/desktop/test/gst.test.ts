@@ -81,7 +81,7 @@ function may() {
 
 const summary = async (month: string): Promise<GstReturnSummary> => app.gst.returns.summary(month);
 const section = (s: GstReturnSummary, key: string) => s.sections.find((x) => x.section === key)!;
-const run = (id: string, month: string): ReportResult => app.reports.run(id, { month });
+const run = (id: string, month: string): Promise<ReportResult> => app.reports.run(id, { month });
 
 describe('GST returns from the documents (8c, ADR-0044)', () => {
   it('a May with every kind of supply: sections, GSTR-3B and the tie-out to the tax accounts', async () => {
@@ -92,19 +92,19 @@ describe('GST returns from the documents (8c, ADR-0044)', () => {
     expect(s.tieOuts.find((t) => t.name.startsWith('output CGST'))).toMatchObject({ returnPaise: 1_800 + 900 + 300 - 900 });
 
     expect(section(s, 'b2b')).toMatchObject({ rows: 2, taxablePaise: 22_000, cgstPaise: 1_200, sgstPaise: 1_200 });
-    expect((run('gst.gstr1.b2cs', '2026-05-01')).rows).toEqual([
+    expect((await run('gst.gstr1.b2cs', '2026-05-01')).rows).toEqual([
       { type: 'OE', pos: '07-Delhi', applicable: '', rate: 18, taxablePaise: 20_000, cessPaise: 0, ecom: '' },
       { type: 'OE', pos: '27-Maharashtra', applicable: '', rate: 18, taxablePaise: 10_000, cessPaise: 0, ecom: '' },
     ]);
     expect(section(s, 'b2cl')).toMatchObject({ rows: 1 });
     expect(section(s, 'cdnr')).toMatchObject({ rows: 1, taxablePaise: 10_000, cgstPaise: 900 });
-    expect((run('gst.gstr1.cdnur', '2026-05-01')).rows).toEqual([expect.objectContaining({ urType: 'B2CL', pos: '27-Maharashtra', rate: 18 })]);
-    expect((run('gst.gstr1.exemp', '2026-05-01')).rows).toContainEqual({ description: 'Intra-State supplies to unregistered persons', nilPaise: 3_000, exemptPaise: 0, nonGstPaise: 0 });
-    expect((run('gst.gstr1.docs', '2026-05-01')).rows).toEqual([
+    expect((await run('gst.gstr1.cdnur', '2026-05-01')).rows).toEqual([expect.objectContaining({ urType: 'B2CL', pos: '27-Maharashtra', rate: 18 })]);
+    expect((await run('gst.gstr1.exemp', '2026-05-01')).rows).toContainEqual({ description: 'Intra-State supplies to unregistered persons', nilPaise: 3_000, exemptPaise: 0, nonGstPaise: 0 });
+    expect((await run('gst.gstr1.docs', '2026-05-01')).rows).toEqual([
       expect.objectContaining({ nature: 'Invoices for outward supply', total: 4, cancelled: 0 }),
       expect.objectContaining({ nature: 'Credit Note', total: 3, cancelled: 0 }),
     ]);
-    const hsn = (run('gst.gstr1.hsn_b2c', '2026-05-01')).rows;
+    const hsn = (await run('gst.gstr1.hsn_b2c', '2026-05-01')).rows;
     expect(hsn.find((r) => r.hsn === '3401')).toMatchObject({ uqc: 'PCS-PIECES', qtyMilli: 3_000, taxablePaise: 30_000 });
 
     const g3b = Object.fromEntries(s.gstr3b.map((r) => [r.code, r]));
@@ -112,7 +112,7 @@ describe('GST returns from the documents (8c, ADR-0044)', () => {
     expect(g3b['4A5']).toMatchObject({ igstPaise: 2_000, cgstPaise: 12_600 + 900, sgstPaise: 12_600 + 900 });
     expect(g3b['4B2']).toMatchObject({ cgstPaise: 1_260, sgstPaise: 1_260 });
     expect(g3b['4D2']).toMatchObject({ cgstPaise: 1_000, sgstPaise: 1_000 });
-    const itc = run('gst.itcRegister', '2026-05-01');
+    const itc = await run('gst.itcRegister', '2026-05-01');
     expect(itc.rows.map((r) => r.kind)).toEqual(expect.arrayContaining(['Purchase', 'Debit note', 'Expense']));
     expect(itc.totals).toMatchObject({ eligibleCgstPaise: 12_600 + 900 - 1_260, ineligiblePaise: 2_000 });
     expect(tieOutFailures(db, businessId)).toEqual([]);
@@ -156,7 +156,7 @@ describe('HSN on products (8c)', () => {
     expect(await api.call('products.create', { name: 'Pen', baseUomId: pcs, gstRateBp: 1200 }))
       .toMatchObject({ ok: false, error: { code: 'VALIDATION_FAILED', fields: { hsnCode: expect.any(String) } } });
     withTransaction(db, () => createProduct(db, businessId, ProductInput.parse({ name: 'Old stock', baseUomId: pcs }), { userId: 'u', deviceId: 'd', terminalId: null }, '2026-05-10'));
-    expect(app.reports.run('gst.productsMissingHsn', {}).rows).toEqual([{ name: 'Old stock', sku: null, soldLines: 0 }]);
+    expect((await app.reports.run('gst.productsMissingHsn', {})).rows).toEqual([{ name: 'Old stock', sku: null, soldLines: 0 }]);
   });
 });
 

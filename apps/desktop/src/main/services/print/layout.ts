@@ -32,7 +32,10 @@ export function columns(left: string, right: string, width: number): string {
   return `${l}${' '.repeat(Math.max(1, width - l.length - right.length))}${right}`;
 }
 
-export function layoutReceipt(doc: ReceiptDoc, width: number): PrintLine[] {
+export type RupeeStyle = 'symbol' | 'Rs';
+export const rupeeText = (style: RupeeStyle): string => (style === 'symbol' ? '₹' : 'Rs');
+
+export function layoutReceipt(doc: ReceiptDoc, width: number, rupee: RupeeStyle = 'Rs'): PrintLine[] {
   const out: PrintLine[] = [];
   const left = (text: string, bold = false) => out.push({ text, align: 'left', ...(bold && { bold }) });
   const center = (text: string, bold = false) => wrap(text, width).forEach((t) => out.push({ text: t, align: 'center', ...(bold && { bold }) }));
@@ -43,6 +46,8 @@ export function layoutReceipt(doc: ReceiptDoc, width: number): PrintLine[] {
   doc.header.lines.forEach((l) => center(l));
   if (doc.header.gstin) center(`GSTIN: ${doc.header.gstin}`);
   center(doc.title, true);
+  // CGST rule 5(1)(g): a composition dealer's declaration goes at the top of the bill of supply.
+  if (doc.declaration) center(doc.declaration);
   if (doc.duplicate) center(`*** DUPLICATE (copy ${doc.copyNo}) ***`, true);
   left(`No: ${doc.docNumber}`);
   pair(`Date: ${doc.docDate}`, `Time: ${doc.time}`);
@@ -72,7 +77,7 @@ export function layoutReceipt(doc: ReceiptDoc, width: number): PrintLine[] {
   if (t.igstPaise) pair('IGST', amount(t.igstPaise));
   if (t.cessPaise) pair('Cess', amount(t.cessPaise));
   if (t.roundOffPaise) pair('Round off', amount(t.roundOffPaise));
-  pair('TOTAL', `Rs ${amount(t.totalPaise)}`, true);
+  pair('TOTAL', `${rupeeText(rupee)} ${amount(t.totalPaise)}`, true);
   rule();
   if (doc.taxSummary.length > 0) {
     pair('GST rate  Taxable', 'Tax', true);
@@ -89,16 +94,17 @@ export function layoutReceipt(doc: ReceiptDoc, width: number): PrintLine[] {
     left(`  Due: ${doc.credit.dueDate}`);
     pair('Balance now', amount(doc.credit.balancePaise));
   }
-  if (doc.declaration) center(doc.declaration);
   doc.footer.forEach((f) => center(f));
   return out;
 }
 
 // The text copy cannot show double width, so a double line is simply centred like any other.
 export function renderText(lines: readonly PrintLine[], width: number): string {
-  return lines.map((l) => {
-    const pad = Math.max(0, width - l.text.length);
-    const text = l.align === 'center' ? `${' '.repeat(Math.floor(pad / 2))}${l.text}` : l.align === 'right' ? `${' '.repeat(pad)}${l.text}` : l.text;
-    return text.trimEnd();
-  }).join('\n') + '\n';
+  return lines.map((l) => placed(l, width).trimEnd()).join('\n') + '\n';
+}
+
+// The row as the printer would place it: leading spaces stand in for centre or right alignment.
+export function placed(line: PrintLine, width: number): string {
+  const pad = Math.max(0, width - line.text.length);
+  return line.align === 'center' ? `${' '.repeat(Math.floor(pad / 2))}${line.text}` : line.align === 'right' ? `${' '.repeat(pad)}${line.text}` : line.text;
 }

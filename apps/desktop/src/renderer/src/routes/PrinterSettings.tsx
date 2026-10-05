@@ -1,37 +1,45 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { PrinterConfig } from '@muneem/contracts';
 import { api, errorMessage } from '../api.js';
 import Field from '../components/Field.js';
+import { configToForm, formToConfig, type PrinterForm } from '../lib/printerForm.js';
 
-type Form = { kind: PrinterConfig['kind']; host: string; port: string; widthChars: PrinterConfig['widthChars']; openDrawer: boolean };
+const KINDS = [
+  ['simulator', 'No printer yet: save receipts as files (for checking)'],
+  ['spooler', 'Printer installed in Windows (USB / driver)'],
+  ['network', 'Network printer (LAN / Wi-Fi, port 9100)'],
+  ['none', 'Do not print'],
+] as const;
 
 export default function PrinterSettings() {
   const config = useQuery({ queryKey: ['printerConfig'], queryFn: () => api.printer.getConfig({}) });
-  const [f, setF] = useState<Form | null>(null);
+  const [f, setF] = useState<PrinterForm | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const installed = useQuery({ queryKey: ['installedPrinters'], queryFn: () => api.printer.listInstalled({}), enabled: f?.kind === 'spooler' });
   useEffect(() => {
-    if (config.data && !f) setF({ ...config.data, host: config.data.host ?? '', port: String(config.data.port) });
+    if (config.data && !f) setF(configToForm(config.data));
   }, [config.data, f]);
   if (!f) return <p className="text-sm text-slate-500">Loading…</p>;
 
   async function save(e: FormEvent) {
     e.preventDefault();
-    const parsed = PrinterConfig.safeParse({ kind: f!.kind, ...(f!.host && { host: f!.host }), port: Number(f!.port), widthChars: f!.widthChars, openDrawer: f!.openDrawer });
-    if (!parsed.success) { setMessage(parsed.error.issues.map((i) => i.message).join('; ')); return; }
-    try { await api.printer.setConfig(parsed.data); setMessage('Saved.'); } catch (err) { setMessage(errorMessage(err)); }
+    const r = formToConfig(f!);
+    if (!r.ok) { setMessage(r.message); return; }
+    try { await api.printer.setConfig(r.config); setMessage('Saved.'); } catch (err) { setMessage(errorMessage(err)); }
   }
   async function run(fn: () => Promise<unknown>, done: string) {
     try { await fn(); setMessage(done); } catch (err) { setMessage(errorMessage(err)); }
   }
+  const printers = installed.data ?? [];
+  const missing = f.printerName && installed.isSuccess && !printers.some((p) => p.name === f.printerName);
 
   return (
     <form onSubmit={save} className="card max-w-xl space-y-4">
       <div className="flex items-center justify-between"><h1 className="text-xl font-semibold">Receipt printer</h1><Link to="/pos" className="btn-secondary">Back to billing</Link></div>
       <fieldset className="space-y-1">
         <legend className="label">Printer</legend>
-        {([['simulator', 'No printer yet: save receipts as files (for checking)'], ['network', 'Network printer (LAN / Wi-Fi, port 9100)'], ['none', 'Do not print']] as const).map(([k, label]) => (
+        {KINDS.map(([k, label]) => (
           <label key={k} className="flex items-center gap-2 text-sm"><input type="radio" name="kind" checked={f.kind === k} onChange={() => setF({ ...f, kind: k })} />{label}</label>
         ))}
       </fieldset>
@@ -41,13 +49,39 @@ export default function PrinterSettings() {
           <Field label="Port" htmlFor="port"><input id="port" className="input" inputMode="numeric" value={f.port} onChange={(e) => setF({ ...f, port: e.target.value })} /></Field>
         </div>
       )}
+      {f.kind === 'spooler' && (
+        <>
+          <Field label="Windows printer" htmlFor="printerName" {...(installed.isSuccess && printers.length === 0 && { hint: 'Windows lists no printers on this computer. Install the printer driver first.' })}>
+            <div className="flex gap-2">
+              <select id="printerName" className="input" value={f.printerName} onChange={(e) => setF({ ...f, printerName: e.target.value })}>
+                <option value="">{installed.isLoading ? 'Looking for printers…' : 'Choose a printer'}</option>
+                {missing && <option value={f.printerName}>{f.printerName} (not found)</option>}
+                {printers.map((p) => <option key={p.name} value={p.name}>{p.displayName}</option>)}
+              </select>
+              <button type="button" className="btn-secondary" onClick={() => void installed.refetch()}>Refresh</button>
+            </div>
+          </Field>
+          {installed.isError && <p className="text-sm text-red-700" role="alert">{errorMessage(installed.error)}</p>}
+          <fieldset className="space-y-1">
+            <legend className="label">How to send receipts</legend>
+            <label className="flex items-center gap-2 text-sm"><input type="radio" name="mode" checked={f.mode === 'escpos'} onChange={() => setF({ ...f, mode: 'escpos' })} />Receipt printer commands (ESC/POS) — fastest; most thermal printers</label>
+            <label className="flex items-center gap-2 text-sm"><input type="radio" name="mode" checked={f.mode === 'image'} onChange={() => setF({ ...f, mode: 'image' })} />As a picture through the Windows driver — for printers that print garbage with the first option</label>
+          </fieldset>
+        </>
+      )}
       <Field label="Paper width" htmlFor="width">
-        <select id="width" className="input" value={f.widthChars} onChange={(e) => setF({ ...f, widthChars: Number(e.target.value) as Form['widthChars'] })}>
+        <select id="width" className="input" value={f.widthChars} onChange={(e) => setF({ ...f, widthChars: Number(e.target.value) as PrinterForm['widthChars'] })}>
           <option value={32}>58 mm (32 characters)</option><option value={42}>80 mm (42 characters)</option><option value={48}>80 mm (48 characters)</option>
         </select>
       </Field>
+      <fieldset className="space-y-1">
+        <legend className="label">Rupee sign on the total</legend>
+        <label className="flex items-center gap-2 text-sm"><input type="radio" name="rupee" checked={f.rupee === 'symbol'} onChange={() => setF({ ...f, rupee: 'symbol' })} />₹</label>
+        <label className="flex items-center gap-2 text-sm"><input type="radio" name="rupee" checked={f.rupee === 'Rs'} onChange={() => setF({ ...f, rupee: 'Rs' })} />Rs (plain text)</label>
+      </fieldset>
       <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={f.openDrawer} onChange={(e) => setF({ ...f, openDrawer: e.target.checked })} />Open the cash drawer after cash sales</label>
       {message && <p className="text-sm" role="status">{message}</p>}
+      <p className="text-xs text-slate-500">Save first, then print a test page: it shows ₹, Hindi and Tamil so you can check them on paper.</p>
       <div className="flex gap-2">
         <button type="submit" className="btn-primary">Save</button>
         <button type="button" className="btn-secondary" onClick={() => void run(() => api.printer.testPrint({}), 'Test page sent.')}>Print test page</button>

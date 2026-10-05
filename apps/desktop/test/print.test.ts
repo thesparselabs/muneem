@@ -39,6 +39,13 @@ describe('receipt layout', () => {
     for (const line of text.split('\n')) expect(line.length).toBeLessThanOrEqual(32);
     expect(text).toContain('*** DUPLICATE (copy 2) ***');
   });
+  it('prints the composition declaration at the top of a bill of supply (CGST rule 5(1)(g))', () => {
+    const declaration = 'Composition taxable person, not eligible to collect tax on supplies';
+    const lines = renderText(layoutReceipt({ ...DOC, title: 'BILL OF SUPPLY', declaration }, 42), 42).split('\n').map((l) => l.trim());
+    const title = lines.indexOf('BILL OF SUPPLY');
+    expect(lines.slice(title + 1, title + 3).join(' ')).toBe(declaration);
+    expect(lines.filter((l) => l.startsWith('Composition'))).toHaveLength(1);
+  });
   it('wraps long words and keeps amounts on the paper', () => {
     expect(wrap('Supercalifragilistic soap', 10)).toEqual(['Supercalif', 'ragilistic', 'soap']);
     expect(columns('A very long product description', '1,234.50', 20)).toBe('A very long 1,234.50');
@@ -73,7 +80,10 @@ async function billedApp() {
   return { ...t, api, sale };
 }
 
-const failing = (message: string): ReceiptPrinter => ({ id: 'broken', send: () => Promise.reject(new Error(message)) });
+const failing = (message: string): ReceiptPrinter => ({ id: 'broken', print: () => Promise.reject(new Error(message)), kickDrawer: () => Promise.reject(new Error(message)) });
+const recording = (onJob: (bytes: Buffer, name: string) => void): ReceiptPrinter => ({
+  id: 'mem', print: async (job) => onJob(await job.escpos(), job.name), kickDrawer: () => Promise.resolve(),
+});
 const queueWith = (db: Db, printer: ReceiptPrinter, dir: string) =>
   new PrintQueue({ db: () => db, config: new PrinterConfigStore(() => db), receiptsDir: dir, log: silentLoggers().hardware, printer: () => printer });
 
@@ -103,7 +113,7 @@ describe('print queue', () => {
     const original = getPrintJob(db, db.prepare('SELECT id FROM print_job LIMIT 1').pluck().get() as string)!;
     insertPrintJob(db, 'stuck-job', { businessId: original.businessId, docType: 'sale', docId: sale.saleId, doc: original.doc, openDrawer: false, copyNo: 9, isDuplicate: true, createdBy: 'u' });
     const sent: string[] = [];
-    const recovered = queueWith(db, { id: 'mem', send: (_b, _t, name) => { sent.push(name); return Promise.resolve(); } }, dir);
+    const recovered = queueWith(db, recording((_b, name) => sent.push(name)), dir);
     recovered.resumeUnfinished(new Date().toLocaleDateString('en-CA'));
     await recovered.idle();
     expect(getPrintJob(db, 'stuck-job')!.status).toBe('done');
@@ -125,12 +135,12 @@ describe('print queue', () => {
     expect(await api.call('printer.retryJob', { jobId: original })).toMatchObject({ ok: false, error: { code: 'INVALID_STATE' } });
     db.prepare("UPDATE print_job SET status = 'failed', error_message = 'paper out' WHERE id = ?").run(original);
     const kicks: boolean[] = [];
-    const recording = queueWith(db, { id: 'mem', send: (bytes) => { kicks.push(bytes.includes(Buffer.from(DRAWER_KICK))); return Promise.resolve(); } }, '');
-    recording.retry(original, getPrintJob(db, original)!.businessId);
-    await recording.idle();
+    const retrying = queueWith(db, recording((bytes) => kicks.push(bytes.includes(Buffer.from(DRAWER_KICK)))), '');
+    retrying.retry(original, getPrintJob(db, original)!.businessId);
+    await retrying.idle();
     expect(getPrintJob(db, original)!.status).toBe('done');
     expect(kicks).toEqual([false]);
-    expect(() => recording.retry(original, 'another-business')).toThrow();
+    expect(() => retrying.retry(original, 'another-business')).toThrow();
     void app;
   });
 
@@ -145,7 +155,7 @@ describe('print queue', () => {
     add('yesterday', 'queued', '2020-01-01T10:00:00.000Z');
     add('today', 'queued', new Date().toISOString());
     const sent: string[] = [];
-    const q = queueWith(db, { id: 'mem', send: (_b, _t, name) => { sent.push(name); return Promise.resolve(); } }, dir);
+    const q = queueWith(db, recording((_b, name) => sent.push(name)), dir);
     q.resumeUnfinished(new Date().toLocaleDateString('en-CA'));
     await q.idle();
     expect(getPrintJob(db, 'was-printing')).toMatchObject({ status: 'failed', errorMessage: expect.stringContaining('interrupted') });

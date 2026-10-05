@@ -1,0 +1,5 @@
+# Copy to api.yml. Separate VMs: the API VM's WireGuard or private address and MUNEEM_METRICS_BIND there.
+# Same VM: host.docker.internal:9090, with MUNEEM_METRICS_BIND=172.17.0.1 (the docker bridge) on the API side.
+- targets: ["10.80.0.1:9090"]
+  labels:
+    instance: api-1

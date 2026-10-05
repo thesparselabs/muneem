@@ -31,22 +31,48 @@ type Options struct {
 
 var DefaultOptions = Options{ReuseWithin: 1000, Expiry: 24 * time.Hour, URLTTL: time.Hour, BuildTimeout: 15 * time.Minute, Workers: 2}
 
+// JobObserver records each build's outcome and duration; metrics.Metrics implements it.
+type JobObserver interface {
+	ObserveJob(job, outcome string, took time.Duration)
+}
+
 // Service implements devicesync.Snapshots: it records a building row, builds in the background, and presigns.
 type Service struct {
+	Jobs  JobObserver
 	db    *store.DB
 	store ObjectStore
 	log   *slog.Logger
 	opt   Options
 	slots chan struct{}
 	wg    sync.WaitGroup
+	base  context.Context
+	stop  context.CancelFunc
 }
 
 func NewService(db *store.DB, objects ObjectStore, log *slog.Logger, opt Options) *Service {
-	return &Service{db: db, store: objects, log: log, opt: opt, slots: make(chan struct{}, opt.Workers)}
+	base, stop := context.WithCancel(context.Background())
+	return &Service{db: db, store: objects, log: log, opt: opt, slots: make(chan struct{}, opt.Workers), base: base, stop: stop}
 }
 
 // Wait blocks until every started build has finished.
 func (s *Service) Wait() { s.wg.Wait() }
+
+// Shutdown lets running builds finish until ctx ends, then cancels the rest; a cancelled build is recorded as failed.
+func (s *Service) Shutdown(ctx context.Context) error {
+	done := make(chan struct{})
+	go func() {
+		s.wg.Wait()
+		close(done)
+	}()
+	select {
+	case <-done:
+		return nil
+	case <-ctx.Done():
+		s.stop()
+		<-done
+		return ctx.Err()
+	}
+}
 
 func scope(c devicesync.Caller, businessID string) store.Scope {
 	return store.Scope{UserID: c.UserID, BusinessID: businessID, DeviceID: c.DeviceID}

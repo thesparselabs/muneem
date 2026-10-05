@@ -4,6 +4,7 @@ import { api, errorMessage } from '../api.js';
 import { useCan } from '../lib/permissions.js';
 import AuditPanel from './diagnostics/AuditPanel.js';
 import BackupsPanel from './diagnostics/BackupsPanel.js';
+import CrashReportingPanel from './diagnostics/CrashReportingPanel.js';
 import SyncPanel from './diagnostics/SyncPanel.js';
 
 export default function Diagnostics() {
@@ -22,6 +23,7 @@ export default function Diagnostics() {
       {canSync && <SyncPanel />}
       <BackupsPanel />
       <AuditPanel />
+      <CrashReportingPanel />
       <div className="card">
         <h2 className="font-semibold mb-3">Health</h2>
         {h && (

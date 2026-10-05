@@ -394,6 +394,9 @@ The TS reference server (7d) and the Go server (7b/7c) both load and pass them.
   sync (FR-087).
 - **Checks:** helper tests, typecheck and build, and a manual checklist in this plan.
 
+**9j:** this checklist and the "Add this device" flow moved to [docs/qa/manual-checklist.md](../qa/manual-checklist.md) (Sync), where each step is automated or kept
+manual with results.
+
 **Manual checklist (7g), not yet run:**
 1. **Synced:** on a synced device the badge reads "✓ Synced · N min ago"; clicking it opens Diagnostics.
 2. **Offline:** go offline and make sales. The badge reads "⚠ N waiting · offline", then adds "· oldest N min" after a

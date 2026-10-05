@@ -1,0 +1,47 @@
+// Ships the compose services api, caddy and crash to Loki. The API logs slog JSON: level and the "alert" flag become
+// labels (both low-cardinality), so the sync-alert-log rule can select {alert="true"}.
+discovery.docker "containers" {
+  host = "unix:///var/run/docker.sock"
+}
+
+discovery.relabel "muneem" {
+  targets = discovery.docker.containers.targets
+
+  rule {
+    source_labels = ["__meta_docker_container_label_com_docker_compose_service"]
+    regex         = "api|caddy|crash"
+    action        = "keep"
+  }
+  rule {
+    source_labels = ["__meta_docker_container_label_com_docker_compose_service"]
+    target_label  = "service"
+  }
+  rule {
+    source_labels = ["__meta_docker_container_label_com_docker_compose_project"]
+    target_label  = "project"
+  }
+}
+
+loki.source.docker "muneem" {
+  host          = "unix:///var/run/docker.sock"
+  targets       = discovery.relabel.muneem.output
+  relabel_rules = discovery.relabel.muneem.rules
+  forward_to    = [loki.process.json.receiver]
+}
+
+loki.process "json" {
+  stage.json {
+    expressions = { level = "level", alert = "alert" }
+  }
+  stage.labels {
+    values = { level = "", alert = "" }
+  }
+  forward_to = [loki.write.default.receiver]
+}
+
+loki.write "default" {
+  endpoint {
+    url = sys.env("LOKI_URL")
+  }
+  external_labels = { host = sys.env("MUNEEM_HOST") }
+}

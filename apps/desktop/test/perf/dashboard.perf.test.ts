@@ -102,7 +102,7 @@ describe('reports and exports at 200k sales (8j)', () => {
     const timings: string[] = [];
     for (const [id, params] of runs) {
       const t = performance.now();
-      const r = app.reports.run(id, params);
+      const r = await app.reports.run(id, params);
       const ms = performance.now() - t;
       timings.push(`${id} ${ms.toFixed(0)} ms (${r.rows.length} rows)`);
       expect(ms, id).toBeLessThan(5_000);

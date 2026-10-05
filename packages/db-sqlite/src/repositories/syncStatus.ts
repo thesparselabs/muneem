@@ -6,7 +6,7 @@ import type { Db } from '../open.js';
 export function readSyncStatus(db: Db, online: boolean, serverSkewMs: number | null): SyncStatus {
   const c = db.prepare(`SELECT
       SUM(status = 'pending') AS pending, SUM(status = 'in_flight') AS in_flight,
-      SUM(status = 'failed') AS failed, SUM(status = 'dead') AS dead FROM sync_outbox`).get() as { pending: number | null; in_flight: number | null; failed: number | null; dead: number | null };
+      SUM(status = 'failed') AS failed, SUM(status = 'dead') AS dead FROM sync_outbox WHERE status IN ('pending','in_flight','failed','dead')`).get() as { pending: number | null; in_flight: number | null; failed: number | null; dead: number | null };
   const log = db.prepare('SELECT * FROM sync_log WHERE id = 1').get() as { last_push_at: string | null; last_push_ok: number | null; last_pull_at: string | null; last_error: string | null };
   const device = db.prepare('SELECT status, status_detail FROM sync_device WHERE id = 1').get() as { status: string; status_detail: string | null } | undefined;
   const pending = c.pending ?? 0, inFlight = c.in_flight ?? 0, failed = c.failed ?? 0, dead = c.dead ?? 0;
@@ -42,4 +42,24 @@ function auditChainBrokenAnywhere(db: Db): boolean {
 export function outboxDepth(db: Db): { depth: number; oldestUnsyncedAt: string | null } {
   const r = db.prepare("SELECT COUNT(*) AS n, MIN(created_at) AS oldest FROM sync_outbox WHERE status IN ('pending','in_flight','failed')").get() as { n: number; oldest: string | null };
   return { depth: r.n, oldestUnsyncedAt: r.oldest };
+}
+
+/** ADR-0053: what still waits once the batch in flight lands (dead counts: it never drains by itself), and stock below zero. */
+export function syncHeartbeat(db: Db, businessId: string, inFlightBatchId: string): { outboxDepth: number; oldestPendingAt: string | null; negativeStockCount: number } {
+  const r = db.prepare(`SELECT COUNT(*) AS n, MIN(created_at) AS oldest FROM sync_outbox
+    WHERE status IN ('pending','in_flight','failed','dead') AND business_id = ? AND batch_id IS NOT ?`).get(businessId, inFlightBatchId) as { n: number; oldest: string | null };
+  const negative = db.prepare('SELECT COUNT(*) FROM stock_level WHERE business_id = ? AND qty_milli < 0').pluck().get(businessId) as number;
+  return { outboxDepth: r.n, oldestPendingAt: r.oldest, negativeStockCount: negative };
+}
+
+/** ADR-0054: raw journal totals and the documents cursor they stand at, for the cloud's device-vs-cloud comparison. */
+export function journalTotalsAtCursor(db: Db, businessId: string): { journalCount: number; journalDebitPaise: number; journalCreditPaise: number; documentsSeq: number; outboxDepth: number } {
+  const r = db.prepare(`SELECT
+      (SELECT COUNT(*) FROM journal_entry WHERE business_id = ?) AS n,
+      (SELECT COALESCE(SUM(debit_paise), 0) FROM journal_line WHERE business_id = ?) AS debit,
+      (SELECT COALESCE(SUM(credit_paise), 0) FROM journal_line WHERE business_id = ?) AS credit,
+      (SELECT COALESCE(MAX(last_seq), 0) FROM sync_cursor WHERE business_id = ? AND stream = 'documents') AS seq,
+      (SELECT COUNT(*) FROM sync_outbox WHERE business_id = ? AND status IN ('pending','in_flight','failed','dead')) AS depth`)
+    .get(businessId, businessId, businessId, businessId, businessId) as { n: number; debit: number; credit: number; seq: number; depth: number };
+  return { journalCount: r.n, journalDebitPaise: r.debit, journalCreditPaise: r.credit, documentsSeq: r.seq, outboxDepth: r.depth };
 }

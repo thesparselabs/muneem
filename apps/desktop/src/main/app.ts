@@ -2,7 +2,7 @@
  * Composition root. Builds services + IPC handlers from explicit dependencies so tests can wire
  * an in-memory SQLite, a memory secret store and a fake fetch without touching Electron.
  */
-import { backupHealth, defaultWarehouseId, listAllLowStock, listStock, listWarehouses, openDatabase, openReviewCounts, partyDues, productMovements, readSyncStatus, rebuildStockLevels, stockValuation, type Db } from '@muneem/db-sqlite';
+import { backupHealth, defaultWarehouseId, listAllLowStock, listStock, listWarehouses, nativeBindingOf, openDatabase, openReviewCounts, partyDues, productMovements, readSyncStatus, rebuildStockLevels, stockValuation, type Db } from '@muneem/db-sqlite';
 import { CloudClient } from './infra/cloudClient.js';
 import { Connectivity } from './infra/connectivity.js';
 import { EventBus } from './infra/events.js';
@@ -21,6 +21,8 @@ import { CatalogContext } from './services/catalogContext.js';
 import { ImportService } from './services/import/importService.js';
 import { PrintQueue } from './services/print/printQueue.js';
 import { PrinterConfigStore } from './services/print/printerConfig.js';
+import type { LineRasteriser } from './services/print/raster.js';
+import type { SpoolerTransport } from './services/print/spooler.js';
 import { PreviewStore } from './services/import/previewStore.js';
 import { PricingService } from './services/pricing.js';
 import { CustomerService } from './services/pos/customers.js';
@@ -78,11 +80,14 @@ import { PdfWriter, type PdfRenderer } from './reports/exports/pdf.js';
 import { XlsxWriter } from './reports/exports/xlsx.js';
 import { ReportService, type SaveFile } from './reports/service.js';
 import { DashboardService } from './reports/dashboard.js';
+import { InlineReads, type BackgroundReads } from './background/backgroundReads.js';
 import { createUpdates } from './update/index.js';
 import { DEFAULT_UPDATE_BASE_URL } from './update/channels.js';
 import type { Updater } from './update/updater.js';
 import { createNotifications } from './notifications/index.js';
 import { CustomerPrivacyService } from './services/parties/customerPrivacy.js';
+import { createTelemetry } from './telemetry/index.js';
+import type { CrashSend } from './telemetry/crashReports.js';
 import type { SyncStatus, UpdateStatus } from '@muneem/contracts';
 export interface AppConfig {
   db: () => Db;
@@ -112,6 +117,20 @@ export interface AppConfig {
   updater?: Updater | null;
   updateBaseUrl?: string;
   registerIdleMs?: number;
+  printSpooler?: SpoolerTransport;
+  lineRasteriser?: LineRasteriser;
+  // ADR-0053: the crash collector's DSN (null: never send); crashSend replaces the HTTP sender in tests.
+  crashDsn?: string | null;
+  crashSend?: CrashSend;
+  isDev?: boolean;
+  // ADR-0058: where reports and integrity checks run; by default on the read-only connection in this thread.
+  backgroundReads?: BackgroundReads;
+}
+
+// The main connection checked the file at start-up; a second quick_check here would read the whole database again.
+function openReadOnly(file: string, main: Db): Db {
+  const nativeBinding = nativeBindingOf(main);
+  return openDatabase(file, { readonly: true, quickCheck: false, ...(nativeBinding && { nativeBinding }) });
 }
 
 export function createApp(cfg: AppConfig) {
@@ -156,11 +175,12 @@ export function createApp(cfg: AppConfig) {
   const backlog = new JournalBacklog(posCtx);
   const statements = new StatementService(posCtx);
   let readDb: Db | null = null;
-  const closeReadConnections = () => { readDb?.close(); readDb = null; };
-  const reportDb = () => (cfg.dbFile === ':memory:' ? cfg.db() : (readDb ??= openDatabase(cfg.dbFile, { readonly: true })));
+  const reportDb = () => (cfg.dbFile === ':memory:' ? cfg.db() : (readDb ??= openReadOnly(cfg.dbFile, cfg.db())));
+  const reads = cfg.backgroundReads ?? new InlineReads(reportDb);
+  const closeReadConnections = () => { readDb?.close(); readDb = null; void reads.close(); };
   const reports = new ReportService({
     catalogue: new ReportCatalogue(REPORTS),
-    readDb: reportDb,
+    reads,
     businessId: () => posCtx.businessId(), today: () => posCtx.today(), can: (p) => posCtx.can(p),
     business: () => { const b = business.get(); return { name: b?.name ?? '', gstin: b?.gstin ?? null }; },
     writers: [new CsvWriter(), new XlsxWriter(), ...(cfg.pdfRenderer ? [new PdfWriter(cfg.pdfRenderer)] : [])],
@@ -176,13 +196,21 @@ export function createApp(cfg: AppConfig) {
   const inventory = new InventoryService(posCtx);
   const openingImport = new OpeningImportService(posCtx, inventory, new PreviewStore(cfg.now ?? (() => Date.now())));
   const printerConfig = new PrinterConfigStore(cfg.db);
-  const printQueue = new PrintQueue({ db: cfg.db, config: printerConfig, receiptsDir: cfg.receiptsDir, log: cfg.loggers.hardware });
+  const printQueue = new PrintQueue({
+    db: cfg.db, config: printerConfig, receiptsDir: cfg.receiptsDir, log: cfg.loggers.hardware,
+    ...(cfg.printSpooler && { spooler: cfg.printSpooler }), ...(cfg.lineRasteriser && { rasteriser: cfg.lineRasteriser }),
+  });
   const sales = new SaleService(posCtx, new SalePricing(posCtx), register, () => session.require().user.name, (r) => printQueue.enqueue(r.printJobId));
   const returns = new ReturnService(posCtx, () => session.require().user.name, (r) => printQueue.enqueue(r.printJobId));
   const productImport = new ImportService(catalogCtx, new PreviewStore(cfg.now ?? (() => Date.now())), invalidateSearch);
   const diagnostics = new DiagnosticsService({
-    db: cfg.db, dbFile: cfg.dbFile, bundlesDir: cfg.bundlesDir, loggers: cfg.loggers, session, device,
+    db: cfg.db, reads, dbFile: cfg.dbFile, bundlesDir: cfg.bundlesDir, loggers: cfg.loggers, session, device,
     appVersion: cfg.appVersion, secretStoreAvailable: cfg.secrets.encrypted, connectivity: () => connectivity.snapshot(),
+  });
+  const telemetry = createTelemetry({
+    db: cfg.db, businessId: () => session.get()?.businessId ?? null, installationId: () => device.installationId(), appVersion: cfg.appVersion,
+    platform: cfg.platform, dsn: cfg.crashDsn ?? null, isDev: cfg.isDev ?? false, log: cfg.loggers.app,
+    ...(cfg.fetchImpl && { fetchImpl: cfg.fetchImpl }), ...(cfg.crashSend && { send: cfg.crashSend }), ...(cfg.now && { now: cfg.now }),
   });
   const syncStatus = () => readSyncStatus(cfg.db(), connectivity.online, connectivity.serverSkewMs);
   const credentials = (): Credentials | null => {
@@ -401,6 +429,7 @@ export function createApp(cfg: AppConfig) {
     'returns.reprint': (i) => { returns.get(i.creditNoteId); return { jobId: printQueue.reprint(i.creditNoteId, posCtx.userId()) }; },
     'printer.getConfig': () => printerConfig.get(),
     'printer.setConfig': (i) => printerConfig.set(i),
+    'printer.listInstalled': () => printQueue.installedPrinters(),
     'printer.testPrint': async () => { await printQueue.testPrint(); return { ok: true as const }; },
     'printer.getQueue': (i) => printQueue.list(posCtx.businessId(), i.limit),
     'printer.retryJob': (i) => { printQueue.retry(i.jobId, posCtx.businessId()); return { ok: true as const }; },
@@ -440,6 +469,7 @@ export function createApp(cfg: AppConfig) {
     'diagnostics.exportSupportBundle': () => diagnostics.exportSupportBundle(),
     'diagnostics.getLogsTail': (i) => diagnostics.getLogsTail(i.log, i.lines),
     ...backups.handlers,
+    ...telemetry.handlers,
     ...updates.handlers,
     ...notifications.handlers,
   };
@@ -452,6 +482,6 @@ export function createApp(cfg: AppConfig) {
     onCommitted: (channel) => { sync.nudge(); notifications.runner.afterCommit(channel); }, holds: (id) => gate.holds(id), onDispatch: (channel) => updates.activity.dispatch(channel),
   });
 
-  return { events, session, reports, dashboard, rbac, cloud, connectivity, device, auth, business, settings, products, catalog, pricing, productImport, customers, suppliers, customerLedger, supplierLedger, purchases, purchaseReturns, purchaseImport, payments, writeOffs, expenses, periods, yearEnd, backlog, statements, chart, manualJournals, gst, register, sales, returns, printQueue, inventory, openingImport, diagnostics, backups, closeReadConnections, gateway, handlers, syncStatus, syncEngine, sync, hydration, hydrationGate: gate, updates, notifications, customerPrivacy };
+  return { events, session, reports, dashboard, rbac, cloud, connectivity, device, auth, business, settings, products, catalog, pricing, productImport, customers, suppliers, customerLedger, supplierLedger, purchases, purchaseReturns, purchaseImport, payments, writeOffs, expenses, periods, yearEnd, backlog, statements, chart, manualJournals, gst, register, sales, returns, printQueue, inventory, openingImport, diagnostics, backups, closeReadConnections, gateway, handlers, syncStatus, syncEngine, sync, hydration, hydrationGate: gate, updates, notifications, customerPrivacy, telemetry };
 }
 export type App = ReturnType<typeof createApp>;

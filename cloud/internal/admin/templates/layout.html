@@ -1,0 +1,54 @@
+{{define "layout"}}<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>{{.Title}} · Muneem operator</title>
+<link rel="stylesheet" href="/admin/static/admin.css">
+</head>
+<body>
+<header class="top">
+  <a class="brand" href="/admin/shops">Muneem operator</a>
+  {{if .Signed}}
+  <form method="post" action="/admin/logout">
+    <input type="hidden" name="csrf" value="{{.CSRF}}">
+    <button type="submit">Sign out</button>
+  </form>
+  {{end}}
+</header>
+<main>
+  {{if .Notice}}<p class="notice" role="status">{{.Notice}}</p>{{end}}
+  {{if .Error}}<p class="problem" role="alert">{{.Error}}</p>{{end}}
+  {{template "content" .}}
+</main>
+</body>
+</html>
+{{end}}
+
+{{define "shopHeader"}}
+<p><a href="/admin/shops">All shops</a></p>
+<h1>{{.Shop.BusinessName}}</h1>
+<p class="muted">Business <code>{{.Shop.BusinessId}}</code> · organization {{.Shop.OrganizationName}} (<code>{{.Shop.OrganizationId}}</code>)</p>
+<dl class="facts">
+  <div><dt>Devices</dt><dd>{{.Shop.DevicesActive}} active of {{.Shop.DevicesTotal}}{{if .Shop.DevicesSilent}}, <strong>{{.Shop.DevicesSilent}} silent</strong>{{end}}</dd></div>
+  <div><dt>Last sync</dt><dd>{{ago .Shop.LastSeenAt}}</dd></div>
+  <div><dt>Deepest outbox</dt><dd>{{num .Shop.OutboxDepthMax}}</dd></div>
+  <div><dt>Open dead letters</dt><dd>{{if .Shop.DeadLettersOpen}}<strong>{{.Shop.DeadLettersOpen}}</strong>{{else}}0{{end}}</dd></div>
+  <div><dt>Review items</dt><dd>{{.Shop.ReviewItems}}</dd></div>
+  <div><dt>Audit-chain breaks</dt><dd>{{if .Shop.AuditChainBreaks}}<strong>{{.Shop.AuditChainBreaks}}</strong>{{else}}0{{end}}</dd></div>
+  <div><dt>Latest backup</dt><dd>{{ago .Shop.LatestBackupAt}}</dd></div>
+</dl>
+<nav aria-label="Shop sections" class="tabs">
+  {{$id := seg .Shop.BusinessId}}
+  <a href="/admin/shops/{{$id}}" {{if eq .Tab "devices"}}aria-current="page"{{end}}>Devices</a>
+  <a href="/admin/shops/{{$id}}/dead-letters" {{if eq .Tab "dead-letters"}}aria-current="page"{{end}}>Dead letters</a>
+  <a href="/admin/shops/{{$id}}/review-items" {{if eq .Tab "review-items"}}aria-current="page"{{end}}>Review items</a>
+  <a href="/admin/shops/{{$id}}/chain-breaks" {{if eq .Tab "chain-breaks"}}aria-current="page"{{end}}>Audit-chain breaks</a>
+  <a href="/admin/shops/{{$id}}/backups" {{if eq .Tab "backups"}}aria-current="page"{{end}}>Backups</a>
+</nav>
+{{end}}
+
+{{define "reason"}}
+<label>Reason <input type="text" name="reason" required minlength="5" maxlength="500" autocomplete="off"></label>
+{{end}}

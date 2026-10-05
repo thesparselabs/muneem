@@ -20,7 +20,10 @@ packages/domain   Pure engines: money, GST, ids, financial year, catalog rules (
 packages/contracts IPC registry (zod), errors, permissions, OpenAPI HTTP contract → TS + Go types
 packages/db-sqlite Local DB: pragmas, migrator, schema, audit hash chain, outbox, repositories, sync apply path
 packages/sync-reference In-memory reference implementation of the sync protocol, for tests (ADR-0042)
-cloud/            Go + Echo API, Postgres with row-level security, Go port of the engines
+cloud/            Go + Echo API, Postgres with row-level security, Go port of the engines; cloud/Dockerfile = the image
+deploy/           Production kit for one VM: compose (api + Caddy), deploy.sh, roles.sql, S3 lifecycle (ADR-0051)
+deploy/monitoring Prometheus, Loki, Grafana (dashboards + alert rules as files), crash collector, Alloy (ADR-0053)
+docs/runbooks/    Operator procedures (ops-*.md, Stage 9i) beside one page per alert (Stage 9c)
 scripts/          schema-lint, diff-fuzz, gen-preload
 design/           PRD, PRD review, HLD, LLD (intent)
 docs/             this folder (reality, with reasons)
@@ -35,9 +38,12 @@ docs/             this folder (reality, with reasons)
 | TS ↔ Go engines | Byte-identical results | shared fixture files in both test suites; nightly differential fuzz |
 | Financial documents & audit log | Append-only; corrections are new documents | SQLite `RAISE(ABORT)` triggers; Postgres triggers + role grants |
 | Tenant data | A business never sees another's rows | Postgres RLS keyed on `app.business_id` set per transaction |
+| Shop ↔ operator | No shop user reaches `/v1/admin` or `/admin`; no operator token opens a shop route; only `muneem_admin` reads across shops | operator grants written only by the owner role; operator tokens under derived keys with scope `op`; `muneem_admin` SELECT policies (ADR-0057) |
 | Hardware / network | Never inside the commit path | (Stage 3+) design rule, HLD §8 |
 | Sync transport ↔ SQLite | The utility process does HTTP only; main alone writes, and a pulled change never writes an outbox or audit row | process split (HLD §3.1); round-trip no-echo test |
 | TS ↔ Go sync servers | Same answers to the same requests | shared protocol fixtures in both suites (ADR-0042) |
+| Billing thread ↔ history-wide reads | Reports and integrity checks read in a worker thread on its own read-only connection; main only heals | read worker (ADR-0058); `pnpm scale` sells within budget while the checks run at 500k |
+| Hot-path SQL ↔ table size | No scan of a growing table, no walk of a whole business's rows | `EXPLAIN QUERY PLAN` gate on the SQL the hot paths really run (`test/queryPlans`) |
 
 ## Invariants checked by tests
 
@@ -107,7 +113,10 @@ docs/             this folder (reality, with reasons)
   commit (`DEL1/T01/2026-27/000001`).
 - **Registers** (ADR-0017): one open session per terminal; expected cash, X/Z reports, variance needing a manager.
 - **Printing** (ADR-0015): the print job is part of the sale; printing and the drawer run afterwards from a queue that
-  records every outcome and never throws. Printer settings are per device.
+  records every outcome and never throws. Printer settings are per device. Since 9d (ADR-0055) an installed Windows
+  printer takes RAW ESC/POS jobs through a PowerShell `WritePrinter` helper (name in the environment, bytes on stdin,
+  no shell) or, in image mode, a silent driver print of the receipt page; lines the code page cannot carry (Indic, ₹)
+  go as `GS v 0` raster lines drawn in a hidden page. Every transport is time-boxed and a failure only fails the job.
 - **Main-process services:** `PosContext` (till, settings, permissions) is shared by `CustomerService`,
   `RegisterService`, `SalePricing`, `SaleService`, `HeldBillService`; `PrintQueue` owns printing.
 
@@ -211,8 +220,8 @@ docs/             this folder (reality, with reasons)
 
 ## Reports, compliance, backup and update (Stage 8)
 
-- **Reports** (ADR-0046): a `ReportDefinition` catalogue of 25 business, statement and GST reports runs on a
-  read-only connection. CSV, XLSX and PDF writers share one document shape with the business header. The user picks
+- **Reports** (ADR-0046, ADR-0058): a `ReportDefinition` catalogue of 25 business, statement and GST reports runs in
+  the read worker on its own read-only connection. CSV, XLSX and PDF writers share one document shape with the business header. The user picks
   where an export goes, so the renderer never sees a path.
 - **Dashboard:** it reads daily summary tables that triggers keep current in the same transaction as each document,
   including pulled ones. Diagnostics checks for drift and heals it. The cloud keeps the same aggregates.
@@ -256,12 +265,70 @@ docs/             this folder (reality, with reasons)
   `safeStorage`. Requests are signed (see ADR-0003).
 - Offline login verifies against an Argon2id hash computed on the device from the entered password; the server's hash
   is never sent down.
+- Server secrets are keyrings (ADR-0052):
+  - access tokens carry a `kid` from `JWT_SECRETS`;
+  - escrowed backup keys record the `master_key_version` that wrapped them, and `muneem-api rewrap` moves them to
+    the active one.
+
+## Production (Stage 9b)
+
+- **Topology (ADR-0051):** one VM runs the API container behind Caddy, with managed Postgres (point-in-time recovery)
+  and managed S3. The procedures are in `docs/operations/deploy.md`.
+- **Database roles:** the API runs as `muneem_app` (inside `muneem_api`, so RLS applies). Migrations, `roles.sql` and
+  `rewrap` run as the owner role, and the owner's credentials never reach the API container.
+- **Probes:** `/v1/health` is liveness (devices use it); `/v1/ready` pings Postgres and object storage, and gates
+  deploys.
+- **Shutdown:** SIGTERM drains HTTP, then snapshot builds, within 25 s.
+- **Per instance:** rate limits are per instance until they move to Redis.
+
+## Observability (Stage 9c)
+
+- **Metrics (ADR-0053):** `cloud/internal/metrics` owns the only Prometheus registry. It is served on its own
+  listener (`MUNEEM_METRICS_ADDR`, loopback by default) and never on the public server or through Caddy. Domain
+  packages report through small observer interfaces and do not import Prometheus. Labels are route templates, codes
+  and opaque ids, never names or amounts.
+- **Probes:** `cloud/internal/health` runs single-flight on a timer in the API. It reads cross-tenant aggregates only
+  through migration 0008's SECURITY DEFINER functions, so the API role still cannot read another shop's rows. The
+  gauges are replaced on every run.
+- **Heartbeat:** every push may carry the device's outbox state, negative-stock count and last integrity report
+  (ADR-0054). It is telemetry, so it is clamped and never fails a push. The device keeps its report in `app_meta`
+  (`integrity_report:<business>`), written by `DiagnosticsService.scheduledChecks` every 6 hours.
+- **Crash reports:** off unless the owner turns on `telemetry.crashReports`. The desktop scrubs by allow-list before
+  sending, and the collector (`muneem-api crash-collector`) scrubs again. Minidumps stay on the machine.
+- **Invariants checked by tests:**
+  - `/metrics` is absent from the public server;
+  - the probes see every shop through the RLS-bound role, and the role alone sees none;
+  - every alert rule has a runbook, and every metric a rule or dashboard uses is exported;
+  - scrubbed reports contain none of a PII fixture's values, on both the desktop and the collector.
+## Operator tooling (Stage 9i)
+
+- **Package:** `cloud/internal/admin` (ADR-0057). Its JSON API is `packages/contracts/openapi/muneem-admin-v1.yaml`,
+  generated into `cloud/api/adminapi`, separate from the device contract. The admin page is `html/template`, with no
+  JavaScript.
+- **Listener:** the API serves `/v1/admin` and `/admin/` on `MUNEEM_ADMIN_ADDR` (port 8081, published only on the
+  VM's loopback). It mounts them on the public server only when `MUNEEM_ADMIN_PUBLIC=true`.
+- **Operators:** a row in `operator_grant`, written only by `muneem-api grant-operator` as the owner role. Operator
+  tokens are signed with keys derived from the JWT ring (`Keyring.Derive`), carry scope `op`, live 15 minutes, and are
+  re-checked against the grant on every request.
+- **Database:** cross-shop reads run as `muneem_admin`, through the login role `muneem_admin_app`, in transactions that
+  `SET LOCAL ROLE muneem_admin`. That role has SELECT policies on the tables it needs, and writes only dead-letter
+  resolutions and `admin.*` audit rows. Revoke and resend run as the app role inside the one shop's scope, reusing
+  `device.Revoke` and `devicesync.Ingest.Reapply`.
+- **Audit:** every operator read and action, every sign-in and every failed sign-in is an `admin.*` row in `audit_log`.
+  Actions carry a required reason.
+- **Dead letters:** a dead letter is open until an operator resolves it (`resent` or `dismissed`) or the device's same
+  operation applies.
 
 ## What is not built yet
 
 Attachments upload (FR-075), SMS/WhatsApp reminders, e-invoice and e-way bill, GST portal JSON and composition
 returns (GSTR-4/CMP-08), a cloud owner web UI and FR-103 retention. In inventory: transfers, multiple warehouses per
-branch, batch/serial tracking. In billing: manager PIN override; USB/Windows printers and non-ASCII receipt text
-(Stage 9). In purchases and payments: purchase orders and GRN, reverse charge, debit-note cancellation, refunding a
+branch, batch/serial tracking. In billing: manager PIN override (USB/Windows printers and non-ASCII receipt text
+landed in 9d). In purchases and payments: purchase orders and GRN, reverse charge, debit-note cancellation, refunding a
 customer's advance, TDS/TCS. Product variants, weighed barcodes and label printing are deferred (ADR-0008). Production
 deployment, monitoring, signed releases and the pilot are Stage 9. See `build-stages.md`.
+branch, batch/serial tracking. In billing: manager PIN override; USB/Windows printers and non-ASCII receipt text
+(Stage 9). In purchases and payments: purchase orders and GRN, reverse charge, debit-note cancellation, refunding a
+customer's advance, TDS/TCS. Product variants, weighed barcodes and label printing are deferred (ADR-0008). Signed
+releases and the pilot are Stage 9, as are the nightly pilot health report (ADR-0054) and uploading native minidumps
+(ADR-0053). See `build-stages.md`.

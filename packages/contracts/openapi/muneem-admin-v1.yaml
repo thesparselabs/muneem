@@ -1,0 +1,551 @@
+openapi: 3.0.3
+info:
+  title: Muneem Operator API
+  version: 1.0.0
+  description: |
+    Stage 9i operator tooling (ADR-0057). Cross-shop reads and a few audited actions for Muneem's own operators, never
+    for shop users. Served by the API on its admin listener (MUNEEM_ADMIN_ADDR); the public site serves it only when
+    MUNEEM_ADMIN_PUBLIC=true. Go types are generated from this document by `make gen`; no TypeScript client uses it.
+
+    Operators sign in with `POST /auth/login`. The token is an operator token (scope `op`, its own signing keys), which
+    no shop endpoint accepts, just as no shop token is accepted here. Every request is written to the cloud audit log.
+    Every action takes a `reason`.
+servers:
+  - url: http://localhost:8081/v1/admin
+security:
+  - operatorAuth: []
+paths:
+  /auth/login:
+    post:
+      operationId: adminLogin
+      security: []
+      tags: [operator]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OperatorLoginRequest'
+      responses:
+        '200':
+          description: Signed in
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OperatorToken'
+        '401':
+          $ref: '#/components/responses/Error'
+  /shops:
+    get:
+      operationId: adminListShops
+      tags: [shops]
+      parameters:
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Cursor'
+      responses:
+        '200':
+          description: One page of shops, by business id
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ShopPage'
+  /shops/{businessId}:
+    get:
+      operationId: adminGetShop
+      tags: [shops]
+      parameters:
+        - $ref: '#/components/parameters/BusinessId'
+      responses:
+        '200':
+          description: The shop and its devices
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ShopDetail'
+        '404':
+          $ref: '#/components/responses/Error'
+  /shops/{businessId}/dead-letters:
+    get:
+      operationId: adminListDeadLetters
+      tags: [dead-letters]
+      parameters:
+        - $ref: '#/components/parameters/BusinessId'
+        - name: state
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [open, all]
+            default: open
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Cursor'
+      responses:
+        '200':
+          description: Newest first, with a payload preview
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeadLetterPage'
+  /shops/{businessId}/review-items:
+    get:
+      operationId: adminListReviewItems
+      tags: [review]
+      parameters:
+        - $ref: '#/components/parameters/BusinessId'
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Cursor'
+      responses:
+        '200':
+          description: Review items (conflict log), newest first
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReviewItemPage'
+  /shops/{businessId}/chain-breaks:
+    get:
+      operationId: adminListChainBreaks
+      tags: [review]
+      parameters:
+        - $ref: '#/components/parameters/BusinessId'
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Cursor'
+      responses:
+        '200':
+          description: Audit-chain breaks (review items of kind audit_chain_broken), newest first
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReviewItemPage'
+  /shops/{businessId}/backups:
+    get:
+      operationId: adminListBackups
+      tags: [backups]
+      parameters:
+        - $ref: '#/components/parameters/BusinessId'
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Cursor'
+      responses:
+        '200':
+          description: Cloud backups, newest first
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BackupPage'
+  /devices/{deviceId}/revoke:
+    post:
+      operationId: adminRevokeDevice
+      tags: [shops]
+      parameters:
+        - name: deviceId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ActionReason'
+      responses:
+        '200':
+          description: Revoked (or already revoked)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminDevice'
+        '404':
+          $ref: '#/components/responses/Error'
+        '422':
+          $ref: '#/components/responses/Error'
+  /dead-letters/{deadLetterId}:
+    get:
+      operationId: adminGetDeadLetter
+      tags: [dead-letters]
+      parameters:
+        - $ref: '#/components/parameters/DeadLetterId'
+      responses:
+        '200':
+          description: The dead letter with its whole operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeadLetter'
+        '404':
+          $ref: '#/components/responses/Error'
+  /dead-letters/{deadLetterId}/resend:
+    post:
+      operationId: adminResendDeadLetter
+      summary: Re-run ingest for the operation, as its device; idempotent
+      tags: [dead-letters]
+      parameters:
+        - $ref: '#/components/parameters/DeadLetterId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ActionReason'
+      responses:
+        '200':
+          description: The ingest result; the dead letter is resolved when the operation applied
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResendResult'
+        '404':
+          $ref: '#/components/responses/Error'
+        '409':
+          $ref: '#/components/responses/Error'
+        '422':
+          $ref: '#/components/responses/Error'
+  /dead-letters/{deadLetterId}/dismiss:
+    post:
+      operationId: adminDismissDeadLetter
+      tags: [dead-letters]
+      parameters:
+        - $ref: '#/components/parameters/DeadLetterId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ActionReason'
+      responses:
+        '200':
+          description: Dismissed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeadLetter'
+        '404':
+          $ref: '#/components/responses/Error'
+        '409':
+          $ref: '#/components/responses/Error'
+        '422':
+          $ref: '#/components/responses/Error'
+components:
+  securitySchemes:
+    operatorAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    BusinessId:
+      name: businessId
+      in: path
+      required: true
+      schema:
+        type: string
+    DeadLetterId:
+      name: deadLetterId
+      in: path
+      required: true
+      schema:
+        type: integer
+        format: int64
+    Limit:
+      name: limit
+      in: query
+      required: false
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 50
+    Cursor:
+      name: cursor
+      in: query
+      required: false
+      description: The next_cursor of the previous page
+      schema:
+        type: string
+  responses:
+    Error:
+      description: Error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+  schemas:
+    ErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, class, message]
+          properties:
+            code:
+              type: string
+            class:
+              type: string
+            message:
+              type: string
+            request_id:
+              type: string
+    OperatorLoginRequest:
+      type: object
+      required: [identifier, password]
+      properties:
+        identifier:
+          type: string
+        password:
+          type: string
+    OperatorToken:
+      type: object
+      required: [access_token, expires_in, token_type]
+      properties:
+        access_token:
+          type: string
+        expires_in:
+          type: integer
+        token_type:
+          type: string
+          enum: [Bearer]
+    ActionReason:
+      type: object
+      required: [reason]
+      properties:
+        reason:
+          type: string
+          minLength: 5
+          maxLength: 500
+    ShopSummary:
+      type: object
+      required: [business_id, business_name, organization_id, organization_name, created_at, devices_active, devices_total,
+        devices_silent, dead_letters_open, review_items, audit_chain_breaks]
+      properties:
+        business_id:
+          type: string
+        business_name:
+          type: string
+        organization_id:
+          type: string
+        organization_name:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        devices_active:
+          type: integer
+        devices_total:
+          type: integer
+        devices_silent:
+          type: integer
+          description: Active devices not seen for 24 hours
+        last_seen_at:
+          type: string
+          format: date-time
+          description: The most recent sync of any device
+        outbox_depth_max:
+          type: integer
+          description: The deepest outbox any active device reported, when devices report it
+        dead_letters_open:
+          type: integer
+        review_items:
+          type: integer
+        audit_chain_breaks:
+          type: integer
+        latest_backup_at:
+          type: string
+          format: date-time
+          description: The newest confirmed cloud backup
+    ShopPage:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ShopSummary'
+        next_cursor:
+          type: string
+    AdminDevice:
+      type: object
+      required: [id, status, platform, app_version, schema_version, created_at, silent]
+      properties:
+        id:
+          type: string
+        business_id:
+          type: string
+        name:
+          type: string
+        status:
+          type: string
+          enum: [active, suspended, revoked]
+        platform:
+          type: string
+        app_version:
+          type: string
+        schema_version:
+          type: integer
+        last_seen_at:
+          type: string
+          format: date-time
+        last_push_seq:
+          type: integer
+          format: int64
+        last_pull_seq:
+          type: integer
+          format: int64
+        outbox_depth:
+          type: integer
+        clock_skew_ms:
+          type: integer
+        created_at:
+          type: string
+          format: date-time
+        silent:
+          type: boolean
+          description: Active and not seen for 24 hours
+    ShopDetail:
+      type: object
+      required: [shop, devices]
+      properties:
+        shop:
+          $ref: '#/components/schemas/ShopSummary'
+        devices:
+          type: array
+          items:
+            $ref: '#/components/schemas/AdminDevice'
+    DeadLetter:
+      type: object
+      required: [id, business_id, device_id, operation_id, entity_type, entity_id, error_code, error_detail, created_at,
+        payload_preview, applied_since]
+      properties:
+        id:
+          type: integer
+          format: int64
+        business_id:
+          type: string
+        device_id:
+          type: string
+        operation_id:
+          type: string
+        entity_type:
+          type: string
+        entity_id:
+          type: string
+        error_code:
+          type: string
+        error_detail:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        payload_preview:
+          type: string
+          description: The operation's payload, cut at 2 KB
+        operation:
+          type: object
+          additionalProperties: true
+          description: The whole operation (single dead letter only)
+        applied_since:
+          type: boolean
+          description: The device's same operation has applied since (a later push or a resend)
+        resolved_at:
+          type: string
+          format: date-time
+        resolved_by:
+          type: string
+        resolution:
+          type: string
+          enum: [resent, dismissed]
+        resolution_note:
+          type: string
+    DeadLetterPage:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/DeadLetter'
+        next_cursor:
+          type: string
+    ResendResult:
+      type: object
+      required: [status, dead_letter]
+      properties:
+        status:
+          type: string
+          enum: [applied, duplicate, deferred, rejected]
+        code:
+          type: string
+        detail:
+          type: string
+        server_seq:
+          type: integer
+          format: int64
+        dead_letter:
+          $ref: '#/components/schemas/DeadLetter'
+    ReviewItem:
+      type: object
+      required: [id, kind, entity_type, entity_id, device_id, operation_id, detail, created_at]
+      properties:
+        id:
+          type: string
+        kind:
+          type: string
+        entity_type:
+          type: string
+        entity_id:
+          type: string
+        device_id:
+          type: string
+        operation_id:
+          type: string
+        detail:
+          type: object
+          additionalProperties: true
+        server_seq:
+          type: integer
+          format: int64
+        created_at:
+          type: string
+          format: date-time
+    ReviewItemPage:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ReviewItem'
+        next_cursor:
+          type: string
+    Backup:
+      type: object
+      required: [id, device_id, bytes, status, schema_version, key_id, created_at]
+      properties:
+        id:
+          type: string
+        device_id:
+          type: string
+        bytes:
+          type: integer
+          format: int64
+        status:
+          type: string
+          enum: [pending, ready]
+        schema_version:
+          type: integer
+        key_id:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        confirmed_at:
+          type: string
+          format: date-time
+    BackupPage:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Backup'
+        next_cursor:
+          type: string

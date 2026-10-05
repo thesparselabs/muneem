@@ -155,6 +155,19 @@ func (h *Handler) ListDevices(c echo.Context, params api.ListDevicesParams) erro
 	return c.JSON(http.StatusOK, out)
 }
 
+// Revoke marks the device revoked and tells its business's other devices, inside the caller's transaction. The caller
+// drops the device from its Verifier's cache after commit.
+func Revoke(ctx context.Context, tx pgx.Tx, revocations RevocationRecorder, d *store.Device) error {
+	if _, err := store.SetDeviceStatus(ctx, tx, d.ID, "revoked"); err != nil {
+		return err
+	}
+	d.Status = "revoked"
+	if d.BusinessID == nil || revocations == nil {
+		return nil
+	}
+	return revocations.DeviceRevoked(ctx, tx, *d.BusinessID, d.ID)
+}
+
 func (h *Handler) RevokeDevice(c echo.Context, deviceID string) error {
 	cl := auth.ClaimsFrom(c)
 	ctx := c.Request().Context()
@@ -178,14 +191,8 @@ func (h *Handler) RevokeDevice(c echo.Context, deviceID string) error {
 			return nil
 		}
 		found = true
-		if _, err := store.SetDeviceStatus(ctx, tx, d.ID, "revoked"); err != nil {
+		if err := Revoke(ctx, tx, h.Revocations, d); err != nil {
 			return err
-		}
-		d.Status = "revoked"
-		if d.BusinessID != nil && h.Revocations != nil {
-			if err := h.Revocations.DeviceRevoked(ctx, tx, *d.BusinessID, d.ID); err != nil {
-				return err
-			}
 		}
 		out = toAPI(d)
 		return store.Audit(ctx, tx, d.BusinessID, &cl.Subject, &d.ID, "device.revoke", "device", &d.ID, nil, out, c.Response().Header().Get(echo.HeaderXRequestID))

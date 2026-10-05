@@ -5,8 +5,13 @@ directories:
   buildResources: resources
 files:
   - out/**
+  - '!out/**/*.map'
   - native/**
   - package.json
+# Receipt fonts for ₹ and Indic raster lines (OFL 1.1, licence beside them; ADR-0055).
+extraResources:
+  - from: resources/fonts
+    to: fonts
 asarUnpack:
   - native/**
   - "**/*.node"
@@ -15,12 +20,17 @@ win:
   target:
     - target: nsis
       arch: [x64]
-  # Signing (EV / Azure Trusted Signing) is configured in CI via env, never committed. Its publisher name lands in
-  # app-update.yml, and electron-updater refuses an update whose Authenticode signer differs (ADR-0049).
+  # Azure Trusted Signing (azureSignOptions, publisherName included) is passed by release.yml only when its secrets
+  # exist (ADR-0056). The publisher lands in app-update.yml and electron-updater refuses an update signed by anyone
+  # else (ADR-0049); an unsigned build records none, so it checks sha512 only.
 nsis:
+  artifactName: ${productName}-Setup-${version}.${ext}
   oneClick: false
   perMachine: false
   allowToChangeInstallationDirectory: true
+  createDesktopShortcut: always
+  createStartMenuShortcut: true
+  shortcutName: Muneem
   deleteAppDataOnUninstall: false
 # The app points the feed at <host>/<channel> at run time (ADR-0049); this is the default the build records.
 publish:

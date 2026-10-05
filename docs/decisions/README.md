@@ -55,3 +55,13 @@ Template: Context → Decision → Consequences → Status.
 | [0048](0048-audit-chain-on-the-cloud.md) | Audit chain on the cloud |
 | [0049](0049-updates-and-protocol-support.md) | Updates and protocol support |
 | [0050](0050-notifications-and-consent.md) | Notifications and consent |
+| [0051](0051-production-topology.md) | Production topology |
+| [0052](0052-keys-and-rotation.md) | Keys and rotation |
+| [0053](0053-observability.md) | Observability: metrics, business-health probes, logs, alerts and crash reports |
+| [0054](0054-pilot-health-measures.md) | What "zero lost, zero unexplained" means for the pilot |
+| [0055](0055-windows-printing.md) | Windows printing: spooler RAW jobs, an image fallback, and ₹ and Indic text as raster lines |
+| [0056](0056-release-and-installer.md) | Release and installer: CI-built, Azure-signed, promoted between channels without a rebuild |
+| [0057](0057-operator-tooling.md) | Operator tooling: operator grants and tokens, the muneem_admin role (addendum to 0051), the admin listener |
+| [0058](0058-heavy-reads-off-the-billing-thread.md) | Heavy reads off the billing thread: a read worker for reports and integrity checks; quick_check after an unclean exit only |
+| [0059](0059-per-unit-cess-inside-inclusive-prices.md) | Per-unit cess inside a tax-inclusive price |
+| [0060](0060-damaged-database-recovery.md) | Recovering from a damaged database at start-up: keep the file, restore and catch up, or start empty and restore from the cloud |

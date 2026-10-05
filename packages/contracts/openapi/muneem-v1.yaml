@@ -35,6 +35,25 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Health'
+  /ready:
+    get:
+      operationId: getReady
+      summary: Readiness — Postgres and object storage answer (load balancers and deploys gate on it; /health is liveness)
+      security: []
+      tags: [system]
+      responses:
+        '200':
+          description: Ready to serve
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Readiness'
+        '503':
+          description: A dependency did not answer in time
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Readiness'
   /auth/register:
     post:
       operationId: register
@@ -658,6 +677,25 @@ components:
           type: string
         protocol:
           type: integer
+    Readiness:
+      type: object
+      required: [ready, checks]
+      properties:
+        ready:
+          type: boolean
+        checks:
+          type: array
+          items:
+            $ref: '#/components/schemas/ReadinessCheck'
+    ReadinessCheck:
+      type: object
+      required: [name, ok]
+      properties:
+        name:
+          type: string
+          description: postgres or object_store
+        ok:
+          type: boolean
     RegisterRequest:
       type: object
       required: [name, identifier, password]
@@ -1013,6 +1051,30 @@ components:
           type: array
           maxItems: 200
           items: { $ref: '#/components/schemas/PushOperation' }
+        heartbeat: { $ref: '#/components/schemas/PushHeartbeat' }
+    PushHeartbeat:
+      type: object
+      description: 'ADR-0053: the outbox as it stands once this batch lands, for the business-health probes. Telemetry only; never refuses a push.'
+      required: [outboxDepth, oldestPendingAt, negativeStockCount]
+      properties:
+        outboxDepth: { type: integer, minimum: 0, description: 'operations still waiting after this batch' }
+        oldestPendingAt: { type: string, format: date-time, nullable: true, description: 'when the oldest of them was queued' }
+        negativeStockCount: { type: integer, minimum: 0, description: 'stock levels below zero on this device' }
+        integrity: { $ref: '#/components/schemas/IntegrityReport' }
+    IntegrityReport:
+      type: object
+      description: 'ADR-0054: the device''s latest scheduled integrity run; journal totals are as of its documents cursor and compare with the cloud''s only when outboxDepth was 0.'
+      required: [checkedAt, tieOutFailures, replayMismatches, auditChainOk, journalCount, journalDebitPaise, journalCreditPaise, documentsSeq, outboxDepth]
+      properties:
+        checkedAt: { type: string, format: date-time }
+        tieOutFailures: { type: integer, minimum: 0 }
+        replayMismatches: { type: integer, minimum: 0 }
+        auditChainOk: { type: boolean }
+        journalCount: { type: integer, minimum: 0 }
+        journalDebitPaise: { type: integer, minimum: 0 }
+        journalCreditPaise: { type: integer, minimum: 0 }
+        documentsSeq: { type: integer, minimum: 0 }
+        outboxDepth: { type: integer, minimum: 0 }
     SyncError:
       type: object
       required: [code, class, detail]

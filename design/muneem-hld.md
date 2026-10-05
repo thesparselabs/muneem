@@ -305,7 +305,7 @@ POS service  ──►  HardwareManager  ──►  DeviceInterface  ──►  
 ## 11. Observability
 
 - **Device:** structured rotating JSON logs (`app`, `sql-slow`, `sync`, `hardware`), a local `Diagnostics` screen (DB size, integrity check, outbox depth, oldest unsynced op, last sync, hardware health, clock skew), opt-in crash reports with PII scrubbing, and a one-click **support bundle** (logs + schema version + counts, no invoice contents).
-- **Cloud:** OpenTelemetry traces spanning `device op_id → ingest → DB write`, RED metrics per endpoint, sync lag histograms per device, dead-letter depth, backup success, Postgres health.
+- **Cloud:** OpenTelemetry traces spanning `device op_id → ingest → DB write`, RED metrics per endpoint, sync lag histograms per device, dead-letter depth, backup success, Postgres health. *(As built, ADR-0053: Prometheus metrics, Loki logs and scheduled business-health probes; traces are deferred, request ids in the logs stand in.)*
 - **Business-health alerts** (these are what actually catch incidents): devices with outbox depth > N for > 1 hour, devices silent > 24 h, ingest verification-mismatch rate, trial-balance imbalance count, negative-stock spikes, e-invoice failure rate.
 
 ---

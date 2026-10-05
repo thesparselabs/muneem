@@ -78,6 +78,7 @@ One branch `feat/stage-2-catalog`, **one PR** for all of Stage 2. Parts 2a–2e 
 
 - `pnpm turbo run gen build typecheck lint test` and `pnpm schema-lint` green locally and in CI; Go job unchanged and green.
 - Exit criterion evidence: `catalog.perf.test.ts` (p95 barcode < 30 ms at 5,000 SKUs) and the 5,000-row import test; record the measured numbers in `docs/build-stages.md`.
+- **9j:** the manual step below moved to [docs/qa/manual-checklist.md](../qa/manual-checklist.md) (Catalog), where it is automated or kept manual with results.
 - Manual: launch the desktop app, import `fixtures/import/5000.csv`, scan/type a barcode and a partial Hindi and English name in `/products`, log in as cashier and confirm create is denied.
 - Audit chain: `verifyAuditChain` passes after the bulk import.
 

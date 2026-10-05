@@ -72,8 +72,7 @@ export default function Sales() {
         <ReturnDialog saleId={returning} onClose={() => setReturning(null)} onDone={(r) => {
           setReturning(null);
           setMessage({ kind: 'ok', text: `Credit note ${r.docNumber} for ${formatPaise(r.totalPaise)} issued` });
-          void qc.invalidateQueries({ queryKey: ['sales'] });
-          void qc.invalidateQueries({ queryKey: ['creditNotes'] });
+          void qc.invalidateQueries();
         }} />
       )}
     </div>

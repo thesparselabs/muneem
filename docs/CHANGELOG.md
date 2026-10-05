@@ -5,6 +5,175 @@ All notable changes, newest first. Each entry records **what** changed and **why
 
 ## [Unreleased]
 
+### Added — Stage 9 hardening and pilot
+- **Stage 9 plan (`docs/plans/stage-9-hardening.md`).** Three agents surveyed the designs, every deferred item and
+  operational readiness. Decided with the user:
+  - **Hosting:** one VM with Caddy, managed Postgres with point-in-time recovery, and managed S3.
+  - **Before the pilot:** USB/Windows printing with ₹ and Indic text.
+  - **Scale bar:** 500k transactions, 20k SKUs and 50k customers against the strict LLD §18 budgets.
+  - **Monitoring:** self-hosted Prometheus, Loki and Grafana, with a self-hosted crash collector.
+- **Every LLD §18 budget passes at 500k sales, 20k SKUs and 50k customers (9f).** Why: NFR-021 and the user's scale
+  bar.
+
+  | Budget | Before | After |
+  |---|---|---|
+  | Cold start | about 19 min | 2.1 s |
+  | `sales.complete` p95 | 638 ms | 55 ms |
+  | Dashboard | 506 ms | 154 ms |
+  | A sale while checks run | billing frozen for minutes | 90 ms |
+
+  Barcode lookup, search and cart recalculation stay at 0.1–4 ms.
+  - **Indexes (migration 0021):** the sync queue's reads during a push fall from 145 s to 32 ms, sync status from
+    397 ms to 0.01 ms, the dashboard's party totals and top products, and customer search.
+- **The push heartbeat counts negative stock from a covering partial index (9f + 9c).** It had walked every stock row
+  of the business on every push; the query-plan gate caught it once both parts were merged.
+- **Reports and integrity checks run in a read worker (9f, ADR-0058).** The worker has its own read-only connection. At
+  500k these checks had held the billing thread for minutes; the main thread now only applies a fix when one is
+  needed.
+- **Start-up runs `quick_check` only after an unclean exit (9f).** The worker checks the file once a day in the
+  background. Cold start at 500k drops from about 19 minutes to 2.1 s.
+- **Scale tests (9f):**
+  - **The dataset:** a seeded builder for the 500k dataset.
+  - **`pnpm scale`:** measures every budget on a 4 GB profile, plus the upgrade path, nightly in CI.
+  - **Query-plan gate:** an `EXPLAIN QUERY PLAN` gate on the hot paths runs in the default suite.
+  - **Open:** upgrading a 500k database takes about 24 minutes (a 9-minute pre-migration backup plus checks). This
+    needs a file-copy backup and a scoped foreign-key check.
+- **Chaos and fault suite (9g, ADR-0060).** Why: NFR-012, NFR-018 and NFR-019 must hold under real faults, not
+  only in the happy path.
+  - **What it covers:** disk full during commits and backups; power loss mid-commit for every posting command (returns,
+    purchases, payments, GST set-off, year end); clock jumps across 31 March; a printer unplugged, cut off or hanging;
+    the network flapping mid-sync; and the damaged-database journey.
+  - **Where it runs:** CI at 20 kills per kind. The nightly `chaos` job runs 100 kills per kind, §37 and a 200-seed
+    simulation. `docs/qa/chaos.md` lists each fault and what is asserted.
+- **Fixed by the chaos suite (9g):**
+  - **Disk full:** it now returns `DISK_FULL` with a clear message instead of "Something went wrong". LLD §17 gains
+    the row.
+  - **Damaged databases:** a damaged header, or pages so broken that `quick_check` itself throws, now reach the
+    restore dialog instead of crashing start-up.
+  - **Restoring an older backup:** after a device restores its own older backup (from Diagnostics or at start-up), the
+    next bill no longer fails on a duplicate number. Series are realigned after the catch-up pull, and start-up
+    restore now pulls back the device's own later work.
+  - **Start-up recovery:** it keeps the damaged file, carries over audit rows that still link, and offers "Start empty
+    and restore from the cloud".
+  - **Known gaps:**
+    - with a destroyed header, audit rows written after the backup cannot be recovered, so the cloud rejects that
+      device's next rows; "start empty" avoids this;
+    - NFR-018's date-window check is not built;
+    - a printer that hangs and then prints late prints twice if retried.
+- **Playwright + Electron UI suite (9j).** Why: the Stage 2–8 manual checklists had never been run, and unit tests
+  cannot catch what only the built app does.
+  - **How it runs:** `pnpm e2e:ui`, and the CI job `e2e-ui` under Xvfb. It drives the built app with a temp profile, a
+    stub cloud over the reference sync server, and the printer simulator.
+  - **What it covers:** 33 tests for the golden flow, keyboard-only POS (F2–F9, Esc, Tab), offline billing and
+    recovery, and cashier permissions. Every one of the 34 screens is checked to fit 1366×768.
+- **Fixed: every report and the GST returns page failed in the Electron app (9j).** The read-only report connection
+  loaded the Node build of SQLite instead of Electron's. It affected packaged builds too, and it is in the Stage 8 code.
+  It now reuses the main connection's native binding.
+- **Fixed: keyboard-only POS gaps (9j).**
+  - **Payment:** dialogs focus their first field, so F5 then Enter completes a sale instead of closing the payment
+    dialog, and focus returns to the opener on close.
+  - **Held bills:** F7 then Enter retrieves the first held bill.
+  - **After a sale:** the search box takes focus again.
+- **Fixed: stale data straight after a change (9j).** A completed sale or return refreshes every cached read; "Receive
+  payment" had said "Nothing is open" just after a credit sale. The notification bell refetches when it appears.
+- **One QA record (9j).** `docs/qa/manual-checklist.md` lists every Stage 2–8 manual step as automated (naming its
+  test) or still manual, with a Windows-host section and a results table. The stage plans point to it.
+- **Fixed: per-unit cess on an MRP (tax-inclusive) item was billed on top of the MRP (9h, ADR-0059).** A ₹150 pack with
+  ₹10 per-unit cess billed ₹160. The per-unit cess now comes out of the gross before the back-calculation, in both
+  the TypeScript and Go engines, with a HAND golden vector and a property test, and LLD §3.1 is updated. The golden
+  scenario suite found it. Both engines had agreed on the wrong answer, so the cloud's check could not.
+- **Fixed: the composition declaration now prints at the top of the bill of supply (9h),** as CGST rule 5(1)(g)
+  requires. It used to print at the bottom.
+- **Golden tax scenario suite (9h).** Why: the GST, returns and posting treatment is pinned before the CA reviews it.
+  - **Scenarios:** 12 hand-checked business days, covering intra- and inter-state; B2B, B2CS and B2CL; composition;
+    exempt, nil and non-GST lines mixed on one bill; rounding and bill discounts; cess; four kinds of credit note;
+    purchases with eligible and blocked ITC; debit notes; expenses; a rule-88A set-off; and a year-end close.
+  - **What is checked:** HSN = Σ invoice lines, GSTR-1 = invoices − credit notes, GSTR-3B ties to the tax accounts,
+    and every journal balances.
+  - **Go** reproduces the invoices, credit notes and set-offs from the same file.
+- **CA review pack (9h).** `docs/compliance/ca-review-pack.md` puts 29 yes/no or choose-one questions to the CA, each
+  with our current choice, plus a sign-off section. The posting tables and a scenario workbook are generated from the
+  code, and a drift test keeps the pack from going stale.
+- **Operator tooling (9i, ADR-0057).** Why: during the pilot, operators must see and fix shops without raw SQL, and
+  every action must be audited.
+  - **API and page:** a cross-shop operator API (`/v1/admin`) and a plain server-rendered admin page (`/admin/`) on a
+    loopback-only listener, reached through an SSH tunnel.
+  - **What operators can do:** see shop health; revoke devices; resend or dismiss dead letters; read review items,
+    audit-chain breaks and backups.
+  - **Grants:** operators are granted only from the server CLI (`grant-operator`/`revoke-operator`). Their tokens use
+    derived keys and an `op` scope, so shop and operator tokens never open each other's routes.
+  - **Cross-shop reads** go through a least-privilege `muneem_admin` role (Go migration 0009). Actions run in the
+    shop's own RLS scope, need a reason, and are audited.
+  - **Probe fix:** the business-health probe now skips dismissed dead letters, so the alert clears.
+  - **Runbooks:** `docs/runbooks/ops-*.md` covers onboarding, device replacement, dead letters, audit-chain breaks,
+    restores, key rotation and silent devices.
+- **Security scanning in CI (9k).** Why: what ships must have no known reachable vulnerability and no committed
+  secret.
+  - **The `security` job** runs `pnpm audit --prod` at moderate and above, `govulncheck`, and a gitleaks scan of the
+    whole history. Fixtures are allowlisted in `.gitleaks.toml`, and all nine findings were deliberate test or dev
+    values.
+- **Go toolchain pinned to 1.26.8 (9k).** `go.mod` said `go 1.26.0`, so CI and the release build compiled with a
+  toolchain that `govulncheck` found 21 reachable standard-library vulnerabilities in (crypto/x509, net/http, net/url
+  and others). It is now `toolchain go1.26.8`, with the Docker build image pinned to match: 0 reachable.
+- **`uuid` overridden to ^11.1.1 (9k).** `exceljs` pulled in a `uuid` with a missing bounds check (moderate). The
+  override is in `pnpm-workspace.yaml`, where pnpm 11 reads it, and the Excel import/export tests pass.
+- **Security checklist and pilot runbook (9k).** `docs/security/checklist.md` marks each item as built, an ops task, or
+  later. `docs/operations/pilot-runbook.md` covers what must be ready before day 1, shop criteria, onboarding, the
+  daily review, the proposed support SLA, known risks with mitigations, and the exit.
+- **Release pipeline (9e, ADR-0056).** Why: HLD §12/§13 ask for signed, staged and checkable updates.
+  - **`release.yml`:** it builds the Windows NSIS installer, Azure-signed when the signing secrets are set. Without
+    them, the build is unsigned, marked as a prerelease and published to dev only.
+  - **What it publishes:** CycloneDX SBOMs (pnpm and Go), SHA-256 checksums, the channel's `latest.yml`, an immutable
+    `releases/<version>/` archive and a GitHub Release.
+  - **Channels:** a fresh build never goes straight to stable.
+- **`promote.yml` (9e).** It moves a built release between channels, or changes its rollout, without rebuilding, so
+  beta and stable get the same bytes. A rollout of 0 halts it, promoting from the archive rolls back, and unsigned
+  builds never reach stable.
+- **Crash DSN and symbols (9e).** The release build bakes in the crash collector's address from `vars.MUNEEM_CRASH_DSN`.
+  It stays empty outside a vite build, which the kill -9 suite's plain-Node child caught. Hidden source maps are kept
+  as a symbols artifact and never shipped.
+- **Observability (9c, ADR-0053).** Why: production must be measurable and must alert before a shop notices, using
+  the self-hosted stack the user chose.
+  - **Cloud metrics:** on an internal port only. They cover requests and latency per route, ingest outcomes, dead
+    letters, jobs, readiness and the database pool.
+  - **Business-health probes:** they run every minute, through Go migration 0008's security-definer functions, so the
+    RLS-bound API role sees counts but no tenant rows. They cover silent devices, outbox depth and age, negative
+    stock, dead letters, audit breaks, rejections, backup age and unbalanced journals.
+  - **Push heartbeat:** each push carries one. Each device's nightly integrity report (tie-outs, replay, audit chain,
+    journal totals) is compared with the cloud's journals, which gives ADR-0054 its data.
+  - **Monitoring stack:** `deploy/monitoring` provisions Prometheus, Loki, Alloy and Grafana. Dashboards and 19 alert
+    rules are files, and each rule has a runbook in `docs/runbooks/`.
+  - **Crash collector:** self-hosted and Sentry-compatible (`muneem-api crash-collector`), with no extra database to
+    run.
+  - **Desktop crash reports (NFR-025):** opt-in per business and owner-controlled, with allow-list scrubbing (no
+    names, phones, GSTINs, amounts or free text). Minidumps stay on the machine.
+  - **Docs:** HLD §11 now says traces are deferred.
+- **Windows printing (9d, ADR-0055).** Why: pilot shops use USB printers installed through Windows.
+  - **RAW mode:** receipts print on any installed Windows printer as RAW ESC/POS, through a fixed PowerShell
+    `WritePrinter` helper. There is no shell, the name must be one Windows lists, and size and time are bounded.
+  - **Image mode:** printers without ESC/POS print a page through their driver.
+- **₹ and Indic text on receipts (9d).** These lines print as ESC/POS raster images drawn with bundled Noto Devanagari
+  and Tamil fonts (OFL, about 300 KB); ASCII lines stay text. The printer's code page used to print "Rs" and "?". ₹
+  versus "Rs" is a per-printer option.
+- **A hung printer never blocks a sale (9d, NFR-012).** The print queue has a deadline over every transport, and the
+  cash drawer kicks through the spooler too.
+- **Printer settings (9d):** pick an installed printer, the mode, the paper width and the ₹ option, then test-print and
+  test the drawer. The real Windows path has not run on Windows yet; it is part of the 9j manual checks.
+- **The cloud is deployable (9b, ADR-0051).** Why: production needs one reproducible artifact and a scripted, safe
+  deploy.
+  - **Image:** a distroless, non-root container and a CI `cloud-image` job.
+  - **Deploy kit:** `deploy/` holds the Caddy TLS proxy, a production compose file, `roles.sql` and the S3 lifecycle
+    rules. `deploy.sh` migrates as the owner, restarts only once healthy, and rolls back to the previous image.
+  - **Runbook:** `docs/operations/deploy.md`.
+  - **Readiness:** `GET /v1/ready` checks Postgres and object storage. Snapshot builds drain on shutdown.
+  - **Rate limits:** `X-Forwarded-For` is trusted only from private-network proxies.
+- **Rotatable secrets (9b, ADR-0052).** Why: both secrets can now change without logging users out or orphaning
+  backups.
+  - **JWT:** signing keys carry a `kid` (`JWT_SECRETS`).
+  - **Backups:** the master key is a versioned keyring (`MUNEEM_BACKUP_MASTER_KEYS`, Go migration 0007), with a
+    `rewrap` command.
+  - **Compatibility:** the legacy single variables still work.
+
 ### Added — Stage 8 reports, compliance, backup and update
 - **Stage 8 plan (`docs/plans/stage-8-reports.md`).** Three agents surveyed the designs, what earlier stages deferred,
   and the GST and year-end gaps; the plan's details of every part come from that. Decided with the user:

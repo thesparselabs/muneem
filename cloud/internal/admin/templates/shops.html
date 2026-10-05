@@ -1,0 +1,32 @@
+{{define "content"}}
+<h1>Shops</h1>
+<table>
+  <caption>Every shop on the cloud, by business id. Silent: an active device not seen for 24 hours.</caption>
+  <thead>
+    <tr>
+      <th scope="col">Shop</th><th scope="col">Organization</th><th scope="col">Devices</th><th scope="col">Silent</th>
+      <th scope="col">Last sync</th><th scope="col">Deepest outbox</th><th scope="col">Open dead letters</th>
+      <th scope="col">Review items</th><th scope="col">Chain breaks</th><th scope="col">Latest backup</th>
+    </tr>
+  </thead>
+  <tbody>
+    {{range .Data.Items}}
+    <tr>
+      <th scope="row"><a href="/admin/shops/{{seg .BusinessId}}">{{.BusinessName}}</a></th>
+      <td>{{.OrganizationName}}</td>
+      <td>{{.DevicesActive}} / {{.DevicesTotal}}</td>
+      <td>{{if .DevicesSilent}}<strong>{{.DevicesSilent}}</strong>{{else}}0{{end}}</td>
+      <td>{{ago .LastSeenAt}}</td>
+      <td>{{num .OutboxDepthMax}}</td>
+      <td>{{if .DeadLettersOpen}}<a href="/admin/shops/{{seg .BusinessId}}/dead-letters"><strong>{{.DeadLettersOpen}}</strong></a>{{else}}0{{end}}</td>
+      <td>{{.ReviewItems}}</td>
+      <td>{{if .AuditChainBreaks}}<a href="/admin/shops/{{seg .BusinessId}}/chain-breaks"><strong>{{.AuditChainBreaks}}</strong></a>{{else}}0{{end}}</td>
+      <td>{{ago .LatestBackupAt}}</td>
+    </tr>
+    {{else}}
+    <tr><td colspan="10">No shops yet.</td></tr>
+    {{end}}
+  </tbody>
+</table>
+{{with .Data.NextCursor}}<p><a href="/admin/shops?cursor={{str .}}" rel="next">Next page</a></p>{{end}}
+{{end}}

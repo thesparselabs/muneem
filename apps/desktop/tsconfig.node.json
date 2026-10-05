@@ -4,6 +4,6 @@
     "composite": true, "noEmit": false, "emitDeclarationOnly": true, "outDir": "out/types-node",
     "module": "ESNext", "moduleResolution": "Bundler", "types": ["node"], "lib": ["ES2022"]
   },
-  "include": ["src/main", "src/sync-worker", "src/preload", "src/shared", "scripts", "test", "electron.vite.config.ts", "vitest.config.ts"],
+  "include": ["src/main", "src/sync-worker", "src/read-worker", "src/renderer/src/lib/pos/cart.ts", "src/preload", "src/shared", "scripts", "test", "electron.vite.config.ts", "vitest.config.ts", "vitest.scale.config.ts"],
   "exclude": ["test/renderer"]
 }

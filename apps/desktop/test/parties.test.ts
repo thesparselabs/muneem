@@ -84,7 +84,7 @@ describe('party ledger integrity check (5g)', () => {
     expect(await api.data('diagnostics.integrityCheck')).toMatchObject({ parties: 'ok' });
     db.prepare(`INSERT INTO party_ledger_entry (id, business_id, party_type, party_id, ref_type, ref_id, entry_kind, amount_paise, doc_date, occurred_at,
         created_at, updated_at, created_by, device_id) VALUES ('X1', ?, 'customer', ?, 'sale', 'ghost', 'post', 50, '2026-10-04', 'a', 'a', 'a', 'u', 'd')`).run(businessId, c.id);
-    expect(app.diagnostics.checkParties()).toBe('mismatch');
+    expect(await app.diagnostics.checkParties()).toBe('mismatch');
     expect(db.prepare("SELECT COUNT(*) FROM party_ledger_entry WHERE id = 'X1'").pluck().get()).toBe(1);
   });
 });

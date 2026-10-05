@@ -1,0 +1,199 @@
+name: release
+# Builds, signs and publishes the Windows desktop installer (ADR-0056, docs/operations/release.md).
+# A tag v* publishes to the channel its version names (plain x.y.z goes to beta); stable is reached only by promote.yml.
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to build when not run from a tag, e.g. 1.4.0-beta.2'
+        type: string
+        required: false
+      channel:
+        description: 'Channel to publish to (auto = the one the version names)'
+        type: choice
+        options: [auto, dev, beta]
+        default: auto
+      rollout:
+        description: 'Rollout percentage, 0–100'
+        type: number
+        default: 100
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    outputs:
+      version: ${{ steps.plan.outputs.version }}
+      channel: ${{ steps.plan.outputs.channel }}
+      rollout: ${{ steps.plan.outputs.rollout }}
+      signed: ${{ steps.package.outputs.signed }}
+    env:
+      SIGN: ${{ secrets.AZURE_CLIENT_SECRET != '' && vars.AZURE_SIGNING_ENDPOINT != '' && vars.AZURE_SIGNING_ACCOUNT != '' && vars.AZURE_CERT_PROFILE != '' && vars.MUNEEM_PUBLISHER_NAME != '' }}
+    defaults: { run: { shell: bash } }
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6   # version comes from package.json packageManager
+      - uses: actions/setup-node@v7
+        with: { node-version: 24, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm turbo run gen build --filter=@muneem/desktop^...
+      - id: plan
+        name: version and channel
+        env:
+          REF: ${{ github.ref_type == 'tag' && github.ref_name || inputs.version }}
+          CHANNEL: ${{ inputs.channel }}
+          ROLLOUT: ${{ inputs.rollout }}
+        run: pnpm release:version --ref "$REF" --channel "${CHANNEL:-auto}" --rollout "${ROLLOUT:-100}" --write
+      - name: build the desktop bundles
+        env:
+          MAIN_VITE_CRASH_DSN: ${{ vars.MUNEEM_CRASH_DSN }}   # baked in; empty means crash reporting has no collector
+          MUNEEM_SOURCEMAPS: '1'
+        run: pnpm --filter @muneem/desktop build
+      - run: pnpm --filter @muneem/desktop native
+      - id: package
+        name: electron-builder (NSIS x64)
+        working-directory: apps/desktop
+        env:
+          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+          SIGNING_ENDPOINT: ${{ vars.AZURE_SIGNING_ENDPOINT }}
+          SIGNING_ACCOUNT: ${{ vars.AZURE_SIGNING_ACCOUNT }}
+          CERT_PROFILE: ${{ vars.AZURE_CERT_PROFILE }}
+          PUBLISHER: ${{ vars.MUNEEM_PUBLISHER_NAME }}
+        run: |
+          args=(--win nsis --x64 --publish never)
+          if [[ "$SIGN" == "true" ]]; then
+            args+=(
+              "-c.win.azureSignOptions.publisherName=$PUBLISHER"
+              "-c.win.azureSignOptions.endpoint=$SIGNING_ENDPOINT"
+              "-c.win.azureSignOptions.codeSigningAccountName=$SIGNING_ACCOUNT"
+              "-c.win.azureSignOptions.certificateProfileName=$CERT_PROFILE"
+            )
+          else
+            echo "::warning::Azure Trusted Signing is not configured; this build is UNSIGNED."
+          fi
+          pnpm exec electron-builder "${args[@]}"
+          echo "signed=$SIGN" >> "$GITHUB_OUTPUT"
+      - name: verify the Authenticode signature
+        if: steps.package.outputs.signed == 'true'
+        shell: pwsh
+        env:
+          PUBLISHER: ${{ vars.MUNEEM_PUBLISHER_NAME }}
+        run: |
+          $exe = Get-ChildItem apps/desktop/release -Filter '*-Setup-*.exe' | Select-Object -First 1
+          $sig = Get-AuthenticodeSignature $exe.FullName
+          if ($sig.Status -ne 'Valid') { throw "signature on $($exe.Name) is $($sig.Status)" }
+          if ($sig.SignerCertificate.Subject -notlike "*CN=$env:PUBLISHER*") { throw "signed by $($sig.SignerCertificate.Subject), not $env:PUBLISHER" }
+          Write-Output "$($exe.Name): $($sig.SignerCertificate.Subject)"
+      - name: channel manifest and release archive
+        run: >
+          pnpm release:manifest --dir apps/desktop/release --out dist/updates --archive
+          --version "${{ steps.plan.outputs.version }}" --channel "${{ steps.plan.outputs.channel }}" --rollout "${{ steps.plan.outputs.rollout }}"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: updates
+          path: dist/updates
+          if-no-files-found: error
+      - name: debug symbols (kept, never shipped)
+        run: |
+          v="${{ steps.plan.outputs.version }}"; dir="dist/symbols/muneem-$v-symbols"
+          mkdir -p "$dir"
+          (cd apps/desktop && find out -name '*.map' -exec cp --parents {} "../../$dir/" \;)
+          cp apps/desktop/native/better_sqlite3.node "$dir/"
+          node -p "'electron ' + require('./apps/desktop/node_modules/electron/package.json').version" > "$dir/ELECTRON_VERSION.txt"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: symbols-${{ steps.plan.outputs.version }}
+          path: dist/symbols
+          retention-days: 90
+          if-no-files-found: error
+
+  sbom:
+    runs-on: ubuntu-latest
+    env:
+      ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with: { node-version: 24, cache: pnpm }
+      - uses: actions/setup-go@v7
+        with: { go-version-file: cloud/go.mod, cache-dependency-path: cloud/go.sum }
+      - run: pnpm install --frozen-lockfile
+      - name: CycloneDX for the pnpm workspace
+        run: npx --yes @cyclonedx/cdxgen@11 --type js --spec-version 1.6 --no-install-deps --output sbom/muneem-desktop.cdx.json .
+      - name: CycloneDX for the Go cloud
+        run: |
+          go install github.com/CycloneDX/cyclonedx-gomod/cmd/cyclonedx-gomod@v1.9.0
+          cyclonedx-gomod mod -json -licenses -output sbom/muneem-cloud.cdx.json cloud
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sbom
+          path: sbom
+          if-no-files-found: error
+
+  publish:
+    needs: [windows, sbom]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      VERSION: ${{ needs.windows.outputs.version }}
+      CHANNEL: ${{ needs.windows.outputs.channel }}
+      SIGNED: ${{ needs.windows.outputs.signed }}
+      HOST: ${{ secrets.UPDATES_S3_SECRET_ACCESS_KEY != '' && vars.UPDATES_S3_BUCKET != '' }}
+      UPDATES_S3_BUCKET: ${{ vars.UPDATES_S3_BUCKET }}
+      UPDATES_S3_ENDPOINT: ${{ vars.UPDATES_S3_ENDPOINT }}
+      AWS_ACCESS_KEY_ID: ${{ secrets.UPDATES_S3_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.UPDATES_S3_SECRET_ACCESS_KEY }}
+      AWS_DEFAULT_REGION: ${{ vars.UPDATES_S3_REGION || 'auto' }}
+      ALLOW_UNSIGNED: ${{ vars.MUNEEM_ALLOW_UNSIGNED_PUBLISH == 'true' }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v4
+        with: { name: updates, path: dist/updates }
+      - uses: actions/download-artifact@v4
+        with: { name: sbom, path: dist/sbom }
+      - name: build info, SBOMs and SHA-256 checksums
+        run: |
+          archive="dist/updates/releases/$VERSION"
+          cp dist/sbom/*.cdx.json "$archive/"
+          jq -n --arg version "$VERSION" --arg commit "$GITHUB_SHA" --arg channel "$CHANNEL" --argjson signed "$SIGNED" \
+            '{version: $version, commit: $commit, firstChannel: $channel, signed: $signed, builtAt: (now | todate)}' > "$archive/build-info.json"
+          (cd "$archive" && sha256sum -- * > ../SHA256SUMS.txt && mv ../SHA256SUMS.txt . && cat SHA256SUMS.txt)
+      - name: publish to the update host
+        if: env.HOST == 'true'
+        run: |
+          if [[ "$SIGNED" != "true" && "$CHANNEL" != "dev" && "$ALLOW_UNSIGNED" != "true" ]]; then
+            echo "::warning::unsigned build: not published to $CHANNEL (set vars.MUNEEM_ALLOW_UNSIGNED_PUBLISH=true to allow)."
+            exit 0
+          fi
+          endpoint=(); [[ -n "$UPDATES_S3_ENDPOINT" ]] && endpoint=(--endpoint-url "$UPDATES_S3_ENDPOINT")
+          if aws s3api head-object --bucket "$UPDATES_S3_BUCKET" --key "releases/$VERSION/latest.yml" "${endpoint[@]}" >/dev/null 2>&1; then
+            echo "::error::$VERSION is already on the update host; a published version is never replaced. Bump the version."
+            exit 1
+          fi
+          bash scripts/release-upload.sh "dist/updates/releases/$VERSION" "releases/$VERSION"
+          bash scripts/release-upload.sh "dist/updates/$CHANNEL" "$CHANNEL"
+      - name: update host not configured
+        if: env.HOST != 'true'
+        run: echo "::notice::UPDATES_S3_* are not set; the release is on GitHub only."
+      - name: GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          title="Muneem $VERSION"; flags=()
+          [[ "$SIGNED" == "true" ]] || { title="$title (unsigned)"; flags+=(--prerelease); }
+          [[ "$VERSION" == *-* ]] && flags+=(--prerelease)
+          notes="Channel: $CHANNEL. Signed: $SIGNED. Verify with SHA256SUMS.txt and docs/operations/release.md."
+          gh release create "v$VERSION" --target "$GITHUB_SHA" --title "$title" --notes "$notes" "${flags[@]}" \
+            dist/updates/releases/"$VERSION"/*

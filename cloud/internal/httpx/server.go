@@ -25,6 +25,8 @@ type Deps struct {
 	Logger         *slog.Logger
 	// Protocols accepted on /v1/sync/*; the zero value means DefaultProtocols.
 	Protocols Protocols
+	// Requests records RED metrics per route when set.
+	Requests RequestObserver
 }
 
 // New builds the Echo instance with the middleware pipeline:
@@ -33,7 +35,12 @@ func New(d Deps) *echo.Echo {
 	e := echo.New()
 	e.HideBanner = true
 	e.HidePort = true
+	// X-Forwarded-For is believed only from private-network proxies (Caddy on the VM), so rate limits key on the client.
+	e.IPExtractor = echo.ExtractIPFromXFFHeader()
 	e.Use(RequestID(), ServerTime, middleware.Recover(), middleware.BodyLimit("2M"))
+	if d.Requests != nil {
+		e.Use(ObserveRequests(d.Requests))
+	}
 	e.Use(middleware.RequestLoggerWithConfig(middleware.RequestLoggerConfig{
 		LogStatus: true, LogURI: true, LogMethod: true, LogLatency: true, LogRequestID: true, LogError: true,
 		LogValuesFunc: func(c echo.Context, v middleware.RequestLoggerValues) error {
@@ -48,13 +55,13 @@ func New(d Deps) *echo.Echo {
 
 	authLimit := RateLimit(20, 5)
 	protocolGate := SyncProtocolGate(d.Protocols)
-	// Route-level middleware: public auth routes get a rate limit; everything else needs a bearer token
+	// Route-level middleware: health and readiness are public; auth routes get a rate limit; everything else needs a bearer token
 	// and, when a device is involved, a valid request signature.
 	protect := func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
 			p := c.Request().URL.Path
 			switch {
-			case strings.HasSuffix(p, "/health"):
+			case p == "/v1/health", p == "/v1/ready":
 				return next(c)
 			case strings.Contains(p, "/auth/register"), strings.Contains(p, "/auth/login"), strings.Contains(p, "/auth/refresh"):
 				return authLimit(next)(c)
