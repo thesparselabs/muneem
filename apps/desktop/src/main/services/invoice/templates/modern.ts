@@ -7,7 +7,7 @@ import {
 const style = `
 .band{background:var(--accent);color:#fff;padding:22px 24px;margin:-14mm -14mm 20px;display:flex;justify-content:space-between;align-items:center;gap:20px}
 .band .b-name{font-size:24px;font-weight:800;letter-spacing:-.01em}
-.band .logo{max-height:52px;filter:brightness(0) invert(1)}
+.band .logo{max-height:52px;background:#fff;padding:5px 7px;border-radius:8px}
 .band .doc-title{font-size:18px;text-transform:uppercase;letter-spacing:.12em;text-align:right}
 .band .inv-no{text-align:right;opacity:.9;font-size:13px}
 .cols{display:flex;gap:22px;margin-bottom:18px}.cols>div{flex:1}

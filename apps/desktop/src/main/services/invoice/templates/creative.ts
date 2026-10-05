@@ -8,7 +8,7 @@ const style = `
 .page{padding:0}
 .layout{display:flex;min-height:297mm}
 .side{width:64mm;background:var(--accent);color:#fff;padding:16mm 10mm}
-.side .logo{filter:brightness(0) invert(1);margin-bottom:14px}
+.side .logo{background:#fff;padding:5px 7px;border-radius:8px;margin-bottom:14px}
 .side .s-name{font-size:19px;font-weight:700;margin-bottom:10px}
 .side .s-line,.side .s-legal{color:rgba(255,255,255,.82);font-size:11px;margin-bottom:2px}
 .side .meta{margin-top:20px}

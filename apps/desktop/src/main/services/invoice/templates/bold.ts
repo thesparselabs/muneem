@@ -7,7 +7,7 @@ import {
 const style = `
 .bold-head{background:var(--accent);color:#fff;padding:20px 24px;margin:-14mm -14mm 18px;display:flex;justify-content:space-between;align-items:center;gap:20px}
 .bold-head .s-name{font-size:26px;font-weight:800}
-.bold-head .logo{max-height:56px;filter:brightness(0) invert(1)}
+.bold-head .logo{max-height:56px;background:#fff;padding:5px 7px;border-radius:8px}
 .bold-head .doc-title{font-size:20px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;text-align:right}
 .cols{display:flex;gap:22px;margin-bottom:16px}.cols>div{flex:1}
 .b-title,.s-name.col{font-weight:800;color:var(--accent)}

@@ -43,30 +43,30 @@ export default function Shell() {
   const terminal = terminals.data?.find((t) => t.id === session?.terminalId);
   return (
     <div className="h-screen grid grid-cols-[220px_1fr] grid-rows-[56px_1fr] print:block print:h-auto">
-      <header className="col-span-2 flex print:hidden items-center justify-between border-b bg-white px-5">
+      <header className="col-span-2 flex print:hidden items-center justify-between border-b border-border bg-card px-5">
         <div className="flex items-center gap-4 text-sm">
-          <span className="flex items-center gap-2 font-semibold text-lg"><LogoMark size={26} /> Muneem</span>
-          <span className="text-slate-700">{business.data?.name ?? '…'}</span>
-          {terminal && <span className="rounded bg-slate-100 px-2 py-0.5 text-xs">Terminal {terminal.code}</span>}
+          <span className="flex items-center gap-2 font-semibold text-lg text-foreground"><LogoMark size={26} /> Muneem</span>
+          <span className="text-muted-foreground">{business.data?.name ?? '…'}</span>
+          {terminal && <span className="rounded bg-muted px-2 py-0.5 text-xs text-muted-foreground">Terminal {terminal.code}</span>}
         </div>
         <div className="flex items-center gap-3 text-sm">
           <span className={`text-xs ${online ? 'text-green-700' : 'text-amber-700'}`}>{online ? '● Online' : '● Offline'}</span>
           <SyncBadge />
           <ThemeToggle />
           <NotificationBell />
-          <span className="text-slate-700">{session?.user.name}{session?.mode === 'offline' && <span className="text-xs text-amber-700"> (offline{session.offlineDaysRemaining !== null ? `, ${session.offlineDaysRemaining}d left` : ''})</span>}</span>
+          <span className="text-muted-foreground">{session?.user.name}{session?.mode === 'offline' && <span className="text-xs text-amber-600"> (offline{session.offlineDaysRemaining !== null ? `, ${session.offlineDaysRemaining}d left` : ''})</span>}</span>
           <button className="btn-secondary py-1" onClick={() => nav('/switch')}>Switch user</button>
           <button className="btn-secondary py-1" onClick={async () => { await api.auth.logout({}); nav('/login'); }}>Sign out</button>
         </div>
       </header>
-      <nav className="border-r bg-white py-3 print:hidden" aria-label="Main">
+      <nav className="border-r border-border bg-sidebar text-sidebar-foreground py-3 print:hidden" aria-label="Main">
         <ul>
           {NAV.filter((n) => !n.need || can(session, n.need)).map((n) => (
             <li key={n.to}>
               {n.enabled ? (
-                <NavLink to={n.to} end={n.to === '/'} className={({ isActive }) => `flex items-center gap-2.5 px-5 py-2 text-sm ${isActive ? 'bg-blue-50 text-blue-800 font-medium' : 'hover:bg-slate-50'}`}><n.icon size={16} className="shrink-0" aria-hidden /><span>{n.label}</span></NavLink>
+                <NavLink to={n.to} end={n.to === '/'} className={({ isActive }) => `flex items-center gap-2.5 px-5 py-2 text-sm transition-colors ${isActive ? 'bg-sidebar-accent text-sidebar-accent-foreground font-medium' : 'text-sidebar-foreground hover:bg-sidebar-accent/50'}`}><n.icon size={16} className="shrink-0" aria-hidden /><span>{n.label}</span></NavLink>
               ) : (
-                <span className="flex items-center gap-2.5 px-5 py-2 text-sm text-slate-400" aria-disabled="true" title={`Coming in ${n.stage}`}><n.icon size={16} className="shrink-0" aria-hidden /><span>{n.label} <span className="text-xs">({n.stage})</span></span></span>
+                <span className="flex items-center gap-2.5 px-5 py-2 text-sm text-muted-foreground/60" aria-disabled="true" title={`Coming in ${n.stage}`}><n.icon size={16} className="shrink-0" aria-hidden /><span>{n.label} <span className="text-xs">({n.stage})</span></span></span>
               )}
             </li>
           ))}
