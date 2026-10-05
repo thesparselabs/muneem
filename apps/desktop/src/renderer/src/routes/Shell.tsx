@@ -5,6 +5,7 @@ import { useUi } from '../store.js';
 import SyncBadge from '../components/SyncBadge.js';
 import UpdateBanner from '../components/UpdateBanner.js';
 import NotificationBell from '../components/NotificationBell.js';
+import ToastViewport from '../components/ToastViewport.js';
 import type { Permission } from '@muneem/contracts';
 import { can } from '../lib/permissions.js';
 
@@ -64,6 +65,7 @@ export default function Shell() {
         </ul>
       </nav>
       <main className="overflow-auto p-6 print:overflow-visible print:p-0"><UpdateBanner /><Outlet /></main>
+      <ToastViewport />
     </div>
   );
 }

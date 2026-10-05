@@ -4,6 +4,7 @@ import type { CompleteReturnResult, RefundMethod, ReturnDraft, ReturnQuote } fro
 import { newUlid } from '@muneem/domain';
 import { api, errorMessage } from '../../api.js';
 import Dialog from '../../components/Dialog.js';
+import HoldToDelete from '../../components/HoldToDelete.js';
 import { formatPaise } from '../../lib/money.js';
 import { useCan } from '../../lib/permissions.js';
 import { parseQuantities, REFUND_LABELS, wholeBill, type QtyInputs } from '../../lib/sales/returnForm.js';
@@ -86,7 +87,7 @@ export default function ReturnDialog({ saleId, onClose, onDone }: { saleId: stri
           {error && <p className="err" role="alert">{error}</p>}
           <div className="flex justify-between gap-3">
             {canCancel && untouched
-              ? <button type="button" className="btn-secondary" disabled={busy || reason.trim() === ''} onClick={() => void cancelBill()}>Cancel whole bill</button>
+              ? <HoldToDelete label="Hold to cancel whole bill" disabled={busy || reason.trim() === ''} onConfirm={() => void cancelBill()} />
               : <span />}
             {canReturn && (
               <button type="button" className="btn-primary" disabled={busy || !q || q.issues.length > 0 || q.totalPaise <= 0 || reason.trim() === '' || Object.keys(parsed?.errors ?? {}).length > 0}

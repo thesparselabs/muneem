@@ -6,12 +6,35 @@ import { formatPaise, scaledToText } from '../../lib/money.js';
 import { amountOf, marginPercent, methodLabel, paymentShares, trendBars } from '../../lib/reports/dashboard.js';
 import { attentionNote } from '../../lib/notifications.js';
 import { useNotificationCounts } from '../../components/NotificationBell.js';
+import NumberTicker from '../../components/NumberTicker.js';
+import Skeleton from '../../components/Skeleton.js';
 
 const SHARE_COLOURS = ['#1d4ed8', '#0f766e', '#b45309', '#7c3aed', '#be123c', '#475569', '#15803d'];
 
-function Card({ label, value, note, to }: { label: string; value: string; note?: string | undefined; to?: string }) {
-  const body = <><p className="text-xs text-slate-500">{label}</p><p className="text-2xl font-semibold tabular-nums">{value}</p>{note && <p className="text-xs text-slate-600">{note}</p>}</>;
+// A KPI reads either a rupee figure (paise) or a count; both count up. Static strings still go through `value`.
+function Card({ label, value, paise, count, note, to }:
+  { label: string; value?: string; paise?: number; count?: number; note?: string | undefined; to?: string }) {
+  const headline = paise !== undefined
+    ? <NumberTicker className="text-2xl font-semibold tabular-nums" value={paise} format={(n) => formatPaise(Math.round(n))} />
+    : count !== undefined
+      ? <NumberTicker className="text-2xl font-semibold tabular-nums" value={count} format={(n) => String(Math.round(n))} />
+      : <span className="text-2xl font-semibold tabular-nums">{value}</span>;
+  const body = <><p className="text-xs text-slate-500">{label}</p><p>{headline}</p>{note && <p className="text-xs text-slate-600">{note}</p>}</>;
   return to ? <Link to={to} className="card block hover:border-blue-300">{body}</Link> : <div className="card">{body}</div>;
+}
+
+function DashboardSkeleton() {
+  return (
+    <div className="max-w-5xl space-y-4">
+      <Skeleton className="h-8 w-32" />
+      <div className="grid grid-cols-4 gap-4">
+        {Array.from({ length: 11 }).map((_, i) => (
+          <div key={i} className="card space-y-2"><Skeleton className="h-3 w-20" /><Skeleton className="h-7 w-24" /></div>
+        ))}
+      </div>
+      <div className="grid grid-cols-[2fr_1fr] gap-4"><Skeleton className="h-40" /><Skeleton className="h-40" /></div>
+    </div>
+  );
 }
 
 function Trend({ d }: { d: Figures }) {
@@ -62,7 +85,7 @@ export default function Dashboard() {
   const alerts = useNotificationCounts();
   if (q.error) return <p className="err" role="alert">{errorMessage(q.error)}</p>;
   const d = q.data;
-  if (!d) return <p className="text-slate-500">Loading today's figures…</p>;
+  if (!d) return <DashboardSkeleton />;
   const margin = marginPercent(d.sales.grossProfitPaise, d.sales.netTaxablePaise);
   return (
     <div className="max-w-5xl space-y-4">
@@ -71,18 +94,18 @@ export default function Dashboard() {
         <Link to="/reports" className="text-sm text-blue-800">All reports →</Link>
       </div>
       <div className="grid grid-cols-4 gap-4">
-        <Card label="Today's sales" value={formatPaise(d.sales.netSalesPaise)}
+        <Card label="Today's sales" paise={d.sales.netSalesPaise}
           note={`${d.sales.saleCount} bills${d.sales.returnCount ? ` · ${formatPaise(d.sales.returnsPaise)} returned` : ''}`} />
-        <Card label="Cash" value={formatPaise(amountOf(d.todayTenders, 'cash'))} />
-        <Card label="UPI" value={formatPaise(amountOf(d.todayTenders, 'upi'))} />
-        <Card label="Credit sales" value={formatPaise(amountOf(d.todayTenders, 'credit'))} />
-        <Card label="Gross profit" value={formatPaise(d.sales.grossProfitPaise)} note={margin === null ? undefined : `${margin}% of sales before GST`} />
-        <Card label="Purchases" value={formatPaise(d.purchasesPaise)} to="/purchases" />
-        <Card label="Expenses" value={formatPaise(d.expensesPaise)} to="/expenses" />
-        <Card label="Low stock" value={String(d.lowStock.count)} to="/inventory" />
-        <Card label="Customers owe" value={formatPaise(d.receivablePaise)} to="/parties/outstanding" />
-        <Card label="We owe suppliers" value={formatPaise(d.payablePaise)} to="/parties/outstanding" />
-        <Card label="Needs attention" value={String(alerts.data?.open ?? 0)} note={attentionNote(alerts.data)} to="/notifications" />
+        <Card label="Cash" paise={amountOf(d.todayTenders, 'cash')} />
+        <Card label="UPI" paise={amountOf(d.todayTenders, 'upi')} />
+        <Card label="Credit sales" paise={amountOf(d.todayTenders, 'credit')} />
+        <Card label="Gross profit" paise={d.sales.grossProfitPaise} note={margin === null ? undefined : `${margin}% of sales before GST`} />
+        <Card label="Purchases" paise={d.purchasesPaise} to="/purchases" />
+        <Card label="Expenses" paise={d.expensesPaise} to="/expenses" />
+        <Card label="Low stock" count={d.lowStock.count} to="/inventory" />
+        <Card label="Customers owe" paise={d.receivablePaise} to="/parties/outstanding" />
+        <Card label="We owe suppliers" paise={d.payablePaise} to="/parties/outstanding" />
+        <Card label="Needs attention" count={alerts.data?.open ?? 0} note={attentionNote(alerts.data)} to="/notifications" />
       </div>
       <div className="grid grid-cols-[2fr_1fr] gap-4">
         <Trend d={d} />

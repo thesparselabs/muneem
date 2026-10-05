@@ -17,6 +17,9 @@ import PaymentDialog from './PaymentDialog.js';
 import { CashMovementDialog, CloseRegisterDialog, OpenRegister, ReportView, XReportDialog } from './RegisterPanel.js';
 import Dialog from '../../components/Dialog.js';
 import StockStaleness from '../../components/StockStaleness.js';
+import NumberTicker from '../../components/NumberTicker.js';
+import SuccessCheck from '../../components/SuccessCheck.js';
+import { useToasts } from '../../lib/toast.js';
 
 type Modal = 'customer' | 'discount' | 'payment' | 'held' | 'cash' | 'x' | 'close' | { lineDiscount: string } | null;
 const NEAR_DUPLICATE_MS = 60_000;
@@ -33,6 +36,8 @@ export default function PosScreen() {
   const [busy, setBusy] = useState(false);
   const [lastSale, setLastSale] = useState<{ result: CompleteSaleResult; customerId: string | null; at: number } | null>(null);
   const [zReport, setZReport] = useState<RegisterReport | null>(null);
+  const [paid, setPaid] = useState(false);
+  const toast = useToasts((s) => s.push);
   const search = useRef<HTMLInputElement>(null);
   const [query, setQuery] = useState('');
   const quoteSeq = useRef(0);
@@ -94,6 +99,9 @@ export default function PosScreen() {
       setCart(emptyCart());
       setModal(null);
       setMessage({ kind: 'ok', text: `Saved ${result.docNumber}${result.changePaise ? ` · give change ${formatPaise(result.changePaise)}` : ''}` });
+      setPaid(true);
+      setTimeout(() => setPaid(false), 1100);
+      toast(`Saved ${result.docNumber}`, 'success');
       void qc.invalidateQueries(); // a sale changes stock, balances and the books
     } catch (e) {
       setModal(null);
@@ -179,7 +187,7 @@ export default function PosScreen() {
             <Row label="GST" value={formatPaise(totals.cgstPaise + totals.sgstPaise + totals.igstPaise + totals.cessPaise)} />
             {totals.roundOffPaise !== 0 && <Row label="Round off" value={formatPaise(totals.roundOffPaise)} />}
           </>}
-          <div className="flex justify-between border-t pt-2 text-2xl font-semibold"><span>Total</span><span>{formatPaise(totals?.totalPaise ?? 0)}</span></div>
+          <div className="flex justify-between border-t pt-2 text-2xl font-semibold"><span>Total</span><NumberTicker value={totals?.totalPaise ?? 0} format={(n) => formatPaise(Math.round(n))} /></div>
         </div>
         <div className="grid grid-cols-2 gap-2 text-sm">
           <button className="btn-primary col-span-2 py-3 text-base" onClick={() => void startPayment()} disabled={cart.lines.length === 0}>Pay (F5)</button>
@@ -205,6 +213,7 @@ export default function PosScreen() {
       {modal === 'cash' && <CashMovementDialog onClose={() => setModal(null)} />}
       {modal === 'x' && <XReportDialog onClose={() => setModal(null)} />}
       {modal === 'close' && <CloseRegisterDialog onClose={() => setModal(null)} onClosed={(z) => { setModal(null); setZReport(z); void qc.invalidateQueries({ queryKey: ['posSession'] }); }} />}
+      {paid && <div className="pointer-events-none fixed inset-0 z-40 flex items-center justify-center" aria-hidden><SuccessCheck size={88} /></div>}
     </div>
   );
 }
