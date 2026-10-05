@@ -14,7 +14,7 @@ export function AppWindow({ active, children }: { active: TabId; children: React
     <div className="overflow-hidden rounded-2xl border border-line bg-card shadow-[0_30px_80px_-40px_rgba(14,15,26,0.45)]">
       <div className="flex items-center gap-2 border-b border-line bg-surface px-4 py-2.5">
         <span className="h-3 w-3 rounded-full bg-[#ff5f57]" /><span className="h-3 w-3 rounded-full bg-[#febc2e]" /><span className="h-3 w-3 rounded-full bg-[#28c840]" />
-        <span className="ml-2 text-xs font-medium text-muted">Lekha — Sharma Kirana · Terminal T01</span>
+        <span className="ml-2 text-xs font-medium text-muted">Muneem — Sharma Kirana · Terminal T01</span>
       </div>
       <div className="flex min-h-[340px]">
         <div className="hidden w-12 shrink-0 flex-col items-center gap-1 border-r border-line bg-card py-3 sm:flex">

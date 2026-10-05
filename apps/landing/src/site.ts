@@ -1,13 +1,13 @@
 import { BarChart3, Boxes, CloudOff, FileText, Receipt, ShieldCheck, Users, Wallet, Zap } from 'lucide-react';
 
 // The working brand name. Change this one value to rename the product everywhere on the page.
-export const BRAND = 'Lekha';
+export const BRAND = 'Muneem';
 export const TAGLINE = 'Billing & books, built for the Indian counter';
 
 export const NAV = [
   { label: 'Features', href: '#features' },
   { label: 'Product', href: '#product' },
-  { label: 'Why Lekha', href: '#why' },
+  { label: 'Why Muneem', href: '#why' },
   { label: 'FAQ', href: '#faq' },
 ];
 
@@ -36,7 +36,7 @@ export const TABS = [
 export type TabId = (typeof TABS)[number]['id'];
 
 export const FAQS = [
-  { q: 'Does it work without internet?', a: 'Yes. Lekha is offline-first — you can bill, manage stock and see reports with no connection. When the internet returns, everything syncs to the cloud with no lost or duplicated transactions.' },
+  { q: 'Does it work without internet?', a: 'Yes. Muneem is offline-first — you can bill, manage stock and see reports with no connection. When the internet returns, everything syncs to the cloud with no lost or duplicated transactions.' },
   { q: 'Is it GST compliant?', a: 'Every line computes CGST, SGST, IGST and cess correctly, including composition schemes and tax-inclusive pricing. GSTR-1 and GSTR-3B summaries are generated from your real invoices.' },
   { q: 'Where is my data stored?', a: 'On your own computer, in an encrypted local database. Cloud backups are encrypted with a master key that only you control — we cannot read your books.' },
   { q: 'Will it run on an old computer?', a: 'Yes. It is tuned to stay fast on a 4 GB machine even with hundreds of thousands of invoices, so you do not need new hardware.' },

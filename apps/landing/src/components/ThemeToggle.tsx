@@ -5,7 +5,7 @@ type Theme = 'light' | 'dark';
 
 function resolved(): Theme {
   try {
-    const saved = localStorage.getItem('lekha-theme');
+    const saved = localStorage.getItem('muneem-theme');
     if (saved === 'light' || saved === 'dark') return saved;
   } catch { /* storage blocked */ }
   return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
@@ -17,7 +17,7 @@ export default function ThemeToggle() {
   useEffect(() => { setTheme(resolved()); }, []);
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
-    try { localStorage.setItem('lekha-theme', theme); } catch { /* storage blocked */ }
+    try { localStorage.setItem('muneem-theme', theme); } catch { /* storage blocked */ }
   }, [theme]);
 
   const next = theme === 'dark' ? 'light' : 'dark';
