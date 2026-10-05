@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api, errorMessage } from '../api.js';
 import { useCan } from '../lib/permissions.js';
+import { useToasts } from '../lib/toast.js';
 import AuditPanel from './diagnostics/AuditPanel.js';
 import BackupsPanel from './diagnostics/BackupsPanel.js';
 import CrashReportingPanel from './diagnostics/CrashReportingPanel.js';
@@ -16,6 +17,16 @@ export default function Diagnostics() {
   const [msg, setMsg] = useState<string | null>(null);
   const integrity = useMutation({ mutationFn: () => api.diagnostics.integrityCheck({}), onSuccess: (r) => setMsg(`Integrity: quick_check ${r.quickCheck}, foreign keys ${r.foreignKeys}, audit chain ${r.auditChain}, stock ${r.stock}, party ledgers ${r.parties}, journals ${r.journals}, dashboard summaries ${r.summaries}${r.detail.length ? ' — ' + r.detail.join('; ') : ''}`), onError: (e) => setMsg(errorMessage(e)) });
   const bundle = useMutation({ mutationFn: () => api.diagnostics.exportSupportBundle({}), onSuccess: (r) => setMsg(`Support bundle ready. Reference: ${r.handle}`), onError: (e) => setMsg(errorMessage(e)) });
+  const qc = useQueryClient();
+  const push = useToasts((s) => s.push);
+  const demo = useMutation({
+    mutationFn: () => api.dev.seedDemo({}),
+    onSuccess: (r) => {
+      void qc.invalidateQueries();
+      push(`Demo data loaded: ${r.products} products, ${r.parties} parties, ${r.sales} sales, ${r.purchases} purchases, ${r.payments} payments, ${r.expenses} expenses${r.errors.length ? ` (${r.errors.length} skipped)` : ''}. Refresh the screen to see it.`, 'success');
+    },
+    onError: (e) => push(errorMessage(e), 'error'),
+  });
   const h = health.data;
   const row = (k: string, v: unknown) => <tr><td className="pr-4 py-1 text-muted-foreground">{k}</td><td className="py-1 font-mono text-xs break-all">{String(v ?? '—')}</td></tr>;
   return (
@@ -37,6 +48,7 @@ export default function Diagnostics() {
         <div className="flex gap-2 mt-4">
           <button className="btn-secondary" onClick={() => integrity.mutate()} disabled={integrity.isPending}>Run integrity check</button>
           <button className="btn-secondary" onClick={() => bundle.mutate()} disabled={bundle.isPending}>Export support bundle</button>
+          {import.meta.env.DEV && <button className="btn-secondary" onClick={() => demo.mutate()} disabled={demo.isPending}>{demo.isPending ? 'Loading demo data…' : 'Load demo data'}</button>}
         </div>
         {msg && <p className="text-sm mt-3" role="status">{msg}</p>}
       </div>

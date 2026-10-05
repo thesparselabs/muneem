@@ -37,6 +37,7 @@ import { SETTING_KEYS } from './settings.js';
 import { CrashReportingStatus, RendererErrorInput } from './telemetry.js';
 import { CloudBusiness, HydrationStartInput, HydrationStatus } from './hydration.js';
 import { Dashboard, ExportReportInput, ExportReportResult, ReportDefinitionView, ReportResult, RunReportInput } from './reports.js';
+import { DemoSeedSummary } from './dev.js';
 import { GstLedgerView, GstMonthInput, GstPayment, GstPaymentInput, GstReturnSummary, GstSetoff, GstSetoffPreview, PostGstSetoffInput } from './gst.js';
 import { ReportCartInput, SetChannelInput, UpdateStatus } from './updates.js';
 import { BackupList, BackupRef, BackupVerification, RestoreBackupInput, RestoreFromCloudInput, RestoreResult, RunBackupResult } from './backups.js';
@@ -293,6 +294,7 @@ export const contract = {
   'sync.hydrationStart': spec({ input: HydrationStartInput, output: HydrationStatus, permission: null, rateLimit: { perSec: 2 }, audit: true }),
   'sync.hydrationStatus': spec({ input: Empty, output: HydrationStatus, permission: null, rateLimit: { perSec: 10 } }),
 
+  'dev.seedDemo': spec({ input: Empty, output: DemoSeedSummary, permission: 'settings.manage', rateLimit: { perSec: 1 }, audit: true }),
   'diagnostics.getHealth': spec({ input: Empty, output: Health, permission: 'diagnostics.view', rateLimit: { perSec: 5 } }),
   'diagnostics.integrityCheck': spec({
     input: Empty,

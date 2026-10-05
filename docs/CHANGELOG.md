@@ -5,6 +5,16 @@ All notable changes, newest first. Each entry records **what** changed and **why
 
 ## [Unreleased]
 
+### Added — Dev demo data; fixed dark sidebar and invoice logo
+- **"Load demo data" (Diagnostics, dev builds only).** Seeds the current business through the real services — ~20
+  products, 5–8 customers, 4–6 suppliers (some with opening balances), opening stock, ~40 sales (cash/UPI/card/credit),
+  purchases, receipts and supplier payments, expenses, returns, a stock adjustment, a stock-take and a manual journal —
+  so every screen has realistic, consistent data. New `dev.seedDemo` IPC, guarded to non-packaged builds. Why: empty
+  screens made the UI hard to review.
+- **Fixed:** the shell sidebar/header used hardcoded colours, so dark mode left the sidebar white and its nav links
+  invisible — now on sidebar/card tokens. The modern/bold/creative invoice templates inverted the logo to white for
+  their coloured bands, turning a logo-with-a-background into a white box — now shown on a clean white chip.
+
 ### Added — UI overhaul: theme, full-screen, icons, onboarding (ADR-0064)
 - **Light + dark theme (Whispr, from tweakcn).** Teal primary / lilac accent as CSS variables mapped into Tailwind v4;
   a header toggle (remembered, no-flash) switches `.dark`. Shared component classes and ~76 screens now use theme

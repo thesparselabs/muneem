@@ -62,6 +62,8 @@ import { ReturnService } from './services/returns/returnService.js';
 import { ProductSearch } from './services/productSearch.js';
 import { ProductService } from './services/products.js';
 import { DeviceService } from './services/device.js';
+import { seedDemo } from './services/dev/seedDemo.js';
+import { AppError } from '@muneem/contracts';
 import { DiagnosticsService } from './services/diagnostics.js';
 import { SessionService } from './services/session.js';
 import { SettingsService } from './services/settings.js';
@@ -481,6 +483,10 @@ export function createApp(cfg: AppConfig) {
     'sync.listCloudBusinesses': () => hydration.listCloudBusinesses(),
     'sync.hydrationStart': (i) => hydration.start(i.businessId),
     'sync.hydrationStatus': () => hydration.status(),
+    'dev.seedDemo': () => {
+      if (!cfg.isDev) throw new AppError('INVALID_STATE', 'Demo data can only be loaded in a development build');
+      return seedDemo({ catalog, products, customers, suppliers, customerLedger, supplierLedger, inventory, register, sales, returns, purchases, payments, expenses, manualJournals, statements }, posCtx.today());
+    },
     'diagnostics.getHealth': () => diagnostics.getHealth(),
     'diagnostics.integrityCheck': () => diagnostics.integrityCheck(),
     'diagnostics.verifyAudit': () => diagnostics.verifyAudit(),
