@@ -7,6 +7,7 @@ import { api, errorMessage } from '../../api.js';
 import ProductPicker from '../../components/ProductPicker.js';
 import { fileToBase64 } from '../../lib/fileToBase64.js';
 import { parseOptional } from '../../lib/money.js';
+import { PackagePlus, Save, X } from 'lucide-react';
 
 interface Row { productId: string; name: string; uomCode: string; qty: string; cost: string }
 const FIELD_LABEL: Record<OpeningImportField, string> = { sku: 'SKU', barcode: 'Barcode', qty: 'Quantity', unitCost: 'Unit cost' };
@@ -43,9 +44,9 @@ export default function OpeningStock() {
   }
 
   return (
-    <div className="max-w-5xl space-y-4">
-      <div className="flex items-center justify-between"><h1 className="text-2xl font-semibold">Opening stock</h1><Link to="/inventory" className="btn-secondary">Cancel</Link></div>
-      <p className="text-sm text-slate-600">Enter what is on the shelf today and what each unit cost you, in the product's base unit. Opening stock can be entered once per product; after that, use Adjust stock or a stock take.</p>
+    <div className="space-y-4">
+      <div className="flex items-center justify-between"><h1 className="flex items-center gap-2 text-2xl font-semibold"><PackagePlus size={22} className="text-primary" aria-hidden />Opening stock</h1><Link to="/inventory" className="btn-secondary"><X size={16} aria-hidden />Cancel</Link></div>
+      <p className="text-sm text-muted-foreground">Enter what is on the shelf today and what each unit cost you, in the product's base unit. Opening stock can be entered once per product; after that, use Adjust stock or a stock take.</p>
       {error && <p className="err" role="alert">{error}</p>}
       <form onSubmit={save} className="card space-y-3">
         <h2 className="font-semibold">Enter by hand</h2>
@@ -58,7 +59,7 @@ export default function OpeningStock() {
             <button type="button" className="btn-secondary py-1" onClick={() => setRows(rows.filter((_, j) => j !== i))}>Remove</button>
           </div>
         ))}
-        <button type="submit" className="btn-primary" disabled={rows.length === 0}>Save opening stock</button>
+        <button type="submit" className="btn-primary" disabled={rows.length === 0}><Save size={16} aria-hidden />Save opening stock</button>
       </form>
       <div className="card space-y-3">
         <h2 className="font-semibold">Import from a file</h2>
@@ -80,7 +81,7 @@ export default function OpeningStock() {
               ))}
             </div>
             <p className="text-sm">{preview.counts.ok} ready, {preview.counts.errors} with errors (skipped).</p>
-            <ul className="text-sm text-red-700">{preview.rows.filter((r) => r.status === 'error').slice(0, 50).map((r) => <li key={r.line}>Row {r.line}: {Object.values(r.errors).join('; ')}</li>)}</ul>
+            <ul className="text-sm text-destructive">{preview.rows.filter((r) => r.status === 'error').slice(0, 50).map((r) => <li key={r.line}>Row {r.line}: {Object.values(r.errors).join('; ')}</li>)}</ul>
             <div className="flex gap-2"><button className="btn-primary" disabled={preview.counts.ok === 0} onClick={() => void commit()}>Import {preview.counts.ok} products</button><button className="btn-secondary" onClick={() => setPreview(null)}>Choose another file</button></div>
           </>
         )}

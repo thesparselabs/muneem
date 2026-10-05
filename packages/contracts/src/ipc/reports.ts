@@ -35,6 +35,10 @@ export type ExportReportResult = z.infer<typeof ExportReportResult>;
 // FR-072: the offline dashboard, read from the daily summary tables (LLD §18); money in paise, quantities in milli-units.
 const Int = z.number().int();
 const MethodAmount = z.object({ method: z.string(), amountPaise: Int });
+export const DashboardPeriod = z.enum(['today', 'week', 'month']);
+export type DashboardPeriod = z.infer<typeof DashboardPeriod>;
+export const DashboardInput = z.object({ period: DashboardPeriod.default('today') });
+const NamedAmount = z.object({ id: z.string().nullable(), name: z.string(), amountPaise: Int });
 export const Dashboard = z.object({
   today: z.string(),
   sales: z.object({
@@ -48,6 +52,15 @@ export const Dashboard = z.object({
   trend: z.array(z.object({ day: z.string(), netSalesPaise: Int, grossProfitPaise: Int })),
   paymentSplit: z.array(MethodAmount),
   topProducts: z.array(z.object({ productId: z.string(), name: z.string(), uomCode: z.string(), qtyMilli: Int, netSalesPaise: Int })),
+  period: DashboardPeriod.optional(),
+  from: z.string().optional(),
+  to: z.string().optional(),
+  windowDays: Int.optional(),
+  previous: z.object({ saleCount: Int, netSalesPaise: Int, grossProfitPaise: Int, purchasesPaise: Int, expensesPaise: Int }).optional(),
+  newCustomers: Int.optional(),
+  productsSold: Int.optional(),
+  topCategories: z.array(NamedAmount).optional(),
+  expenseBreakdown: z.array(NamedAmount).optional(),
   lowStock: z.object({ count: Int, items: z.array(z.object({ productId: z.string(), name: z.string(), uomCode: z.string(), qtyMilli: Int })) }),
 });
 export type Dashboard = z.infer<typeof Dashboard>;

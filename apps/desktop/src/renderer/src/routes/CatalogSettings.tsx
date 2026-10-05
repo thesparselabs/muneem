@@ -4,6 +4,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { BrandInput, CategoryInput, PriceListInput, UomInput, type PriceList } from '@muneem/contracts';
 import type { z } from 'zod';
 import { api, errorMessage } from '../api.js';
+import { Tags, ArrowLeft, Plus } from 'lucide-react';
 
 type Tab = 'units' | 'categories' | 'brands' | 'priceLists';
 const TABS: [Tab, string][] = [['units', 'Units'], ['categories', 'Categories'], ['brands', 'Brands'], ['priceLists', 'Price lists']];
@@ -11,14 +12,14 @@ const TABS: [Tab, string][] = [['units', 'Units'], ['categories', 'Categories'],
 export default function CatalogSettings() {
   const [tab, setTab] = useState<Tab>('units');
   return (
-    <div className="max-w-3xl space-y-4">
+    <div className="max-w-5xl space-y-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">Units, categories &amp; price lists</h1>
-        <Link to="/products" className="btn-secondary">Back to products</Link>
+        <h1 className="flex items-center gap-2 text-2xl font-semibold"><Tags size={22} className="text-primary" aria-hidden />Units, categories &amp; price lists</h1>
+        <Link to="/products" className="btn-secondary"><ArrowLeft size={16} aria-hidden />Back to products</Link>
       </div>
       <div className="flex gap-1" role="tablist">
         {TABS.map(([t, label]) => (
-          <button key={t} role="tab" aria-selected={tab === t} className={`btn-secondary py-1 ${tab === t ? 'bg-slate-200' : ''}`} onClick={() => setTab(t)}>{label}</button>
+          <button key={t} role="tab" aria-selected={tab === t} className={`btn-secondary py-1 ${tab === t ? 'bg-accent text-accent-foreground' : ''}`} onClick={() => setTab(t)}>{label}</button>
         ))}
       </div>
       <div role="tabpanel">
@@ -55,7 +56,7 @@ function AddForm({ onSubmit, children, error }: { onSubmit: () => Promise<boolea
   const submit = (e: FormEvent) => { e.preventDefault(); void onSubmit(); };
   return (
     <form onSubmit={submit} className="card space-y-2">
-      <div className="flex items-end gap-2">{children}<button type="submit" className="btn-primary">Add</button></div>
+      <div className="flex items-end gap-2">{children}<button type="submit" className="btn-primary"><Plus size={16} aria-hidden />Add</button></div>
       {error && <p className="err" role="alert">{error}</p>}
     </form>
   );
@@ -80,7 +81,7 @@ function Units() {
         </div>
       </AddForm>
       <ul className="card divide-y text-sm">
-        {uoms.data?.map((u) => <li key={u.id} className="py-2 flex justify-between"><span><span className="font-mono">{u.code}</span> · {u.name}</span><span className="text-slate-500">{u.decimals} decimals</span></li>)}
+        {uoms.data?.map((u) => <li key={u.id} className="py-2 flex justify-between"><span><span className="font-mono">{u.code}</span> · {u.name}</span><span className="text-muted-foreground">{u.decimals} decimals</span></li>)}
       </ul>
     </div>
   );
@@ -89,7 +90,7 @@ function Units() {
 function RenameRow({ name, prefix, onRename }: { name: string; prefix?: string | undefined; onRename: (n: string) => Promise<boolean> }) {
   const [editing, setEditing] = useState(false);
   const [value, setValue] = useState(name);
-  if (!editing) return <li className="py-2 flex justify-between"><span>{prefix && <span className="text-slate-500">{prefix} › </span>}{name}</span><button className="btn-secondary py-1" onClick={() => setEditing(true)}>Rename</button></li>;
+  if (!editing) return <li className="py-2 flex justify-between"><span>{prefix && <span className="text-muted-foreground">{prefix} › </span>}{name}</span><button className="btn-secondary py-1" onClick={() => setEditing(true)}>Rename</button></li>;
   return (
     <li className="py-2 flex gap-2">
       <input aria-label={`New name for ${name}`} className="input" value={value} onChange={(e) => setValue(e.target.value)} autoFocus />
@@ -171,9 +172,9 @@ function PriceLists() {
         </div>
       </AddForm>
       <ul className="card divide-y text-sm">
-        {lists.data?.map((l) => <li key={l.id} className="py-2 flex justify-between"><span>{l.name}</span><span className="text-slate-500">{l.kind}{l.isDefault ? ' · default' : ''}</span></li>)}
+        {lists.data?.map((l) => <li key={l.id} className="py-2 flex justify-between"><span>{l.name}</span><span className="text-muted-foreground">{l.kind}{l.isDefault ? ' · default' : ''}</span></li>)}
       </ul>
-      <p className="text-sm text-slate-500">Set a product's prices in each list from the product's page.</p>
+      <p className="text-sm text-muted-foreground">Set a product's prices in each list from the product's page.</p>
     </div>
   );
 }

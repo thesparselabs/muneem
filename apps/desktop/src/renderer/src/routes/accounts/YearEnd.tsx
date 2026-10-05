@@ -8,6 +8,7 @@ import { canClose, checklist, statusLabel } from '../../lib/accounting/yearEnd.j
 import { formatPaise } from '../../lib/money.js';
 import { useCan } from '../../lib/permissions.js';
 import AccountsNav from './AccountsNav.js';
+import { CalendarCheck } from 'lucide-react';
 
 export default function YearEnd() {
   const qc = useQueryClient();
@@ -19,32 +20,32 @@ export default function YearEnd() {
     try { await api.accounting.recloseYear({ fy }); setMessage(`Posted an adjusting closing journal for ${fy}`); await qc.invalidateQueries(); } catch (e) { setMessage(errorMessage(e)); }
   };
   return (
-    <div className="max-w-5xl space-y-4">
-      <h1 className="text-2xl font-semibold">Year end</h1>
+    <div className="space-y-4">
+      <h1 className="flex items-center gap-2 text-2xl font-semibold"><CalendarCheck size={22} className="text-primary" aria-hidden />Year end</h1>
       <AccountsNav />
-      <p className="text-sm text-slate-600">
+      <p className="text-sm text-muted-foreground">
         Closing a year moves its income and expenses to Retained Earnings on 31 March. Its reports stay as they were, and its months stay locked.
       </p>
       {message && <p className="text-sm" role="status">{message}</p>}
       {years.data?.map((y) => (
         <section key={y.fy} className="card space-y-3" aria-label={`Financial year ${y.fy}`}>
           <div className="flex items-baseline justify-between">
-            <h2 className="font-semibold">FY {y.fy} <span className="text-sm font-normal text-slate-500">{y.start} – {y.end}</span></h2>
+            <h2 className="font-semibold">FY {y.fy} <span className="text-sm font-normal text-muted-foreground">{y.start} – {y.end}</span></h2>
             <span className="text-sm">{statusLabel(y)}</span>
           </div>
           <p className="text-sm">Profit for the year: <span className="tabular-nums">{formatPaise(y.profitPaise)}</span></p>
           {y.status === 'open' && (
             <ul className="space-y-1 text-sm">
               {checklist(y).map((c) => (
-                <li key={c.label}><span aria-hidden>{c.done ? '✓' : '○'}</span> {c.label}{c.detail && <span className="text-slate-500"> ({c.detail})</span>}</li>
+                <li key={c.label}><span aria-hidden>{c.done ? '✓' : '○'}</span> {c.label}{c.detail && <span className="text-muted-foreground"> ({c.detail})</span>}</li>
               ))}
-              <li className="text-slate-500"><Link className="underline" to="/accounts/periods">Lock months</Link> · <Link className="underline" to="/gst/setoff">Set off GST</Link></li>
+              <li className="text-muted-foreground"><Link className="underline" to="/accounts/periods">Lock months</Link> · <Link className="underline" to="/gst/setoff">Set off GST</Link></li>
             </ul>
           )}
           {mayClose && canClose(y) && <button type="button" className="btn-primary" onClick={() => setConfirming(y)}>Close FY {y.fy}</button>}
-          {y.pending && <p className="text-sm text-amber-700">Sent to the cloud; the closing journal posts once it is accepted.{y.syncError && ` The cloud said: ${y.syncError}`}</p>}
+          {y.pending && <p className="text-sm text-amber-700 dark:text-amber-300">Sent to the cloud; the closing journal posts once it is accepted.{y.syncError && ` The cloud said: ${y.syncError}`}</p>}
           {y.needsReclose && (
-            <div className="rounded border border-amber-300 bg-amber-50 p-2 text-sm">
+            <div className="rounded border border-amber-300 bg-amber-50 dark:bg-amber-500/20 p-2 text-sm">
               Documents dated in this year reached the books after it was closed ({formatPaise(y.residuePaise)} of profit not yet in Retained Earnings).
               {mayClose && <button type="button" className="btn-secondary ml-2 py-0" onClick={() => void reclose(y.fy)}>Post adjusting closing journal</button>}
             </div>
@@ -60,10 +61,10 @@ export default function YearEnd() {
 function Closings({ year }: { year: FinancialYear }) {
   return (
     <table className="w-full text-sm">
-      <thead className="text-left text-slate-600"><tr><th className="p-1">Entry</th><th className="p-1">Date</th><th className="p-1">Account</th><th className="p-1 text-right">Debit</th><th className="p-1 text-right">Credit</th></tr></thead>
+      <thead className="text-left text-muted-foreground"><tr><th className="p-1">Entry</th><th className="p-1">Date</th><th className="p-1">Account</th><th className="p-1 text-right">Debit</th><th className="p-1 text-right">Credit</th></tr></thead>
       <tbody>
         {year.closings.flatMap((c) => c.lines.map((l, i) => (
-          <tr key={`${c.version}-${i}`} className={i === 0 ? 'border-t' : ''}>
+          <tr key={`${c.version}-${i}`} className={i === 0 ? 'border-t border-border' : ''}>
             <td className="p-1 font-mono">{i === 0 ? c.entryNo : ''}</td><td className="p-1">{i === 0 ? c.entryDate : ''}</td>
             <td className="p-1">{l.code} {l.name}</td>
             <td className="p-1 text-right tabular-nums">{l.debitPaise ? formatPaise(l.debitPaise) : ''}</td>

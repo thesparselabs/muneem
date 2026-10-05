@@ -21,6 +21,10 @@ import { CatalogContext } from './services/catalogContext.js';
 import { ImportService } from './services/import/importService.js';
 import { PrintQueue } from './services/print/printQueue.js';
 import { PrinterConfigStore } from './services/print/printerConfig.js';
+import { InvoiceService } from './services/invoice/index.js';
+import { InvoiceBrandingStore } from './services/invoice/brandingStore.js';
+import { buildInvoiceData } from './services/invoice/invoiceData.js';
+import { savePdf as saveInvoicePdf } from './services/invoice/pdf.js';
 import type { LineRasteriser } from './services/print/raster.js';
 import type { SpoolerTransport } from './services/print/spooler.js';
 import { PreviewStore } from './services/import/previewStore.js';
@@ -58,6 +62,8 @@ import { ReturnService } from './services/returns/returnService.js';
 import { ProductSearch } from './services/productSearch.js';
 import { ProductService } from './services/products.js';
 import { DeviceService } from './services/device.js';
+import { seedDemo } from './services/dev/seedDemo.js';
+import { AppError } from '@muneem/contracts';
 import { DiagnosticsService } from './services/diagnostics.js';
 import { SessionService } from './services/session.js';
 import { SettingsService } from './services/settings.js';
@@ -202,6 +208,15 @@ export function createApp(cfg: AppConfig) {
   });
   const sales = new SaleService(posCtx, new SalePricing(posCtx), register, () => session.require().user.name, (r) => printQueue.enqueue(r.printJobId));
   const returns = new ReturnService(posCtx, () => session.require().user.name, (r) => printQueue.enqueue(r.printJobId));
+  const invoice = new InvoiceService({
+    branding: new InvoiceBrandingStore({ db: cfg.db, businessId: () => posCtx.businessId(), actor: () => posCtx.actor() }),
+    buildData: (saleId) => buildInvoiceData(saleId, {
+      getSale: (id) => sales.get(id),
+      getBusiness: () => business.get(),
+      getBranch: () => { const id = session.get()?.branchId ?? null; return id ? (business.getBranches().find((b) => b.id === id) ?? null) : null; },
+    }),
+    save: saveInvoicePdf,
+  });
   const productImport = new ImportService(catalogCtx, new PreviewStore(cfg.now ?? (() => Date.now())), invalidateSearch);
   const diagnostics = new DiagnosticsService({
     db: cfg.db, reads, dbFile: cfg.dbFile, bundlesDir: cfg.bundlesDir, loggers: cfg.loggers, session, device,
@@ -435,6 +450,11 @@ export function createApp(cfg: AppConfig) {
     'printer.retryJob': (i) => { printQueue.retry(i.jobId, posCtx.businessId()); return { ok: true as const }; },
     'printer.reprint': (i) => { sales.get(i.saleId); return { jobId: printQueue.reprint(i.saleId, posCtx.userId()) }; },
     'drawer.open': async () => { await printQueue.openDrawer(); return { ok: true as const }; },
+    'invoice.listTemplates': () => invoice.listTemplates(),
+    'invoice.getBranding': () => invoice.getBranding(),
+    'invoice.setBranding': (i) => invoice.setBranding(i),
+    'invoice.renderHtml': (i) => invoice.renderHtml(i),
+    'invoice.savePdf': (i) => invoice.savePdf(i),
     'inventory.getStock': (i) => listStock(cfg.db(), posCtx.businessId(), inventory.warehouseId(), i),
     'inventory.getMovements': (i) => productMovements(cfg.db(), posCtx.businessId(), i.productId, i),
     'inventory.valuation': () => stockValuation(cfg.db(), posCtx.businessId()),
@@ -454,7 +474,7 @@ export function createApp(cfg: AppConfig) {
     'gst.postSetoff': (i) => gst.setoffs.post(i),
     'gst.recordPayment': (i) => gst.payments.record(i),
     'gst.ledger': () => gst.payments.ledger(),
-    'reports.dashboard': () => dashboard.get(),
+    'reports.dashboard': (i) => dashboard.get(i.period),
     'sync.getStatus': () => syncStatus(),
     'sync.retry': () => { void sync.retry(); return syncStatus(); },
     ...syncScreenHandlers({
@@ -463,6 +483,10 @@ export function createApp(cfg: AppConfig) {
     'sync.listCloudBusinesses': () => hydration.listCloudBusinesses(),
     'sync.hydrationStart': (i) => hydration.start(i.businessId),
     'sync.hydrationStatus': () => hydration.status(),
+    'dev.seedDemo': () => {
+      if (!cfg.isDev) throw new AppError('INVALID_STATE', 'Demo data can only be loaded in a development build');
+      return seedDemo({ catalog, products, customers, suppliers, customerLedger, supplierLedger, inventory, register, sales, returns, purchases, payments, expenses, manualJournals, statements }, posCtx.today());
+    },
     'diagnostics.getHealth': () => diagnostics.getHealth(),
     'diagnostics.integrityCheck': () => diagnostics.integrityCheck(),
     'diagnostics.verifyAudit': () => diagnostics.verifyAudit(),
@@ -482,6 +506,6 @@ export function createApp(cfg: AppConfig) {
     onCommitted: (channel) => { sync.nudge(); notifications.runner.afterCommit(channel); }, holds: (id) => gate.holds(id), onDispatch: (channel) => updates.activity.dispatch(channel),
   });
 
-  return { events, session, reports, dashboard, rbac, cloud, connectivity, device, auth, business, settings, products, catalog, pricing, productImport, customers, suppliers, customerLedger, supplierLedger, purchases, purchaseReturns, purchaseImport, payments, writeOffs, expenses, periods, yearEnd, backlog, statements, chart, manualJournals, gst, register, sales, returns, printQueue, inventory, openingImport, diagnostics, backups, closeReadConnections, gateway, handlers, syncStatus, syncEngine, sync, hydration, hydrationGate: gate, updates, notifications, customerPrivacy, telemetry };
+  return { events, session, reports, dashboard, rbac, cloud, connectivity, device, auth, business, settings, products, catalog, pricing, productImport, customers, suppliers, customerLedger, supplierLedger, purchases, purchaseReturns, purchaseImport, payments, writeOffs, expenses, periods, yearEnd, backlog, statements, chart, manualJournals, gst, register, sales, returns, invoice, printQueue, inventory, openingImport, diagnostics, backups, closeReadConnections, gateway, handlers, syncStatus, syncEngine, sync, hydration, hydrationGate: gate, updates, notifications, customerPrivacy, telemetry };
 }
 export type App = ReturnType<typeof createApp>;

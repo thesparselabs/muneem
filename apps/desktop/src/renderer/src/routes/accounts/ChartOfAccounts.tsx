@@ -9,6 +9,7 @@ import { chartTree, normalBalance } from '../../lib/accounting/chartTree.js';
 import { formatPaise } from '../../lib/money.js';
 import { useCan } from '../../lib/permissions.js';
 import AccountsNav from './AccountsNav.js';
+import { ListTree, Plus, Save } from 'lucide-react';
 
 export default function ChartOfAccounts() {
   const qc = useQueryClient();
@@ -19,19 +20,19 @@ export default function ChartOfAccounts() {
   const accounts = useQuery({ queryKey: ['accounts', asOf], queryFn: () => api.accounting.listAccounts({ asOf }) });
   const groups = chartTree(accounts.data ?? []);
   return (
-    <div className="max-w-5xl space-y-4">
-      <div className="flex items-center justify-between"><h1 className="text-2xl font-semibold">Accounts</h1>{canManage && <button type="button" className="btn-primary" onClick={() => setAdding(true)}>Add account</button>}</div>
+    <div className="space-y-4">
+      <div className="flex items-center justify-between"><h1 className="flex items-center gap-2 text-2xl font-semibold"><ListTree size={22} className="text-primary" aria-hidden />Accounts</h1>{canManage && <button type="button" className="btn-primary" onClick={() => setAdding(true)}>Add account</button>}</div>
       <AccountsNav />
       <div className="card"><label className="label" htmlFor="coa-asof">Balances as of</label><DatePicker id="coa-asof" className="w-48" value={asOf} onChange={(v) => setAsOf(v)} /></div>
       {accounts.error && <p className="err" role="alert">{errorMessage(accounts.error)}</p>}
       {groups.map((g) => (
-        <table key={g.group.id} className="table-modern rounded-lg border bg-white">
+        <table key={g.group.id} className="table-modern rounded-lg border border-border bg-card">
           <thead><tr><th className="w-20">{g.group.code}</th><th>{g.group.name}</th><th className="text-right">{formatPaise(g.totalPaise)}</th><th className="w-24" /></tr></thead>
           <tbody>
             {g.accounts.map((a) => (
               <tr key={a.id}>
                 <td className="font-mono">{a.code}</td>
-                <td><Link to={`/accounts/ledger/${a.id}`} className="text-blue-800">{a.name}</Link>{!a.isSystem && <span className="text-xs text-slate-500"> (added)</span>}</td>
+                <td><Link to={`/accounts/ledger/${a.id}`} className="text-primary">{a.name}</Link>{!a.isSystem && <span className="text-xs text-muted-foreground"> (added)</span>}</td>
                 <td className="text-right tabular-nums">{formatPaise(normalBalance(a))}</td>
                 <td>{canManage && <button type="button" className="btn-secondary py-0" onClick={() => setRenaming(a)}>Rename</button>}</td>
               </tr>
@@ -59,7 +60,7 @@ function AddAccount({ groups, onClose, onDone }: { groups: AccountView[]; onClos
         <div><label className="label" htmlFor="aa-code">Code</label><input id="aa-code" className="input" inputMode="numeric" maxLength={4} placeholder={`${f.parentCode[0] ?? ''}xxx`} value={f.code} onChange={(e) => setF({ ...f, code: e.target.value })} /></div>
         <div><label className="label" htmlFor="aa-name">Name</label><input id="aa-name" className="input" value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} required /></div>
         {error && <p className="err" role="alert">{error}</p>}
-        <button type="submit" className="btn-primary">Add account</button>
+        <button type="submit" className="btn-primary"><Plus size={16} aria-hidden />Add account</button>
       </form>
     </Dialog>
   );
@@ -77,7 +78,7 @@ function RenameAccount({ account, onClose, onDone }: { account: AccountView; onC
       <form onSubmit={submit} className="space-y-3">
         <div><label className="label" htmlFor="ra-name">Name</label><input id="ra-name" className="input" value={name} onChange={(e) => setName(e.target.value)} required /></div>
         {error && <p className="err" role="alert">{error}</p>}
-        <button type="submit" className="btn-primary">Save</button>
+        <button type="submit" className="btn-primary"><Save size={16} aria-hidden />Save</button>
       </form>
     </Dialog>
   );

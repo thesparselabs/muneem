@@ -9,6 +9,7 @@ import PartyPicker, { type PickedParty } from '../../components/PartyPicker.js';
 import { emptyExpenseForm, expenseFormToInput, gstAllowed, type ExpenseForm } from '../../lib/expenses/form.js';
 import { formatPaise } from '../../lib/money.js';
 import { useCan } from '../../lib/permissions.js';
+import { TrendingDown, Ban, Save } from 'lucide-react';
 
 export default function Expenses() {
   const qc = useQueryClient();
@@ -29,14 +30,14 @@ export default function Expenses() {
     try { await api.expenses.cancel({ id: cancelling!, reason }); setCancelling(null); setReason(''); await qc.invalidateQueries(); } catch (err) { setError(errorMessage(err)); }
   }
   return (
-    <div className="max-w-6xl space-y-4">
-      <div className="flex items-center justify-between"><h1 className="text-2xl font-semibold">Expenses</h1>{canCreate && <button type="button" className="btn-primary" onClick={() => setAdding(true)}>New expense</button>}</div>
+    <div className="space-y-4">
+      <div className="flex items-center justify-between"><h1 className="flex items-center gap-2 text-2xl font-semibold"><TrendingDown size={22} className="text-primary" aria-hidden />Expenses</h1>{canCreate && <button type="button" className="btn-primary" onClick={() => setAdding(true)}>New expense</button>}</div>
       {(list.error || error) && <p className="err" role="alert">{error ?? errorMessage(list.error)}</p>}
-      <table className="table-modern rounded-lg border bg-white">
+      <table className="table-modern rounded-lg border border-border bg-card">
         <thead><tr><th>Number</th><th>Date</th><th>Category</th><th>Paid by</th><th>Description</th><th className="text-right">GST</th><th className="text-right">Total</th><th /></tr></thead>
         <tbody>
           {rows.map((x) => (
-            <tr key={x.id} className={x.status === 'cancelled' ? 'text-slate-400 line-through' : ''}>
+            <tr key={x.id} className={x.status === 'cancelled' ? 'text-muted-foreground line-through' : ''}>
               <td>{x.docNumber}</td><td>{x.expenseDate}</td><td>{x.categoryName}</td><td>{x.method.toUpperCase()}</td>
               <td>{x.description ?? x.vendorName ?? ''}</td><td className="text-right tabular-nums">{formatPaise(x.cgstPaise + x.sgstPaise + x.igstPaise + x.cessPaise)}</td>
               <td className="text-right tabular-nums">{formatPaise(x.totalPaise)}</td>
@@ -50,7 +51,7 @@ export default function Expenses() {
         <Dialog title="Cancel expense" onClose={() => setCancelling(null)}>
           <form onSubmit={cancel} className="space-y-3">
             <div><label className="label" htmlFor="exc-reason">Reason</label><input id="exc-reason" className="input" value={reason} onChange={(e) => setReason(e.target.value)} required /></div>
-            <button type="submit" className="btn-primary">Cancel expense</button>
+            <button type="submit" className="btn-primary"><Ban size={16} aria-hidden />Cancel expense</button>
           </form>
         </Dialog>
       )}
@@ -95,7 +96,7 @@ function NewExpense({ categories, onClose, onDone }: { categories: { id: string;
           </div>
         </>}
         <div className="col-span-2"><label className="label" htmlFor="ex-desc">Description</label><input id="ex-desc" className="input" value={f.description} onChange={(e) => set({ description: e.target.value })} /></div>
-        <div className="col-span-2 space-y-2">{errorText && <p className="err" role="alert">{errorText}</p>}<button type="submit" className="btn-primary">Save expense</button></div>
+        <div className="col-span-2 space-y-2">{errorText && <p className="err" role="alert">{errorText}</p>}<button type="submit" className="btn-primary"><Save size={16} aria-hidden />Save expense</button></div>
       </form>
     </Dialog>
   );

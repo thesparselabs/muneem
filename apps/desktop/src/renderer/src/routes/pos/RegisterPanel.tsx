@@ -4,6 +4,7 @@ import { api, errorMessage } from '../../api.js';
 import Dialog from '../../components/Dialog.js';
 import Field from '../../components/Field.js';
 import { formatPaise, parseOptional } from '../../lib/money.js';
+import { Lock, LockOpen, Save } from 'lucide-react';
 
 function useAmount(initial = '') {
   const [text, setText] = useState(initial);
@@ -22,10 +23,10 @@ export function OpenRegister({ onOpened }: { onOpened: () => void }) {
   return (
     <form onSubmit={submit} className="card max-w-md space-y-4">
       <h1 className="text-xl font-semibold">Open the register</h1>
-      <p className="text-sm text-slate-600">Count the cash in the drawer and enter it as the opening float.</p>
+      <p className="text-sm text-muted-foreground">Count the cash in the drawer and enter it as the opening float.</p>
       <Field label="Opening cash (₹)" htmlFor="float"><input id="float" className="input" inputMode="decimal" value={float.text} onChange={(e) => float.setText(e.target.value)} autoFocus /></Field>
       {error && <p className="err" role="alert">{error}</p>}
-      <button type="submit" className="btn-primary">Open register</button>
+      <button type="submit" className="btn-primary"><LockOpen size={16} aria-hidden />Open register</button>
     </form>
   );
 }
@@ -52,7 +53,7 @@ export function CashMovementDialog({ onClose }: { onClose: () => void }) {
         <Field label="Amount (₹)" htmlFor="cm-amount"><input id="cm-amount" className="input" inputMode="decimal" value={amount.text} onChange={(e) => amount.setText(e.target.value)} /></Field>
         <Field label="Reason" htmlFor="cm-reason"><input id="cm-reason" className="input" value={reason} onChange={(e) => setReason(e.target.value)} required maxLength={200} /></Field>
         {error && <p className="err" role="alert">{error}</p>}
-        <button type="submit" className="btn-primary">Save</button>
+        <button type="submit" className="btn-primary"><Save size={16} aria-hidden />Save</button>
       </form>
     </Dialog>
   );
@@ -60,7 +61,7 @@ export function CashMovementDialog({ onClose }: { onClose: () => void }) {
 
 export function ReportView({ report }: { report: RegisterReport }) {
   const row = (label: string, value: string, strong = false) => (
-    <tr className={strong ? 'font-semibold' : ''}><td className="py-1 pr-4 text-slate-600">{label}</td><td className="py-1 text-right tabular-nums">{value}</td></tr>
+    <tr className={strong ? 'font-semibold' : ''}><td className="py-1 pr-4 text-muted-foreground">{label}</td><td className="py-1 text-right tabular-nums">{value}</td></tr>
   );
   return (
     <table className="w-full text-sm"><tbody>
@@ -105,7 +106,7 @@ export function CloseRegisterDialog({ onClose, onClosed }: { onClose: () => void
           <input id="counted" className="input" inputMode="decimal" value={counted.text} onChange={(e) => counted.setText(e.target.value)} />
         </Field>
         {error && <p className="err" role="alert">{error}</p>}
-        <button type="submit" className="btn-primary">Close and print Z report</button>
+        <button type="submit" className="btn-primary"><Lock size={16} aria-hidden />Close and print Z report</button>
       </form>
     </Dialog>
   );

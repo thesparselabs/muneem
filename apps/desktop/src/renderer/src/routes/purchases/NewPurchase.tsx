@@ -11,6 +11,7 @@ import { fileToBase64 } from '../../lib/fileToBase64.js';
 import { formatPaise } from '../../lib/money.js';
 import { billCheck, emptyPurchaseForm, formToDraft, lineFor, type PurchaseForm, type PurchaseFormLine } from '../../lib/purchases/form.js';
 import { useDebounced } from '../../lib/useDebounced.js';
+import { Truck, Save, X } from 'lucide-react';
 
 export default function NewPurchase() {
   const nav = useNavigate();
@@ -52,8 +53,8 @@ export default function NewPurchase() {
   const q = quote.data;
   const quoted = new Map(q?.lines.map((l) => [l.draftLineNo, l]) ?? []);
   return (
-    <form onSubmit={submit} className="max-w-7xl space-y-4">
-      <div className="flex items-center justify-between"><h1 className="text-2xl font-semibold">New purchase</h1><Link to="/purchases" className="btn-secondary">Cancel</Link></div>
+    <form onSubmit={submit} className="space-y-4">
+      <div className="flex items-center justify-between"><h1 className="flex items-center gap-2 text-2xl font-semibold"><Truck size={22} className="text-primary" aria-hidden />New purchase</h1><Link to="/purchases" className="btn-secondary"><X size={16} aria-hidden />Cancel</Link></div>
       <div className="card grid grid-cols-4 gap-3">
         <div className="col-span-2">{supplier ? <p className="pt-6 font-medium">{supplier.name} <button type="button" className="btn-secondary py-0" onClick={() => { setSupplier(null); set({ supplierId: '' }); }}>Change</button></p>
           : <PartyPicker id="pu-supplier" partyType="supplier" onPick={(p) => { setSupplier(p); set({ supplierId: p.id }); }} />}</div>
@@ -65,9 +66,9 @@ export default function NewPurchase() {
         <div className="grow"><ProductPicker id="pu-product" label="Add a product" onPick={(h) => void addProduct(h)} /></div>
         <div><label className="label" htmlFor="pu-file">Or import lines (CSV/XLSX)</label><input id="pu-file" type="file" accept=".csv,.xlsx" onChange={(e) => { const f = e.target.files?.[0]; if (f) void importFile(f); }} /></div>
       </div>
-      {importErrors.length > 0 && <div className="card text-sm text-amber-800" role="status"><p className="font-medium">Rows not imported:</p><ul>{importErrors.slice(0, 20).map((t) => <li key={t}>{t}</li>)}</ul></div>}
+      {importErrors.length > 0 && <div className="card text-sm text-amber-800 dark:text-amber-300" role="status"><p className="font-medium">Rows not imported:</p><ul>{importErrors.slice(0, 20).map((t) => <li key={t}>{t}</li>)}</ul></div>}
       {form.lines.length > 0 && (
-        <table className="table-modern rounded-lg border bg-white">
+        <table className="table-modern rounded-lg border border-border bg-card">
           <thead><tr>
             <th>Product</th><th>Unit</th><th>Qty</th><th>Rate</th><th>Incl. GST</th><th>Disc %</th>
             <th>GST %</th><th>ITC</th><th className="text-right">Taxable</th><th className="text-right">Landed / unit</th><th />
@@ -114,15 +115,15 @@ export default function NewPurchase() {
             <p className="flex justify-between"><span>Charges</span><span className="tabular-nums">{formatPaise(q.totals.chargesPaise)}</span></p>
             <p className="flex justify-between"><span>ITC to claim</span><span className="tabular-nums">{formatPaise(q.totals.itcPaise)}</span></p>
             <p className="flex justify-between font-semibold"><span>Lines add up to</span><span className="tabular-nums">{formatPaise(q.totals.computedTotalPaise)}</span></p>
-            {q.issues.length > 0 && <p className="text-amber-800">{q.issues.map((x) => x.message).join('; ')}</p>}
+            {q.issues.length > 0 && <p className="text-amber-800 dark:text-amber-300">{q.issues.map((x) => x.message).join('; ')}</p>}
           </>}
           {quote.error && <p className="err">{errorMessage(quote.error)}</p>}
           <div><label className="label" htmlFor="pu-total">Bill total (as printed)</label><input id="pu-total" className="input" inputMode="decimal" value={form.billTotal} onChange={(e) => set({ billTotal: e.target.value })} /></div>
-          <p role="status" className={check.tone === 'ok' ? 'text-green-800' : check.tone === 'bad' ? 'text-red-700' : 'text-slate-600'}>{check.text}</p>
+          <p role="status" className={check.tone === 'ok' ? 'text-green-800 dark:text-green-400' : check.tone === 'bad' ? 'text-destructive' : 'text-muted-foreground'}>{check.text}</p>
         </div>
       </div>
       {error && <p className="err" role="alert">{error}</p>}
-      <button type="submit" className="btn-primary" disabled={check.tone !== 'ok'}>Save purchase</button>
+      <button type="submit" className="btn-primary" disabled={check.tone !== 'ok'}><Save size={16} aria-hidden />Save purchase</button>
     </form>
   );
 }

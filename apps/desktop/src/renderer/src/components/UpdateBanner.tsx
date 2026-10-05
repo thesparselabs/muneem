@@ -7,7 +7,7 @@ export default function UpdateBanner() {
   const text = bannerText(status.data);
   if (!text) return null;
   return (
-    <div role="status" className="-mx-6 -mt-6 mb-4 flex items-center justify-between bg-blue-50 px-6 py-1.5 text-sm text-blue-900 print:hidden">
+    <div role="status" className="-mx-6 -mt-6 mb-4 flex items-center justify-between bg-accent px-6 py-1.5 text-sm text-primary print:hidden">
       <span>{text}</span>
       <Link to="/settings/updates" className="underline">Details</Link>
     </div>

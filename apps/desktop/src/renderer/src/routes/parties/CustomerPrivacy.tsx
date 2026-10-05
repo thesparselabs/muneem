@@ -6,6 +6,7 @@ import Dialog from '../../components/Dialog.js';
 import Field from '../../components/Field.js';
 import { CHANNEL_LABEL, METHOD_LABEL, channelsToAsk, consentRows, eraseBlocker } from '../../lib/parties/consent.js';
 import { useCan } from '../../lib/permissions.js';
+import { Check, Trash2 } from 'lucide-react';
 
 // FR-104 / ADR-0050: consent to be messaged, a copy of what is held, and erasure of the profile.
 export default function CustomerPrivacy({ customer, balancePaise }: { customer: Customer; balancePaise: number | undefined }) {
@@ -34,7 +35,7 @@ export default function CustomerPrivacy({ customer, balancePaise }: { customer: 
     } catch (e) { setError(errorMessage(e)); }
   }
   if (customer.erasedAt) {
-    return <div className="card text-sm text-slate-700">This customer's profile was erased on {customer.erasedAt.slice(0, 10)} at their request. Their invoices are kept as the law requires.</div>;
+    return <div className="card text-sm text-muted-foreground">This customer's profile was erased on {customer.erasedAt.slice(0, 10)} at their request. Their invoices are kept as the law requires.</div>;
   }
   const rows = consentRows(customer.consents);
   const blocker = eraseBlocker(balancePaise);
@@ -46,15 +47,15 @@ export default function CustomerPrivacy({ customer, balancePaise }: { customer: 
           <div className="flex gap-2 text-sm">
             <button type="button" className="btn-secondary py-1" onClick={() => void exportAs('json')}>Export profile (JSON)</button>
             <button type="button" className="btn-secondary py-1" onClick={() => void exportAs('csv')}>Export (CSV)</button>
-            <button type="button" className="btn-secondary py-1 text-red-700" onClick={() => setErasing(true)}>Erase profile…</button>
+            <button type="button" className="btn-secondary py-1 text-destructive" onClick={() => setErasing(true)}>Erase profile…</button>
           </div>
         )}
       </div>
-      {rows.length === 0 ? <p className="text-sm text-slate-500">No consent to send payment reminders has been recorded.</p> : (
+      {rows.length === 0 ? <p className="text-sm text-muted-foreground">No consent to send payment reminders has been recorded.</p> : (
         <ul className="text-sm">
           {rows.map((r) => (
-            <li key={r.id} className="flex items-center justify-between border-t py-1">
-              <span className={r.active ? '' : 'text-slate-500'}>{r.text} <span className="text-xs text-slate-500">({r.when})</span></span>
+            <li key={r.id} className="flex items-center justify-between border-t border-border py-1">
+              <span className={r.active ? '' : 'text-muted-foreground'}>{r.text} <span className="text-xs text-muted-foreground">({r.when})</span></span>
               {r.active && canRecord && <button type="button" className="btn-secondary py-0.5 text-xs" onClick={() => void run(() => api.customers.withdrawConsent({ customerId: customer.id, consentId: r.id }))}>Withdraw</button>}
             </li>
           ))}
@@ -72,10 +73,10 @@ export default function CustomerPrivacy({ customer, balancePaise }: { customer: 
               {CONSENT_METHODS.map((m) => <option key={m} value={m}>{METHOD_LABEL[m]}</option>)}
             </select>
           </Field>
-          <button type="submit" className="btn-primary">Record consent</button>
+          <button type="submit" className="btn-primary"><Check size={16} aria-hidden />Record consent</button>
         </form>
       )}
-      {note && <p className="text-sm text-green-800" role="status">{note}</p>}
+      {note && <p className="text-sm text-green-800 dark:text-green-400" role="status">{note}</p>}
       {error && <p className="err" role="alert">{error}</p>}
       {erasing && <EraseDialog customer={customer} blocker={blocker} onClose={() => setErasing(false)} onDone={() => { setErasing(false); refresh(); }} />}
     </section>
@@ -98,7 +99,7 @@ function EraseDialog({ customer, blocker, onClose, onDone }: { customer: Custome
           <input id="erase-reason" className="input" value={reason} onChange={(e) => setReason(e.target.value)} />
         </Field>
         {error && <p className="err" role="alert">{error}</p>}
-        <button type="submit" className="btn-primary bg-red-700" disabled={!!blocker || reason.trim().length < 3}>Erase profile</button>
+        <button type="submit" className="btn-primary bg-red-700" disabled={!!blocker || reason.trim().length < 3}><Trash2 size={16} aria-hidden />Erase profile</button>
       </form>
     </Dialog>
   );

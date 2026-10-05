@@ -4,6 +4,7 @@ import Dialog from '../../components/Dialog.js';
 import Field from '../../components/Field.js';
 import { scaledToText } from '../../lib/money.js';
 import { parseDiscount } from '../../lib/pos/discount.js';
+import { Check } from 'lucide-react';
 
 // Percent is stored in basis points and amounts in paise, as the GST engine expects.
 export default function DiscountDialog({ title, current, onApply, onClose }: { title: string; current: DiscountInput; onApply: (d: DiscountInput) => void; onClose: () => void }) {
@@ -25,9 +26,9 @@ export default function DiscountDialog({ title, current, onApply, onClose }: { t
           <label className="flex items-center gap-1 text-sm"><input type="radio" name="dk" checked={kind === 'amount'} onChange={() => setKind('amount')} />Amount (₹)</label>
         </fieldset>
         <Field label={kind === 'percent' ? 'Percent' : 'Amount (₹)'} htmlFor="disc"><input id="disc" className="input" inputMode="decimal" value={text} onChange={(e) => setText(e.target.value)} /></Field>
-        <p className="text-xs text-slate-500">Discounts are taken before GST. Your role may limit how much you can give.</p>
+        <p className="text-xs text-muted-foreground">Discounts are taken before GST. Your role may limit how much you can give.</p>
         {error && <p className="err" role="alert">{error}</p>}
-        <div className="flex gap-2"><button type="submit" className="btn-primary">Apply</button><button type="button" className="btn-secondary" onClick={() => onApply({ kind: 'amount', value: 0 })}>Remove discount</button></div>
+        <div className="flex gap-2"><button type="submit" className="btn-primary"><Check size={16} aria-hidden />Apply</button><button type="button" className="btn-secondary" onClick={() => onApply({ kind: 'amount', value: 0 })}>Remove discount</button></div>
       </form>
     </Dialog>
   );

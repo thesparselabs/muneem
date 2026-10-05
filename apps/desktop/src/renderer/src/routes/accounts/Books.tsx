@@ -8,6 +8,7 @@ import { formatPaise } from '../../lib/money.js';
 import { useCan } from '../../lib/permissions.js';
 import AccountsNav from './AccountsNav.js';
 import LedgerView from './LedgerView.js';
+import { BookMarked, Undo2 } from 'lucide-react';
 
 const today = () => new Date().toLocaleDateString('en-CA');
 
@@ -26,12 +27,12 @@ export default function Books() {
     initialPageParam: '', getNextPageParam: (last) => last.nextCursor ?? undefined, enabled: tab !== 'day',
   });
   return (
-    <div className="max-w-6xl space-y-4">
-      <h1 className="text-2xl font-semibold">Books</h1>
+    <div className="space-y-4">
+      <h1 className="flex items-center gap-2 text-2xl font-semibold"><BookMarked size={22} className="text-primary" aria-hidden />Books</h1>
       <AccountsNav />
       <div className="flex gap-1" role="tablist">
         {([['cash', 'Cash book'], ['bank', 'Bank book'], ['day', 'Day book']] as const).map(([k, l]) => (
-          <button key={k} role="tab" aria-selected={tab === k} className={`btn-secondary py-1 ${tab === k ? 'bg-slate-200' : ''}`} onClick={() => setTab(k)}>{l}</button>
+          <button key={k} role="tab" aria-selected={tab === k} className={`btn-secondary py-1 ${tab === k ? 'bg-accent text-accent-foreground' : ''}`} onClick={() => setTab(k)}>{l}</button>
         ))}
       </div>
       <div className="card flex items-end gap-3">
@@ -65,12 +66,12 @@ function DayBook({ from, to }: { from: string; to: string }) {
         <div key={e.id} className="card text-sm">
           <div className="flex items-center justify-between">
             <p><span className="font-mono">{e.entryNo}</span> · {e.date} · {e.source}{e.narration && ` · ${e.narration}`}
-              {e.latePosting && <span className="ml-2 rounded bg-amber-100 px-1 text-xs text-amber-800">late, dated {e.docDate}</span>}
-              {e.reversalOf && <span className="ml-2 rounded bg-slate-100 px-1 text-xs">reversal</span>}</p>
+              {e.latePosting && <span className="ml-2 rounded bg-amber-100 dark:bg-amber-500/20 px-1 text-xs text-amber-800 dark:text-amber-300">late, dated {e.docDate}</span>}
+              {e.reversalOf && <span className="ml-2 rounded bg-muted px-1 text-xs">reversal</span>}</p>
             {canReverse && e.source === 'manual' && !e.reversalOf && !e.reversedBy && <button type="button" className="btn-secondary py-0" onClick={() => setReversing(e.id)}>Reverse</button>}
           </div>
           <table className="mt-1 w-full"><tbody>
-            {e.lines.map((l, i) => <tr key={i}><td className={`p-0.5 ${l.creditPaise ? 'pl-8' : ''}`}><span className="font-mono text-xs text-slate-500">{l.code}</span> {l.name}</td>
+            {e.lines.map((l, i) => <tr key={i}><td className={`p-0.5 ${l.creditPaise ? 'pl-8' : ''}`}><span className="font-mono text-xs text-muted-foreground">{l.code}</span> {l.name}</td>
               <td className="p-0.5 text-right tabular-nums">{l.debitPaise ? formatPaise(l.debitPaise) : ''}</td><td className="p-0.5 text-right tabular-nums">{l.creditPaise ? formatPaise(l.creditPaise) : ''}</td></tr>)}
           </tbody></table>
         </div>
@@ -93,7 +94,7 @@ function ReverseDialog({ id, onClose, onDone }: { id: string; onClose: () => voi
       <form onSubmit={submit} className="space-y-3">
         <div><label className="label" htmlFor="rv-reason">Reason</label><input id="rv-reason" className="input" value={reason} onChange={(e) => setReason(e.target.value)} required /></div>
         {error && <p className="err" role="alert">{error}</p>}
-        <button type="submit" className="btn-primary">Reverse</button>
+        <button type="submit" className="btn-primary"><Undo2 size={16} aria-hidden />Reverse</button>
       </form>
     </Dialog>
   );

@@ -11,6 +11,7 @@ import { parseOptional } from '../../lib/money.js';
 import { summarise, toChoice, type GridItem, type GridMode } from '../../lib/payments/allocationGrid.js';
 import { useCan } from '../../lib/permissions.js';
 import AllocationGrid from './AllocationGrid.js';
+import { Wallet, Save, X } from 'lucide-react';
 
 export default function NewPayment() {
   const nav = useNavigate();
@@ -50,13 +51,13 @@ export default function NewPayment() {
     } catch (err) { setError(errorMessage(err)); }
   }
   return (
-    <form onSubmit={submit} className="max-w-4xl space-y-4">
-      <div className="flex items-center justify-between"><h1 className="text-2xl font-semibold">{partyType === 'customer' ? 'Receive payment' : 'Pay supplier'}</h1><Link to="/payments" className="btn-secondary">Cancel</Link></div>
+    <form onSubmit={submit} className="max-w-6xl space-y-4">
+      <div className="flex items-center justify-between"><h1 className="flex items-center gap-2 text-2xl font-semibold"><Wallet size={22} className="text-primary" aria-hidden />{partyType === 'customer' ? 'Receive payment' : 'Pay supplier'}</h1><Link to="/payments" className="btn-secondary"><X size={16} aria-hidden />Cancel</Link></div>
       <div className="card grid grid-cols-2 gap-3">
         {!params.get('partyId') && (
           <div className="col-span-2 flex gap-1" role="tablist">
             {(['customer', 'supplier'] as const).filter((t) => t === 'customer' || canSuppliers).map((t) => (
-              <button key={t} type="button" role="tab" aria-selected={partyType === t} className={`btn-secondary py-1 ${partyType === t ? 'bg-slate-200' : ''}`} onClick={() => { setPartyType(t); setParty(null); }}>{t === 'customer' ? 'From a customer' : 'To a supplier'}</button>
+              <button key={t} type="button" role="tab" aria-selected={partyType === t} className={`btn-secondary py-1 ${partyType === t ? 'bg-accent text-accent-foreground' : ''}`} onClick={() => { setPartyType(t); setParty(null); }}>{t === 'customer' ? 'From a customer' : 'To a supplier'}</button>
             ))}
           </div>
         )}
@@ -72,7 +73,7 @@ export default function NewPayment() {
       </div>
       {partyId && <div className="card"><AllocationGrid items={items} mode={mode} typed={typed} summary={summary} onMode={setMode} onType={(id, v) => setTyped({ ...typed, [id]: v })} /></div>}
       {error && <p className="err" role="alert">{error}</p>}
-      <button type="submit" className="btn-primary">Save payment</button>
+      <button type="submit" className="btn-primary"><Save size={16} aria-hidden />Save payment</button>
     </form>
   );
 }

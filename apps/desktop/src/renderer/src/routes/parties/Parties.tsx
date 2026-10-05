@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Plus, Scale, Users } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import type { PartyType } from '@muneem/contracts';
@@ -27,33 +28,35 @@ export default function Parties() {
   });
   const net = new Map(balances.data?.rows.map((r) => [r.partyId, r.netPaise]) ?? []);
   return (
-    <div className="max-w-5xl space-y-4">
+    <div className="flex h-full min-h-0 flex-col gap-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">Parties</h1>
+        <h1 className="flex items-center gap-2 text-2xl font-semibold"><Users size={22} className="text-primary" aria-hidden /> Parties</h1>
         <div className="flex gap-2">
-          <Link to="/parties/outstanding" className="btn-secondary">Outstanding</Link>
-          <button type="button" className="btn-primary" onClick={() => setAdding(true)}>New {tab}</button>
+          <Link to="/parties/outstanding" className="btn-secondary"><Scale size={16} aria-hidden />Outstanding</Link>
+          <button type="button" className="btn-primary" onClick={() => setAdding(true)}><Plus size={16} aria-hidden />New {tab}</button>
         </div>
       </div>
-      <div className="flex gap-1" role="tablist">
+      <div className="flex shrink-0 gap-1" role="tablist">
         {(['customer', 'supplier'] as const).filter((t) => t === 'customer' || canSuppliers).map((t) => (
-          <button key={t} role="tab" aria-selected={tab === t} className={`btn-secondary py-1 ${tab === t ? 'bg-slate-200' : ''}`} onClick={() => setTab(t)}>{t === 'customer' ? 'Customers' : 'Suppliers'}</button>
+          <button key={t} role="tab" aria-selected={tab === t} className={`btn-secondary py-1 ${tab === t ? 'bg-accent text-accent-foreground' : ''}`} onClick={() => setTab(t)}>{t === 'customer' ? 'Customers' : 'Suppliers'}</button>
         ))}
       </div>
-      <div className="card"><label className="label" htmlFor="party-q">Search</label><input id="party-q" className="input" value={query} onChange={(e) => setQuery(e.target.value)} /></div>
+      <div className="card shrink-0"><label className="label" htmlFor="party-q">Search</label><input id="party-q" className="input" value={query} onChange={(e) => setQuery(e.target.value)} /></div>
       {list.error && <p className="err" role="alert">{errorMessage(list.error)}</p>}
-      <table className="table-modern rounded-lg border bg-white">
+      <div className="min-h-0 flex-1 overflow-auto rounded-lg border border-border bg-card">
+      <table className="table-modern">
         <thead><tr><th>Name</th><th>Phone</th><th>GSTIN</th><th className="text-right">{tab === 'customer' ? 'Owes us' : 'We owe'}</th></tr></thead>
         <tbody>
           {list.data?.map((p) => (
             <tr key={p.id}>
-              <td><Link to={`/parties/${tab}/${p.id}`} className="text-blue-800">{p.name}</Link></td>
+              <td><Link to={`/parties/${tab}/${p.id}`} className="text-primary">{p.name}</Link></td>
               <td>{p.phone ?? ''}</td><td className="font-mono text-xs">{p.gstin ?? ''}</td>
               <td className="text-right tabular-nums">{net.has(p.id) ? formatPaise(net.get(p.id)) : '—'}</td>
             </tr>
           ))}
         </tbody>
       </table>
+      </div>
       {adding && tab === 'customer' && <CustomerEditDialog onClose={() => setAdding(false)} onDone={(c) => nav(`/parties/customer/${c.id}`)} />}
       {adding && tab === 'supplier' && <SupplierDialog defaultState={branches.data?.[0]?.stateCode ?? ''} onClose={() => setAdding(false)} onDone={(s) => nav(`/parties/supplier/${s.id}`)} />}
     </div>

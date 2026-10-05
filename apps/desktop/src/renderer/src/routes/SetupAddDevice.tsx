@@ -53,7 +53,7 @@ export default function SetupAddDevice({ onReady, onCancel }: { onReady: () => v
     return (
       <section className="space-y-4" aria-live="polite">
         <h2 className="text-lg font-semibold">Restoring {restoring.name} from its cloud backup</h2>
-        <p className="text-sm text-slate-600">{restoring.phase === 'running' ? 'Downloading, decrypting and checking the backup…' : 'Restored. Muneem is restarting; sign in again to catch up with the cloud.'}</p>
+        <p className="text-sm text-muted-foreground">{restoring.phase === 'running' ? 'Downloading, decrypting and checking the backup…' : 'Restored. Muneem is restarting; sign in again to catch up with the cloud.'}</p>
       </section>
     );
   }
@@ -63,8 +63,8 @@ export default function SetupAddDevice({ onReady, onCancel }: { onReady: () => v
       <section className="space-y-4" aria-live="polite">
         <h2 className="text-lg font-semibold">Adding this device to the business</h2>
         <progress className="w-full h-3" max={100} value={percent(status)} aria-label="Import progress" />
-        <p className="text-sm text-slate-600">{phase(status)}</p>
-        <p className="text-sm text-slate-500">Billing opens when this device is ready to bill offline. You can leave this running.</p>
+        <p className="text-sm text-muted-foreground">{phase(status)}</p>
+        <p className="text-sm text-muted-foreground">Billing opens when this device is ready to bill offline. You can leave this running.</p>
       </section>
     );
   }
@@ -73,12 +73,12 @@ export default function SetupAddDevice({ onReady, onCancel }: { onReady: () => v
     <section className="space-y-4">
       <h2 className="text-lg font-semibold">Add this device to an existing business</h2>
       {(error ?? (status?.status === 'failed' ? status.error : null)) && <p className="err" role="alert">{error ?? status?.error}</p>}
-      {businesses.isLoading && <p className="text-sm text-slate-500">Loading your businesses…</p>}
+      {businesses.isLoading && <p className="text-sm text-muted-foreground">Loading your businesses…</p>}
       {businesses.error && <p className="err" role="alert">{errorMessage(businesses.error)}</p>}
-      <ul className="divide-y border rounded-md">
+      <ul className="divide-y border border-border rounded-md">
         {(businesses.data ?? []).map((b) => (
           <li key={b.id} className="flex items-center justify-between px-3 py-2 text-sm">
-            <span><b>{b.name}</b>{b.onThisDevice && <span className="ml-2 text-xs text-slate-500">(already on this device)</span>}</span>
+            <span><b>{b.name}</b>{b.onThisDevice && <span className="ml-2 text-xs text-muted-foreground">(already on this device)</span>}</span>
             <span className="flex gap-2">
               <button type="button" className="btn-secondary" onClick={() => setRestoring({ id: b.id, name: b.name, phase: 'confirm' })}>Restore from cloud backup</button>
               <button type="button" className="btn-primary" onClick={() => void start(b.id)}>
@@ -87,11 +87,11 @@ export default function SetupAddDevice({ onReady, onCancel }: { onReady: () => v
             </span>
           </li>
         ))}
-        {businesses.data?.length === 0 && <li className="px-3 py-2 text-sm text-slate-500">You are not a member of any business on the cloud yet.</li>}
+        {businesses.data?.length === 0 && <li className="px-3 py-2 text-sm text-muted-foreground">You are not a member of any business on the cloud yet.</li>}
       </ul>
       {onCancel && <button type="button" className="btn-secondary" onClick={onCancel}>Create a new business instead</button>}
       {restoring?.phase === 'confirm' && (
-        <div role="alertdialog" aria-label="Restore from cloud backup" className="border rounded-md p-3 space-y-2 text-sm">
+        <div role="alertdialog" aria-label="Restore from cloud backup" className="border border-border rounded-md p-3 space-y-2 text-sm">
           <p>Replace this device&apos;s database with the newest cloud backup of <b>{restoring.name}</b>? Muneem restarts when it is done, then syncs anything newer from the cloud.</p>
           <div className="flex justify-end gap-2">
             <button type="button" className="btn-secondary" onClick={() => setRestoring(null)}>Cancel</button>

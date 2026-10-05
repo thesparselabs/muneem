@@ -10,6 +10,7 @@ import { formatPaise, parseOptional, paiseToText } from '../../lib/money.js';
 import {
   creditLimitText, customerFormToInput, customerToForm, emptySupplierForm, parseCreditLimit, supplierFormToInput, supplierToForm, type SupplierForm,
 } from '../../lib/parties/forms.js';
+import { Eraser, Save } from 'lucide-react';
 
 const today = () => new Date().toLocaleDateString('en-CA');
 
@@ -46,7 +47,7 @@ export function SupplierDialog({ supplier, defaultState, onDone, onClose }: { su
         <Field label="Credit days" htmlFor="sp-days" hint="Bills fall due this many days after their date"><input id="sp-days" className="input" inputMode="numeric" value={f.creditDays} onChange={(e) => set({ creditDays: e.target.value })} /></Field>
         <Field label="Address" htmlFor="sp-addr"><input id="sp-addr" className="input" value={f.addressLine1} onChange={(e) => set({ addressLine1: e.target.value })} /></Field>
         <Field label="City" htmlFor="sp-city"><input id="sp-city" className="input" value={f.city} onChange={(e) => set({ city: e.target.value })} /></Field>
-        <div className="col-span-2 space-y-2"><Errors errors={errors} /><button type="submit" className="btn-primary">Save supplier</button></div>
+        <div className="col-span-2 space-y-2"><Errors errors={errors} /><button type="submit" className="btn-primary"><Save size={16} aria-hidden />Save supplier</button></div>
       </form>
     </Dialog>
   );
@@ -78,7 +79,7 @@ export function CustomerEditDialog({ customer, onDone, onClose }: { customer?: C
         </div>
         <Field label="Credit days" htmlFor="cu-days"><input id="cu-days" className="input" inputMode="numeric" value={f.creditDays} onChange={(e) => setF({ ...f, creditDays: e.target.value })} /></Field>
         <Errors errors={errors} />
-        <button type="submit" className="btn-primary">Save customer</button>
+        <button type="submit" className="btn-primary"><Save size={16} aria-hidden />Save customer</button>
       </form>
     </Dialog>
   );
@@ -100,7 +101,7 @@ export function CreditLimitDialog({ customer, onDone, onClose }: { customer: Cus
           <input id="cl-amount" className="input" inputMode="decimal" value={text} onChange={(e) => setText(e.target.value)} />
         </Field>
         <Errors errors={error} />
-        <button type="submit" className="btn-primary">Save limit</button>
+        <button type="submit" className="btn-primary"><Save size={16} aria-hidden />Save limit</button>
       </form>
     </Dialog>
   );
@@ -120,7 +121,7 @@ export function OpeningDialog({ partyType, partyId, onDone, onClose }: { partyTy
   return (
     <Dialog title="Opening balance" onClose={onClose}>
       <form onSubmit={submit} className="space-y-3">
-        <p className="text-sm text-slate-600">Entering a new opening replaces the current one.</p>
+        <p className="text-sm text-muted-foreground">Entering a new opening replaces the current one.</p>
         <Field label="Who owes whom" htmlFor="op-side">
           <select id="op-side" className="select" value={f.side} onChange={(e) => setF({ ...f, side: e.target.value as typeof f.side })}>
             <option value="receivable">They owe us</option><option value="payable">We owe them</option>
@@ -129,7 +130,7 @@ export function OpeningDialog({ partyType, partyId, onDone, onClose }: { partyTy
         <Field label="Amount (₹)" htmlFor="op-amount"><input id="op-amount" className="input" inputMode="decimal" value={f.amount} onChange={(e) => setF({ ...f, amount: e.target.value })} /></Field>
         <Field label="As of" htmlFor="op-date"><DatePicker id="op-date" value={f.asOf} onChange={(v) => setF({ ...f, asOf: v })} /></Field>
         <Errors errors={error} />
-        <button type="submit" className="btn-primary">Save opening balance</button>
+        <button type="submit" className="btn-primary"><Save size={16} aria-hidden />Save opening balance</button>
       </form>
     </Dialog>
   );
@@ -166,7 +167,7 @@ export function WriteOffDialog({ customer, items, onDone, onClose }: { customer:
         </table>
         <Field label="Reason" htmlFor="wo-reason"><input id="wo-reason" className="input" value={reason} onChange={(e) => setReason(e.target.value)} required /></Field>
         <Errors errors={error} />
-        <button type="submit" className="btn-primary">Write off</button>
+        <button type="submit" className="btn-primary"><Eraser size={16} aria-hidden />Write off</button>
       </form>
     </Dialog>
   );

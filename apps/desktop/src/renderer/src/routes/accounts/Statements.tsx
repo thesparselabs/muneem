@@ -6,11 +6,12 @@ import DatePicker from '../../components/DatePicker.js';
 import { balanceSheetSides, profitAndLossSections, type Section } from '../../lib/accounting/statementLayout.js';
 import { formatPaise } from '../../lib/money.js';
 import AccountsNav from './AccountsNav.js';
+import { FileSpreadsheet } from 'lucide-react';
 
 const today = () => new Date().toLocaleDateString('en-CA');
 
 function Badge({ ok }: { ok: boolean }) {
-  return <span className={`rounded px-2 py-0.5 text-xs font-medium ${ok ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>{ok ? 'Balanced' : 'Not balanced'}</span>;
+  return <span className={`rounded px-2 py-0.5 text-xs font-medium ${ok ? 'bg-green-100 dark:bg-green-500/20 text-green-800 dark:text-green-400' : 'bg-red-100 dark:bg-red-500/20 text-destructive'}`}>{ok ? 'Balanced' : 'Not balanced'}</span>;
 }
 
 function SectionTable({ s }: { s: Section }) {
@@ -18,8 +19,8 @@ function SectionTable({ s }: { s: Section }) {
     <table className="w-full text-sm">
       <thead><tr><th className="p-1 text-left" colSpan={2}>{s.title}</th></tr></thead>
       <tbody>
-        {s.lines.map((l) => <tr key={`${l.code}-${l.name}`}><td className="p-1 pl-4">{l.code && <span className="font-mono text-xs text-slate-500">{l.code} </span>}{l.name}</td><td className="p-1 text-right tabular-nums">{formatPaise(l.amountPaise)}</td></tr>)}
-        <tr className="border-t font-medium"><td className="p-1">{s.totalLabel}</td><td className="p-1 text-right tabular-nums">{formatPaise(s.totalPaise)}</td></tr>
+        {s.lines.map((l) => <tr key={`${l.code}-${l.name}`}><td className="p-1 pl-4">{l.code && <span className="font-mono text-xs text-muted-foreground">{l.code} </span>}{l.name}</td><td className="p-1 text-right tabular-nums">{formatPaise(l.amountPaise)}</td></tr>)}
+        <tr className="border-t border-border font-medium"><td className="p-1">{s.totalLabel}</td><td className="p-1 text-right tabular-nums">{formatPaise(s.totalPaise)}</td></tr>
       </tbody>
     </table>
   );
@@ -37,12 +38,12 @@ export default function Statements() {
   const bs = useQuery({ queryKey: ['bs', asOf, branchId], queryFn: () => api.accounting.getBalanceSheet({ asOf, ...branch }), enabled: tab === 'bs' });
   const error = tb.error ?? pl.error ?? bs.error;
   return (
-    <div className="max-w-5xl space-y-4">
-      <h1 className="text-2xl font-semibold">Statements</h1>
+    <div className="space-y-4">
+      <h1 className="flex items-center gap-2 text-2xl font-semibold"><FileSpreadsheet size={22} className="text-primary" aria-hidden />Statements</h1>
       <AccountsNav />
       <div className="flex gap-1" role="tablist">
         {([['tb', 'Trial Balance'], ['pl', 'Profit & Loss'], ['bs', 'Balance Sheet']] as const).map(([k, l]) => (
-          <button key={k} role="tab" aria-selected={tab === k} className={`btn-secondary py-1 ${tab === k ? 'bg-slate-200' : ''}`} onClick={() => setTab(k)}>{l}</button>
+          <button key={k} role="tab" aria-selected={tab === k} className={`btn-secondary py-1 ${tab === k ? 'bg-accent text-accent-foreground' : ''}`} onClick={() => setTab(k)}>{l}</button>
         ))}
       </div>
       <div className="card flex items-end gap-3">
@@ -76,7 +77,7 @@ export default function Statements() {
             <SectionTable s={l.sections[0]!} /><SectionTable s={l.sections[1]!} />
             <p className="flex justify-between font-semibold"><span>Gross profit</span><span className="tabular-nums">{formatPaise(l.grossProfitPaise)}</span></p>
             <SectionTable s={l.sections[2]!} /><SectionTable s={l.sections[3]!} />
-            <p className="flex justify-between border-t pt-2 text-lg font-semibold"><span>Net profit</span><span className="tabular-nums">{formatPaise(l.netProfitPaise)}</span></p>
+            <p className="flex justify-between border-t border-border pt-2 text-lg font-semibold"><span>Net profit</span><span className="tabular-nums">{formatPaise(l.netProfitPaise)}</span></p>
           </div>
         );
       })()}
@@ -88,7 +89,7 @@ export default function Statements() {
             <div className="grid grid-cols-2 gap-6">
               <div>{s.left.map((x) => <SectionTable key={x.title} s={x} />)}</div>
               <div>{s.right.map((x) => <SectionTable key={x.title} s={x} />)}
-                <p className="flex justify-between border-t pt-1 font-semibold"><span>Total liabilities and equity</span><span className="tabular-nums">{formatPaise(bs.data.totalLiabilitiesAndEquityPaise)}</span></p></div>
+                <p className="flex justify-between border-t border-border pt-1 font-semibold"><span>Total liabilities and equity</span><span className="tabular-nums">{formatPaise(bs.data.totalLiabilitiesAndEquityPaise)}</span></p></div>
             </div>
           </div>
         );

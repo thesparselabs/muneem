@@ -8,6 +8,7 @@ import UomSelect from '../components/UomSelect.js';
 import { formatRateBp } from '../lib/money.js';
 import { GST_RATES_BP, emptyForm, formToInput, productToForm, rebaseForm, type FormErrors, type ProductForm } from '../lib/productForm.js';
 import PriceListItems from './PriceListItems.js';
+import { Package, ArrowLeft } from 'lucide-react';
 
 const TAX_TREATMENTS = [['taxable', 'Taxable'], ['exempt', 'Exempt'], ['nil_rated', 'Nil rated'], ['zero_rated', 'Zero rated'], ['non_gst', 'Non-GST']] as const;
 
@@ -38,7 +39,7 @@ export default function ProductEdit() {
     if (isNew && !form && pcs) setForm(emptyForm(pcs.id));
   }, [form, isNew, uoms.data]);
 
-  if (!form || !uoms.data) return <p className="text-sm text-slate-500" role="status">Loading…</p>;
+  if (!form || !uoms.data) return <p className="text-sm text-muted-foreground" role="status">Loading…</p>;
   const set = <K extends keyof ProductForm>(key: K, value: ProductForm[K]) => setForm({ ...form, [key]: value });
 
   async function save(e: FormEvent) {
@@ -73,13 +74,13 @@ export default function ProductEdit() {
 
   const err = (key: string) => errors[key] && <p className="err">{errors[key]}</p>;
   return (
-    <div className="max-w-4xl space-y-4">
+    <div className="max-w-6xl space-y-4">
       <form onSubmit={save} className="space-y-4">
         <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-semibold">{isNew ? 'Add product' : form.name}</h1>
-          <Link to="/products" className="btn-secondary">Back to products</Link>
+          <h1 className="flex items-center gap-2 text-2xl font-semibold"><Package size={22} className="text-primary" aria-hidden />{isNew ? 'Add product' : form.name}</h1>
+          <Link to="/products" className="btn-secondary"><ArrowLeft size={16} aria-hidden />Back to products</Link>
         </div>
-        {!isNew && product.data && !product.data.isActive && <p className="card text-sm text-amber-800">This product is deactivated. It does not appear in billing or search.</p>}
+        {!isNew && product.data && !product.data.isActive && <p className="card text-sm text-amber-800 dark:text-amber-300">This product is deactivated. It does not appear in billing or search.</p>}
 
         <Section title="Basics">
           <Field label="Name" htmlFor="name"><input id="name" className="input" value={form.name} onChange={(e) => set('name', e.target.value)} required autoFocus />{err('name')}</Field>
@@ -150,7 +151,7 @@ function BarcodeEditor({ form, uoms, errors, onChange }: { form: ProductForm; uo
   return (
     <fieldset className="card space-y-2">
       <legend className="px-1 font-semibold">Barcodes</legend>
-      {form.barcodes.length === 0 && <p className="text-sm text-slate-500">No barcodes. Add one to scan this product at the counter.</p>}
+      {form.barcodes.length === 0 && <p className="text-sm text-muted-foreground">No barcodes. Add one to scan this product at the counter.</p>}
       {form.barcodes.map((b, i) => (
         <div key={i} className="grid grid-cols-[1fr_200px_auto_auto] items-center gap-2">
           <input aria-label={`Barcode ${i + 1}`} className="input font-mono" value={b.code} onChange={(e) => update(i, { code: e.target.value })} />
@@ -173,7 +174,7 @@ function ConversionEditor({ form, uoms, errors, onChange }: { form: ProductForm;
   return (
     <fieldset className="card space-y-2">
       <legend className="px-1 font-semibold">Other units</legend>
-      <p className="text-sm text-slate-500">For example, 1 BOX = 24 {base?.code ?? 'PCS'}. Stock always stays in {base?.code ?? 'the base unit'}.</p>
+      <p className="text-sm text-muted-foreground">For example, 1 BOX = 24 {base?.code ?? 'PCS'}. Stock always stays in {base?.code ?? 'the base unit'}.</p>
       {form.conversions.map((c, i) => (
         <div key={i} className="grid grid-cols-[auto_200px_auto_140px_auto_auto] items-center gap-2 text-sm">
           <span>1</span>

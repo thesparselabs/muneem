@@ -5,7 +5,55 @@ All notable changes, newest first. Each entry records **what** changed and **why
 
 ## [Unreleased]
 
-### Fixed — Stage 9 CI
+### Added — In-app manual (EN/HI), dashboard periods & charts (ADR-0065)
+- **Bilingual user manual + contextual help.** A help drawer on every screen explains, in English or Hindi (toggle),
+  what the tab is for, how it works and its keyboard shortcuts; the floating help button (bottom-right) is now a menu
+  (User manual / Take a tour) and the drawer can launch the guided tour. 16 routes documented in both languages.
+- **Dashboard: Today / This week / This month.** `reports.dashboard` gained a `period` input; figures aggregate the
+  daily summaries over the window and show a delta vs the previous period. New data points: average bill, products
+  sold, new customers, top categories, expense breakdown, receivables vs payables.
+- **Richer charts** (inline SVG, themed): a net-sales area/line, a payment-method donut, and horizontal bars for
+  categories, expenses and receivables — replacing the single bar strip.
+- **Fixed:** the help "?" button now sits in the true bottom-right corner (toasts lifted above it).
+- **Perf:** the dashboard's "new customers in this period" count reads a `created_at` range off a covering partial
+  index (migration 0022) instead of scanning every customer — the §18 query-plan gate caught the original scan.
+
+### Added — Dev demo data; fixed dark sidebar and invoice logo
+- **"Load demo data" (Diagnostics, dev builds only).** Seeds the current business through the real services — ~20
+  products, 5–8 customers, 4–6 suppliers (some with opening balances), opening stock, ~40 sales (cash/UPI/card/credit),
+  purchases, receipts and supplier payments, expenses, returns, a stock adjustment, a stock-take and a manual journal —
+  so every screen has realistic, consistent data. New `dev.seedDemo` IPC, guarded to non-packaged builds. Why: empty
+  screens made the UI hard to review.
+- **Fixed:** the shell sidebar/header used hardcoded colours, so dark mode left the sidebar white and its nav links
+  invisible — now on sidebar/card tokens. The modern/bold/creative invoice templates inverted the logo to white for
+  their coloured bands, turning a logo-with-a-background into a white box — now shown on a clean white chip.
+
+### Added — UI overhaul: theme, full-screen, icons, onboarding (ADR-0064)
+- **Light + dark theme (Whispr, from tweakcn).** Teal primary / lilac accent as CSS variables mapped into Tailwind v4;
+  a header toggle (remembered, no-flash) switches `.dark`. Shared component classes and ~76 screens now use theme
+  tokens, so dark mode works app-wide.
+- **Full-screen desktop layouts.** List and report pages run full width; long tables use an internal scroll container
+  with a sticky header, fixing Chromium double-scrollbar / scroll-jump issues. Icons (lucide) added across headings,
+  buttons, empty states and status chips.
+- **Onboarding tour.** A guided, view-changing walkthrough (spotlight + narrated tooltips) across setup → POS →
+  products → reports → invoice design, auto-starting once on first run (never under automation) with a floating
+  "Take a tour" button; built on existing deps, honours reduced motion.
+- Verified: typecheck, lint, build clean; all 33 Playwright UI tests pass.
+
+### Added — Invoice templates & branded PDF (`invoice.*`)
+- **A shop can render any sale as a styled A4 or thermal invoice (10 templates) and save it as a PDF (ADR-0063).**
+  Why: the receipt layer prints till rolls, but customers and GST filing need a proper invoice document with the
+  business's logo, signature and accent colour. New `invoice` IPC namespace (`listTemplates`, `getBranding`,
+  `setBranding`, `renderHtml`, `savePdf`); branding (template, accent, logo/signature, terms, bank details, footer)
+  is a business-scoped `setting` so it follows the shop to every till. Invoice data reuses the sale assembly and adds
+  an INR amount-in-words helper (Indian lakh/crore). A4 templates carry every GST mandatory field; PDFs print from a
+  hidden, network-blocked Electron window to Downloads. No new dependencies.
+- **Choose the page format (A4 / A5 / Letter), plus the 80 mm and 58 mm thermal rolls.** Why: printers vary, so the
+  same invoice must print right on an A4 laser or a thermal receipt printer. `pageSize` is part of the branding setting
+  and drives both the on-screen template CSS and the PDF page size.
+- **Settings → Invoice design UI:** a template gallery with live previews, logo/signature upload, accent colour, page
+  size, terms and bank details, plus a Preview dialog (Print / Save as PDF) wired into POS and the Sales list. Built
+  only from locally-authored components in the Wensity / Magic UI / opensourceui style (no new UI library).
 - **The `chaos` job was missing its `steps:`, which made GitHub reject the whole `ci.yml`.** Why: an invalid job (no
   `steps` and no `uses`) fails the workflow at parse time, so every run exited at 0 s with "workflow file issue" and no
   checks reported. The job's steps had been duplicated into `scale` during integration; moved them back to `chaos`

@@ -32,10 +32,12 @@ import {
 import { CompleteSaleInput, CompleteSaleResult, HeldBill, HoldBillInput, Sale, SaleDraft, SaleListInput, SalePage, SaleQuote } from './sales.js';
 import { CancelSaleInput, CompleteReturnInput, CompleteReturnResult, CreditNote, CreditNoteListInput, CreditNotePage, ReturnDraft, ReturnQuote } from './returns.js';
 import { InstalledPrinter, PrintJobSummary, PrinterConfig, ReceiptDoc } from './print.js';
+import { InvoiceBranding, ListTemplatesResult, RenderInvoiceInput, RenderInvoiceResult, SaveInvoicePdfInput, SaveInvoicePdfResult } from './invoice.js';
 import { SETTING_KEYS } from './settings.js';
 import { CrashReportingStatus, RendererErrorInput } from './telemetry.js';
 import { CloudBusiness, HydrationStartInput, HydrationStatus } from './hydration.js';
-import { Dashboard, ExportReportInput, ExportReportResult, ReportDefinitionView, ReportResult, RunReportInput } from './reports.js';
+import { Dashboard, DashboardInput, ExportReportInput, ExportReportResult, ReportDefinitionView, ReportResult, RunReportInput } from './reports.js';
+import { DemoSeedSummary } from './dev.js';
 import { GstLedgerView, GstMonthInput, GstPayment, GstPaymentInput, GstReturnSummary, GstSetoff, GstSetoffPreview, PostGstSetoffInput } from './gst.js';
 import { ReportCartInput, SetChannelInput, UpdateStatus } from './updates.js';
 import { BackupList, BackupRef, BackupVerification, RestoreBackupInput, RestoreFromCloudInput, RestoreResult, RunBackupResult } from './backups.js';
@@ -197,6 +199,13 @@ export const contract = {
   'printer.reprint': spec({ input: z.object({ saleId: Ulid }), output: z.object({ jobId: Ulid }), permission: 'pos.create', rateLimit: { perSec: 2 }, audit: true }),
   'drawer.open': spec({ input: Empty, output: Ok, permission: 'pos.create', rateLimit: { perSec: 1 }, audit: true }),
 
+  // Invoice templates & PDF
+  'invoice.listTemplates': spec({ input: Empty, output: ListTemplatesResult, permission: 'pos.view', rateLimit: { perSec: 10 } }),
+  'invoice.getBranding': spec({ input: Empty, output: InvoiceBranding, permission: 'pos.view', rateLimit: { perSec: 10 } }),
+  'invoice.setBranding': spec({ input: InvoiceBranding, output: InvoiceBranding, permission: 'settings.manage', rateLimit: { perSec: 2 }, audit: true }),
+  'invoice.renderHtml': spec({ input: RenderInvoiceInput, output: RenderInvoiceResult, permission: 'pos.view', rateLimit: { perSec: 10 } }),
+  'invoice.savePdf': spec({ input: SaveInvoicePdfInput, output: SaveInvoicePdfResult, permission: 'pos.view', rateLimit: { perSec: 2 } }),
+
   'inventory.getStock': spec({ input: StockListInput, output: StockPage, permission: 'inventory.view', rateLimit: { perSec: 10 } }),
   'inventory.getMovements': spec({ input: MovementsInput, output: MovementPage, permission: 'inventory.view', rateLimit: { perSec: 10 } }),
   'inventory.valuation': spec({ input: Empty, output: Valuation, permission: 'inventory.view', rateLimit: { perSec: 2 } }),
@@ -258,7 +267,7 @@ export const contract = {
   'reports.listDefinitions': spec({ input: Empty, output: z.array(ReportDefinitionView), permission: 'reports.view', rateLimit: { perSec: 5 } }),
   'reports.run': spec({ input: RunReportInput, output: ReportResult, permission: 'reports.view', rateLimit: { perSec: 5 } }),
   'reports.export': spec({ input: ExportReportInput, output: ExportReportResult, permission: 'reports.export', rateLimit: { perSec: 1 }, audit: true }),
-  'reports.dashboard': spec({ input: Empty, output: Dashboard, permission: 'reports.view', rateLimit: { perSec: 5 } }),
+  'reports.dashboard': spec({ input: DashboardInput, output: Dashboard, permission: 'reports.view', rateLimit: { perSec: 5 } }),
 
   // ADR-0050: every role holds business.view; each kind is further filtered by the permission its subject needs.
   'notifications.list': spec({ input: ListNotificationsInput, output: NotificationPage, permission: 'business.view', rateLimit: { perSec: 10 } }),
@@ -285,6 +294,7 @@ export const contract = {
   'sync.hydrationStart': spec({ input: HydrationStartInput, output: HydrationStatus, permission: null, rateLimit: { perSec: 2 }, audit: true }),
   'sync.hydrationStatus': spec({ input: Empty, output: HydrationStatus, permission: null, rateLimit: { perSec: 10 } }),
 
+  'dev.seedDemo': spec({ input: Empty, output: DemoSeedSummary, permission: 'settings.manage', rateLimit: { perSec: 1 }, audit: true }),
   'diagnostics.getHealth': spec({ input: Empty, output: Health, permission: 'diagnostics.view', rateLimit: { perSec: 5 } }),
   'diagnostics.integrityCheck': spec({
     input: Empty,

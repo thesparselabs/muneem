@@ -14,7 +14,7 @@ export default function HeldBillsDialog({ cartInUse, onRetrieve, onClose }: { ca
   }
   return (
     <Dialog title="Held bills (F7)" onClose={onClose}>
-      {held.data?.length === 0 && <p className="text-sm text-slate-600">No held bills.</p>}
+      {held.data?.length === 0 && <p className="text-sm text-muted-foreground">No held bills.</p>}
       {error && <p className="err" role="alert">{error}</p>}
       <ul className="divide-y text-sm">
         {held.data?.map((b, i) => (

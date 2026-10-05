@@ -5,7 +5,7 @@ export default function AllocationGrid({ items, mode, typed, summary, onMode, on
   items: GridItem[]; mode: GridMode; typed: Record<string, string>; summary: GridSummary;
   onMode: (m: GridMode) => void; onType: (id: string, v: string) => void;
 }) {
-  if (items.length === 0) return <p className="text-sm text-slate-600">Nothing is open; the whole amount stays as an advance on account.</p>;
+  if (items.length === 0) return <p className="text-sm text-muted-foreground">Nothing is open; the whole amount stays as an advance on account.</p>;
   return (
     <div className="space-y-2">
       <div className="flex gap-4 text-sm">
@@ -21,7 +21,7 @@ export default function AllocationGrid({ items, mode, typed, summary, onMode, on
               <td className="text-right">
                 {mode === 'auto' ? <span className="tabular-nums">{formatPaise(summary.amounts.get(i.id) ?? 0)}</span>
                   : <input aria-label={`Settle ${i.docNumber ?? i.type}`} className="input w-28 py-1 text-right" inputMode="decimal" value={typed[i.id] ?? ''} onChange={(e) => onType(i.id, e.target.value)} />}
-                {summary.errors[i.id] && <p className="text-xs text-red-700">{summary.errors[i.id]}</p>}
+                {summary.errors[i.id] && <p className="text-xs text-destructive">{summary.errors[i.id]}</p>}
               </td>
             </tr>
           ))}

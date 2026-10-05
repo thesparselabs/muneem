@@ -40,11 +40,17 @@ import AdjustStock from './routes/inventory/AdjustStock.js';
 import StockTake from './routes/inventory/StockTake.js';
 import OpeningStock from './routes/inventory/OpeningStock.js';
 import PrinterSettings from './routes/PrinterSettings.js';
+import InvoiceSettings from './routes/settings/InvoiceSettings.js';
 import StockReconciliation from './routes/inventory/StockReconciliation.js';
 import ReviewItems from './routes/settings/ReviewItems.js';
 import Reports from './routes/reports/Reports.js';
 import Updates from './routes/settings/Updates.js';
 import Notifications from './routes/Notifications.js';
+import { TourProvider } from './components/tour/TourProvider.js';
+import TourOverlay from './components/tour/TourOverlay.js';
+import TourHelpButton from './components/tour/TourHelpButton.js';
+import HelpDrawer from './components/help/HelpDrawer.js';
+import { HelpProvider } from './lib/help/useHelp.js';
 
 export default function App() {
   const { session, setSession, setSync, setOnline } = useUi();
@@ -66,7 +72,11 @@ export default function App() {
   if (session && !session.businessId && loc.pathname !== '/setup') return <Navigate to="/setup" replace />;
   if (session && session.businessId && !session.terminalId && loc.pathname !== '/setup') return <Navigate to="/setup" replace />;
 
+  const inApp = !['/login', '/switch', '/setup'].includes(loc.pathname);
+
   return (
+    <TourProvider>
+    <HelpProvider>
     <Routes>
       <Route path="/login" element={<Login />} />
       <Route path="/switch" element={<SwitchUser />} />
@@ -108,6 +118,7 @@ export default function App() {
         <Route path="/gst/payments" element={<GstPayments />} />
         <Route path="/reports" element={<Reports />} />
         <Route path="/settings/printer" element={<PrinterSettings />} />
+        <Route path="/settings/invoice" element={<InvoiceSettings />} />
         <Route path="/settings/review" element={<ReviewItems />} />
         <Route path="/settings/updates" element={<Updates />} />
         <Route path="/diagnostics" element={<Diagnostics />} />
@@ -115,5 +126,10 @@ export default function App() {
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
+    {inApp && <TourOverlay />}
+    {inApp && <TourHelpButton />}
+    {inApp && <HelpDrawer />}
+    </HelpProvider>
+    </TourProvider>
   );
 }

@@ -32,12 +32,12 @@ export default function PaymentDialog({ totalPaise, credit, busy, warning, onPay
           <div key={r.method} className="grid grid-cols-[80px_1fr_1fr] items-center gap-2">
             <label htmlFor={`tender-${r.method}`} className="text-sm font-medium">{LABEL[r.method]}</label>
             <input id={`tender-${r.method}`} className="input" inputMode="decimal" value={r.amount} onChange={(e) => set(i, { amount: e.target.value })} />
-            {r.method === 'credit' && credit && <span className="text-sm text-gray-700">Available {formatPaise(credit.availablePaise)}</span>}
+            {r.method === 'credit' && credit && <span className="text-sm text-muted-foreground">Available {formatPaise(credit.availablePaise)}</span>}
             {r.method !== 'cash' && r.method !== 'credit' && <input aria-label={`${LABEL[r.method]} reference`} className="input" placeholder="Reference (optional)" value={r.reference} onChange={(e) => set(i, { reference: e.target.value })} />}
           </div>
         ))}
-        <p className={`text-sm font-medium ${preview.ok ? 'text-green-800' : 'text-amber-800'}`} role="status">{status}</p>
-        {warning && <p className="text-sm text-amber-800" role="alert">{warning}</p>}
+        <p className={`text-sm font-medium ${preview.ok ? 'text-green-800 dark:text-green-400' : 'text-amber-800 dark:text-amber-300'}`} role="status">{status}</p>
+        {warning && <p className="text-sm text-amber-800 dark:text-amber-300" role="alert">{warning}</p>}
         <ShimmerButton type="submit" className="w-full" disabled={busy || !preview.ok}>{busy ? 'Saving…' : 'Complete sale (Enter)'}</ShimmerButton>
       </form>
     </Dialog>

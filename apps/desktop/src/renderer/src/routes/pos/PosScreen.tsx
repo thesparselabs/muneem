@@ -16,11 +16,12 @@ import HeldBillsDialog from './HeldBillsDialog.js';
 import PaymentDialog from './PaymentDialog.js';
 import { CashMovementDialog, CloseRegisterDialog, OpenRegister, ReportView, XReportDialog } from './RegisterPanel.js';
 import Dialog from '../../components/Dialog.js';
+import InvoicePreview from '../../components/InvoicePreview.js';
 import StockStaleness from '../../components/StockStaleness.js';
 import NumberTicker from '../../components/NumberTicker.js';
 import SuccessCheck from '../../components/SuccessCheck.js';
 import { useToasts } from '../../lib/toast.js';
-import { CreditCard, Pause, Percent, Printer, RotateCcw, Wallet, FileBarChart, Lock } from 'lucide-react';
+import { AlertTriangle, ScanSearch, ShoppingCart, Trash2, User, CreditCard, Pause, Percent, Printer, RotateCcw, Wallet, FileBarChart, FileText, Lock } from 'lucide-react';
 
 type Modal = 'customer' | 'discount' | 'payment' | 'held' | 'cash' | 'x' | 'close' | { lineDiscount: string } | null;
 const NEAR_DUPLICATE_MS = 60_000;
@@ -37,6 +38,7 @@ export default function PosScreen() {
   const [busy, setBusy] = useState(false);
   const [lastSale, setLastSale] = useState<{ result: CompleteSaleResult; customerId: string | null; at: number } | null>(null);
   const [zReport, setZReport] = useState<RegisterReport | null>(null);
+  const [previewSaleId, setPreviewSaleId] = useState<string | null>(null);
   const [paid, setPaid] = useState(false);
   const toast = useToasts((s) => s.push);
   const search = useRef<HTMLInputElement>(null);
@@ -160,23 +162,23 @@ export default function PosScreen() {
     return () => window.removeEventListener('keydown', onKey);
   });
 
-  if (session.isLoading) return <p className="text-sm text-slate-500">Loading…</p>;
+  if (session.isLoading) return <p className="text-sm text-muted-foreground">Loading…</p>;
   if (zReport) return <div className="card max-w-md space-y-4"><ReportView report={zReport} /><button className="btn-primary" onClick={() => setZReport(null)}>Done</button></div>;
   if (!session.data) return <OpenRegister onOpened={() => void qc.invalidateQueries({ queryKey: ['posSession'] })} />;
 
   const totals = localTotals(cart, context);
   return (
-    <div className="grid h-full grid-cols-[1fr_340px] gap-4">
+    <div className="grid h-full grid-cols-[1fr_360px] grid-rows-[minmax(0,1fr)] gap-4">
       <section className="flex min-h-0 flex-col gap-3">
         <ProductSearch inputRef={search} query={query} setQuery={setQuery} onPick={addProduct} />
-        {message && <p className={`text-sm ${message.kind === 'ok' ? 'text-green-800' : 'text-red-700'}`} role={message.kind === 'ok' ? 'status' : 'alert'}>{message.text}</p>}
+        {message && <p className={`text-sm ${message.kind === 'ok' ? 'text-green-800 dark:text-green-400' : 'text-destructive'}`} role={message.kind === 'ok' ? 'status' : 'alert'}>{message.text}</p>}
         <PrinterBanner />
         <CartTable cart={cart} onQty={(key, q) => update(setQty(cart, key, q))} onRemove={(key) => update(removeLine(cart, key))} onDiscount={(key) => setModal({ lineDiscount: key })} />
       </section>
-      <aside className="flex flex-col gap-3">
+      <aside className="flex min-h-0 flex-col gap-3 overflow-y-auto">
         <StockStaleness />
         <div className="card text-sm">
-          <p className="text-slate-500">Customer (F3)</p>
+          <p className="flex items-center gap-1.5 text-muted-foreground"><User size={14} aria-hidden /> Customer (F3)</p>
           <p className="font-medium">{cart.customer ? `${cart.customer.name}${cart.customer.gstin ? ` · ${cart.customer.gstin}` : ''}` : 'Walk-in'}</p>
         </div>
         <div className="card space-y-1 text-sm tabular-nums">
@@ -188,7 +190,7 @@ export default function PosScreen() {
             <Row label="GST" value={formatPaise(totals.cgstPaise + totals.sgstPaise + totals.igstPaise + totals.cessPaise)} />
             {totals.roundOffPaise !== 0 && <Row label="Round off" value={formatPaise(totals.roundOffPaise)} />}
           </>}
-          <div className="flex justify-between border-t pt-2 text-2xl font-semibold"><span>Total</span><NumberTicker value={totals?.totalPaise ?? 0} format={(n) => formatPaise(Math.round(n))} /></div>
+          <div className="flex justify-between border-t border-border pt-2 text-2xl font-semibold"><span>Total</span><NumberTicker value={totals?.totalPaise ?? 0} format={(n) => formatPaise(Math.round(n))} /></div>
         </div>
         <div className="grid grid-cols-2 gap-2 text-sm">
           <button className="btn-primary col-span-2 gap-2 py-3 text-base" onClick={() => void startPayment()} disabled={cart.lines.length === 0}><Wallet size={18} aria-hidden /> Pay (F5)</button>
@@ -196,6 +198,7 @@ export default function PosScreen() {
           <button className="btn-secondary gap-1.5" onClick={() => void hold()}><Pause size={14} aria-hidden /> Hold (F6)</button>
           <button className="btn-secondary gap-1.5" onClick={() => setModal('held')}><RotateCcw size={14} aria-hidden /> Held bills (F7)</button>
           <button className="btn-secondary gap-1.5" onClick={() => void reprintLast()} disabled={!lastSale}><Printer size={14} aria-hidden /> Reprint last (F9)</button>
+          <button className="btn-secondary gap-1.5" onClick={() => lastSale && setPreviewSaleId(lastSale.result.saleId)} disabled={!lastSale}><FileText size={14} aria-hidden /> Invoice</button>
           <button className="btn-secondary gap-1.5" onClick={() => setModal('cash')}><CreditCard size={14} aria-hidden /> Cash in/out</button>
           <button className="btn-secondary gap-1.5" onClick={() => setModal('x')}><FileBarChart size={14} aria-hidden /> X report</button>
           <button className="btn-secondary gap-1.5" onClick={() => setModal('close')}><Lock size={14} aria-hidden /> Close register</button>
@@ -214,27 +217,29 @@ export default function PosScreen() {
       {modal === 'cash' && <CashMovementDialog onClose={() => setModal(null)} />}
       {modal === 'x' && <XReportDialog onClose={() => setModal(null)} />}
       {modal === 'close' && <CloseRegisterDialog onClose={() => setModal(null)} onClosed={(z) => { setModal(null); setZReport(z); void qc.invalidateQueries({ queryKey: ['posSession'] }); }} />}
+      {previewSaleId && <InvoicePreview saleId={previewSaleId} onClose={() => setPreviewSaleId(null)} />}
       {paid && <div className="pointer-events-none fixed inset-0 z-40 flex items-center justify-center" aria-hidden><SuccessCheck size={88} /></div>}
     </div>
   );
 }
 
-const Row = ({ label, value }: { label: string; value: string }) => <div className="flex justify-between"><span className="text-slate-600">{label}</span><span>{value}</span></div>;
+const Row = ({ label, value }: { label: string; value: string }) => <div className="flex justify-between"><span className="text-muted-foreground">{label}</span><span>{value}</span></div>;
 
 function ProductSearch({ inputRef, query, setQuery, onPick }: { inputRef: RefObject<HTMLInputElement>; query: string; setQuery: (q: string) => void; onPick: (h: ProductHit) => void }) {
   const q = useDebounced(query.trim(), 120);
   const hits = useQuery({ queryKey: ['posSearch', q], queryFn: () => api.products.search({ query: q, limit: 8 }), enabled: q.length > 0 });
   const pick = (h: ProductHit) => { onPick(h); setQuery(''); };
   return (
-    <div className="relative">
+    <div className="relative shrink-0">
       <label className="label" htmlFor="pos-search">Scan or search a product (F2)</label>
-      <input id="pos-search" ref={inputRef} data-scan-target="true" className="input text-base" value={query} onChange={(e) => setQuery(e.target.value)} autoFocus autoComplete="off"
+      <ScanSearch size={18} aria-hidden className="pointer-events-none absolute bottom-[0.7rem] left-3 text-muted-foreground" />
+      <input id="pos-search" ref={inputRef} data-scan-target="true" className="input pl-10 text-base" value={query} onChange={(e) => setQuery(e.target.value)} autoFocus autoComplete="off"
         onKeyDown={(e) => { if (e.key === 'Enter' && hits.data?.[0]) { e.preventDefault(); pick(hits.data[0]); } }} />
       {q && hits.data && hits.data.length > 0 && (
-        <ul className="absolute z-10 mt-1 w-full divide-y rounded-md border bg-white text-sm shadow">
+        <ul className="absolute z-10 mt-1 w-full divide-y divide-border rounded-md border border-border bg-card text-sm shadow">
           {hits.data.map((h) => (
-            <li key={`${h.productId}-${h.uomId}`}><button type="button" className="flex w-full justify-between px-3 py-2 text-left hover:bg-blue-50" onClick={() => pick(h)}>
-              <span>{h.name} <span className="text-slate-500">{h.sku}</span></span><span className="tabular-nums">{formatPaise(h.pricePaise)} /{h.uomCode} <span className={`text-xs ${h.stockMilli <= 0 ? 'text-red-700' : 'text-slate-500'}`}>· {scaledToText(h.stockMilli, 3)} {h.baseUomCode} in stock</span></span>
+            <li key={`${h.productId}-${h.uomId}`}><button type="button" className="flex w-full justify-between px-3 py-2 text-left hover:bg-accent" onClick={() => pick(h)}>
+              <span>{h.name} <span className="text-muted-foreground">{h.sku}</span></span><span className="tabular-nums">{formatPaise(h.pricePaise)} /{h.uomCode} <span className={`text-xs ${h.stockMilli <= 0 ? 'text-destructive' : 'text-muted-foreground'}`}>· {scaledToText(h.stockMilli, 3)} {h.baseUomCode} in stock</span></span>
             </button></li>
           ))}
         </ul>
@@ -244,21 +249,21 @@ function ProductSearch({ inputRef, query, setQuery, onPick }: { inputRef: RefObj
 }
 
 function CartTable({ cart, onQty, onRemove, onDiscount }: { cart: Cart; onQty: (key: string, qtyMilli: number) => void; onRemove: (key: string) => void; onDiscount: (key: string) => void }) {
-  if (cart.lines.length === 0) return <p className="card text-sm text-slate-600">Scan a barcode or search to start a bill.</p>;
+  if (cart.lines.length === 0) return <div className="card flex flex-col items-center gap-2 py-12 text-sm text-muted-foreground"><ShoppingCart size={32} aria-hidden /><p>Scan a barcode or search to start a bill.</p></div>;
   return (
-    <div className="min-h-0 overflow-auto rounded-lg border bg-white">
+    <div className="min-h-0 overflow-auto rounded-lg border border-border bg-card">
       <table className="w-full text-sm">
-        <thead className="sticky top-0 bg-slate-50 text-left text-slate-600"><tr><th className="p-2">Item</th><th className="p-2 w-28">Qty</th><th className="p-2 text-right">Rate</th><th className="p-2 text-right">GST</th><th className="p-2 text-right">Discount</th><th className="p-2" /></tr></thead>
+        <thead className="sticky top-0 bg-muted text-left text-muted-foreground"><tr><th className="p-2">Item</th><th className="p-2 w-28">Qty</th><th className="p-2 text-right">Rate</th><th className="p-2 text-right">GST</th><th className="p-2 text-right">Discount</th><th className="p-2" /></tr></thead>
         <tbody>
           {cart.lines.map((l) => (
-            <tr key={l.key} className="border-t animate-[row-in_0.8s_ease-out]">
+            <tr key={l.key} className="border-t border-border animate-[row-in_0.8s_ease-out]">
               <td className="p-2">{l.name}{l.issue && <p className="err mt-0">{l.issue}</p>}
-                {l.stockWarning && <p className={`mt-0 text-xs ${l.stockWarning.blocking ? 'text-red-700' : 'text-amber-800'}`}>{l.stockWarning.message}</p>}</td>
+                {l.stockWarning && <p className={`mt-0 text-xs ${l.stockWarning.blocking ? 'text-destructive' : 'text-amber-800 dark:text-amber-300'}`}>{l.stockWarning.message}</p>}</td>
               <td className="p-2"><QtyInput qtyMilli={l.qtyMilli} uomCode={l.uomCode} onChange={(q) => onQty(l.key, q)} /></td>
               <td className="p-2 text-right tabular-nums">{formatPaise(l.pricing?.unitPricePaise ?? null)}</td>
               <td className="p-2 text-right">{l.pricing ? formatRateBp(l.pricing.gstRateBp) : ''}</td>
-              <td className="p-2 text-right"><button type="button" className="text-blue-800 underline" onClick={() => onDiscount(l.key)}>{l.lineDiscount.value ? (l.lineDiscount.kind === 'percent' ? formatRateBp(l.lineDiscount.value) : formatPaise(l.lineDiscount.value)) : 'Add'}</button></td>
-              <td className="p-2 text-right"><button type="button" className="btn-secondary py-1" onClick={() => onRemove(l.key)} aria-label={`Remove ${l.name}`}>Remove</button></td>
+              <td className="p-2 text-right"><button type="button" className="text-primary underline" onClick={() => onDiscount(l.key)}>{l.lineDiscount.value ? (l.lineDiscount.kind === 'percent' ? formatRateBp(l.lineDiscount.value) : formatPaise(l.lineDiscount.value)) : 'Add'}</button></td>
+              <td className="p-2 text-right"><button type="button" className="btn-secondary py-1" onClick={() => onRemove(l.key)} aria-label={`Remove ${l.name}`}><Trash2 size={14} aria-hidden />Remove</button></td>
             </tr>
           ))}
         </tbody>
@@ -274,7 +279,7 @@ function QtyInput({ qtyMilli, uomCode, onChange }: { qtyMilli: number; uomCode: 
   return (
     <span className="flex items-center gap-1">
       <input aria-label="Quantity" className="input w-20 py-1" inputMode="decimal" value={text} onChange={(e) => setText(e.target.value)} onBlur={commit} onKeyDown={(e) => { if (e.key === 'Enter') commit(); }} />
-      <span className="text-xs text-slate-500">{uomCode}</span>
+      <span className="text-xs text-muted-foreground">{uomCode}</span>
     </span>
   );
 }
@@ -286,8 +291,8 @@ function PrinterBanner() {
   const [details, setDetails] = useState(false);
   if (!failed) return null;
   return (
-    <div className="flex items-center justify-between rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900" role="alert">
-      <span>Receipt not printed: {failed.errorMessage ?? 'printer problem'}. The sale is saved.</span>
+    <div className="flex items-center justify-between gap-2 rounded-md border border-amber-300 bg-amber-50 dark:bg-amber-500/20 px-3 py-2 text-sm text-amber-900 dark:text-amber-300" role="alert">
+      <span className="flex items-center gap-2"><AlertTriangle size={16} aria-hidden /><span>Receipt not printed: {failed.errorMessage ?? 'printer problem'}. The sale is saved.</span></span>
       <span className="flex gap-2">
         <button className="btn-secondary py-1" onClick={() => void api.printer.retryJob({ jobId: failed.id }).then(() => qc.invalidateQueries({ queryKey: ['printQueue'] }))}>Retry</button>
         <button className="btn-secondary py-1" onClick={() => setDetails(true)}>Details</button>

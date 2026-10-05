@@ -38,3 +38,53 @@ export const amountOf = (split: readonly { method: string; amountPaise: number }
 // Gross margin on net sales before GST, in whole percent; null when nothing was sold.
 export const marginPercent = (grossProfitPaise: number, netTaxablePaise: number): number | null =>
   netTaxablePaise === 0 ? null : Math.round((grossProfitPaise * 100) / netTaxablePaise);
+
+export type DashboardPeriodKey = 'today' | 'week' | 'month';
+export const PERIOD_LABELS: Record<DashboardPeriodKey, { tab: string; title: string; range: string; vs: string }> = {
+  today: { tab: 'Today', title: 'Today', range: 'today', vs: 'vs yesterday' },
+  week: { tab: 'This week', title: 'Last 7 days', range: 'in the last 7 days', vs: 'vs the 7 days before' },
+  month: { tab: 'This month', title: 'Last 30 days', range: 'in the last 30 days', vs: 'vs the 30 days before' },
+};
+
+// Whole-percent change against the previous period; null when there is nothing to compare with.
+export const percentChange = (now: number, before: number): number | null =>
+  before === 0 ? null : Math.round(((now - before) * 100) / Math.abs(before));
+
+export interface Arc { key: string; length: number; offset: number; fraction: number }
+
+// Segments of a circle of the given circumference; offsets are cumulative, from 12 o'clock.
+export function donutArcs(values: readonly { key: string; value: number }[], circumference: number): Arc[] {
+  const total = values.reduce((s, v) => s + Math.max(v.value, 0), 0);
+  if (total === 0) return [];
+  let start = 0;
+  return values.filter((v) => v.value > 0).map((v) => {
+    const fraction = v.value / total;
+    const arc = { key: v.key, length: fraction * circumference, offset: start, fraction };
+    start += arc.length;
+    return arc;
+  });
+}
+
+export interface SeriesPoint { x: number; y: number; day: string; value: number }
+
+// Points on a shared vertical scale so two series (sales, profit) line up; `zeroY` is the baseline.
+export function seriesPoints(points: readonly { day: string; value: number }[], width: number, height: number, bounds: { min: number; max: number }, pad = 6): SeriesPoint[] {
+  const span = bounds.max - bounds.min || 1;
+  const step = points.length > 1 ? width / (points.length - 1) : 0;
+  return points.map((p, i) => ({ x: points.length > 1 ? i * step : width / 2, y: pad + ((bounds.max - p.value) / span) * (height - pad * 2), day: p.day, value: p.value }));
+}
+
+export function seriesBounds(...series: readonly (readonly number[])[]): { min: number; max: number } {
+  const all = series.flat();
+  return { min: Math.min(0, ...all), max: Math.max(0, ...all) };
+}
+
+export const linePath = (pts: readonly { x: number; y: number }[]): string => pts.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(' ');
+
+export function areaPath(pts: readonly { x: number; y: number }[], baselineY: number): string {
+  const first = pts[0];
+  const last = pts[pts.length - 1];
+  return first && last ? `${linePath(pts)} L${last.x.toFixed(1)} ${baselineY.toFixed(1)} L${first.x.toFixed(1)} ${baselineY.toFixed(1)} Z` : '';
+}
+
+export const DIGITAL_METHODS = ['upi', 'card', 'bank', 'wallet'];

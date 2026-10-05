@@ -16,11 +16,11 @@ export default function ProductPicker({ id, label, onPick }: { id: string; label
       <input id={id} className="input" value={query} onChange={(e) => setQuery(e.target.value)} autoComplete="off" placeholder="Name, SKU or barcode"
         onKeyDown={(e) => { if (e.key === 'Enter' && hits.data?.[0]) { e.preventDefault(); pick(hits.data[0]); } }} />
       {q && hits.data && hits.data.length > 0 && (
-        <ul className="absolute z-10 mt-1 w-full divide-y rounded-md border bg-white text-sm shadow">
+        <ul className="absolute z-10 mt-1 w-full divide-y rounded-md border border-border bg-card text-sm shadow">
           {hits.data.map((h) => (
-            <li key={`${h.productId}-${h.uomId}`}><button type="button" className="flex w-full justify-between px-3 py-2 text-left hover:bg-blue-50" onClick={() => pick(h)}>
-              <span>{h.name} <span className="text-slate-500">{h.sku}</span></span>
-              <span className="tabular-nums text-slate-600">{scaledToText(h.stockMilli, 3)} {h.baseUomCode} in stock</span>
+            <li key={`${h.productId}-${h.uomId}`}><button type="button" className="flex w-full justify-between px-3 py-2 text-left hover:bg-accent" onClick={() => pick(h)}>
+              <span>{h.name} <span className="text-muted-foreground">{h.sku}</span></span>
+              <span className="tabular-nums text-muted-foreground">{scaledToText(h.stockMilli, 3)} {h.baseUomCode} in stock</span>
             </button></li>
           ))}
         </ul>

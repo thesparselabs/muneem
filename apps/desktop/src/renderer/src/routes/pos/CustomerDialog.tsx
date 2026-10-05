@@ -5,6 +5,7 @@ import { api, errorMessage } from '../../api.js';
 import Dialog from '../../components/Dialog.js';
 import Field from '../../components/Field.js';
 import { useDebounced } from '../../lib/useDebounced.js';
+import { Save } from 'lucide-react';
 
 export default function CustomerDialog({ onPick, onClose }: { onPick: (c: Customer | null) => void; onClose: () => void }) {
   const [query, setQuery] = useState('');
@@ -18,8 +19,8 @@ export default function CustomerDialog({ onPick, onClose }: { onPick: (c: Custom
           <Field label="Search by name, phone or GSTIN" htmlFor="cust-q"><input id="cust-q" className="input" value={query} onChange={(e) => setQuery(e.target.value)} /></Field>
           <ul className="divide-y text-sm">
             {found.data?.map((c) => (
-              <li key={c.id}><button type="button" className="w-full py-2 text-left hover:bg-blue-50" onClick={() => onPick(c)}>
-                <span className="font-medium">{c.name}</span> <span className="text-slate-500">{[c.phone, c.gstin].filter(Boolean).join(' · ')}</span>
+              <li key={c.id}><button type="button" className="w-full py-2 text-left hover:bg-accent" onClick={() => onPick(c)}>
+                <span className="font-medium">{c.name}</span> <span className="text-muted-foreground">{[c.phone, c.gstin].filter(Boolean).join(' · ')}</span>
               </button></li>
             ))}
           </ul>
@@ -48,7 +49,7 @@ function NewCustomer({ initialName, onCreated }: { initialName: string; onCreate
       <Field label="Phone" htmlFor="nc-phone"><input id="nc-phone" className="input" inputMode="tel" value={f.phone} onChange={(e) => setF({ ...f, phone: e.target.value })} /></Field>
       <Field label="GSTIN (for a B2B invoice)" htmlFor="nc-gstin"><input id="nc-gstin" className="input uppercase" maxLength={15} value={f.gstin} onChange={(e) => setF({ ...f, gstin: e.target.value })} /></Field>
       {error && <p className="err" role="alert">{error}</p>}
-      <button type="submit" className="btn-primary">Save customer</button>
+      <button type="submit" className="btn-primary"><Save size={16} aria-hidden />Save customer</button>
     </form>
   );
 }

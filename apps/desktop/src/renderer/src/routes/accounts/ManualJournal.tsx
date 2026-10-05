@@ -7,6 +7,7 @@ import DatePicker from '../../components/DatePicker.js';
 import { checkJournal, emptyRows, postableAccounts, toJournalInput, type JournalRow } from '../../lib/accounting/journalForm.js';
 import { formatPaise } from '../../lib/money.js';
 import AccountsNav from './AccountsNav.js';
+import { PenLine, Check } from 'lucide-react';
 
 export default function ManualJournal() {
   const nav = useNavigate();
@@ -29,25 +30,25 @@ export default function ManualJournal() {
     } catch (err) { setError(errorMessage(err)); }
   }
   return (
-    <form onSubmit={submit} className="max-w-4xl space-y-4">
-      <h1 className="text-2xl font-semibold">Manual journal</h1>
+    <form onSubmit={submit} className="max-w-6xl space-y-4">
+      <h1 className="flex items-center gap-2 text-2xl font-semibold"><PenLine size={22} className="text-primary" aria-hidden />Manual journal</h1>
       <AccountsNav />
-      <p className="text-sm text-slate-600">Receivables, payables, inventory and GST accounts change only through their documents, so they are not offered here.</p>
+      <p className="text-sm text-muted-foreground">Receivables, payables, inventory and GST accounts change only through their documents, so they are not offered here.</p>
       <div className="card grid grid-cols-[160px_1fr] gap-3">
         <div><label className="label" htmlFor="mj-date">Date</label><DatePicker id="mj-date" value={date} onChange={(v) => setDate(v)} /></div>
         <div><label className="label" htmlFor="mj-narr">Narration</label><input id="mj-narr" className="input" value={narration} onChange={(e) => setNarration(e.target.value)} placeholder="e.g. Card settlement for 3 Oct" /></div>
       </div>
-      <table className="table-modern rounded-lg border bg-white">
+      <table className="table-modern rounded-lg border border-border bg-card">
         <thead><tr><th>Account</th><th>Debit (₹)</th><th>Credit (₹)</th><th /></tr></thead>
         <tbody>
           {rows.map((r, i) => (
             <tr key={i}>
               <td><select aria-label={`Account, line ${i + 1}`} className="select py-1" value={r.accountId} onChange={(e) => set(i, { accountId: e.target.value })}>
                 <option value="">Choose…</option>{options.map((a) => <option key={a.id} value={a.id}>{a.code} {a.name}</option>)}</select>
-                {check.errors[`${i}.accountId`] && <p className="text-xs text-red-700">{check.errors[`${i}.accountId`]}</p>}</td>
+                {check.errors[`${i}.accountId`] && <p className="text-xs text-destructive">{check.errors[`${i}.accountId`]}</p>}</td>
               <td><input aria-label={`Debit, line ${i + 1}`} className="input w-32 py-1" inputMode="decimal" value={r.debit} onChange={(e) => set(i, { debit: e.target.value })} /></td>
               <td><input aria-label={`Credit, line ${i + 1}`} className="input w-32 py-1" inputMode="decimal" value={r.credit} onChange={(e) => set(i, { credit: e.target.value })} />
-                {check.errors[`${i}`] && <p className="text-xs text-red-700">{check.errors[`${i}`]}</p>}</td>
+                {check.errors[`${i}`] && <p className="text-xs text-destructive">{check.errors[`${i}`]}</p>}</td>
               <td>{rows.length > 2 && <button type="button" className="btn-secondary py-0" onClick={() => setRows(rows.filter((_, j) => j !== i))}>Remove</button>}</td>
             </tr>
           ))}
@@ -56,10 +57,10 @@ export default function ManualJournal() {
       </table>
       <div className="flex items-center gap-4">
         <button type="button" className="btn-secondary" onClick={() => setRows([...rows, { accountId: '', debit: '', credit: '' }])}>Add line</button>
-        <p role="status" className={check.differencePaise === 0 ? 'text-green-800' : 'text-red-700'}>{check.differencePaise === 0 ? 'Balanced' : `Difference ${formatPaise(Math.abs(check.differencePaise))}`}</p>
+        <p role="status" className={check.differencePaise === 0 ? 'text-green-800 dark:text-green-400' : 'text-destructive'}>{check.differencePaise === 0 ? 'Balanced' : `Difference ${formatPaise(Math.abs(check.differencePaise))}`}</p>
       </div>
       {error && <p className="err" role="alert">{error}</p>}
-      <button type="submit" className="btn-primary" disabled={!check.ready}>Post journal</button>
+      <button type="submit" className="btn-primary" disabled={!check.ready}><Check size={16} aria-hidden />Post journal</button>
     </form>
   );
 }

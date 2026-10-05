@@ -4,7 +4,7 @@ import { syncBadge, type BadgeTone } from '../lib/sync/status.js';
 import { useNow } from '../lib/useNow.js';
 
 const TONE: Record<BadgeTone, string> = {
-  ok: 'bg-green-100 text-green-800', busy: 'bg-blue-100 text-blue-800', warn: 'bg-amber-100 text-amber-800', error: 'bg-red-100 text-red-800', idle: 'bg-slate-100 text-slate-700',
+  ok: 'bg-green-100 dark:bg-green-500/20 text-green-800 dark:text-green-400', busy: 'bg-accent text-primary', warn: 'bg-amber-100 dark:bg-amber-500/20 text-amber-800 dark:text-amber-300', error: 'bg-red-100 dark:bg-red-500/20 text-destructive', idle: 'bg-muted text-muted-foreground',
 };
 
 export default function SyncBadge() {

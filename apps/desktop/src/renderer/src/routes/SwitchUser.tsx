@@ -33,9 +33,9 @@ export default function SwitchUser() {
             <button key={k} type="button" className="btn-secondary py-3 text-lg" onClick={() => (k === '⌫' ? setPin(pin.slice(0, -1)) : k === 'OK' ? void submit() : press(k))}>{k}</button>
           ))}
         </div>
-        <p id="pin-hint" className="text-xs text-slate-500">4–6 digits. Five wrong attempts lock the PIN for 5 minutes.</p>
+        <p id="pin-hint" className="text-xs text-muted-foreground">4–6 digits. Five wrong attempts lock the PIN for 5 minutes.</p>
         {error && <p className="err" role="alert">{error}</p>}
-        <button type="button" className="mt-4 text-sm text-blue-700 underline" onClick={() => nav('/login')}>Sign in with password instead</button>
+        <button type="button" className="mt-4 text-sm text-primary underline" onClick={() => nav('/login')}>Sign in with password instead</button>
       </div>
     </main>
   );
