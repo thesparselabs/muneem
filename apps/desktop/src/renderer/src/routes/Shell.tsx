@@ -6,6 +6,7 @@ import SyncBadge from '../components/SyncBadge.js';
 import UpdateBanner from '../components/UpdateBanner.js';
 import NotificationBell from '../components/NotificationBell.js';
 import ToastViewport from '../components/ToastViewport.js';
+import { LogoMark } from '../components/Logo.js';
 import type { Permission } from '@muneem/contracts';
 import { can } from '../lib/permissions.js';
 import {
@@ -42,7 +43,7 @@ export default function Shell() {
     <div className="h-screen grid grid-cols-[220px_1fr] grid-rows-[56px_1fr] print:block print:h-auto">
       <header className="col-span-2 flex print:hidden items-center justify-between border-b bg-white px-5">
         <div className="flex items-center gap-4 text-sm">
-          <span className="font-semibold text-lg">Muneem</span>
+          <span className="flex items-center gap-2 font-semibold text-lg"><LogoMark size={26} /> Muneem</span>
           <span className="text-slate-700">{business.data?.name ?? '…'}</span>
           {terminal && <span className="rounded bg-slate-100 px-2 py-0.5 text-xs">Terminal {terminal.code}</span>}
         </div>
