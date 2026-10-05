@@ -51,7 +51,7 @@ test.describe.serial('offline billing', () => {
 
   test('offline: sign out and back in with saved credentials', async () => {
     await page.getByRole('button', { name: 'Sign out' }).click();
-    await expect(page.getByText('No internet — signing in with this computer’s saved credentials')).toBeVisible();
+    await expect(page.getByText('Offline — using saved sign-in')).toBeVisible();
     await signIn(page, 'Sign in offline');
     await expect(page.getByText(/\(offline, \d+d left\)/u)).toBeVisible();
   });
