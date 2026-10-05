@@ -65,3 +65,4 @@ Template: Context → Decision → Consequences → Status.
 | [0058](0058-heavy-reads-off-the-billing-thread.md) | Heavy reads off the billing thread: a read worker for reports and integrity checks; quick_check after an unclean exit only |
 | [0059](0059-per-unit-cess-inside-inclusive-prices.md) | Per-unit cess inside a tax-inclusive price |
 | [0060](0060-damaged-database-recovery.md) | Recovering from a damaged database at start-up: keep the file, restore and catch up, or start empty and restore from the cloud |
+| [0062](0062-landing-site-in-monorepo.md) | A marketing landing site as a standalone Vite app in the monorepo, reusing existing deps |

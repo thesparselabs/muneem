@@ -5,6 +5,14 @@ All notable changes, newest first. Each entry records **what** changed and **why
 
 ## [Unreleased]
 
+### Added — Marketing landing site (`apps/landing`)
+- **A premium, production-ready landing page (ADR-0062).** A standalone Vite + React 18 + Tailwind v4 app that reuses
+  the workspace's existing deps (`motion`, `lucide-react`, `clsx`, `tailwind-merge`) with no new dependency. The product
+  UI is the hero visual; interactive product tabs, scroll reveals, count-up stats, an animated chart and a smooth FAQ,
+  all honouring `prefers-reduced-motion`. A light/dark theme with a system-aware toggle. No fake logos, testimonials or
+  invented metrics — the figures are real product capabilities. Name "Muneem"; palette is token-driven and swappable.
+  Self-reviewed at 1440/820/390px in both themes: no overflow, no console errors.
+
 ### Added — Stage 9 hardening and pilot
 - **Stage 9 plan (`docs/plans/stage-9-hardening.md`).** Three agents surveyed the designs, every deferred item and
   operational readiness. Decided with the user:
