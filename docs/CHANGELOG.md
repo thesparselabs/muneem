@@ -5,6 +5,13 @@ All notable changes, newest first. Each entry records **what** changed and **why
 
 ## [Unreleased]
 
+### Fixed — Stage 9 CI
+- **The `chaos` job was missing its `steps:`, which made GitHub reject the whole `ci.yml`.** Why: an invalid job (no
+  `steps` and no `uses`) fails the workflow at parse time, so every run exited at 0 s with "workflow file issue" and no
+  checks reported. The job's steps had been duplicated into `scale` during integration; moved them back to `chaos`
+  (checkout, build, `pnpm chaos`, then §37 and the 200-seed simulation) and left `scale` to build the dataset and run
+  the LLD §18 budgets.
+
 ### Added — Marketing landing site (`apps/landing`)
 - **A premium, production-ready landing page (ADR-0062).** Why: the product needed a modern fintech-style marketing
   site built on the stack the team already uses. A standalone Vite + React 18 + Tailwind v4 app that reuses the
