@@ -5,8 +5,8 @@ export function LogoMark({ size = 32, className }: { size?: number; className?: 
     <svg width={size} height={size} viewBox="0 0 40 40" className={className} role="img" aria-label={BRAND}>
       <defs>
         <linearGradient id="muneem-badge" x1="0" y1="0" x2="40" y2="40" gradientUnits="userSpaceOnUse">
-          <stop stopColor="#10b981" />
-          <stop offset="1" stopColor="#047857" />
+          <stop stopColor="#8b5cf6" />
+          <stop offset="1" stopColor="#5b21b6" />
         </linearGradient>
       </defs>
       <rect width="40" height="40" rx="11" fill="url(#muneem-badge)" />

@@ -1,30 +1,30 @@
 @import "tailwindcss";
 
 /* Muneem landing — jade/emerald primary + warm gold accent on warm-neutral surfaces. */
-/* Palette: jade/emerald primary + warm gold accent on warm-neutral surfaces (scales after Radix Jade / Amber / Sand). */
+/* Palette "Royal": regal violet primary + warm gold accent on soft neutrals (scales after Radix Violet / Amber). */
 :root {
   --bg: #ffffff;
-  --surface: #f5f6f3;
+  --surface: #f7f6fb;
   --card: #ffffff;
-  --cta: #0c1f16;
-  --ink: #14211b;
-  --ink-soft: #41514a;
-  --muted: #6c7a72;
-  --line: #e6e8e1;
-  --primary: #059669;
-  --primary-strong: #047857;
+  --cta: #1a1033;
+  --ink: #1c1733;
+  --ink-soft: #4a4463;
+  --muted: #797291;
+  --line: #eae7f3;
+  --primary: #6d28d9;
+  --primary-strong: #5b21b6;
   --primary-ink: #ffffff;
-  --accent: #a16207;
+  --accent: #b45309;
   --warm: #c2410c;
-  --ring: #0d9c6b;
+  --ring: #7c3aed;
   --radius: 14px;
   --maxw: 1140px;
 }
 
 /* Dark theme: explicit via data-theme, and the system preference unless the visitor forced light. */
-:root[data-theme="dark"] { --bg: #0a0f0c; --surface: #111713; --card: #151c17; --cta: #12241a; --ink: #ecf1ec; --ink-soft: #bcc6bd; --muted: #869186; --line: #253026; --primary: #10b981; --primary-strong: #059669; --accent: #e9b949; --ring: #34d399; }
+:root[data-theme="dark"] { --bg: #0d0a16; --surface: #140f22; --card: #181331; --cta: #221a40; --ink: #f1eefb; --ink-soft: #c6c0da; --muted: #918aa6; --line: #2a2341; --primary: #8b5cf6; --primary-strong: #7c3aed; --accent: #fbbf24; --ring: #a78bfa; }
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) { --bg: #0a0f0c; --surface: #111713; --card: #151c17; --cta: #12241a; --ink: #ecf1ec; --ink-soft: #bcc6bd; --muted: #869186; --line: #253026; --primary: #10b981; --primary-strong: #059669; --accent: #e9b949; --ring: #34d399; }
+  :root:not([data-theme="light"]) { --bg: #0d0a16; --surface: #140f22; --card: #181331; --cta: #221a40; --ink: #f1eefb; --ink-soft: #c6c0da; --muted: #918aa6; --line: #2a2341; --primary: #8b5cf6; --primary-strong: #7c3aed; --accent: #fbbf24; --ring: #a78bfa; }
 }
 
 @theme inline {
