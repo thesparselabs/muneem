@@ -31,3 +31,11 @@ assume shadcn's `cn()` helper and CSS-variable tokens.
 - The renderer bundle grows about 440 KB before compression, mostly `motion` and the icon modules.
 - Copied components are our code: we test and fix them; there is no upstream to pull from.
 - New screens should use the tokens and `cn()`, and reuse these components rather than add new effects.
+
+## Addendum, 2026-10-05 — design-system refresh
+The same approach was taken further into a full visual refresh: a logo, modernised button/input/select/table/card
+styles in `styles.css` (so every screen lifts at once), a redesigned login, and a `DatePicker` calendar replacing
+native date inputs. Four agents applied the shared `DatePicker`, `.select` and `.table-modern` across the accounts,
+parties, inventory, purchases, payments, GST, expenses and catalog screens; summary and key-value tables were left
+alone. No new runtime dependency beyond the ones this ADR already lists. Labels, roles and button text were preserved
+so the Playwright suite still passes.

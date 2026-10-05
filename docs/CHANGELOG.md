@@ -5,6 +5,18 @@ All notable changes, newest first. Each entry records **what** changed and **why
 
 ## [Unreleased]
 
+### Added — Modern UI refresh (design system, logo, login, date picker)
+- **A design-system pass and a logo, applied across every screen (ADR-0061 extended).** Why: the owner asked for a
+  modern, sleek look that a first-time shopkeeper finds easy. Buttons gained radius, a soft shadow and a press
+  response; inputs and selects gained a focus ring and a chevron; data tables share one `.table-modern` style (sticky
+  header, hairline rows, hover); a light background lets cards lift. A geometric logo (rising bars, a ledger line and a
+  rupee) sits on the login screen and in the header.
+- **Login redesigned:** a gradient backdrop, the logo, an online/offline pill, icon-leading fields and a gentle
+  entrance.
+- **A calendar DatePicker replaces native date inputs** on 15 screens; every data select and row-listing table across
+  accounts, parties, inventory, purchases, payments, GST, expenses and the catalog now uses the shared styles.
+  Summary and key-value tables were left unchanged. Motion stays short and honours reduced motion.
+
 ### Added — UI micro-interactions and icons
 - **Small animations that explain, and icons, across POS, dashboard, sales and the menu (ADR-0061).** Why: the owner
   asked for a simple, sleek UI that a first-time or low-literacy shopkeeper can follow. Agents surveyed Magic UI,
