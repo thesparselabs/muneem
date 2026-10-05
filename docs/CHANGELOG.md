@@ -15,6 +15,8 @@ All notable changes, newest first. Each entry records **what** changed and **why
 - **Richer charts** (inline SVG, themed): a net-sales area/line, a payment-method donut, and horizontal bars for
   categories, expenses and receivables — replacing the single bar strip.
 - **Fixed:** the help "?" button now sits in the true bottom-right corner (toasts lifted above it).
+- **Perf:** the dashboard's "new customers in this period" count reads a `created_at` range off a covering partial
+  index (migration 0022) instead of scanning every customer — the §18 query-plan gate caught the original scan.
 
 ### Added — Dev demo data; fixed dark sidebar and invoice logo
 - **"Load demo data" (Diagnostics, dev builds only).** Seeds the current business through the real services — ~20
