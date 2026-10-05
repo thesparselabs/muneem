@@ -15,7 +15,7 @@ export default function Faq() {
           <span className="eyebrow">Questions</span>
           <h2 className="mt-4 text-3xl font-bold tracking-tight sm:text-4xl">Good to know</h2>
         </Reveal>
-        <div className="mt-10 divide-y divide-line overflow-hidden rounded-2xl border border-line bg-white">
+        <div className="mt-10 divide-y divide-line overflow-hidden rounded-2xl border border-line bg-card">
           {FAQS.map((f, i) => {
             const on = open === i;
             return (

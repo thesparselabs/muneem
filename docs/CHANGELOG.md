@@ -13,6 +13,9 @@ All notable changes, newest first. Each entry records **what** changed and **why
   honouring `prefers-reduced-motion`. No fake logos, testimonials or invented metrics. Working brand name "Lekha" in
   `src/site.ts`, pending the final name and a trademark/domain check. Self-reviewed at 1440/820/390px with no overflow
   and no console errors.
+- **Dark theme.** A toggle in the navbar (sun/moon) that defaults to the visitor's system preference and remembers
+  their choice; a no-flash init script sets it before first paint. Every surface flips through CSS variables, so the
+  product mock reads as a real dark-mode app. Light and dark both verified: no overflow, no console errors.
 
 ### Added — Modern UI refresh (design system, logo, login, date picker)
 - **A design-system pass and a logo, applied across every screen (ADR-0061 extended).** Why: the owner asked for a

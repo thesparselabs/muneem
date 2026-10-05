@@ -18,7 +18,7 @@ export default function ProductTabs() {
           <p className="mt-3 text-ink-soft">Every screen is keyboard-first and quick. Switch through the parts of a working day.</p>
         </Reveal>
 
-        <div role="tablist" aria-label="Product screens" className="mx-auto mt-10 flex max-w-md flex-wrap justify-center gap-1 rounded-full border border-line bg-white p-1">
+        <div role="tablist" aria-label="Product screens" className="mx-auto mt-10 flex max-w-md flex-wrap justify-center gap-1 rounded-full border border-line bg-card p-1">
           {TABS.map((t) => {
             const on = t.id === active;
             return (

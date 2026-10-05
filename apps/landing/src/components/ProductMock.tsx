@@ -11,18 +11,18 @@ export function AppWindow({ active, children }: { active: TabId; children: React
   const NAV = [Home, ShoppingCart, Receipt, Boxes, Users, Wallet, FileText, BarChart3];
   const activeIndex = { dashboard: 0, billing: 1, gst: 6, reports: 7 }[active];
   return (
-    <div className="overflow-hidden rounded-2xl border border-line bg-white shadow-[0_30px_80px_-40px_rgba(14,15,26,0.45)]">
+    <div className="overflow-hidden rounded-2xl border border-line bg-card shadow-[0_30px_80px_-40px_rgba(14,15,26,0.45)]">
       <div className="flex items-center gap-2 border-b border-line bg-surface px-4 py-2.5">
         <span className="h-3 w-3 rounded-full bg-[#ff5f57]" /><span className="h-3 w-3 rounded-full bg-[#febc2e]" /><span className="h-3 w-3 rounded-full bg-[#28c840]" />
         <span className="ml-2 text-xs font-medium text-muted">Lekha — Sharma Kirana · Terminal T01</span>
       </div>
       <div className="flex min-h-[340px]">
-        <div className="hidden w-12 shrink-0 flex-col items-center gap-1 border-r border-line bg-white py-3 sm:flex">
+        <div className="hidden w-12 shrink-0 flex-col items-center gap-1 border-r border-line bg-card py-3 sm:flex">
           {NAV.map((Icon, i) => (
             <span key={i} className={`grid h-8 w-8 place-items-center rounded-lg ${i === activeIndex ? 'bg-primary/10 text-primary' : 'text-muted'}`}><Icon size={16} /></span>
           ))}
         </div>
-        <div className="min-w-0 flex-1 bg-[#fcfcfe] p-4">{children}</div>
+        <div className="min-w-0 flex-1 bg-surface p-4">{children}</div>
       </div>
     </div>
   );
@@ -30,7 +30,7 @@ export function AppWindow({ active, children }: { active: TabId; children: React
 
 function Kpi({ label, value, format, note }: { label: string; value: number; format?: (n: number) => string; note?: string }) {
   return (
-    <div className="rounded-xl border border-line bg-white p-3">
+    <div className="rounded-xl border border-line bg-card p-3">
       <p className="text-[11px] font-medium text-muted">{label}</p>
       <p className="text-xl font-bold tracking-tight"><NumberTicker value={value} format={format ?? ((n) => String(Math.round(n)))} /></p>
       {note && <p className="text-[11px] text-muted">{note}</p>}
@@ -63,10 +63,10 @@ export function DashboardPanel() {
         <Kpi label="Gross profit" value={742900} format={inr} note="18% margin" />
       </div>
       <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-[1.6fr_1fr]">
-        <div className="rounded-xl border border-line bg-white p-3">
+        <div className="rounded-xl border border-line bg-card p-3">
           <p className="mb-2 text-xs font-semibold">Net sales, last 12 days</p><Bars />
         </div>
-        <div className="rounded-xl border border-line bg-white p-3">
+        <div className="rounded-xl border border-line bg-card p-3">
           <p className="mb-2 text-xs font-semibold">Needs attention</p>
           <ul className="space-y-1.5 text-[12px] text-ink-soft">
             <li className="flex justify-between"><span>Low stock</span><span className="font-semibold text-warm">7 items</span></li>
@@ -86,8 +86,8 @@ function BillingPanel() {
   return (
     <div className="grid grid-cols-1 gap-3 sm:grid-cols-[1.5fr_1fr]">
       <div className="space-y-2">
-        <div className="rounded-lg border border-line bg-white px-3 py-2 text-xs text-muted">Scan or search a product (F2)</div>
-        <div className="overflow-hidden rounded-xl border border-line bg-white">
+        <div className="rounded-lg border border-line bg-card px-3 py-2 text-xs text-muted">Scan or search a product (F2)</div>
+        <div className="overflow-hidden rounded-xl border border-line bg-card">
           <table className="w-full text-[12px]">
             <thead><tr className="bg-surface text-left text-[11px] uppercase tracking-wide text-muted"><th className="px-3 py-2">Item</th><th className="px-3 py-2">Qty</th><th className="px-3 py-2 text-right">Amount</th></tr></thead>
             <tbody>{lines.map((l, i) => <tr key={i} className="border-t border-line"><td className="px-3 py-2">{l[0]}</td><td className="px-3 py-2">{l[1]}</td><td className="px-3 py-2 text-right tabular-nums">{l[2]}</td></tr>)}</tbody>
@@ -95,7 +95,7 @@ function BillingPanel() {
         </div>
       </div>
       <div className="flex flex-col gap-2">
-        <div className="rounded-xl border border-line bg-white p-3 text-[12px]">
+        <div className="rounded-xl border border-line bg-card p-3 text-[12px]">
           <div className="flex justify-between text-muted"><span>Taxable</span><span className="tabular-nums">₹7,34</span></div>
           <div className="flex justify-between text-muted"><span>GST</span><span className="tabular-nums">₹84</span></div>
           <div className="mt-2 flex items-baseline justify-between border-t border-line pt-2"><span className="font-semibold">Total</span><span className="text-xl font-bold tracking-tight"><NumberTicker value={81800} format={inr} /></span></div>
@@ -114,7 +114,7 @@ function GstPanel() {
   return (
     <div className="space-y-3">
       <h3 className="text-sm font-semibold">GSTR-3B summary · September</h3>
-      <div className="overflow-hidden rounded-xl border border-line bg-white">
+      <div className="overflow-hidden rounded-xl border border-line bg-card">
         <table className="w-full text-[12px]">
           <thead><tr className="bg-surface text-left text-[11px] uppercase tracking-wide text-muted"><th className="px-3 py-2">Head</th><th className="px-3 py-2 text-right">Taxable</th><th className="px-3 py-2 text-right">Tax</th></tr></thead>
           <tbody>{rows.map((r, i) => <tr key={i} className={`border-t border-line ${i === rows.length - 1 ? 'font-semibold' : ''}`}><td className="px-3 py-2">{r[0]}</td><td className="px-3 py-2 text-right tabular-nums">{r[1]}</td><td className="px-3 py-2 text-right tabular-nums">{r[2]}</td></tr>)}</tbody>
@@ -130,7 +130,7 @@ function ReportsPanel() {
   return (
     <div className="space-y-3">
       <h3 className="text-sm font-semibold">Profit & Loss · this quarter</h3>
-      <div className="overflow-hidden rounded-xl border border-line bg-white">
+      <div className="overflow-hidden rounded-xl border border-line bg-card">
         <table className="w-full text-[12px]">
           <tbody>{rows.map((r, i) => <tr key={i} className={`border-t border-line first:border-t-0 ${i === rows.length - 1 ? 'bg-accent/5 font-semibold text-accent' : ''}`}><td className="px-3 py-2">{r[0]}</td><td className="px-3 py-2 text-right tabular-nums">{r[1]}</td></tr>)}</tbody>
         </table>

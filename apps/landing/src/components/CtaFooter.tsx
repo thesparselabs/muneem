@@ -7,7 +7,7 @@ export function Cta() {
   return (
     <section id="download" className="py-12 sm:py-16">
       <div className="container-x">
-        <Reveal className="relative overflow-hidden rounded-3xl bg-ink px-6 py-14 text-center text-white sm:px-12">
+        <Reveal className="relative overflow-hidden rounded-3xl border border-line bg-cta px-6 py-14 text-center text-white sm:px-12">
           <span className="glow -top-20 left-1/2 h-72 w-[520px] -translate-x-1/2 bg-primary/40" />
           <div className="relative">
             <h2 className="mx-auto max-w-2xl text-3xl font-bold tracking-tight sm:text-4xl">Run your shop on {BRAND}</h2>
