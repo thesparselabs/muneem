@@ -66,3 +66,4 @@ Template: Context → Decision → Consequences → Status.
 | [0059](0059-per-unit-cess-inside-inclusive-prices.md) | Per-unit cess inside a tax-inclusive price |
 | [0060](0060-damaged-database-recovery.md) | Recovering from a damaged database at start-up: keep the file, restore and catch up, or start empty and restore from the cloud |
 | [0061](0061-renderer-micro-interactions.md) | Micro-interactions, icons and a token layer in the renderer: own the source, motion that explains, reduced motion honoured |
+| [0062](0062-landing-site-in-monorepo.md) | A marketing landing site as a standalone Vite app in the monorepo, reusing existing deps |

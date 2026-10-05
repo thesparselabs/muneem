@@ -5,6 +5,15 @@ All notable changes, newest first. Each entry records **what** changed and **why
 
 ## [Unreleased]
 
+### Added — Marketing landing site (`apps/landing`)
+- **A premium, production-ready landing page (ADR-0062).** Why: the product needed a modern fintech-style marketing
+  site built on the stack the team already uses. A standalone Vite + React 18 + Tailwind v4 app that reuses the
+  workspace's existing deps (`motion`, `lucide-react`, `clsx`, `tailwind-merge`) with no new dependency. The product UI
+  is the hero visual; interactive product tabs, scroll reveals, count-up stats, an animated chart and a smooth FAQ, all
+  honouring `prefers-reduced-motion`. No fake logos, testimonials or invented metrics. Working brand name "Lekha" in
+  `src/site.ts`, pending the final name and a trademark/domain check. Self-reviewed at 1440/820/390px with no overflow
+  and no console errors.
+
 ### Added — Modern UI refresh (design system, logo, login, date picker)
 - **A design-system pass and a logo, applied across every screen (ADR-0061 extended).** Why: the owner asked for a
   modern, sleek look that a first-time shopkeeper finds easy. Buttons gained radius, a soft shadow and a press
