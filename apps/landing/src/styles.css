@@ -1,30 +1,30 @@
 @import "tailwindcss";
 
 /* Muneem landing — jade/emerald primary + warm gold accent on warm-neutral surfaces. */
-/* Palette "Copper + Teal": teal primary + warm copper accent on cool neutrals (scales after Radix Teal / Bronze). */
+/* Palette "Slate + Cyan": cyan primary + sky accent on slate neutrals — cool and techy (scales after Radix Cyan / Slate). */
 :root {
   --bg: #ffffff;
-  --surface: #f2f6f5;
+  --surface: #f1f5f9;
   --card: #ffffff;
-  --cta: #06211f;
-  --ink: #0f211f;
-  --ink-soft: #3c4f4c;
-  --muted: #687a77;
-  --line: #e2e9e7;
-  --primary: #0d9488;
-  --primary-strong: #0f766e;
+  --cta: #0b1220;
+  --ink: #0f172a;
+  --ink-soft: #475569;
+  --muted: #64748b;
+  --line: #e2e8f0;
+  --primary: #0891b2;
+  --primary-strong: #0e7490;
   --primary-ink: #ffffff;
-  --accent: #b45309;
-  --warm: #c2410c;
-  --ring: #14b8a6;
+  --accent: #0284c7;
+  --warm: #f59e0b;
+  --ring: #06b6d4;
   --radius: 14px;
   --maxw: 1140px;
 }
 
 /* Dark theme: explicit via data-theme, and the system preference unless the visitor forced light. */
-:root[data-theme="dark"] { --bg: #08100f; --surface: #0e1817; --card: #121f1d; --cta: #0d2422; --ink: #eaf2f0; --ink-soft: #bacac7; --muted: #839390; --line: #203331; --primary: #14b8a6; --primary-strong: #0d9488; --accent: #e8954a; --ring: #2dd4bf; }
+:root[data-theme="dark"] { --bg: #080d16; --surface: #0f1626; --card: #121a2b; --cta: #0e1a2e; --ink: #e8eef7; --ink-soft: #aeb9cc; --muted: #7b879b; --line: #212c40; --primary: #22d3ee; --primary-strong: #06b6d4; --accent: #38bdf8; --ring: #67e8f9; }
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) { --bg: #08100f; --surface: #0e1817; --card: #121f1d; --cta: #0d2422; --ink: #eaf2f0; --ink-soft: #bacac7; --muted: #839390; --line: #203331; --primary: #14b8a6; --primary-strong: #0d9488; --accent: #e8954a; --ring: #2dd4bf; }
+  :root:not([data-theme="light"]) { --bg: #080d16; --surface: #0f1626; --card: #121a2b; --cta: #0e1a2e; --ink: #e8eef7; --ink-soft: #aeb9cc; --muted: #7b879b; --line: #212c40; --primary: #22d3ee; --primary-strong: #06b6d4; --accent: #38bdf8; --ring: #67e8f9; }
 }
 
 @theme inline {

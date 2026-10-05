@@ -5,14 +5,14 @@ export function LogoMark({ size = 32, className }: { size?: number; className?: 
     <svg width={size} height={size} viewBox="0 0 40 40" className={className} role="img" aria-label={BRAND}>
       <defs>
         <linearGradient id="muneem-badge" x1="0" y1="0" x2="40" y2="40" gradientUnits="userSpaceOnUse">
-          <stop stopColor="#14b8a6" />
-          <stop offset="1" stopColor="#0f766e" />
+          <stop stopColor="#22d3ee" />
+          <stop offset="1" stopColor="#0e7490" />
         </linearGradient>
       </defs>
       <rect width="40" height="40" rx="11" fill="url(#muneem-badge)" />
       <rect x="11.5" y="21" width="4" height="7.5" rx="2" fill="#ffffff" fillOpacity="0.72" />
       <rect x="18" y="17" width="4" height="11.5" rx="2" fill="#ffffff" fillOpacity="0.86" />
-      <rect x="24.5" y="12" width="4" height="16.5" rx="2" fill="#e8954a" />
+      <rect x="24.5" y="12" width="4" height="16.5" rx="2" fill="#38bdf8" />
       <path d="M11 30.5 h18" stroke="#ffffff" strokeOpacity="0.55" strokeWidth="1.6" strokeLinecap="round" />
     </svg>
   );
