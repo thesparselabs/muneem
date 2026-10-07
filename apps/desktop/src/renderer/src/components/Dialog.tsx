@@ -1,4 +1,5 @@
 import { useEffect, useRef, type ReactNode } from 'react';
+import { X } from 'lucide-react';
 
 // Focus starts in the body, on a field that takes typing, so Enter submits the dialog's form instead of pressing Close.
 const FIRST_FIELD = 'input:not([type=radio]):not([type=checkbox]):not(:disabled), select:not(:disabled), textarea, button:not(:disabled)';
@@ -19,10 +20,10 @@ export default function Dialog({ title, onClose, children, wide }: { title: stri
   }, []);
   return (
     <div className="fixed inset-0 z-50 grid place-items-center bg-black/50" role="presentation">
-      <div role="dialog" aria-modal="true" aria-label={title} className={`card max-h-[90vh] overflow-auto ${wide ? 'w-[720px]' : 'w-[460px]'}`}>
+      <div role="dialog" aria-modal="true" aria-label={title} className={`card max-h-[90vh] overflow-auto ${wide ? 'w-[min(880px,94vw)]' : 'w-[460px]'}`}>
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-lg font-semibold">{title}</h2>
-          <button type="button" className="btn-secondary py-1" onClick={onClose} aria-label="Close">Esc</button>
+          <button type="button" className="btn-ghost p-1.5" onClick={onClose} aria-label="Close" title="Close (Esc)"><X size={18} aria-hidden /></button>
         </div>
         <div ref={body}>{children}</div>
       </div>

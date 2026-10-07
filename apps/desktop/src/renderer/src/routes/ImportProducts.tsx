@@ -1,10 +1,12 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
-import { IMPORT_FIELDS, IMPORT_MAX_ROWS, type ImportField, type ImportMapping, type ImportPreview, type ImportSummary } from '@muneem/contracts';
+import { IMPORT_FIELDS, type ImportField, type ImportMapping, type ImportPreview, type ImportSummary } from '@muneem/contracts';
 import { newUlid } from '@muneem/domain';
 import { api, errorMessage } from '../api.js';
+import ImportFormatHelp from '../components/ImportFormatHelp.js';
 import { fileToBase64 } from '../lib/fileToBase64.js';
+import { PRODUCT_FORMAT } from '../lib/importFormats.js';
 import { Upload, ArrowLeft } from 'lucide-react';
 
 const FIELD_LABELS: Record<ImportField, string> = {
@@ -35,7 +37,7 @@ export default function ImportProducts() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="flex items-center gap-2 text-2xl font-semibold"><Upload size={22} className="text-primary" aria-hidden />Import products</h1>
-        <Link to="/products" className="btn-secondary"><ArrowLeft size={16} aria-hidden />Back to products</Link>
+        <Link to="/products" className="btn-secondary px-2.5" aria-label="Back to products" title="Back to products"><ArrowLeft size={16} aria-hidden /></Link>
       </div>
       {error && <p className="err" role="alert">{error}</p>}
       {summary ? <Summary summary={summary} />
@@ -48,9 +50,7 @@ export default function ImportProducts() {
 function Choose({ busy, onFile }: { busy: boolean; onFile: (f: File) => void }) {
   return (
     <div className="card space-y-3">
-      <p className="text-sm text-muted-foreground">Choose a CSV or Excel (.xlsx) file with one product per row and a header row. Columns such as
-        "Item Name", "Barcode", "MRP", "Sale Price" and "GST %" are recognised automatically; you can change the matching on the next step.
-        Several barcodes go in one cell separated by <code>;</code>. Up to {IMPORT_MAX_ROWS.toLocaleString('en-IN')} rows or 10 MB.</p>
+      <ImportFormatHelp format={PRODUCT_FORMAT} />
       <label className="label" htmlFor="import-file">File</label>
       <input id="import-file" type="file" accept=".csv,.xlsx,text/csv" disabled={busy}
         onChange={(e) => { const f = e.target.files?.[0]; if (f) onFile(f); }} />

@@ -32,7 +32,7 @@ export default function PurchasePage() {
         <h1 className="flex items-center gap-2 text-2xl font-semibold"><Truck size={22} className="text-primary" aria-hidden />Purchase {p.docNumber}{p.status === 'cancelled' && <span className="text-amber-700 dark:text-amber-300"> (cancelled)</span>}</h1>
         <div className="flex gap-2">
           {p.status === 'posted' && canReturn && <button type="button" className="btn-secondary" onClick={() => setReturning(true)}>Return goods</button>}
-          <Link to="/purchases" className="btn-secondary"><ArrowLeft size={16} aria-hidden />Purchases</Link>
+          <Link to="/purchases" className="btn-secondary px-2.5" aria-label="Purchases" title="Purchases"><ArrowLeft size={16} aria-hidden /></Link>
         </div>
       </div>
       <div className="card grid grid-cols-3 gap-2 text-sm">

@@ -5,6 +5,33 @@ All notable changes, newest first. Each entry records **what** changed and **why
 
 ## [Unreleased]
 
+### Added — Customer and supplier import, exports on every list (ADR-0066)
+- **Import customers or suppliers from a CSV/Excel file** (Parties → Import from file): header matching, a preview
+  with per-row errors, optional opening balance and date, and a skip for anyone already on file by GSTIN or phone.
+  Why: a shop moving from another package had to retype every party and its udhaar balance.
+- **Export CSV / Excel / PDF on each list, ledger and statement**: products, customers, suppliers, sales, purchases,
+  expenses, payments, stock, outstanding, party ledger, account ledger, books, statements and the chart of accounts.
+  GST returns gained PDF. Five reports back the lists that had none. Why: only Reports and GST could export.
+- **A "File format" panel on every import** (products, opening stock, purchase lines, customers, suppliers) lists the
+  columns, the header names recognised, what each value must look like and an example row. Why: the rules were only
+  discoverable by having a row refused.
+- **`samples/import/`** holds seven sample files (products, a price update, product errors, opening stock, opening-stock
+  errors, customers, suppliers) with a README giving the import order.
+
+### Added — Recent bills at the till, template preview
+- **POS shows the last eight bills while the cart is empty**, each with view-invoice and reprint. Why: reopening a
+  bill meant leaving the till for Sales.
+- **Invoice design: a Preview button on each template** opens it full size with Print and Save as PDF, and the
+  thumbnails now scale the whole page into the card instead of cropping its right edge.
+
+### Changed — Icons, logo and app icon
+- **Icon-only buttons for universal actions** (close, back, remove, rename, view, print, refresh, sign out), each with a
+  tooltip and the old text as its accessible name; sub-navigation and other text-only actions gained icons.
+- **New mark.** The blue bars-and-rupee badge is replaced by a white "M" struck through by a lilac currency stroke on
+  a teal badge, in the Whispr theme's own colours. Why: the old blue predated the theme and clashed with it.
+- **App icon.** `resources/icon.png` (from `icon.svg`) is now picked up by electron-builder for the Windows installer
+  and executable, which previously shipped Electron's default icon; dev runs on macOS show it in the dock.
+
 ### Added — In-app manual (EN/HI), dashboard periods & charts (ADR-0065)
 - **Bilingual user manual + contextual help.** A help drawer on every screen explains, in English or Hindi (toggle),
   what the tab is for, how it works and its keyboard shortcuts; the floating help button (bottom-right) is now a menu

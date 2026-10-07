@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import type { ExportFormat, ReportResult } from '@muneem/contracts';
+import type { ReportResult } from '@muneem/contracts';
 import { api, errorMessage } from '../../api.js';
 import { formatPaise } from '../../lib/money.js';
 import { previousMonth } from '../../lib/gst/gstForm.js';
 import GstNav, { MonthPicker } from './GstNav.js';
+import ExportMenu from '../../components/ExportMenu.js';
 import { FileText } from 'lucide-react';
 
 const money = (p: number) => <span className="tabular-nums">{formatPaise(p)}</span>;
@@ -13,22 +14,10 @@ const money = (p: number) => <span className="tabular-nums">{formatPaise(p)}</sp
 export default function GstReturns() {
   const [month, setMonth] = useState(() => previousMonth(new Date().toLocaleDateString('en-CA')));
   const [open, setOpen] = useState<string | null>(null);
-  const [message, setMessage] = useState<string | null>(null);
   const summary = useQuery({ queryKey: ['gst', 'summary', month], queryFn: () => api.gst.returnSummary({ month }) });
-  const exportReport = async (id: string, format: ExportFormat) => {
-    try {
-      const r = await api.reports.export({ id, params: { month }, format });
-      setMessage(r.saved ? `Saved ${r.fileName}` : 'Not saved');
-    } catch (e) { setMessage(errorMessage(e)); }
-  };
   const s = summary.data;
   const off = s?.tieOuts.filter((t) => t.returnPaise !== t.booksPaise) ?? [];
-  const exportButtons = (id: string) => (
-    <span className="flex gap-1">
-      <button type="button" className="btn-secondary py-0" onClick={() => void exportReport(id, 'csv')}>CSV</button>
-      <button type="button" className="btn-secondary py-0" onClick={() => void exportReport(id, 'xlsx')}>XLSX</button>
-    </span>
-  );
+  const exportButtons = (id: string) => <ExportMenu reportId={id} params={{ month }} />;
   return (
     <div className="space-y-4">
       <h1 className="flex items-center gap-2 text-2xl font-semibold"><FileText size={22} className="text-primary" aria-hidden />GST returns</h1>
@@ -38,7 +27,6 @@ export default function GstReturns() {
         {s?.locked && <span className="rounded bg-muted px-2 py-0.5 text-xs">Month locked</span>}
         {s?.setoffId && <span className="rounded bg-green-50 dark:bg-green-500/20 px-2 py-0.5 text-xs text-green-800 dark:text-green-400">Set off</span>}
       </div>
-      {message && <p className="text-sm" role="status">{message}</p>}
       {summary.error && <p className="err" role="alert">{errorMessage(summary.error)}</p>}
       {s && !s.applicable && <p className="card text-sm">This business is not under the regular scheme, so it files no GSTR-1 or GSTR-3B here.</p>}
       {s?.applicable && (

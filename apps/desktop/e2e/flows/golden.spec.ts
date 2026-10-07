@@ -69,7 +69,7 @@ test.describe.serial('golden flow', () => {
     await expect(page.getByRole('cell', { name: 'Basmati Rice 1kg', exact: true })).toBeVisible();
 
     await page.getByLabel('Quantity').first().focus();
-    await page.keyboard.press('Control+A');
+    await page.keyboard.press('ControlOrMeta+A');
     await page.keyboard.type('2');
     await page.keyboard.press('Enter');
     await page.keyboard.press('F2');

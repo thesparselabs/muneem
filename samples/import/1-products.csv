@@ -1,0 +1,46 @@
+Item Name,Item Code,Barcode,HSN,Category,Brand,Unit,MRP,Sale Price,Purchase Price,GST %,Reorder Level
+Aashirvaad Atta 5kg,ATTA5,8901000000019,1101,Staples,Aashirvaad,PCS,265,255,232,0,10
+Aashirvaad Atta 10kg,ATTA10,8901000000026,1101,Staples,Aashirvaad,PCS,510,495,455,0,6
+India Gate Basmati Rice 1kg,RICE1,8901000000033,1006,Staples,India Gate,PCS,165,158,138,5,12
+Tata Salt 1kg,SALT1,8901000000040,2501,Staples,Tata,PCS,28,27,23.5,0,20
+Toor Dal (loose),TOOR,,0713,Staples,,KG,,160,138,0,10
+Moong Dal (loose),MOONG,,0713,Staples,,KG,,130,112,0,10
+Chana Dal (loose),CHANA,,0713,Staples,,KG,,95,80,0,10
+Sugar (loose),SUGAR,,1701,Staples,,KG,,46,41.5,5,25
+Poha 500g,POHA500,8901000000095,1904,Staples,Rajdhani,PCS,42,40,34,5,10
+Besan 500g,BESAN500,8901000000101,1106,Staples,Rajdhani,PCS,68,65,56,5,8
+Fortune Sunflower Oil 1L,OILSF1,8901000000118,1512,Edible Oil,Fortune,PCS,155,149,136,5,12
+Fortune Mustard Oil 1L,OILMU1,8901000000125,1514,Edible Oil,Fortune,PCS,175,168,152,5,12
+Amul Ghee 500ml,GHEE500,8901000000132,0405,Dairy,Amul,PCS,330,322,298,5,6
+Amul Butter 100g,BUTTER100,8901000000149,0405,Dairy,Amul,PCS,60,58,53,5,10
+Amul Taaza Milk 500ml,MILK500,8901000000156,0401,Dairy,Amul,PCS,29,29,27,0,20
+Mother Dairy Paneer 200g,PANEER200,8901000000163,0406,Dairy,Mother Dairy,PCS,95,92,82,0,6
+Tata Tea Gold 250g,TEA250,8901000000170,0902,Beverages,Tata,PCS,160,152,134,5,10
+चाय पत्ती 500g (Wagh Bakri),CHAI500,8901000000187,0902,Beverages,Wagh Bakri,PCS,290,280,250,5,8
+Nescafe Classic 50g,COFFEE50,8901000000194,2101,Beverages,Nestle,PCS,185,178,158,18,6
+Bru Instant Coffee 100g,BRU100,8901000000200,2101,Beverages,Bru,PCS,240,230,205,18,6
+Frooti Mango 200ml,FROOTI200,8901000000217,2202,Beverages,Parle Agro,PCS,10,10,8.4,40,48
+Bisleri Water 1L,WATER1,8901000000224,2201,Beverages,Bisleri,PCS,20,20,14,18,48
+Parle-G Biscuit 100g,PARLEG100,8901000000231,1905,Biscuits & Snacks,Parle,PCS,10,10,8.6,18,48
+Britannia Good Day 75g,GOODDAY75,8901000000248,1905,Biscuits & Snacks,Britannia,PCS,10,10,8.5,18,36
+Britannia Marie Gold 250g,MARIE250,8901000000255,1905,Biscuits & Snacks,Britannia,PCS,40,38,33,18,12
+Haldiram Aloo Bhujia 200g,BHUJIA200,8901000000262,2106,Biscuits & Snacks,Haldiram,PCS,55,52,45,5,12
+Lays Classic Salted 52g,LAYS52,8901000000279,2005,Biscuits & Snacks,Lays,PCS,20,20,16.5,5,36
+Maggi 2-Minute Noodles 70g,MAGGI70,8901000000286,1902,Biscuits & Snacks,Nestle,PCS,15,15,12.6,5,48
+Kissan Tomato Ketchup 500g,KETCHUP500,8901000000293,2103,Biscuits & Snacks,Kissan,PCS,125,120,104,5,8
+MDH Garam Masala 100g,MASALA100,8901000000309,0910,Spices,MDH,PCS,92,88,76,5,10
+Everest Turmeric Powder 200g,HALDI200,8901000000316,0910,Spices,Everest,PCS,78,75,64,5,10
+Everest Red Chilli Powder 200g,MIRCH200,8901000000323,0904,Spices,Everest,PCS,96,92,80,5,10
+Jeera (loose),JEERA,,0909,Spices,,KG,,420,365,5,2
+Surf Excel Easy Wash 1kg,SURF1,8901000000347,3402,Household,Surf Excel,PCS,150,145,128,18,10
+Vim Dishwash Bar 300g,VIM300,8901000000354,3401,Household,Vim,PCS,30,29,24.5,18,24
+Harpic Toilet Cleaner 500ml,HARPIC500,8901000000361,3808,Household,Harpic,PCS,109,105,91,18,8
+Lizol Floor Cleaner 500ml,LIZOL500,8901000000378,3808,Household,Lizol,PCS,119,115,99,18,8
+Good Knight Refill 45ml,GKREFILL,8901000000385,3808,Household,Good Knight,PCS,89,85,72,18,10
+Lifebuoy Soap 125g,LIFEBUOY125,8901000000392,3401,Personal Care,Lifebuoy,PCS,38,36,31,5,24
+Dove Soap 100g,DOVE100,8901000000408,3401,Personal Care,Dove,PCS,65,62,54,5,18
+Colgate Strong Teeth 200g,COLGATE200,8901000000415,3306,Personal Care,Colgate,PCS,125,120,104,5,12
+Clinic Plus Shampoo 175ml,CLINIC175,8901000000422,3305,Personal Care,Clinic Plus,PCS,99,95,82,5,10
+Parachute Coconut Oil 200ml,PARACHUTE200,8901000000439,1513,Personal Care,Parachute,PCS,110,105,92,5,10
+Dettol Antiseptic Liquid 125ml,DETTOL125,8901000000446,3808,Personal Care,Dettol,PCS,82,80,69,5,8
+Eggs (tray of 30),EGG30,,0407,Dairy,,TRAY,,210,186,0,4

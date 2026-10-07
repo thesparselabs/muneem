@@ -5,7 +5,7 @@ import { ADJUSTMENT_REASONS, type ProductHit } from '@muneem/contracts';
 import { api, errorMessage } from '../../api.js';
 import ProductPicker from '../../components/ProductPicker.js';
 import { parseOptional, scaledToText } from '../../lib/money.js';
-import { SlidersHorizontal, Check, X } from 'lucide-react';
+import { SlidersHorizontal, Check, X, Trash2 } from 'lucide-react';
 
 type Reason = (typeof ADJUSTMENT_REASONS)[number];
 interface Row { productId: string; name: string; uomCode: string; stockMilli: number; direction: 'out' | 'in'; qty: string; reason: Reason }
@@ -58,7 +58,7 @@ export default function AdjustStock() {
                     {ADJUSTMENT_REASONS.map((x) => <option key={x} value={x}>{x.replace('_', ' ')}</option>)}
                   </select>
                 </td>
-                <td><button type="button" className="btn-secondary py-1" onClick={() => setRows(rows.filter((_, j) => j !== i))}>Remove</button></td>
+                <td><button type="button" className="btn-secondary px-2 py-1" onClick={() => setRows(rows.filter((_, j) => j !== i))} aria-label="Remove" title="Remove"><Trash2 size={14} aria-hidden /></button></td>
               </tr>
             ))}
           </tbody>

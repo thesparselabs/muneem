@@ -8,6 +8,7 @@ import Setup from './routes/Setup.js';
 import Parties from './routes/parties/Parties.js';
 import PartyPage from './routes/parties/PartyPage.js';
 import Outstanding from './routes/parties/Outstanding.js';
+import ImportParties from './routes/parties/ImportParties.js';
 import Payments from './routes/payments/Payments.js';
 import NewPayment from './routes/payments/NewPayment.js';
 import PaymentPage from './routes/payments/PaymentPage.js';
@@ -98,6 +99,7 @@ export default function App() {
         <Route path="/inventory/reconciliation" element={<StockReconciliation />} />
         <Route path="/parties" element={<Parties />} />
         <Route path="/parties/outstanding" element={<Outstanding />} />
+        <Route path="/parties/import/:kind" element={<ImportParties />} />
         <Route path="/parties/:kind/:id" element={<PartyPage />} />
         <Route path="/purchases" element={<Purchases />} />
         <Route path="/purchases/new" element={<NewPurchase />} />

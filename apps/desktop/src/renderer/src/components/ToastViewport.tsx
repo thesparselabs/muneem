@@ -23,7 +23,7 @@ export default function ToastViewport() {
               className={`pointer-events-auto flex items-start gap-2 rounded-lg border bg-card px-3 py-2 text-sm shadow-sm ${TONE[t.variant]}`}>
               <Icon size={16} className="mt-0.5 shrink-0" aria-hidden />
               <span className="flex-1">{t.message}</span>
-              <button onClick={() => dismiss(t.id)} aria-label="Dismiss" className="shrink-0 text-muted-foreground hover:text-muted-foreground"><X size={14} /></button>
+              <button onClick={() => dismiss(t.id)} aria-label="Dismiss" title="Dismiss" className="shrink-0 text-muted-foreground hover:text-foreground"><X size={14} aria-hidden /></button>
             </motion.div>
           );
         })}

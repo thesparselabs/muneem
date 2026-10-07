@@ -10,10 +10,7 @@ import ThemeToggle from '../components/ThemeToggle.js';
 import { LogoMark } from '../components/Logo.js';
 import type { Permission } from '@muneem/contracts';
 import { can } from '../lib/permissions.js';
-import {
-  Activity, BarChart3, Boxes, FileText, Home as HomeIcon, Inbox, Landmark, Package, Palette, RefreshCw,
-  Receipt, ShoppingCart, Truck, Users, Wallet, TrendingDown, type LucideIcon,
-} from 'lucide-react';
+import { Activity, BarChart3, Boxes, FileText, Home as HomeIcon, Inbox, Landmark, Package, Palette, RefreshCw, Receipt, ShoppingCart, Truck, Users, Wallet, TrendingDown, type LucideIcon, LogOut } from 'lucide-react';
 
 // `need` hides an item from users who could not use it; main still checks every call (5f details).
 const NAV: { to: string; label: string; icon: LucideIcon; enabled: boolean; stage?: string; need?: Permission }[] = [
@@ -55,8 +52,8 @@ export default function Shell() {
           <ThemeToggle />
           <NotificationBell />
           <span className="text-muted-foreground">{session?.user.name}{session?.mode === 'offline' && <span className="text-xs text-amber-600"> (offline{session.offlineDaysRemaining !== null ? `, ${session.offlineDaysRemaining}d left` : ''})</span>}</span>
-          <button className="btn-secondary py-1" onClick={() => nav('/switch')}>Switch user</button>
-          <button className="btn-secondary py-1" onClick={async () => { await api.auth.logout({}); nav('/login'); }}>Sign out</button>
+          <button className="btn-secondary py-1" onClick={() => nav('/switch')}><Users size={14} aria-hidden />Switch user</button>
+          <button className="btn-secondary py-1" onClick={async () => { await api.auth.logout({}); nav('/login'); }} aria-label="Sign out" title="Sign out"><LogOut size={16} aria-hidden /></button>
         </div>
       </header>
       <nav className="border-r border-border bg-sidebar text-sidebar-foreground py-3 print:hidden" aria-label="Main">

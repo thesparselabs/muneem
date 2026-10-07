@@ -1,12 +1,12 @@
 import { useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import type { ExportFormat, ReportDefinitionView, ReportParamField, ReportResult } from '@muneem/contracts';
+import type { ReportDefinitionView, ReportParamField, ReportResult } from '@muneem/contracts';
 import { api, errorMessage } from '../../api.js';
 import DatePicker from '../../components/DatePicker.js';
 import PartyPicker from '../../components/PartyPicker.js';
-import { useCan } from '../../lib/permissions.js';
 import { checkParams, defaultParams, formatCell, groupReports, isNumeric, periodLabel, runParams } from '../../lib/reports/reportForm.js';
-import { BarChart3, Download, Play, Printer } from 'lucide-react';
+import ExportMenu from '../../components/ExportMenu.js';
+import { BarChart3, Play, Printer } from 'lucide-react';
 
 const today = () => new Date().toLocaleDateString('en-CA');
 
@@ -66,7 +66,6 @@ function ResultTable({ r }: { r: ReportResult }) {
 const sendable = (values: Record<string, string>) => runParams(Object.fromEntries(Object.entries(values).map(([k, v]) => [k, v.split('|')[0] ?? ''])));
 
 export default function Reports() {
-  const canExport = useCan('reports.export');
   const defs = useQuery({ queryKey: ['reportDefinitions'], queryFn: () => api.reports.listDefinitions({}) });
   const business = useQuery({ queryKey: ['business'], queryFn: () => api.business.get({}) });
   const branches = useQuery({ queryKey: ['branches'], queryFn: () => api.business.getBranches({}) });
@@ -74,9 +73,8 @@ export default function Reports() {
   const [values, setValues] = useState<Record<string, string>>({});
   const [errors, setErrors] = useState<Record<string, string>>({});
   const run = useMutation({ mutationFn: () => api.reports.run({ id: def!.id, params: sendable(values) }) });
-  const exp = useMutation({ mutationFn: (format: ExportFormat) => api.reports.export({ id: def!.id, params: sendable(values), format }) });
 
-  const pick = (d: ReportDefinitionView) => { setDef(d); setValues(defaultParams(d, today())); setErrors({}); run.reset(); exp.reset(); };
+  const pick = (d: ReportDefinitionView) => { setDef(d); setValues(defaultParams(d, today())); setErrors({}); run.reset(); };
   const submit = () => {
     const e = checkParams(def!, values);
     setErrors(e);
@@ -107,13 +105,10 @@ export default function Reports() {
                   onChange={(v) => setValues({ ...values, [p.key]: v })} />
               ))}
               <button type="button" className="btn-primary" onClick={submit} disabled={run.isPending}><Play size={16} aria-hidden />Run</button>
-              {run.data && canExport && (['csv', 'xlsx', 'pdf'] as const).map((f) => (
-                <button key={f} type="button" className="btn-secondary" disabled={exp.isPending} onClick={() => exp.mutate(f)}><Download size={14} aria-hidden />Export {f.toUpperCase()}</button>
-              ))}
-              {run.data && <button type="button" className="btn-secondary" onClick={() => window.print()}><Printer size={14} aria-hidden />Print</button>}
+              {run.data && <ExportMenu reportId={def.id} params={sendable(values)} />}
+              {run.data && <button type="button" className="btn-secondary px-2.5" aria-label="Print" title="Print" onClick={() => window.print()}><Printer size={16} aria-hidden /></button>}
             </div>
-            {(run.error ?? exp.error) && <p className="err" role="alert">{errorMessage(run.error ?? exp.error)}</p>}
-            {exp.data?.saved && <p className="text-sm text-green-700 dark:text-green-400">Saved {exp.data.fileName}</p>}
+            {run.error && <p className="err" role="alert">{errorMessage(run.error)}</p>}
             {run.data && (
               <div className="card space-y-2 overflow-x-auto">
                 <header>

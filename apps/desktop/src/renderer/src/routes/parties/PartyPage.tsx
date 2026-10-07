@@ -9,7 +9,8 @@ import { AGEING_COLUMNS } from '../../lib/parties/forms.js';
 import { useCan } from '../../lib/permissions.js';
 import { CreditLimitDialog, CustomerEditDialog, OpeningDialog, SupplierDialog, WriteOffDialog } from './PartyDialogs.js';
 import CustomerPrivacy from './CustomerPrivacy.js';
-import { User } from 'lucide-react';
+import ExportMenu from '../../components/ExportMenu.js';
+import { User, ChevronDown, BookOpen, CreditCard, Eraser, Pencil, Wallet } from 'lucide-react';
 
 type Modal = 'edit' | 'opening' | 'limit' | 'writeOff' | null;
 const REF_LABEL: Record<string, string> = { sale: 'Sale', purchase: 'Purchase', debit_note: 'Debit note', credit_note: 'Credit note', payment: 'Payment', write_off: 'Write-off', opening: 'Opening balance', expense: 'Expense' };
@@ -54,11 +55,12 @@ export default function PartyPage() {
             {'creditLimitPaise' in p && ` · limit ${p.creditLimitPaise === null ? 'not set' : formatPaise(p.creditLimitPaise)}`}</p>
         </div>
         <div className="flex flex-wrap gap-2">
-          {canPay && <Link to={`/payments/new?partyType=${partyType}&partyId=${p.id}`} className="btn-primary">{partyType === 'customer' ? 'Receive payment' : 'Pay supplier'}</Link>}
-          {!erased && <button type="button" className="btn-secondary" onClick={() => setModal('edit')}>Edit</button>}
-          <button type="button" className="btn-secondary" onClick={() => setModal('opening')}>Opening balance</button>
-          {partyType === 'customer' && canApproveCredit && !erased && <button type="button" className="btn-secondary" onClick={() => setModal('limit')}>Credit limit</button>}
-          {partyType === 'customer' && canWriteOff && (open.data?.charges.length ?? 0) > 0 && <button type="button" className="btn-secondary" onClick={() => setModal('writeOff')}>Write off</button>}
+          <ExportMenu reportId={partyType === 'customer' ? 'parties.customerLedger' : 'parties.supplierLedger'} params={{ partyId: p.id, ...range }} />
+          {canPay && <Link to={`/payments/new?partyType=${partyType}&partyId=${p.id}`} className="btn-primary"><Wallet size={16} aria-hidden />{partyType === 'customer' ? 'Receive payment' : 'Pay supplier'}</Link>}
+          {!erased && <button type="button" className="btn-secondary px-2.5" aria-label="Edit" title="Edit" onClick={() => setModal('edit')}><Pencil size={16} aria-hidden /></button>}
+          <button type="button" className="btn-secondary" onClick={() => setModal('opening')}><BookOpen size={16} aria-hidden />Opening balance</button>
+          {partyType === 'customer' && canApproveCredit && !erased && <button type="button" className="btn-secondary" onClick={() => setModal('limit')}><CreditCard size={16} aria-hidden />Credit limit</button>}
+          {partyType === 'customer' && canWriteOff && (open.data?.charges.length ?? 0) > 0 && <button type="button" className="btn-secondary" onClick={() => setModal('writeOff')}><Eraser size={16} aria-hidden />Write off</button>}
         </div>
       </div>
       {error && <p className="err" role="alert">{error}</p>}
@@ -99,7 +101,7 @@ export default function PartyPage() {
           {last && !statement.hasNextPage && <tr className="font-medium"><td colSpan={4}>Closing balance {partyType === 'customer' ? '(they owe us)' : '(negative = we owe)'}</td><td className="text-right tabular-nums">{formatPaise(last.closingBalancePaise)}</td></tr>}
         </tbody>
       </table>
-      {statement.hasNextPage && <button type="button" className="btn-secondary" onClick={() => void statement.fetchNextPage()}>Show more</button>}
+      {statement.hasNextPage && <button type="button" className="btn-secondary" onClick={() => void statement.fetchNextPage()}><ChevronDown size={16} aria-hidden />Show more</button>}
       {modal === 'edit' && partyType === 'customer' && <CustomerEditDialog customer={p as Customer} onClose={() => setModal(null)} onDone={done} />}
       {modal === 'edit' && partyType === 'supplier' && <SupplierDialog supplier={p as Supplier} defaultState={(p as Supplier).stateCode} onClose={() => setModal(null)} onDone={done} />}
       {modal === 'opening' && <OpeningDialog partyType={partyType} partyId={p.id} onClose={() => setModal(null)} onDone={done} />}

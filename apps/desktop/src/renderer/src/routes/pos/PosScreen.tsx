@@ -17,6 +17,7 @@ import PaymentDialog from './PaymentDialog.js';
 import { CashMovementDialog, CloseRegisterDialog, OpenRegister, ReportView, XReportDialog } from './RegisterPanel.js';
 import Dialog from '../../components/Dialog.js';
 import InvoicePreview from '../../components/InvoicePreview.js';
+import RecentBills from './RecentBills.js';
 import StockStaleness from '../../components/StockStaleness.js';
 import NumberTicker from '../../components/NumberTicker.js';
 import SuccessCheck from '../../components/SuccessCheck.js';
@@ -142,10 +143,10 @@ export default function PosScreen() {
     setMessage(r.notes.length > 0 ? { kind: 'error', text: r.notes.join(' ') } : { kind: 'ok', text: 'Bill retrieved.' });
   }
 
-  async function reprintLast() {
-    if (!lastSale) return;
-    try { await api.printer.reprint({ saleId: lastSale.result.saleId }); setMessage({ kind: 'ok', text: `Reprinting ${lastSale.result.docNumber}` }); } catch (e) { setMessage({ kind: 'error', text: errorMessage(e) }); }
+  async function reprint(saleId: string, docNumber: string) {
+    try { await api.printer.reprint({ saleId }); setMessage({ kind: 'ok', text: `Reprinting ${docNumber}` }); } catch (e) { setMessage({ kind: 'error', text: errorMessage(e) }); }
   }
+  const reprintLast = async () => { if (lastSale) await reprint(lastSale.result.saleId, lastSale.result.docNumber); };
 
   useEffect(() => {
     if (!session.data || modal !== null) return undefined;
@@ -174,6 +175,7 @@ export default function PosScreen() {
         {message && <p className={`text-sm ${message.kind === 'ok' ? 'text-green-800 dark:text-green-400' : 'text-destructive'}`} role={message.kind === 'ok' ? 'status' : 'alert'}>{message.text}</p>}
         <PrinterBanner />
         <CartTable cart={cart} onQty={(key, q) => update(setQty(cart, key, q))} onRemove={(key) => update(removeLine(cart, key))} onDiscount={(key) => setModal({ lineDiscount: key })} />
+        {cart.lines.length === 0 && <RecentBills onView={setPreviewSaleId} onReprint={(id, doc) => void reprint(id, doc)} />}
       </section>
       <aside className="flex min-h-0 flex-col gap-3 overflow-y-auto">
         <StockStaleness />
@@ -249,7 +251,7 @@ function ProductSearch({ inputRef, query, setQuery, onPick }: { inputRef: RefObj
 }
 
 function CartTable({ cart, onQty, onRemove, onDiscount }: { cart: Cart; onQty: (key: string, qtyMilli: number) => void; onRemove: (key: string) => void; onDiscount: (key: string) => void }) {
-  if (cart.lines.length === 0) return <div className="card flex flex-col items-center gap-2 py-12 text-sm text-muted-foreground"><ShoppingCart size={32} aria-hidden /><p>Scan a barcode or search to start a bill.</p></div>;
+  if (cart.lines.length === 0) return <div className="card flex shrink-0 flex-col items-center gap-2 py-8 text-sm text-muted-foreground"><ShoppingCart size={32} aria-hidden /><p>Scan a barcode or search to start a bill.</p></div>;
   return (
     <div className="min-h-0 overflow-auto rounded-lg border border-border bg-card">
       <table className="w-full text-sm">
@@ -263,7 +265,7 @@ function CartTable({ cart, onQty, onRemove, onDiscount }: { cart: Cart; onQty: (
               <td className="p-2 text-right tabular-nums">{formatPaise(l.pricing?.unitPricePaise ?? null)}</td>
               <td className="p-2 text-right">{l.pricing ? formatRateBp(l.pricing.gstRateBp) : ''}</td>
               <td className="p-2 text-right"><button type="button" className="text-primary underline" onClick={() => onDiscount(l.key)}>{l.lineDiscount.value ? (l.lineDiscount.kind === 'percent' ? formatRateBp(l.lineDiscount.value) : formatPaise(l.lineDiscount.value)) : 'Add'}</button></td>
-              <td className="p-2 text-right"><button type="button" className="btn-secondary py-1" onClick={() => onRemove(l.key)} aria-label={`Remove ${l.name}`}><Trash2 size={14} aria-hidden />Remove</button></td>
+              <td className="p-2 text-right"><button type="button" className="btn-ghost px-2 py-1" onClick={() => onRemove(l.key)} aria-label={`Remove ${l.name}`} title="Remove"><Trash2 size={14} aria-hidden /></button></td>
             </tr>
           ))}
         </tbody>

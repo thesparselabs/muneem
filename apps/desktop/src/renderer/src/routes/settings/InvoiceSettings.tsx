@@ -2,10 +2,12 @@ import { useEffect, useState, type ChangeEvent, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { motion } from 'motion/react';
-import { ImageUp, Palette, Save, ArrowLeft } from 'lucide-react';
+import { Eye, ImageUp, Palette, Save, ArrowLeft, Trash2 } from 'lucide-react';
 import type { InvoiceBranding, InvoiceTemplateId, InvoiceTemplateMeta } from '@muneem/contracts';
 import { api, errorMessage } from '../../api.js';
 import Field from '../../components/Field.js';
+import InvoicePreview from '../../components/InvoicePreview.js';
+import ScaledInvoiceFrame from '../../components/ScaledInvoiceFrame.js';
 import { fileToBase64 } from '../../lib/fileToBase64.js';
 import { useToasts } from '../../lib/toast.js';
 import { cn } from '../../lib/cn.js';
@@ -19,6 +21,7 @@ export default function InvoiceSettings() {
   const branding = useQuery({ queryKey: ['invoiceBranding'], queryFn: () => api.invoice.getBranding({}) });
   const [form, setForm] = useState<InvoiceBranding | null>(null);
   const [saving, setSaving] = useState(false);
+  const [previewing, setPreviewing] = useState<InvoiceTemplateMeta | null>(null);
   const push = useToasts((s) => s.push);
   const saleId = sample.data?.items[0]?.id ?? null;
 
@@ -42,7 +45,7 @@ export default function InvoiceSettings() {
     <form onSubmit={save} className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="flex items-center gap-2 text-2xl font-semibold"><Palette size={22} aria-hidden /> Invoice design</h1>
-        <Link to="/pos" className="btn-secondary"><ArrowLeft size={16} aria-hidden />Back to billing</Link>
+        <Link to="/pos" className="btn-secondary px-2.5" aria-label="Back to billing" title="Back to billing"><ArrowLeft size={16} aria-hidden /></Link>
       </div>
 
       <section className="space-y-3" aria-label="Templates">
@@ -51,9 +54,10 @@ export default function InvoiceSettings() {
         <div className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-4">
           {templates.data?.templates.map((t) => (
             <TemplateCard key={t.id} template={t} saleId={saleId}
-              active={form.templateId === t.id} onSelect={() => set({ templateId: t.id })} />
+              active={form.templateId === t.id} onSelect={() => set({ templateId: t.id })} onPreview={() => setPreviewing(t)} />
           ))}
         </div>
+        {previewing && saleId && <InvoicePreview saleId={saleId} templateId={previewing.id} title={`${previewing.name} preview`} onClose={() => setPreviewing(null)} />}
       </section>
 
       <div className="grid gap-6 lg:grid-cols-2">
@@ -108,9 +112,12 @@ export default function InvoiceSettings() {
   );
 }
 
+const A4_WIDTH_PX = 794;
+const THERMAL_WIDTH_PX = 340;
+
 // Magic-UI-style card: hover lift plus a shared-layout ring that glides to the active template.
-function TemplateCard({ template, saleId, active, onSelect }:
-  { template: InvoiceTemplateMeta; saleId: string | null; active: boolean; onSelect: () => void }) {
+function TemplateCard({ template, saleId, active, onSelect, onPreview }:
+  { template: InvoiceTemplateMeta; saleId: string | null; active: boolean; onSelect: () => void; onPreview: () => void }) {
   const reduce = usePrefersReducedMotion();
   const doc = useQuery({
     queryKey: ['invoiceHtml', saleId, template.id],
@@ -118,22 +125,26 @@ function TemplateCard({ template, saleId, active, onSelect }:
     enabled: !!saleId,
   });
   return (
-    <motion.button type="button" onClick={onSelect} aria-pressed={active}
-      {...(reduce ? {} : { whileHover: { y: -4 } })} transition={{ duration: MOTION_FAST, ease: 'easeOut' }}
-      className={cn('relative block w-full rounded-xl border border-border bg-card p-3 text-left shadow-sm transition-shadow hover:shadow-md',
-        active ? 'border-primary' : 'border-border')}>
+    <motion.div {...(reduce ? {} : { whileHover: { y: -4 } })} transition={{ duration: MOTION_FAST, ease: 'easeOut' }}
+      className={cn('relative rounded-xl border bg-card shadow-sm transition-shadow hover:shadow-md', active ? 'border-primary' : 'border-border')}>
       {active && <motion.span layoutId="tpl-ring" className="pointer-events-none absolute inset-0 rounded-xl ring-2 ring-primary" aria-hidden />}
-      <div className="mb-2 aspect-[3/4] overflow-hidden rounded-lg border border-border bg-muted">
-        {doc.data
-          ? <iframe title={`${template.name} preview`} srcDoc={doc.data.html} tabIndex={-1} className="pointer-events-none h-full w-full origin-top-left scale-[0.5]" style={{ width: '200%', height: '200%' }} />
-          : <div className="grid h-full place-items-center p-3 text-center text-xs text-muted-foreground">{saleId ? 'Loading…' : 'Make a sale to preview'}</div>}
-      </div>
-      <div className="flex items-center justify-between gap-2">
-        <span className="font-medium">{template.name}</span>
-        <span className={cn('rounded px-1.5 py-0.5 text-xs font-medium', template.kind === 'thermal' ? 'bg-amber-100 dark:bg-amber-500/20 text-amber-800 dark:text-amber-300' : 'bg-accent text-primary')}>{template.kind === 'thermal' ? template.size : 'A4'}</span>
-      </div>
-      <p className="mt-0.5 text-xs text-muted-foreground">{template.description}</p>
-    </motion.button>
+      <button type="button" onClick={onSelect} aria-pressed={active} className="block w-full rounded-xl p-3 text-left">
+        <div className="mb-2 aspect-[210/297] overflow-hidden rounded-lg border border-border bg-muted">
+          {doc.data
+            ? <ScaledInvoiceFrame html={doc.data.html} title={`${template.name} preview`} pageWidth={template.kind === 'thermal' ? THERMAL_WIDTH_PX : A4_WIDTH_PX} />
+            : <div className="grid h-full place-items-center p-3 text-center text-xs text-muted-foreground">{saleId ? 'Loading…' : 'Make a sale to preview'}</div>}
+        </div>
+        <div className="flex items-center justify-between gap-2">
+          <span className="font-medium">{template.name}</span>
+          <span className={cn('rounded px-1.5 py-0.5 text-xs font-medium', template.kind === 'thermal' ? 'bg-amber-100 dark:bg-amber-500/20 text-amber-800 dark:text-amber-300' : 'bg-accent text-primary')}>{template.kind === 'thermal' ? template.size : 'A4'}</span>
+        </div>
+        <p className="mt-0.5 text-xs text-muted-foreground">{template.description}</p>
+      </button>
+      <button type="button" onClick={onPreview} disabled={!saleId} aria-label={`Preview ${template.name}`} title="Preview full size"
+        className="absolute right-5 top-5 grid h-8 w-8 place-items-center rounded-full border border-border bg-card/95 text-foreground shadow-sm transition-colors hover:bg-muted disabled:opacity-50">
+        <Eye size={16} aria-hidden />
+      </button>
+    </motion.div>
   );
 }
 
@@ -164,7 +175,7 @@ function ImageField({ label, value, onChange }: { label: string; value: string |
           ? <img src={dataUrl(value)} alt={`${label} preview`} className="h-12 w-12 rounded-lg border border-border object-contain" />
           : <div className="grid h-12 w-12 place-items-center rounded-lg border border-dashed border-input text-muted-foreground"><ImageUp size={18} aria-hidden /></div>}
         <label htmlFor={id} className="btn-secondary py-1">{value ? 'Replace' : 'Upload'}<input id={id} type="file" accept="image/*" className="sr-only" onChange={(e) => void pick(e)} /></label>
-        {value && <button type="button" className="btn-ghost py-1" onClick={() => onChange('')}>Remove</button>}
+        {value && <button type="button" className="btn-ghost px-2 py-1" onClick={() => onChange('')} aria-label="Remove" title="Remove"><Trash2 size={14} aria-hidden /></button>}
       </div>
     </div>
   );

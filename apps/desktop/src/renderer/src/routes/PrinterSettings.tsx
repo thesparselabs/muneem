@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { api, errorMessage } from '../api.js';
 import Field from '../components/Field.js';
 import { configToForm, formToConfig, type PrinterForm } from '../lib/printerForm.js';
-import { Printer, ArrowLeft, Save } from 'lucide-react';
+import { Printer, ArrowLeft, Save, RefreshCw } from 'lucide-react';
 
 const KINDS = [
   ['simulator', 'No printer yet: save receipts as files (for checking)'],
@@ -37,7 +37,7 @@ export default function PrinterSettings() {
 
   return (
     <form onSubmit={save} className="card max-w-xl space-y-4">
-      <div className="flex items-center justify-between"><h1 className="flex items-center gap-2 text-xl font-semibold"><Printer size={20} className="text-primary" aria-hidden />Receipt printer</h1><Link to="/pos" className="btn-secondary"><ArrowLeft size={16} aria-hidden />Back to billing</Link></div>
+      <div className="flex items-center justify-between"><h1 className="flex items-center gap-2 text-xl font-semibold"><Printer size={20} className="text-primary" aria-hidden />Receipt printer</h1><Link to="/pos" className="btn-secondary px-2.5" aria-label="Back to billing" title="Back to billing"><ArrowLeft size={16} aria-hidden /></Link></div>
       <fieldset className="space-y-1">
         <legend className="label">Printer</legend>
         {KINDS.map(([k, label]) => (
@@ -59,7 +59,7 @@ export default function PrinterSettings() {
                 {missing && <option value={f.printerName}>{f.printerName} (not found)</option>}
                 {printers.map((p) => <option key={p.name} value={p.name}>{p.displayName}</option>)}
               </select>
-              <button type="button" className="btn-secondary" onClick={() => void installed.refetch()}>Refresh</button>
+              <button type="button" className="btn-secondary px-2.5" aria-label="Refresh printer list" title="Refresh printer list" onClick={() => void installed.refetch()}><RefreshCw size={16} aria-hidden /></button>
             </div>
           </Field>
           {installed.isError && <p className="text-sm text-destructive" role="alert">{errorMessage(installed.error)}</p>}

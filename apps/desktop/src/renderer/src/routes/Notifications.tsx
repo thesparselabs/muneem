@@ -6,7 +6,7 @@ import { api, errorMessage } from '../api.js';
 import { groupBySeverity, kindLabel } from '../lib/notifications.js';
 import { ago } from '../lib/sync/status.js';
 import { useNow } from '../lib/useNow.js';
-import { Bell, CheckCheck, CheckCircle2, ExternalLink } from 'lucide-react';
+import { Bell, CheckCheck, CheckCircle2, ExternalLink, ChevronDown, Check, X } from 'lucide-react';
 
 const BORDER: Record<NotificationSeverity, string> = { critical: 'border-l-red-600', warning: 'border-l-amber-500', info: 'border-l-primary' };
 
@@ -62,9 +62,9 @@ export default function Notifications() {
                   </div>
                   {!n.resolvedAt && (
                     <div className="flex shrink-0 gap-2 text-sm">
-                      {n.link && <button type="button" className="btn-primary gap-1.5 py-1" onClick={() => void open(n)}><ExternalLink size={14} aria-hidden />Open</button>}
-                      {!n.readAt && <button type="button" className="btn-secondary py-1" onClick={() => void act(() => api.notifications.markRead({ ids: [n.id] }))}>Mark read</button>}
-                      {!n.dismissedAt && <button type="button" className="btn-secondary py-1" onClick={() => void act(() => api.notifications.dismiss({ ids: [n.id] }))}>Dismiss</button>}
+                      {n.link && <button type="button" className="btn-primary px-2 py-1" aria-label="Open" title="Open" onClick={() => void open(n)}><ExternalLink size={14} aria-hidden /></button>}
+                      {!n.readAt && <button type="button" className="btn-secondary px-2 py-1" aria-label="Mark read" title="Mark read" onClick={() => void act(() => api.notifications.markRead({ ids: [n.id] }))}><Check size={14} aria-hidden /></button>}
+                      {!n.dismissedAt && <button type="button" className="btn-secondary px-2 py-1" aria-label="Dismiss" title="Dismiss" onClick={() => void act(() => api.notifications.dismiss({ ids: [n.id] }))}><X size={14} aria-hidden /></button>}
                     </div>
                   )}
                 </div>
@@ -73,7 +73,7 @@ export default function Notifications() {
           </ul>
         </section>
       ))}
-      {list.hasNextPage && <button type="button" className="btn-secondary" onClick={() => void list.fetchNextPage()}>Show more</button>}
+      {list.hasNextPage && <button type="button" className="btn-secondary" onClick={() => void list.fetchNextPage()}><ChevronDown size={16} aria-hidden />Show more</button>}
     </div>
   );
 }

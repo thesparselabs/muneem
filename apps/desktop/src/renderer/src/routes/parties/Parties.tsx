@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, Scale, Users } from 'lucide-react';
+import { Plus, Scale, Upload, Users } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import type { PartyType } from '@muneem/contracts';
@@ -7,12 +7,14 @@ import { api, errorMessage } from '../../api.js';
 import { formatPaise } from '../../lib/money.js';
 import { useCan } from '../../lib/permissions.js';
 import { useDebounced } from '../../lib/useDebounced.js';
+import ExportMenu from '../../components/ExportMenu.js';
 import { CustomerEditDialog, SupplierDialog } from './PartyDialogs.js';
 
 export default function Parties() {
   const nav = useNavigate();
   const canSuppliers = useCan('suppliers.view');
   const [tab, setTab] = useState<PartyType>('customer');
+  const canImport = useCan(tab === 'customer' ? 'customers.create' : 'suppliers.create');
   const [query, setQuery] = useState('');
   const [adding, setAdding] = useState(false);
   const q = useDebounced(query.trim(), 120);
@@ -32,6 +34,8 @@ export default function Parties() {
       <div className="flex items-center justify-between">
         <h1 className="flex items-center gap-2 text-2xl font-semibold"><Users size={22} className="text-primary" aria-hidden /> Parties</h1>
         <div className="flex gap-2">
+          <ExportMenu reportId={tab === 'customer' ? 'parties.customers' : 'parties.suppliers'} />
+          {canImport && <Link to={`/parties/import/${tab}`} className="btn-secondary"><Upload size={16} aria-hidden />Import from file</Link>}
           <Link to="/parties/outstanding" className="btn-secondary"><Scale size={16} aria-hidden />Outstanding</Link>
           <button type="button" className="btn-primary" onClick={() => setAdding(true)}><Plus size={16} aria-hidden />New {tab}</button>
         </div>

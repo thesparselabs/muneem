@@ -23,7 +23,7 @@ export default function PaymentPage() {
     <div className="max-w-5xl space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="flex items-center gap-2 text-2xl font-semibold"><Wallet size={22} className="text-primary" aria-hidden />{p.direction === 'in' ? 'Receipt' : 'Payment'} {p.docNumber}{p.status === 'cancelled' && <span className="text-amber-700 dark:text-amber-300"> (cancelled)</span>}</h1>
-        <Link to="/payments" className="btn-secondary"><ArrowLeft size={16} aria-hidden />Payments</Link>
+        <Link to="/payments" className="btn-secondary px-2.5" aria-label="Payments" title="Payments"><ArrowLeft size={16} aria-hidden /></Link>
       </div>
       <div className="card grid grid-cols-2 gap-2 text-sm">
         <p>{p.direction === 'in' ? 'From' : 'To'}: <Link to={`/parties/${p.partyType}/${p.partyId}`} className="text-primary">{p.partyName}</Link></p>

@@ -8,7 +8,7 @@ import UomSelect from '../components/UomSelect.js';
 import { formatRateBp } from '../lib/money.js';
 import { GST_RATES_BP, emptyForm, formToInput, productToForm, rebaseForm, type FormErrors, type ProductForm } from '../lib/productForm.js';
 import PriceListItems from './PriceListItems.js';
-import { Package, ArrowLeft } from 'lucide-react';
+import { Package, ArrowLeft, Trash2, Ban, Plus, RotateCcw } from 'lucide-react';
 
 const TAX_TREATMENTS = [['taxable', 'Taxable'], ['exempt', 'Exempt'], ['nil_rated', 'Nil rated'], ['zero_rated', 'Zero rated'], ['non_gst', 'Non-GST']] as const;
 
@@ -78,7 +78,7 @@ export default function ProductEdit() {
       <form onSubmit={save} className="space-y-4">
         <div className="flex items-center justify-between">
           <h1 className="flex items-center gap-2 text-2xl font-semibold"><Package size={22} className="text-primary" aria-hidden />{isNew ? 'Add product' : form.name}</h1>
-          <Link to="/products" className="btn-secondary"><ArrowLeft size={16} aria-hidden />Back to products</Link>
+          <Link to="/products" className="btn-secondary px-2.5" aria-label="Back to products" title="Back to products"><ArrowLeft size={16} aria-hidden /></Link>
         </div>
         {!isNew && product.data && !product.data.isActive && <p className="card text-sm text-amber-800 dark:text-amber-300">This product is deactivated. It does not appear in billing or search.</p>}
 
@@ -133,7 +133,7 @@ export default function ProductEdit() {
         <div className="flex gap-2">
           <button type="submit" className="btn-primary" disabled={busy}>{isNew ? 'Create product' : 'Save changes'}</button>
           {!isNew && product.data && (
-            <button type="button" className="btn-secondary" onClick={() => void toggleActive()}>{product.data.isActive ? 'Deactivate' : 'Reactivate'}</button>
+            <button type="button" className="btn-secondary" onClick={() => void toggleActive()}>{product.data.isActive ? <><Ban size={16} aria-hidden />Deactivate</> : <><RotateCcw size={16} aria-hidden />Reactivate</>}</button>
           )}
         </div>
       </form>
@@ -157,12 +157,12 @@ function BarcodeEditor({ form, uoms, errors, onChange }: { form: ProductForm; uo
           <input aria-label={`Barcode ${i + 1}`} className="input font-mono" value={b.code} onChange={(e) => update(i, { code: e.target.value })} />
           <UomSelect id={`barcode-uom-${i}`} uoms={uoms} value={b.uomId} onChange={(v) => update(i, { uomId: v })} allowNone="Base unit" />
           <label className="flex items-center gap-1 text-sm"><input type="radio" name="primary-barcode" checked={b.isPrimary} onChange={() => update(i, { isPrimary: true })} /> Primary</label>
-          <button type="button" className="btn-secondary py-1" onClick={() => onChange(form.barcodes.filter((_, j) => j !== i))}>Remove</button>
+          <button type="button" className="btn-secondary px-2 py-1" onClick={() => onChange(form.barcodes.filter((_, j) => j !== i))} aria-label="Remove" title="Remove"><Trash2 size={14} aria-hidden /></button>
           {errors[`barcodes.${i}.code`] && <p className="err col-span-4">{errors[`barcodes.${i}.code`]}</p>}
         </div>
       ))}
       {errors.barcodes && <p className="err">{errors.barcodes}</p>}
-      <button type="button" className="btn-secondary" onClick={() => onChange([...form.barcodes, { code: '', uomId: '', isPrimary: form.barcodes.length === 0 }])}>Add barcode</button>
+      <button type="button" className="btn-secondary" onClick={() => onChange([...form.barcodes, { code: '', uomId: '', isPrimary: form.barcodes.length === 0 }])}><Plus size={16} aria-hidden />Add barcode</button>
     </fieldset>
   );
 }
@@ -182,12 +182,12 @@ function ConversionEditor({ form, uoms, errors, onChange }: { form: ProductForm;
           <span>=</span>
           <input aria-label={`Units of ${base?.code ?? 'base'} in conversion ${i + 1}`} className="input" inputMode="decimal" value={c.factor} onChange={(e) => update(i, { factor: e.target.value })} />
           <span>{base?.code}</span>
-          <button type="button" className="btn-secondary py-1" onClick={() => onChange(form.conversions.filter((_, j) => j !== i))}>Remove</button>
+          <button type="button" className="btn-secondary px-2 py-1" onClick={() => onChange(form.conversions.filter((_, j) => j !== i))} aria-label="Remove" title="Remove"><Trash2 size={14} aria-hidden /></button>
           {(errors[`conversions.${i}.factorMilli`] ?? errors[`conversions.${i}.fromUomId`]) && <p className="err col-span-6">{errors[`conversions.${i}.factorMilli`] ?? errors[`conversions.${i}.fromUomId`]}</p>}
         </div>
       ))}
       {errors.conversions && <p className="err">{errors.conversions}</p>}
-      {others.length > 0 && <button type="button" className="btn-secondary" onClick={() => onChange([...form.conversions, { fromUomId: others[0]!.id, factor: '' }])}>Add unit</button>}
+      {others.length > 0 && <button type="button" className="btn-secondary" onClick={() => onChange([...form.conversions, { fromUomId: others[0]!.id, factor: '' }])}><Plus size={16} aria-hidden />Add unit</button>}
     </fieldset>
   );
 }

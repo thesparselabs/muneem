@@ -4,7 +4,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { BrandInput, CategoryInput, PriceListInput, UomInput, type PriceList } from '@muneem/contracts';
 import type { z } from 'zod';
 import { api, errorMessage } from '../api.js';
-import { Tags, ArrowLeft, Plus } from 'lucide-react';
+import { Tags, ArrowLeft, Plus, Pencil } from 'lucide-react';
 
 type Tab = 'units' | 'categories' | 'brands' | 'priceLists';
 const TABS: [Tab, string][] = [['units', 'Units'], ['categories', 'Categories'], ['brands', 'Brands'], ['priceLists', 'Price lists']];
@@ -15,7 +15,7 @@ export default function CatalogSettings() {
     <div className="max-w-5xl space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="flex items-center gap-2 text-2xl font-semibold"><Tags size={22} className="text-primary" aria-hidden />Units, categories &amp; price lists</h1>
-        <Link to="/products" className="btn-secondary"><ArrowLeft size={16} aria-hidden />Back to products</Link>
+        <Link to="/products" className="btn-secondary px-2.5" aria-label="Back to products" title="Back to products"><ArrowLeft size={16} aria-hidden /></Link>
       </div>
       <div className="flex gap-1" role="tablist">
         {TABS.map(([t, label]) => (
@@ -90,7 +90,7 @@ function Units() {
 function RenameRow({ name, prefix, onRename }: { name: string; prefix?: string | undefined; onRename: (n: string) => Promise<boolean> }) {
   const [editing, setEditing] = useState(false);
   const [value, setValue] = useState(name);
-  if (!editing) return <li className="py-2 flex justify-between"><span>{prefix && <span className="text-muted-foreground">{prefix} › </span>}{name}</span><button className="btn-secondary py-1" onClick={() => setEditing(true)}>Rename</button></li>;
+  if (!editing) return <li className="py-2 flex justify-between"><span>{prefix && <span className="text-muted-foreground">{prefix} › </span>}{name}</span><button className="btn-secondary px-2 py-1" onClick={() => setEditing(true)} aria-label="Rename" title="Rename"><Pencil size={14} aria-hidden /></button></li>;
   return (
     <li className="py-2 flex gap-2">
       <input aria-label={`New name for ${name}`} className="input" value={value} onChange={(e) => setValue(e.target.value)} autoFocus />

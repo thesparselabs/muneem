@@ -6,6 +6,7 @@ import DatePicker from '../../components/DatePicker.js';
 import { balanceSheetSides, profitAndLossSections, type Section } from '../../lib/accounting/statementLayout.js';
 import { formatPaise } from '../../lib/money.js';
 import AccountsNav from './AccountsNav.js';
+import ExportMenu from '../../components/ExportMenu.js';
 import { FileSpreadsheet } from 'lucide-react';
 
 const today = () => new Date().toLocaleDateString('en-CA');
@@ -26,6 +27,8 @@ function SectionTable({ s }: { s: Section }) {
   );
 }
 
+const STATEMENT_REPORT = { tb: 'accounting.trialBalance', pl: 'accounting.profitAndLoss', bs: 'accounting.balanceSheet' } as const;
+
 export default function Statements() {
   const [tab, setTab] = useState<'tb' | 'pl' | 'bs'>('tb');
   const [asOf, setAsOf] = useState(today());
@@ -39,7 +42,10 @@ export default function Statements() {
   const error = tb.error ?? pl.error ?? bs.error;
   return (
     <div className="space-y-4">
-      <h1 className="flex items-center gap-2 text-2xl font-semibold"><FileSpreadsheet size={22} className="text-primary" aria-hidden />Statements</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="flex items-center gap-2 text-2xl font-semibold"><FileSpreadsheet size={22} className="text-primary" aria-hidden />Statements</h1>
+        <ExportMenu reportId={STATEMENT_REPORT[tab]} params={tab === 'pl' ? { ...range, branchId } : { asOf, branchId }} />
+      </div>
       <AccountsNav />
       <div className="flex gap-1" role="tablist">
         {([['tb', 'Trial Balance'], ['pl', 'Profit & Loss'], ['bs', 'Balance Sheet']] as const).map(([k, l]) => (

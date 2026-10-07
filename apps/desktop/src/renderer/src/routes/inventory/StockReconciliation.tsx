@@ -17,7 +17,7 @@ export default function StockReconciliation() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="flex items-center gap-2 text-2xl font-semibold"><GitCompare size={22} className="text-primary" aria-hidden />Stock reconciliation</h1>
-        <Link to="/inventory" className="btn-secondary"><ArrowLeft size={16} aria-hidden />Back to inventory</Link>
+        <Link to="/inventory" className="btn-secondary px-2.5" aria-label="Back to inventory" title="Back to inventory"><ArrowLeft size={16} aria-hidden /></Link>
       </div>
       <p className="text-sm text-muted-foreground">
         Terminals bill offline from their own count, so two of them can sell the last unit. These are the products whose stock went below zero, and the sales that took it there.

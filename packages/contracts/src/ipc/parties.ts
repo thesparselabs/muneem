@@ -87,3 +87,30 @@ export type ExportProfileInput = z.infer<typeof ExportProfileInput>;
 export const ExportProfileResult = z.object({ saved: z.boolean(), fileName: z.string(), bytes: z.number().int() });
 export const EraseCustomerInput = z.object({ customerId: Ulid, version: z.number().int(), reason: z.string().trim().min(3).max(200) });
 export type EraseCustomerInput = z.infer<typeof EraseCustomerInput>;
+
+// File import of customers or suppliers; `taxScheme` is read for suppliers only.
+export const PARTY_IMPORT_FIELDS = [
+  'name', 'phone', 'email', 'gstin', 'stateCode', 'taxScheme', 'addressLine1', 'city', 'pinCode', 'creditDays', 'openingBalance', 'openingDate',
+] as const;
+export const PartyImportField = z.enum(PARTY_IMPORT_FIELDS);
+export type PartyImportField = z.infer<typeof PartyImportField>;
+export const PartyImportMapping = z.record(PartyImportField, z.number().int().min(0).max(500));
+export type PartyImportMapping = z.infer<typeof PartyImportMapping>;
+export const PartyImportPreviewInput = z
+  .object({ fileName: z.string().trim().min(1).max(200).optional(), contentBase64: z.string().max(14_000_000).optional(), importId: Ulid.optional(), mapping: PartyImportMapping.optional() })
+  .refine((i) => i.importId !== undefined || (i.fileName !== undefined && i.contentBase64 !== undefined), { message: 'send a file, or the importId of an earlier preview' });
+export type PartyImportPreviewInput = z.infer<typeof PartyImportPreviewInput>;
+const Count = z.number().int();
+export const PartyImportPreview = z.object({
+  importId: Ulid, fileName: z.string(), columns: z.array(z.string()), mapping: PartyImportMapping,
+  counts: z.object({ total: Count, ok: Count, errors: Count, duplicates: Count, openings: Count }),
+  rows: z.array(z.object({ line: Count, status: z.enum(['ok', 'error', 'duplicate']), name: z.string().optional(), errors: z.record(z.string(), z.string()) })),
+});
+export type PartyImportPreview = z.infer<typeof PartyImportPreview>;
+export const PartyImportCommitInput = z.object({ importId: Ulid, commandId: Ulid });
+export type PartyImportCommitInput = z.infer<typeof PartyImportCommitInput>;
+export const PartyImportSummary = z.object({
+  created: Count, openingsSet: Count, skippedDuplicates: Count, skippedErrors: Count,
+  skippedAtCommit: z.array(z.object({ line: Count, reason: z.string() })),
+});
+export type PartyImportSummary = z.infer<typeof PartyImportSummary>;

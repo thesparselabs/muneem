@@ -25,7 +25,7 @@ function previewRows(plan: ImportPlan): ImportRow[] {
 }
 
 // Each row runs in a savepoint: if a rule still refuses it at commit time, only that row is undone and reported.
-function applyRow(db: Db, write: () => void): string | null {
+export function applyRow(db: Db, write: () => void): string | null {
   try {
     db.transaction(write)();
     return null;

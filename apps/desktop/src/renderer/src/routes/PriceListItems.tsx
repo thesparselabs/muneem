@@ -4,6 +4,7 @@ import type { Product, Uom } from '@muneem/contracts';
 import { api, errorMessage } from '../api.js';
 import { itemToRow, rowsToItems, type PriceRow } from '../lib/priceItems.js';
 import UomSelect from '../components/UomSelect.js';
+import { Trash2, Plus, Save } from 'lucide-react';
 import DatePicker from '../components/DatePicker.js';
 
 const today = () => new Date().toLocaleDateString('en-CA');
@@ -60,7 +61,7 @@ export default function PriceListItems({ product, uoms }: { product: Product; uo
               <td className="text-center"><input aria-label="Price includes GST" type="checkbox" checked={r.isInclusive} onChange={(e) => update(i, { isInclusive: e.target.checked })} /></td>
               <td><DatePicker aria-label="Effective from" value={r.effectiveFrom} onChange={(v) => update(i, { effectiveFrom: v })} /></td>
               <td><DatePicker aria-label="Effective to" value={r.effectiveTo} onChange={(v) => update(i, { effectiveTo: v })} /></td>
-              <td><button type="button" className="btn-secondary py-1" onClick={() => setRows(rows.filter((_, j) => j !== i))}>Remove</button></td>
+              <td><button type="button" className="btn-secondary px-2 py-1" onClick={() => setRows(rows.filter((_, j) => j !== i))} aria-label="Remove" title="Remove"><Trash2 size={14} aria-hidden /></button></td>
             </tr>
           ))}
         </tbody>
@@ -68,8 +69,8 @@ export default function PriceListItems({ product, uoms }: { product: Product; uo
       {Object.keys(errors).length > 0 && <p className="err">Fix the highlighted prices. {Object.values(errors)[0]}</p>}
       {message && <p className="text-sm" role="status">{message}</p>}
       <div className="flex gap-2">
-        <button type="button" className="btn-secondary" onClick={() => setRows([...rows, { uomId: product.baseUomId, minQty: '0', price: '', isInclusive: product.priceIsInclusive, effectiveFrom: today(), effectiveTo: '' }])}>Add price</button>
-        <button type="button" className="btn-primary" onClick={() => void save()}>Save prices</button>
+        <button type="button" className="btn-secondary" onClick={() => setRows([...rows, { uomId: product.baseUomId, minQty: '0', price: '', isInclusive: product.priceIsInclusive, effectiveFrom: today(), effectiveTo: '' }])}><Plus size={16} aria-hidden />Add price</button>
+        <button type="button" className="btn-primary" onClick={() => void save()}><Save size={16} aria-hidden />Save prices</button>
       </div>
     </fieldset>
   );

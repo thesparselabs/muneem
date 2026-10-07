@@ -31,6 +31,7 @@ import { PreviewStore } from './services/import/previewStore.js';
 import { PricingService } from './services/pricing.js';
 import { CustomerService } from './services/pos/customers.js';
 import { PartyLedgerService } from './services/parties/partyLedger.js';
+import { customerImportTarget, PartyImportService, supplierImportTarget } from './services/parties/partyImport.js';
 import { SupplierService } from './services/parties/suppliers.js';
 import { PurchaseImportService } from './services/purchases/purchaseImport.js';
 import { Drawer } from './services/payments/drawer.js';
@@ -168,6 +169,9 @@ export function createApp(cfg: AppConfig) {
   const suppliers = new SupplierService(posCtx);
   const customerLedger = new PartyLedgerService(posCtx, 'customer', (id) => customers.get(id));
   const supplierLedger = new PartyLedgerService(posCtx, 'supplier', (id) => suppliers.get(id));
+  const importPreviews = <M>() => new PreviewStore<M>(cfg.now ?? (() => Date.now()));
+  const customerImport = new PartyImportService(posCtx, customerImportTarget((i) => customers.create(i), (i) => customerLedger.setOpening(i)), importPreviews());
+  const supplierImport = new PartyImportService(posCtx, supplierImportTarget((i) => suppliers.create(i), (i) => supplierLedger.setOpening(i)), importPreviews());
   const purchases = new PurchaseService(posCtx, new PurchasePricing(posCtx));
   const purchaseReturns = new PurchaseReturnService(posCtx);
   const purchaseImport = new PurchaseImportService(posCtx, new PreviewStore(cfg.now ?? (() => Date.now())));
@@ -365,6 +369,8 @@ export function createApp(cfg: AppConfig) {
     'customers.setOpening': (i) => customerLedger.setOpening(i),
     'customers.getLedger': (i) => customerLedger.ledger(i),
     'customers.getOutstanding': (i) => customerLedger.outstanding(i),
+    'customers.importPreview': (i) => customerImport.preview(i),
+    'customers.importCommit': (i) => customerImport.commit(i),
     'customers.setConsent': (i) => customerPrivacy.setConsent(i),
     'customers.withdrawConsent': (i) => customerPrivacy.withdrawConsent(i),
     'customers.exportProfile': (i) => customerPrivacy.exportProfile(i),
@@ -376,6 +382,8 @@ export function createApp(cfg: AppConfig) {
     'suppliers.setOpening': (i) => supplierLedger.setOpening(i),
     'suppliers.getLedger': (i) => supplierLedger.ledger(i),
     'suppliers.getOutstanding': (i) => supplierLedger.outstanding(i),
+    'suppliers.importPreview': (i) => supplierImport.preview(i),
+    'suppliers.importCommit': (i) => supplierImport.commit(i),
     'purchases.quote': (i) => purchases.quote(i),
     'purchases.create': (i) => purchases.create(i),
     'purchases.get': (i) => purchases.get(i.id),
@@ -506,6 +514,6 @@ export function createApp(cfg: AppConfig) {
     onCommitted: (channel) => { sync.nudge(); notifications.runner.afterCommit(channel); }, holds: (id) => gate.holds(id), onDispatch: (channel) => updates.activity.dispatch(channel),
   });
 
-  return { events, session, reports, dashboard, rbac, cloud, connectivity, device, auth, business, settings, products, catalog, pricing, productImport, customers, suppliers, customerLedger, supplierLedger, purchases, purchaseReturns, purchaseImport, payments, writeOffs, expenses, periods, yearEnd, backlog, statements, chart, manualJournals, gst, register, sales, returns, invoice, printQueue, inventory, openingImport, diagnostics, backups, closeReadConnections, gateway, handlers, syncStatus, syncEngine, sync, hydration, hydrationGate: gate, updates, notifications, customerPrivacy, telemetry };
+  return { events, session, reports, dashboard, rbac, cloud, connectivity, device, auth, business, settings, products, catalog, pricing, productImport, customers, suppliers, customerLedger, supplierLedger, customerImport, supplierImport, purchases, purchaseReturns, purchaseImport, payments, writeOffs, expenses, periods, yearEnd, backlog, statements, chart, manualJournals, gst, register, sales, returns, invoice, printQueue, inventory, openingImport, diagnostics, backups, closeReadConnections, gateway, handlers, syncStatus, syncEngine, sync, hydration, hydrationGate: gate, updates, notifications, customerPrivacy, telemetry };
 }
 export type App = ReturnType<typeof createApp>;

@@ -9,7 +9,8 @@ import PartyPicker, { type PickedParty } from '../../components/PartyPicker.js';
 import { emptyExpenseForm, expenseFormToInput, gstAllowed, type ExpenseForm } from '../../lib/expenses/form.js';
 import { formatPaise } from '../../lib/money.js';
 import { useCan } from '../../lib/permissions.js';
-import { TrendingDown, Ban, Save } from 'lucide-react';
+import ExportMenu from '../../components/ExportMenu.js';
+import { TrendingDown, Ban, Plus, Save, ChevronDown, Pencil } from 'lucide-react';
 
 export default function Expenses() {
   const qc = useQueryClient();
@@ -31,7 +32,7 @@ export default function Expenses() {
   }
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between"><h1 className="flex items-center gap-2 text-2xl font-semibold"><TrendingDown size={22} className="text-primary" aria-hidden />Expenses</h1>{canCreate && <button type="button" className="btn-primary" onClick={() => setAdding(true)}>New expense</button>}</div>
+      <div className="flex items-center justify-between"><h1 className="flex items-center gap-2 text-2xl font-semibold"><TrendingDown size={22} className="text-primary" aria-hidden />Expenses</h1><div className="flex gap-2"><ExportMenu reportId="expenses.register" />{canCreate && <button type="button" className="btn-primary" onClick={() => setAdding(true)}><Plus size={16} aria-hidden />New expense</button>}</div></div>
       {(list.error || error) && <p className="err" role="alert">{error ?? errorMessage(list.error)}</p>}
       <table className="table-modern rounded-lg border border-border bg-card">
         <thead><tr><th>Number</th><th>Date</th><th>Category</th><th>Paid by</th><th>Description</th><th className="text-right">GST</th><th className="text-right">Total</th><th /></tr></thead>
@@ -46,7 +47,7 @@ export default function Expenses() {
           ))}
         </tbody>
       </table>
-      {list.hasNextPage && <button type="button" className="btn-secondary" onClick={() => void list.fetchNextPage()}>Show more</button>}
+      {list.hasNextPage && <button type="button" className="btn-secondary" onClick={() => void list.fetchNextPage()}><ChevronDown size={16} aria-hidden />Show more</button>}
       {cancelling && (
         <Dialog title="Cancel expense" onClose={() => setCancelling(null)}>
           <form onSubmit={cancel} className="space-y-3">
@@ -82,7 +83,7 @@ function NewExpense({ categories, onClose, onDone }: { categories: { id: string;
         <div><label className="label" htmlFor="ex-date">Date</label><DatePicker id="ex-date" value={f.date} onChange={(v) => set({ date: v })} /></div>
         <div><label className="label" htmlFor="ex-amount">Amount (₹)</label><input id="ex-amount" className="input" inputMode="decimal" value={f.amount} onChange={(e) => set({ amount: e.target.value })} /></div>
         <div><label className="label" htmlFor="ex-method">Paid by</label><select id="ex-method" className="select" value={f.method} onChange={(e) => set({ method: e.target.value as ExpenseForm['method'] })}>{EXPENSE_METHODS.map((m) => <option key={m} value={m}>{m === 'credit' ? 'On credit (supplier)' : m.toUpperCase()}</option>)}</select></div>
-        <div className="col-span-2">{supplier ? <p className="text-sm">Supplier: <span className="font-medium">{supplier.name}</span> <button type="button" className="btn-secondary py-0" onClick={() => { setSupplier(null); set({ supplierId: '' }); }}>Change</button></p>
+        <div className="col-span-2">{supplier ? <p className="text-sm">Supplier: <span className="font-medium">{supplier.name}</span> <button type="button" className="btn-secondary px-2 py-1" onClick={() => { setSupplier(null); set({ supplierId: '' }); }} aria-label="Change supplier" title="Change supplier"><Pencil size={14} aria-hidden /></button></p>
           : <PartyPicker id="ex-supplier" partyType="supplier" onPick={(p) => { setSupplier(p); set({ supplierId: p.id }); }} />}</div>
         {!supplier && <>
           <div><label className="label" htmlFor="ex-vendor">Or vendor name</label><input id="ex-vendor" className="input" value={f.vendorName} onChange={(e) => set({ vendorName: e.target.value })} /></div>

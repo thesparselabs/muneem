@@ -6,7 +6,7 @@ import { api, errorMessage } from '../../api.js';
 import { formatPaise, scaledToText } from '../../lib/money.js';
 import { countDiffs, countProblems, setCount, type Counts } from '../../lib/inventory/stockTake.js';
 import { useDebounced } from '../../lib/useDebounced.js';
-import { ClipboardCheck, ArrowLeft, X } from 'lucide-react';
+import { ClipboardCheck, ArrowLeft, X, ChevronDown } from 'lucide-react';
 
 export default function StockTake() {
   const qc = useQueryClient();
@@ -40,7 +40,7 @@ export default function StockTake() {
       <div className="card max-w-xl space-y-3" role="status">
         <h1 className="flex items-center gap-2 text-xl font-semibold"><ClipboardCheck size={20} className="text-primary" aria-hidden />Stock take posted</h1>
         <p className="text-sm">{result.lines.length} product(s) corrected, {result.unchanged} already right. Value change {formatPaise(result.lines.reduce((s, l) => s + l.valuePaise, 0))}.</p>
-        <div className="flex gap-2"><button className="btn-primary" onClick={() => setResult(null)}>Count more</button><Link to="/inventory" className="btn-secondary"><ArrowLeft size={16} aria-hidden />Back to inventory</Link></div>
+        <div className="flex gap-2"><button className="btn-primary" onClick={() => setResult(null)}>Count more</button><Link to="/inventory" className="btn-secondary px-2.5" aria-label="Back to inventory" title="Back to inventory"><ArrowLeft size={16} aria-hidden /></Link></div>
       </div>
     );
   }
@@ -86,7 +86,7 @@ export default function StockTake() {
           </tbody>
         </table>
       )}
-      {!reviewing && stock.hasNextPage && <button className="btn-secondary" onClick={() => void stock.fetchNextPage()}>Load more products</button>}
+      {!reviewing && stock.hasNextPage && <button className="btn-secondary" onClick={() => void stock.fetchNextPage()}><ChevronDown size={16} aria-hidden />Load more products</button>}
       {error && <p className="err" role="alert">{error}</p>}
       {Object.keys(errors).length > 0 && <p className="err" role="alert">Fix these counts first: {countProblems(counts, errors).join(', ')}</p>}
       <div className="flex gap-2">

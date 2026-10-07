@@ -1,10 +1,11 @@
 import { useState } from 'react';
-import { Package, PackageOpen, Plus, Tags, Upload } from 'lucide-react';
+import { Package, PackageOpen, Plus, Tags, Upload, ChevronDown } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import type { ProductHit } from '@muneem/contracts';
 import { api } from '../api.js';
 import { formatPaise, formatRateBp } from '../lib/money.js';
+import ExportMenu from '../components/ExportMenu.js';
 import { useDebounced } from '../lib/useDebounced.js';
 
 const SEARCH_DEBOUNCE_MS = 120;
@@ -32,6 +33,7 @@ export default function Products() {
         <h1 className="flex items-center gap-2 text-2xl font-semibold"><Package size={22} className="text-primary" aria-hidden /> Products</h1>
         <div className="flex gap-2">
           <Link to="/settings/catalog" className="btn-secondary"><Tags size={16} aria-hidden />Units, categories &amp; price lists</Link>
+          <ExportMenu reportId="catalog.products" />
           <Link to="/products/import" className="btn-secondary"><Upload size={16} aria-hidden />Import from file</Link>
           <Link to="/products/new" className="btn-primary"><Plus size={16} aria-hidden />Add product</Link>
         </div>
@@ -55,7 +57,7 @@ export default function Products() {
       </div>
       <ProductTable rows={rows} loading={loading} empty={q ? `Nothing matches "${q}".` : 'No products yet. Add one or import a file.'} />
       {!q && list.hasNextPage && (
-        <button className="btn-secondary shrink-0 self-start" onClick={() => void list.fetchNextPage()} disabled={list.isFetchingNextPage}>Load more</button>
+        <button className="btn-secondary shrink-0 self-start" onClick={() => void list.fetchNextPage()} disabled={list.isFetchingNextPage}><ChevronDown size={16} aria-hidden />Load more</button>
       )}
     </div>
   );

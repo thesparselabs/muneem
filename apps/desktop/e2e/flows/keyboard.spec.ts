@@ -41,7 +41,7 @@ test.describe.serial('POS without a mouse', () => {
   test('Tab reaches a line quantity, its discount and its Remove', async () => {
     const qty = page.getByLabel('Quantity').first();
     await tabTo(page, qty);
-    await page.keyboard.press('Control+A');
+    await page.keyboard.press('ControlOrMeta+A');
     await page.keyboard.type('3');
     await page.keyboard.press('Enter');
     await expect(qty).toHaveValue('3');

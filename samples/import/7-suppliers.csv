@@ -1,0 +1,9 @@
+Supplier Name,Phone,GSTIN,State Code,Tax Scheme,Address,City,PIN Code,Credit Days,Opening Balance,Opening Date
+Gupta Distributors,9111111111,07AAACG2222K1Z3,,regular,Khari Baoli,Delhi,110006,30,25000,01/04/2026
+Tata Consumer Stockist,9122222222,07AAACT3344K1Z6,,,Okhla Phase 2,Delhi,110020,21,12400.75,01/04/2026
+Local Sabzi Mandi,9133333333,,07,,Azadpur Mandi,Delhi,110033,0,,
+Shree Dairy Agency,9144444444,07AAACS5566K1Z1,,regular,Patparganj,Delhi,110092,7,3600,2026-04-01
+Maharashtra Spices Co,9155555555,27AAACM6677K1Z9,,composition,Vashi,Navi Mumbai,400703,45,,
+Raju Packaging,9166666666,,07,unregistered,Sadar Bazaar,Delhi,110006,15,850,01/04/2026
+No State Row,9177777777,,,,,,,,,
+Odd Scheme Row,9188888888,,07,exempted,,,,,,

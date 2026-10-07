@@ -5,7 +5,8 @@ import { api, errorMessage } from '../../api.js';
 import DatePicker from '../../components/DatePicker.js';
 import { formatPaise } from '../../lib/money.js';
 import { useCan } from '../../lib/permissions.js';
-import { Truck, Plus } from 'lucide-react';
+import ExportMenu from '../../components/ExportMenu.js';
+import { Truck, Plus, ChevronDown } from 'lucide-react';
 
 export default function Purchases() {
   const canCreate = useCan('purchases.create');
@@ -20,7 +21,7 @@ export default function Purchases() {
   const rows = list.data?.pages.flatMap((p) => p.items) ?? [];
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between"><h1 className="flex items-center gap-2 text-2xl font-semibold"><Truck size={22} className="text-primary" aria-hidden />Purchases</h1>{canCreate && <Link to="/purchases/new" className="btn-primary"><Plus size={16} aria-hidden />New purchase</Link>}</div>
+      <div className="flex items-center justify-between"><h1 className="flex items-center gap-2 text-2xl font-semibold"><Truck size={22} className="text-primary" aria-hidden />Purchases</h1><div className="flex gap-2"><ExportMenu reportId="purchases.register" params={{ from: filter.from, to: filter.to }} />{canCreate && <Link to="/purchases/new" className="btn-primary"><Plus size={16} aria-hidden />New purchase</Link>}</div></div>
       <div className="card flex items-end gap-3">
         <div><label className="label" htmlFor="pl-from">From</label><DatePicker id="pl-from" value={filter.from} onChange={(v) => setFilter({ ...filter, from: v })} /></div>
         <div><label className="label" htmlFor="pl-to">To</label><DatePicker id="pl-to" value={filter.to} onChange={(v) => setFilter({ ...filter, to: v })} /></div>
@@ -40,7 +41,7 @@ export default function Purchases() {
           ))}
         </tbody>
       </table>
-      {list.hasNextPage && <button type="button" className="btn-secondary" onClick={() => void list.fetchNextPage()}>Show more</button>}
+      {list.hasNextPage && <button type="button" className="btn-secondary" onClick={() => void list.fetchNextPage()}><ChevronDown size={16} aria-hidden />Show more</button>}
     </div>
   );
 }

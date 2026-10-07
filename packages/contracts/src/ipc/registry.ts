@@ -13,6 +13,7 @@ import {
 } from './pos.js';
 import {
   EraseCustomerInput, ExportProfileInput, ExportProfileResult, LedgerInput, LedgerPage, OpeningBalanceInput, Outstanding, OutstandingInput, PartyOpening,
+  PartyImportCommitInput, PartyImportPreview, PartyImportPreviewInput, PartyImportSummary,
   SetConsentInput, SetCreditLimitInput, Supplier, SupplierInput, SupplierSearchInput, WithdrawConsentInput,
 } from './parties.js';
 import { ListNotificationsInput, NotificationChanged, NotificationCounts, NotificationIdsInput, NotificationPage } from './notifications.js';
@@ -151,6 +152,8 @@ export const contract = {
   'customers.setOpening': spec({ input: OpeningBalanceInput, output: PartyOpening, permission: 'customers.edit', rateLimit: { perSec: 2 }, audit: true }),
   'customers.getLedger': spec({ input: LedgerInput, output: LedgerPage, permission: 'customers.view', rateLimit: { perSec: 10 } }),
   'customers.getOutstanding': spec({ input: OutstandingInput, output: Outstanding, permission: 'customers.view', rateLimit: { perSec: 2 } }),
+  'customers.importPreview': spec({ input: PartyImportPreviewInput, output: PartyImportPreview, permission: 'customers.create', rateLimit: { perSec: 2 }, audit: true }),
+  'customers.importCommit': spec({ input: PartyImportCommitInput, output: PartyImportSummary, permission: 'customers.create', rateLimit: { perSec: 1 }, audit: true, idempotent: 'commandId' }),
   // ADR-0050: consent is captured at the counter, so a cashier can record and withdraw it; export and erasure are a manager's.
   'customers.setConsent': spec({ input: SetConsentInput, output: Customer, permission: 'customers.create', rateLimit: { perSec: 2 }, audit: true }),
   'customers.withdrawConsent': spec({ input: WithdrawConsentInput, output: Customer, permission: 'customers.create', rateLimit: { perSec: 2 }, audit: true }),
@@ -164,6 +167,8 @@ export const contract = {
   'suppliers.setOpening': spec({ input: OpeningBalanceInput, output: PartyOpening, permission: 'suppliers.edit', rateLimit: { perSec: 2 }, audit: true }),
   'suppliers.getLedger': spec({ input: LedgerInput, output: LedgerPage, permission: 'suppliers.view', rateLimit: { perSec: 10 } }),
   'suppliers.getOutstanding': spec({ input: OutstandingInput, output: Outstanding, permission: 'suppliers.view', rateLimit: { perSec: 2 } }),
+  'suppliers.importPreview': spec({ input: PartyImportPreviewInput, output: PartyImportPreview, permission: 'suppliers.create', rateLimit: { perSec: 2 }, audit: true }),
+  'suppliers.importCommit': spec({ input: PartyImportCommitInput, output: PartyImportSummary, permission: 'suppliers.create', rateLimit: { perSec: 1 }, audit: true, idempotent: 'commandId' }),
   'pos.getSession': spec({ input: Empty, output: RegisterSession.nullable(), permission: 'pos.view', rateLimit: { perSec: 20 } }),
   'pos.openRegister': spec({ input: OpenRegisterInput, output: RegisterSession, permission: 'pos.create', rateLimit: { perSec: 1 }, audit: true }),
   'pos.cashMovement': spec({ input: CashMovementInput, output: Ok, permission: 'pos.create', rateLimit: { perSec: 2 }, audit: true }),

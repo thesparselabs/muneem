@@ -8,9 +8,12 @@ import { formatPaise } from '../../lib/money.js';
 import { useCan } from '../../lib/permissions.js';
 import AccountsNav from './AccountsNav.js';
 import LedgerView from './LedgerView.js';
-import { BookMarked, Undo2 } from 'lucide-react';
+import ExportMenu from '../../components/ExportMenu.js';
+import { BookMarked, Undo2, ChevronDown } from 'lucide-react';
 
 const today = () => new Date().toLocaleDateString('en-CA');
+
+const BOOK_REPORT = { cash: 'accounting.cashBook', bank: 'accounting.bankBook', day: 'accounting.dayBook' } as const;
 
 export default function Books() {
   const [tab, setTab] = useState<'cash' | 'bank' | 'day'>('cash');
@@ -18,6 +21,7 @@ export default function Books() {
   const [bankId, setBankId] = useState('');
   const accounts = useQuery({ queryKey: ['accounts'], queryFn: () => api.accounting.listAccounts({}) });
   const banks = (accounts.data ?? []).filter((a) => a.type === 'asset' && !a.isGroup && (a.role === 'bank' || !a.isSystem));
+  const bank = banks.find((a) => a.id === bankId);
   const book = useInfiniteQuery({
     queryKey: ['book', tab, range, bankId],
     queryFn: ({ pageParam }) => {
@@ -28,7 +32,12 @@ export default function Books() {
   });
   return (
     <div className="space-y-4">
-      <h1 className="flex items-center gap-2 text-2xl font-semibold"><BookMarked size={22} className="text-primary" aria-hidden />Books</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="flex items-center gap-2 text-2xl font-semibold"><BookMarked size={22} className="text-primary" aria-hidden />Books</h1>
+        {tab === 'bank' && bank
+          ? <ExportMenu reportId="accounting.ledger" params={{ ...range, accountCode: bank.code }} />
+          : <ExportMenu reportId={BOOK_REPORT[tab]} params={range} />}
+      </div>
       <AccountsNav />
       <div className="flex gap-1" role="tablist">
         {([['cash', 'Cash book'], ['bank', 'Bank book'], ['day', 'Day book']] as const).map(([k, l]) => (
@@ -76,7 +85,7 @@ function DayBook({ from, to }: { from: string; to: string }) {
           </tbody></table>
         </div>
       ))}
-      {book.hasNextPage && <button type="button" className="btn-secondary" onClick={() => void book.fetchNextPage()}>Show more</button>}
+      {book.hasNextPage && <button type="button" className="btn-secondary" onClick={() => void book.fetchNextPage()}><ChevronDown size={16} aria-hidden />Show more</button>}
       {reversing && <ReverseDialog id={reversing} onClose={() => setReversing(null)} onDone={() => { setReversing(null); void qc.invalidateQueries(); }} />}
     </div>
   );

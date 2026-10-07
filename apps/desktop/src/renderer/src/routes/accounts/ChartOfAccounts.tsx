@@ -9,7 +9,8 @@ import { chartTree, normalBalance } from '../../lib/accounting/chartTree.js';
 import { formatPaise } from '../../lib/money.js';
 import { useCan } from '../../lib/permissions.js';
 import AccountsNav from './AccountsNav.js';
-import { ListTree, Plus, Save } from 'lucide-react';
+import ExportMenu from '../../components/ExportMenu.js';
+import { ListTree, Plus, Save, Pencil } from 'lucide-react';
 
 export default function ChartOfAccounts() {
   const qc = useQueryClient();
@@ -21,7 +22,7 @@ export default function ChartOfAccounts() {
   const groups = chartTree(accounts.data ?? []);
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between"><h1 className="flex items-center gap-2 text-2xl font-semibold"><ListTree size={22} className="text-primary" aria-hidden />Accounts</h1>{canManage && <button type="button" className="btn-primary" onClick={() => setAdding(true)}>Add account</button>}</div>
+      <div className="flex items-center justify-between"><h1 className="flex items-center gap-2 text-2xl font-semibold"><ListTree size={22} className="text-primary" aria-hidden />Accounts</h1><div className="flex gap-2"><ExportMenu reportId="accounting.chartOfAccounts" />{canManage && <button type="button" className="btn-primary" onClick={() => setAdding(true)}><Plus size={16} aria-hidden />Add account</button>}</div></div>
       <AccountsNav />
       <div className="card"><label className="label" htmlFor="coa-asof">Balances as of</label><DatePicker id="coa-asof" className="w-48" value={asOf} onChange={(v) => setAsOf(v)} /></div>
       {accounts.error && <p className="err" role="alert">{errorMessage(accounts.error)}</p>}
@@ -34,7 +35,7 @@ export default function ChartOfAccounts() {
                 <td className="font-mono">{a.code}</td>
                 <td><Link to={`/accounts/ledger/${a.id}`} className="text-primary">{a.name}</Link>{!a.isSystem && <span className="text-xs text-muted-foreground"> (added)</span>}</td>
                 <td className="text-right tabular-nums">{formatPaise(normalBalance(a))}</td>
-                <td>{canManage && <button type="button" className="btn-secondary py-0" onClick={() => setRenaming(a)}>Rename</button>}</td>
+                <td>{canManage && <button type="button" className="btn-secondary px-2 py-1" onClick={() => setRenaming(a)} aria-label="Rename" title="Rename"><Pencil size={14} aria-hidden /></button>}</td>
               </tr>
             ))}
           </tbody>

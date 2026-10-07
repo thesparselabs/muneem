@@ -2,7 +2,7 @@ import { Link, useParams } from 'react-router-dom';
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { api, errorMessage } from '../../api.js';
 import { formatPaise, scaledToText } from '../../lib/money.js';
-import { BookOpen, ArrowLeft } from 'lucide-react';
+import { BookOpen, ArrowLeft, ChevronDown } from 'lucide-react';
 
 const TYPE_LABEL: Record<string, string> = { opening: 'Opening stock', sale: 'Sale', adjustment: 'Adjustment', cost_correction: 'Cost correction', purchase: 'Purchase' };
 
@@ -19,7 +19,7 @@ export default function ProductLedger() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="flex items-center gap-2 text-2xl font-semibold"><BookOpen size={22} className="text-primary" aria-hidden />{product.data?.name ?? '…'} — stock ledger</h1>
-        <Link to="/inventory" className="btn-secondary"><ArrowLeft size={16} aria-hidden />Back to inventory</Link>
+        <Link to="/inventory" className="btn-secondary px-2.5" aria-label="Back to inventory" title="Back to inventory"><ArrowLeft size={16} aria-hidden /></Link>
       </div>
       {moves.error && <p className="err" role="alert">{errorMessage(moves.error)}</p>}
       {rows.length === 0 && !moves.isLoading && <p className="card text-sm text-muted-foreground">No stock movements yet.</p>}
@@ -41,7 +41,7 @@ export default function ProductLedger() {
           </tbody>
         </table>
       )}
-      {moves.hasNextPage && <button className="btn-secondary" onClick={() => void moves.fetchNextPage()}>Load older</button>}
+      {moves.hasNextPage && <button className="btn-secondary" onClick={() => void moves.fetchNextPage()}><ChevronDown size={16} aria-hidden />Load older</button>}
     </div>
   );
 }

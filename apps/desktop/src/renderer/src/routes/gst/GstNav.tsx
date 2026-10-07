@@ -1,13 +1,14 @@
 import { NavLink } from 'react-router-dom';
+import { ArrowLeftRight, FileText, Landmark, type LucideIcon } from 'lucide-react';
 import { monthLabel, recentMonths } from '../../lib/gst/gstForm.js';
 
-const TABS = [['/gst', 'Returns'], ['/gst/setoff', 'Set-off'], ['/gst/payments', 'Payments']] as const;
+const TABS: readonly (readonly [string, string, LucideIcon])[] = [['/gst', 'Returns', FileText], ['/gst/setoff', 'Set-off', ArrowLeftRight], ['/gst/payments', 'Payments', Landmark]];
 
 export default function GstNav() {
   return (
     <nav className="flex gap-1" aria-label="GST">
-      {TABS.map(([to, label]) => (
-        <NavLink key={to} to={to} end className={({ isActive }) => `btn-secondary py-1 ${isActive ? 'bg-accent text-accent-foreground' : ''}`}>{label}</NavLink>
+      {TABS.map(([to, label, Icon]) => (
+        <NavLink key={to} to={to} end className={({ isActive }) => `btn-secondary py-1 ${isActive ? 'bg-accent text-accent-foreground' : ''}`}><Icon size={14} aria-hidden />{label}</NavLink>
       ))}
     </nav>
   );

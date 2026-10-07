@@ -7,7 +7,9 @@ import { api, errorMessage } from '../../api.js';
 import ProductPicker from '../../components/ProductPicker.js';
 import { fileToBase64 } from '../../lib/fileToBase64.js';
 import { parseOptional } from '../../lib/money.js';
-import { PackagePlus, Save, X } from 'lucide-react';
+import ImportFormatHelp from '../../components/ImportFormatHelp.js';
+import { OPENING_STOCK_FORMAT } from '../../lib/importFormats.js';
+import { PackagePlus, Save, X, Trash2 } from 'lucide-react';
 
 interface Row { productId: string; name: string; uomCode: string; qty: string; cost: string }
 const FIELD_LABEL: Record<OpeningImportField, string> = { sku: 'SKU', barcode: 'Barcode', qty: 'Quantity', unitCost: 'Unit cost' };
@@ -56,7 +58,7 @@ export default function OpeningStock() {
             <span>{r.name}</span>
             <input aria-label={`Quantity of ${r.name} (${r.uomCode})`} className="input py-1" inputMode="decimal" placeholder={`Qty (${r.uomCode})`} value={r.qty} onChange={(e) => set(i, { qty: e.target.value })} />
             <input aria-label={`Unit cost of ${r.name}`} className="input py-1" inputMode="decimal" placeholder="Unit cost (₹)" value={r.cost} onChange={(e) => set(i, { cost: e.target.value })} />
-            <button type="button" className="btn-secondary py-1" onClick={() => setRows(rows.filter((_, j) => j !== i))}>Remove</button>
+            <button type="button" className="btn-secondary px-2 py-1" onClick={() => setRows(rows.filter((_, j) => j !== i))} aria-label="Remove" title="Remove"><Trash2 size={14} aria-hidden /></button>
           </div>
         ))}
         <button type="submit" className="btn-primary" disabled={rows.length === 0}><Save size={16} aria-hidden />Save opening stock</button>
@@ -64,7 +66,8 @@ export default function OpeningStock() {
       <div className="card space-y-3">
         <h2 className="font-semibold">Import from a file</h2>
         {!preview ? (
-          <><label className="label" htmlFor="open-file">CSV or Excel file with SKU or barcode, quantity and unit cost</label>
+          <><ImportFormatHelp format={OPENING_STOCK_FORMAT} />
+            <label className="label" htmlFor="open-file">File</label>
             <input id="open-file" type="file" accept=".csv,.xlsx" onChange={(e) => { const f = e.target.files?.[0]; if (f) void choose(f); }} /></>
         ) : (
           <>

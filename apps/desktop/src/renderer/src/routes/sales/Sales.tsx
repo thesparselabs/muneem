@@ -6,7 +6,8 @@ import { useCan } from '../../lib/permissions.js';
 import { matchesSearch, REFUND_LABELS, returnLabel } from '../../lib/sales/returnForm.js';
 import ReturnDialog from './ReturnDialog.js';
 import InvoicePreview from '../../components/InvoicePreview.js';
-import { FileText, Printer, Receipt, Undo2 } from 'lucide-react';
+import ExportMenu from '../../components/ExportMenu.js';
+import { FileText, Printer, Receipt, Undo2, ChevronDown, Eye } from 'lucide-react';
 
 // Bills with receipt search and Return / Cancel, and the credit notes issued against them (ADR-0043).
 export default function Sales() {
@@ -31,7 +32,10 @@ export default function Sales() {
 
   return (
     <div className="space-y-6">
-      <h1 className="flex items-center gap-2 text-2xl font-semibold"><Receipt size={22} className="text-primary" aria-hidden /> Sales and returns</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="flex items-center gap-2 text-2xl font-semibold"><Receipt size={22} className="text-primary" aria-hidden /> Sales and returns</h1>
+        <ExportMenu reportId="sales.register" />
+      </div>
       {message && <p className={message.kind === 'ok' ? 'text-green-700 dark:text-green-400' : 'err'} role="status">{message.text}</p>}
       <section className="space-y-3" aria-label="Bills">
         <div className="card">
@@ -49,7 +53,7 @@ export default function Sales() {
                 <td className="p-2 text-right tabular-nums">{formatPaise(s.totalPaise)}</td><td className="p-2 text-muted-foreground">{returnLabel(s)}</td>
                 <td className="p-2 text-right">
                   <span className="flex justify-end gap-2">
-                    <button type="button" className="btn-secondary gap-1.5 py-1" onClick={() => setPreviewing(s.id)}><FileText size={14} aria-hidden /> Invoice</button>
+                    <button type="button" className="btn-secondary px-2 py-1" aria-label={`View invoice ${s.docNumber}`} title="View invoice" onClick={() => setPreviewing(s.id)}><Eye size={14} aria-hidden /></button>
                     {canTakeBack && s.returned !== 'full' && <button type="button" className="btn-secondary gap-1.5 py-1" onClick={() => setReturning(s.id)}><Undo2 size={14} aria-hidden />Return / Cancel</button>}
                   </span>
                 </td>
@@ -58,7 +62,7 @@ export default function Sales() {
           </tbody>
         </table>
         </div>
-        {sales.hasNextPage && <button type="button" className="btn-secondary" onClick={() => void sales.fetchNextPage()}>Show more</button>}
+        {sales.hasNextPage && <button type="button" className="btn-secondary" onClick={() => void sales.fetchNextPage()}><ChevronDown size={16} aria-hidden />Show more</button>}
       </section>
       <section className="space-y-3" aria-label="Credit notes">
         <h2 className="flex items-center gap-2 text-lg font-semibold"><FileText size={18} className="text-muted-foreground" aria-hidden /> Credit notes</h2>
@@ -71,7 +75,7 @@ export default function Sales() {
                 <td className="p-2 tabular-nums">{n.docNumber}{n.kind === 'cancel' && <span className="ml-2 text-xs text-muted-foreground">cancel</span>}</td><td className="p-2">{n.docDate}</td>
                 <td className="p-2 tabular-nums">{n.saleDocNumber}</td><td className="p-2">{n.customerName ?? 'Walk-in'}</td><td className="p-2">{REFUND_LABELS[n.refundMethod]}</td>
                 <td className="p-2 text-right tabular-nums">{formatPaise(n.totalPaise)}</td>
-                <td className="p-2 text-right"><button type="button" className="btn-secondary gap-1.5 py-1" onClick={() => void reprint(n.id, n.docNumber)}><Printer size={14} aria-hidden />Reprint</button></td>
+                <td className="p-2 text-right"><button type="button" className="btn-secondary px-2 py-1" aria-label={`Reprint ${n.docNumber}`} title="Reprint" onClick={() => void reprint(n.id, n.docNumber)}><Printer size={14} aria-hidden /></button></td>
               </tr>
             ))}
           </tbody>

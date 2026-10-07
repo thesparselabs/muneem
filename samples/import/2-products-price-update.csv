@@ -1,0 +1,9 @@
+Item Name,Item Code,Barcode,HSN,Category,Brand,Unit,MRP,Sale Price,Purchase Price,GST %,Reorder Level
+Aashirvaad Atta 5kg,ATTA5,8901000000019,1101,Staples,Aashirvaad,PCS,275,265,240,0,10
+Fortune Sunflower Oil 1L,OILSF1,8901000000118,1512,Edible Oil,Fortune,PCS,162,156,142,5,12
+Amul Ghee 500ml,GHEE500,8901000000132,0405,Dairy,Amul,PCS,345,335,310,5,6
+Tata Tea Gold 250g,TEA250,8901000000170,0902,Beverages,Tata,PCS,165,158,139,5,10
+Sugar (loose),SUGAR,,1701,Staples,,KG,,48,43,5,25
+Maggi 2-Minute Noodles 70g,MAGGI70,8901000000286,1902,Biscuits & Snacks,Nestle,PCS,15,14,12.6,5,48
+Kurkure Masala Munch 90g,KURKURE90,8901000001016,1905,Biscuits & Snacks,Kurkure,PCS,20,20,16.5,5,36
+Dabur Honey 250g,HONEY250,8901000001023,0409,Staples,Dabur,PCS,135,130,112,5,6

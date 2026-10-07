@@ -11,7 +11,9 @@ import { fileToBase64 } from '../../lib/fileToBase64.js';
 import { formatPaise } from '../../lib/money.js';
 import { billCheck, emptyPurchaseForm, formToDraft, lineFor, type PurchaseForm, type PurchaseFormLine } from '../../lib/purchases/form.js';
 import { useDebounced } from '../../lib/useDebounced.js';
-import { Truck, Save, X } from 'lucide-react';
+import ImportFormatHelp from '../../components/ImportFormatHelp.js';
+import { PURCHASE_LINES_FORMAT } from '../../lib/importFormats.js';
+import { Truck, Save, X, Pencil, Trash2 } from 'lucide-react';
 
 export default function NewPurchase() {
   const nav = useNavigate();
@@ -56,7 +58,7 @@ export default function NewPurchase() {
     <form onSubmit={submit} className="space-y-4">
       <div className="flex items-center justify-between"><h1 className="flex items-center gap-2 text-2xl font-semibold"><Truck size={22} className="text-primary" aria-hidden />New purchase</h1><Link to="/purchases" className="btn-secondary"><X size={16} aria-hidden />Cancel</Link></div>
       <div className="card grid grid-cols-4 gap-3">
-        <div className="col-span-2">{supplier ? <p className="pt-6 font-medium">{supplier.name} <button type="button" className="btn-secondary py-0" onClick={() => { setSupplier(null); set({ supplierId: '' }); }}>Change</button></p>
+        <div className="col-span-2">{supplier ? <p className="pt-6 font-medium">{supplier.name} <button type="button" className="btn-secondary px-2 py-1" onClick={() => { setSupplier(null); set({ supplierId: '' }); }} aria-label="Change supplier" title="Change supplier"><Pencil size={14} aria-hidden /></button></p>
           : <PartyPicker id="pu-supplier" partyType="supplier" onPick={(p) => { setSupplier(p); set({ supplierId: p.id }); }} />}</div>
         <div><label className="label" htmlFor="pu-inv">Bill number</label><input id="pu-inv" className="input" value={form.invoiceNo} onChange={(e) => set({ invoiceNo: e.target.value })} /></div>
         <div><label className="label" htmlFor="pu-date">Bill date</label><DatePicker id="pu-date" value={form.invoiceDate} onChange={(v) => set({ invoiceDate: v })} /></div>
@@ -66,6 +68,7 @@ export default function NewPurchase() {
         <div className="grow"><ProductPicker id="pu-product" label="Add a product" onPick={(h) => void addProduct(h)} /></div>
         <div><label className="label" htmlFor="pu-file">Or import lines (CSV/XLSX)</label><input id="pu-file" type="file" accept=".csv,.xlsx" onChange={(e) => { const f = e.target.files?.[0]; if (f) void importFile(f); }} /></div>
       </div>
+      <ImportFormatHelp format={PURCHASE_LINES_FORMAT} open={false} />
       {importErrors.length > 0 && <div className="card text-sm text-amber-800 dark:text-amber-300" role="status"><p className="font-medium">Rows not imported:</p><ul>{importErrors.slice(0, 20).map((t) => <li key={t}>{t}</li>)}</ul></div>}
       {form.lines.length > 0 && (
         <table className="table-modern rounded-lg border border-border bg-card">
@@ -88,7 +91,7 @@ export default function NewPurchase() {
                   <td><input type="checkbox" aria-label={`Claim ITC for ${l.name}`} checked={l.itc} onChange={(e) => setLine(i, { itc: e.target.checked })} /></td>
                   <td className="text-right tabular-nums">{ql ? formatPaise(ql.taxablePaise) : ''}</td>
                   <td className="text-right tabular-nums">{ql ? formatPaise(ql.unitCostPaise) : ''}</td>
-                  <td><button type="button" className="btn-secondary py-1" onClick={() => set({ lines: form.lines.filter((_, j) => j !== i) })}>Remove</button></td>
+                  <td><button type="button" className="btn-secondary px-2 py-1" onClick={() => set({ lines: form.lines.filter((_, j) => j !== i) })} aria-label="Remove" title="Remove"><Trash2 size={14} aria-hidden /></button></td>
                 </tr>
               );
             })}
@@ -103,7 +106,7 @@ export default function NewPurchase() {
             <div key={i} className="flex gap-2">
               <select aria-label="Charge kind" className="select py-1" value={c.kind} onChange={(e) => set({ charges: form.charges.map((x, j) => (j === i ? { ...x, kind: e.target.value as typeof c.kind } : x)) })}>{PURCHASE_CHARGE_KINDS.map((k) => <option key={k} value={k}>{k}</option>)}</select>
               <input aria-label="Charge amount" className="input w-28 py-1" inputMode="decimal" value={c.amount} onChange={(e) => set({ charges: form.charges.map((x, j) => (j === i ? { ...x, amount: e.target.value } : x)) })} />
-              <button type="button" className="btn-secondary py-1" onClick={() => set({ charges: form.charges.filter((_, j) => j !== i) })}>Remove</button>
+              <button type="button" className="btn-secondary px-2 py-1" onClick={() => set({ charges: form.charges.filter((_, j) => j !== i) })} aria-label="Remove" title="Remove"><Trash2 size={14} aria-hidden /></button>
             </div>
           ))}
           <button type="button" className="btn-secondary py-1" onClick={() => set({ charges: [...form.charges, { kind: 'freight', amount: '' }] })}>Add a charge</button>

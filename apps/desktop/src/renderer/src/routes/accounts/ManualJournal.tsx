@@ -7,7 +7,7 @@ import DatePicker from '../../components/DatePicker.js';
 import { checkJournal, emptyRows, postableAccounts, toJournalInput, type JournalRow } from '../../lib/accounting/journalForm.js';
 import { formatPaise } from '../../lib/money.js';
 import AccountsNav from './AccountsNav.js';
-import { PenLine, Check } from 'lucide-react';
+import { PenLine, Check, Trash2, Plus } from 'lucide-react';
 
 export default function ManualJournal() {
   const nav = useNavigate();
@@ -49,14 +49,14 @@ export default function ManualJournal() {
               <td><input aria-label={`Debit, line ${i + 1}`} className="input w-32 py-1" inputMode="decimal" value={r.debit} onChange={(e) => set(i, { debit: e.target.value })} /></td>
               <td><input aria-label={`Credit, line ${i + 1}`} className="input w-32 py-1" inputMode="decimal" value={r.credit} onChange={(e) => set(i, { credit: e.target.value })} />
                 {check.errors[`${i}`] && <p className="text-xs text-destructive">{check.errors[`${i}`]}</p>}</td>
-              <td>{rows.length > 2 && <button type="button" className="btn-secondary py-0" onClick={() => setRows(rows.filter((_, j) => j !== i))}>Remove</button>}</td>
+              <td>{rows.length > 2 && <button type="button" className="btn-secondary px-2 py-1" onClick={() => setRows(rows.filter((_, j) => j !== i))} aria-label="Remove" title="Remove"><Trash2 size={14} aria-hidden /></button>}</td>
             </tr>
           ))}
           <tr className="font-medium"><td>Totals</td><td className="tabular-nums">{formatPaise(check.debitPaise)}</td><td className="tabular-nums">{formatPaise(check.creditPaise)}</td><td /></tr>
         </tbody>
       </table>
       <div className="flex items-center gap-4">
-        <button type="button" className="btn-secondary" onClick={() => setRows([...rows, { accountId: '', debit: '', credit: '' }])}>Add line</button>
+        <button type="button" className="btn-secondary" onClick={() => setRows([...rows, { accountId: '', debit: '', credit: '' }])}><Plus size={16} aria-hidden />Add line</button>
         <p role="status" className={check.differencePaise === 0 ? 'text-green-800 dark:text-green-400' : 'text-destructive'}>{check.differencePaise === 0 ? 'Balanced' : `Difference ${formatPaise(Math.abs(check.differencePaise))}`}</p>
       </div>
       {error && <p className="err" role="alert">{error}</p>}

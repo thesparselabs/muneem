@@ -4,7 +4,8 @@ import { useInfiniteQuery } from '@tanstack/react-query';
 import { api, errorMessage } from '../../api.js';
 import DatePicker from '../../components/DatePicker.js';
 import { formatPaise } from '../../lib/money.js';
-import { Wallet, Plus } from 'lucide-react';
+import ExportMenu from '../../components/ExportMenu.js';
+import { Wallet, Plus, ChevronDown } from 'lucide-react';
 
 export default function Payments() {
   const [filter, setFilter] = useState({ from: '', to: '', status: '' as '' | 'posted' | 'cancelled' });
@@ -18,7 +19,7 @@ export default function Payments() {
   const rows = list.data?.pages.flatMap((p) => p.items) ?? [];
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between"><h1 className="flex items-center gap-2 text-2xl font-semibold"><Wallet size={22} className="text-primary" aria-hidden />Payments</h1><Link to="/payments/new" className="btn-primary"><Plus size={16} aria-hidden />New payment</Link></div>
+      <div className="flex items-center justify-between"><h1 className="flex items-center gap-2 text-2xl font-semibold"><Wallet size={22} className="text-primary" aria-hidden />Payments</h1><div className="flex gap-2"><ExportMenu reportId="money.payments" params={{ from: filter.from, to: filter.to }} /><Link to="/payments/new" className="btn-primary"><Plus size={16} aria-hidden />New payment</Link></div></div>
       <div className="card flex items-end gap-3">
         <div><label className="label" htmlFor="pl-from">From</label><DatePicker id="pl-from" value={filter.from} onChange={(v) => setFilter({ ...filter, from: v })} /></div>
         <div><label className="label" htmlFor="pl-to">To</label><DatePicker id="pl-to" value={filter.to} onChange={(v) => setFilter({ ...filter, to: v })} /></div>
@@ -38,7 +39,7 @@ export default function Payments() {
           ))}
         </tbody>
       </table>
-      {list.hasNextPage && <button type="button" className="btn-secondary" onClick={() => void list.fetchNextPage()}>Show more</button>}
+      {list.hasNextPage && <button type="button" className="btn-secondary" onClick={() => void list.fetchNextPage()}><ChevronDown size={16} aria-hidden />Show more</button>}
     </div>
   );
 }

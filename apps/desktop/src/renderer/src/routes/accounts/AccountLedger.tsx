@@ -5,6 +5,7 @@ import { api, errorMessage } from '../../api.js';
 import DatePicker from '../../components/DatePicker.js';
 import AccountsNav from './AccountsNav.js';
 import LedgerView from './LedgerView.js';
+import ExportMenu from '../../components/ExportMenu.js';
 import { BookOpen } from 'lucide-react';
 
 export default function AccountLedger() {
@@ -18,7 +19,10 @@ export default function AccountLedger() {
   });
   return (
     <div className="space-y-4">
-      <h1 className="flex items-center gap-2 text-2xl font-semibold"><BookOpen size={22} className="text-primary" aria-hidden />{account.data ? `${account.data.code} ${account.data.name}` : 'Ledger'}</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="flex items-center gap-2 text-2xl font-semibold"><BookOpen size={22} className="text-primary" aria-hidden />{account.data ? `${account.data.code} ${account.data.name}` : 'Ledger'}</h1>
+        {account.data && <ExportMenu reportId="accounting.ledger" params={{ ...range, accountCode: account.data.code }} />}
+      </div>
       <AccountsNav />
       <div className="card flex items-end gap-3">
         <div><label className="label" htmlFor="lg-from">From</label><DatePicker id="lg-from" value={range.from} onChange={(v) => setRange({ ...range, from: v })} /></div>

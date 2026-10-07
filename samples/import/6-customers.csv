@@ -1,0 +1,13 @@
+Customer Name,Mobile,Email,GSTIN,State Code,Address,City,PIN Code,Credit Days,Opening Balance,Opening Date
+Ramesh Traders,98765 43210,ramesh@example.com,07AAACR5055K1Z5,,12 Main Bazaar,Delhi,110006,30,"1,250.50",01/04/2026
+Sunita Devi,9811122233,,,07,B-14 Lajpat Nagar,Delhi,110024,15,480,2026-04-01
+Meena General Store,9899001122,meena.store@example.com,07AAACM7788K1Z2,,Shop 4 Sarojini Market,Delhi,110023,30,5200,01/04/2026
+Arjun Singh,9810055667,,,07,,Delhi,,7,,
+Kavita Sharma,9871234560,kavita@example.com,,07,22 Green Park,Delhi,110016,0,-150,2026-04-01
+Hotel Annapurna,01145678901,accounts@annapurna.example,07AAACH4455K1Z8,,Ring Road,Delhi,110049,45,18750,01/04/2026
+Imran Khan,9958877665,,,09,Sector 18,Noida,201301,15,,
+Pooja Caterers,9717766554,,09AAACP2233K1Z4,,Indirapuram,Ghaziabad,201014,30,3300,01/04/2026
+Walk-in Regular (no phone),,,,,,,,,,
+Bad Phone Row,98-76,,,,,,,,,
+Wrong State Row,9000000002,,07AAACW1111K1Z1,27,,,,,,
+Repeated Phone Row,9811122233,,,,,,,,,

@@ -238,6 +238,8 @@ app.on('web-contents-created', (_e, contents) => {
 });
 
 app.whenReady().then(async () => {
+  // Packaged builds get their icon from electron-builder; the dev dock would otherwise show Electron's.
+  if (isDev) app.dock?.setIcon(join(here, '../../resources/icon-dock.png'));
   session.defaultSession.webRequest.onHeadersReceived((details, cb) => {
     const policy = isDev && process.env.ELECTRON_RENDERER_URL ? DEV_SERVER_CSP : CSP;
     cb({ responseHeaders: { ...details.responseHeaders, 'Content-Security-Policy': [policy] } });

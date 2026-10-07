@@ -4,7 +4,8 @@ import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { api, errorMessage } from '../../api.js';
 import { formatPaise, scaledToText } from '../../lib/money.js';
 import { useDebounced } from '../../lib/useDebounced.js';
-import { AlertTriangle, Boxes, ClipboardCheck, GitCompare, PackagePlus, SlidersHorizontal } from 'lucide-react';
+import ExportMenu from '../../components/ExportMenu.js';
+import { AlertTriangle, Boxes, ClipboardCheck, GitCompare, PackagePlus, SlidersHorizontal, ChevronDown } from 'lucide-react';
 
 export default function StockList() {
   const [query, setQuery] = useState('');
@@ -22,6 +23,7 @@ export default function StockList() {
       <div className="flex items-center justify-between">
         <h1 className="flex items-center gap-2 text-2xl font-semibold"><Boxes size={22} className="text-primary" aria-hidden />Inventory</h1>
         <div className="flex gap-2">
+          <ExportMenu reportId="stock.valuation" />
           <Link to="/inventory/reconciliation" className="btn-secondary"><GitCompare size={16} aria-hidden />Reconciliation</Link>
           <Link to="/inventory/opening" className="btn-secondary"><PackagePlus size={16} aria-hidden />Opening stock</Link>
           <Link to="/inventory/adjust" className="btn-secondary"><SlidersHorizontal size={16} aria-hidden />Adjust stock</Link>
@@ -54,7 +56,7 @@ export default function StockList() {
             </tbody>
           </table>
           </div>
-          {stock.hasNextPage && <button className="btn-secondary shrink-0 self-start" onClick={() => void stock.fetchNextPage()}>Load more</button>}
+          {stock.hasNextPage && <button className="btn-secondary shrink-0 self-start" onClick={() => void stock.fetchNextPage()}><ChevronDown size={16} aria-hidden />Load more</button>}
         </>
       )}
     </div>
