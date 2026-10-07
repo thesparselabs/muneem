@@ -1515,6 +1515,133 @@ AI must only access data the authenticated user is authorized to access.
 
 ---
 
+# 6B. Phase-1 Roadmap Requirements (post-v1, competitive)
+
+These requirements come from the competitive audit against Zoho Invoice/Books and TallyPrime
+(see `docs/competitive-audit.md`). They are **not** part of the v1 (Stage 0–9) scope; they are the first
+post-v1 release. Tier A is the Phase-1 target; Tiers B/C are sequenced after. Each must preserve Muneem's
+offline-first guarantee — online-only actions (e-invoice, e-way bill, sharing, filing) degrade gracefully when the
+shop is offline and complete when connectivity returns.
+
+## Tier A — Phase 1
+
+# FR-085 — Invoice & statement sharing (WhatsApp / email)
+
+Muneem shall let the user send an invoice, credit note or party statement as a PDF to a customer over WhatsApp or
+email, reusing the existing invoice renderer.
+
+- Share from the Sales list, POS (last bill) and a party's statement
+- WhatsApp via a click-to-chat/share link or a provider API; email via SMTP/a provider
+- Queue and retry when offline; mark sent in the document's history
+- Free (unlike TallyPrime's paid WhatsApp add-on)
+
+---
+
+# FR-086 — Estimates / Quotations
+
+Muneem shall support estimates (quotations) that can be converted into a sale/invoice.
+
+- A new document series (never affects stock or books until converted)
+- Convert to invoice carrying lines, customer, pricing and GST
+- Status: open / converted / expired; print/share like an invoice
+
+---
+
+# FR-087 — Delivery Challan
+
+Muneem shall support delivery challans for goods sent without an immediate tax invoice.
+
+- Challan series; optional link to a later invoice
+- Supports job-work / non-sale movement and transport details (for e-way bill reuse)
+- Print (A4 + thermal) and share
+
+---
+
+# FR-088 — Payment reminders for receivables (udhaar)
+
+Muneem shall remind customers of overdue balances, using the party ageing it already computes.
+
+- Reminder schedule per party/invoice; in-app, WhatsApp and SMS channels
+- Respects the consent captured for notifications
+- Reminder history and "paid since" suppression
+
+---
+
+## Tier B — Phase 1 if targeting B2B / distribution
+
+# FR-089 — E-invoicing (IRN + QR)
+
+Muneem shall generate an IRN and signed QR for a tax invoice via a GSP/IRP integration, embed them on the invoice,
+and carry the IRN into GSTR-1.
+
+- Online action; queue when offline, submit when online, store IRN/QR/ack
+- Bulk and single; cancel within the allowed window
+
+---
+
+# FR-090 — E-way bill
+
+Muneem shall generate and manage e-way bills for goods movement above the threshold.
+
+- From invoice or delivery challan; transporter, vehicle, distance
+- Extend / update / cancel within TallyPrime-equivalent rules
+
+---
+
+# FR-091 — Batch & expiry tracking
+
+Muneem shall track stock by batch with manufacturing/expiry dates and batch cost.
+
+- FIFO/expiry-first picking; near-expiry and expired reports
+- Optional per product (grocery/pharma)
+
+---
+
+## Tier C — Phase 2
+
+# FR-092 — Direct GSTR-1 / GSTR-3B filing
+
+Upload and file directly from Muneem (building on the existing GSTR summaries/JSON), with GSTR-2B download and
+reconciliation.
+
+---
+
+# FR-093 — Multi-warehouse & stock transfers
+
+Multiple warehouses/godowns per business with inter-warehouse transfer documents and per-location stock.
+
+---
+
+# FR-094 — Bank statement import & reconciliation
+
+Import bank statements and auto-match/reconcile against payments and receipts.
+
+---
+
+# FR-095 — Online payment links / UPI collect + customer portal
+
+Collect payments online (UPI/gateway) via shareable links, with a lightweight customer portal for history and payment.
+
+---
+
+# FR-096 — Companion mobile app
+
+A mobile app for billing and viewing on the move, syncing through the same cloud — a gap both rivals leave open.
+
+---
+
+# FR-097 — Recurring invoices
+
+Scheduled recurring invoices for subscription/periodic billing.
+
+---
+
+# FR-098 — TDS / TCS
+
+TDS/TCS computation and reporting for businesses above the thresholds.
+
+---
+
 # 7. MVP Scope
 
 The first production version should focus on the following.
