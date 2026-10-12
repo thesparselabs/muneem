@@ -205,6 +205,37 @@ test.describe.serial('golden flow', () => {
     await expect(dialog).toBeHidden();
   });
 
+  test('quote an estimate, then bill it at the till (FR-086)', async () => {
+    await go(page, '/estimates');
+    await page.getByRole('link', { name: 'New estimate' }).click();
+    await page.getByLabel('Customer').fill('Meena');
+    await page.getByRole('button', { name: /Meena Traders/ }).click();
+    await page.getByLabel('Add a product').fill('Basmati');
+    await page.getByRole('button', { name: /Basmati Rice 1kg/ }).click();
+    await page.getByLabel('Quantity for Basmati Rice 1kg').fill('3');
+    await expect(page.getByLabel('Estimate total')).toContainText('Total');
+    await page.getByRole('button', { name: 'Save estimate' }).click();
+    await expect(page).toHaveURL(/#\/estimates$/u);
+    const row = page.getByRole('row').filter({ hasText: 'Meena Traders' }).first();
+    await expect(row).toContainText('Open');
+    const estimate = (await row.getByRole('cell').first().textContent())!.trim();
+    expect(estimate).toMatch(/Q\/\d{4}\/00001$/u);
+    await fitsAndSnap(page, '13b-estimates');
+
+    await row.getByRole('button', { name: 'Bill it' }).click();
+    await expect(page.getByRole('note')).toHaveText(`Billing estimate ${estimate}`);
+    await expect(page.getByRole('cell', { name: 'Basmati Rice 1kg', exact: true })).toBeVisible();
+    await expect(page.getByRole('complementary').getByText('Meena Traders')).toBeVisible();
+    await page.keyboard.press('F5');
+    await expect(page.getByRole('dialog', { name: /Payment \(F5\)/ })).toBeVisible();
+    await page.keyboard.press('Enter');
+    const saved = page.getByRole('status').filter({ hasText: /^Saved / });
+    await expect(saved).toBeVisible();
+    const bill = savedDocNumber(await saved.textContent());
+    await go(page, '/estimates');
+    await expect(page.getByRole('row').filter({ hasText: estimate })).toContainText(`Billed as ${bill}`);
+  });
+
   test('receive a payment against the credit sale', async () => {
     await go(page, '/parties');
     await page.getByRole('link', { name: 'Meena Traders' }).click();

@@ -23,7 +23,9 @@ import { PrintQueue } from './services/print/printQueue.js';
 import { PrinterConfigStore } from './services/print/printerConfig.js';
 import { InvoiceService } from './services/invoice/index.js';
 import { InvoiceBrandingStore } from './services/invoice/brandingStore.js';
-import { buildInvoiceData } from './services/invoice/invoiceData.js';
+import { buildInvoiceData, documentData } from './services/invoice/invoiceData.js';
+import { EstimateService } from './services/estimates/estimateService.js';
+import { quotationFileName, quotationVariant } from './services/estimates/quotation.js';
 import { renderPdf, savePdf as saveInvoicePdf, type PdfRender } from './services/invoice/pdf.js';
 import { buildStatement, CloudMailer, createShare } from './services/share/index.js';
 import type { LineRasteriser } from './services/print/raster.js';
@@ -96,7 +98,7 @@ import { createNotifications } from './notifications/index.js';
 import { CustomerPrivacyService } from './services/parties/customerPrivacy.js';
 import { createTelemetry } from './telemetry/index.js';
 import type { CrashSend } from './telemetry/crashReports.js';
-import type { SyncStatus, UpdateStatus } from '@muneem/contracts';
+import type { Estimate, InvoiceTemplateId, SyncStatus, UpdateStatus } from '@muneem/contracts';
 export interface AppConfig {
   db: () => Db;
   dbFile: string;
@@ -215,17 +217,21 @@ export function createApp(cfg: AppConfig) {
     db: cfg.db, config: printerConfig, receiptsDir: cfg.receiptsDir, log: cfg.loggers.hardware,
     ...(cfg.printSpooler && { spooler: cfg.printSpooler }), ...(cfg.lineRasteriser && { rasteriser: cfg.lineRasteriser }),
   });
-  const sales = new SaleService(posCtx, new SalePricing(posCtx), register, () => session.require().user.name, (r) => printQueue.enqueue(r.printJobId));
+  const salePricing = new SalePricing(posCtx);
+  const estimates = new EstimateService(posCtx, salePricing);
+  const sales = new SaleService(posCtx, salePricing, register, () => session.require().user.name, (r) => printQueue.enqueue(r.printJobId),
+    (estimateId, sale) => estimates.convert(estimateId, sale));
   const returns = new ReturnService(posCtx, () => session.require().user.name, (r) => printQueue.enqueue(r.printJobId));
+  const seller = {
+    getBusiness: () => business.get(),
+    getBranch: () => { const id = session.get()?.branchId ?? null; return id ? (business.getBranches().find((b) => b.id === id) ?? null) : null; },
+  };
   const invoice = new InvoiceService({
     branding: new InvoiceBrandingStore({ db: cfg.db, businessId: () => posCtx.businessId(), actor: () => posCtx.actor() }),
-    buildData: (saleId) => buildInvoiceData(saleId, {
-      getSale: (id) => sales.get(id),
-      getBusiness: () => business.get(),
-      getBranch: () => { const id = session.get()?.branchId ?? null; return id ? (business.getBranches().find((b) => b.id === id) ?? null) : null; },
-    }),
+    buildData: (saleId) => buildInvoiceData(saleId, { ...seller, getSale: (id) => sales.get(id) }),
     save: saveInvoicePdf,
   });
+  const quotation = (e: Estimate, templateId?: InvoiceTemplateId) => invoice.compose(documentData(e, seller, quotationVariant(e)), quotationFileName(e), templateId);
   const productImport = new ImportService(catalogCtx, new PreviewStore(cfg.now ?? (() => Date.now())), invalidateSearch);
   const diagnostics = new DiagnosticsService({
     db: cfg.db, reads, dbFile: cfg.dbFile, bundlesDir: cfg.bundlesDir, loggers: cfg.loggers, session, device,
@@ -286,6 +292,7 @@ export function createApp(cfg: AppConfig) {
     sources: {
       shopName: () => shop().name, sale: (id) => sales.get(id), invoice: (saleId) => invoice.document({ saleId }),
       creditNote: (id) => returns.get(id), creditNoteReceipt: (id) => returns.receipt(id), customer: (id) => customers.get(id), supplier: (id) => suppliers.get(id),
+      estimate: (id) => estimates.get(id), estimateDocument: (e) => quotation(e),
       statement: (partyType, party, range) => buildStatement({ db: cfg.db(), businessId: posCtx.businessId(), today: posCtx.today() }, shop(), partyType, party, range,
         new Date((cfg.now ?? Date.now)()).toISOString()),
       renderPdf: cfg.documentPdf ?? renderPdf,
@@ -465,6 +472,11 @@ export function createApp(cfg: AppConfig) {
     'sales.list': (i) => sales.list(i),
     'sales.getReceipt': (i) => sales.receipt(i.saleId),
     'sales.cancel': (i) => returns.cancel(i),
+    'estimates.create': (i) => estimates.create(i),
+    'estimates.get': (i) => estimates.get(i.id),
+    'estimates.list': (i) => estimates.list(i),
+    'estimates.renderHtml': (i) => ({ html: quotation(estimates.get(i.id), i.templateId).html }),
+    'estimates.savePdf': (i) => invoice.saveDocument(quotation(estimates.get(i.id), i.templateId)),
     'returns.quote': (i) => returns.quote(i),
     'returns.complete': (i) => returns.complete(i),
     'returns.get': (i) => returns.get(i.id),
@@ -536,6 +548,6 @@ export function createApp(cfg: AppConfig) {
     onCommitted: (channel) => { sync.nudge(); notifications.runner.afterCommit(channel); }, holds: (id) => gate.holds(id), onDispatch: (channel) => updates.activity.dispatch(channel),
   });
 
-  return { events, session, reports, dashboard, rbac, cloud, connectivity, device, auth, business, settings, products, catalog, pricing, productImport, customers, suppliers, customerLedger, supplierLedger, customerImport, supplierImport, purchases, purchaseReturns, purchaseImport, payments, writeOffs, expenses, periods, yearEnd, backlog, statements, chart, manualJournals, gst, register, sales, returns, invoice, printQueue, inventory, openingImport, diagnostics, backups, closeReadConnections, gateway, handlers, syncStatus, syncEngine, sync, hydration, hydrationGate: gate, updates, notifications, customerPrivacy, telemetry, share };
+  return { events, session, reports, dashboard, rbac, cloud, connectivity, device, auth, business, settings, products, catalog, pricing, productImport, customers, suppliers, customerLedger, supplierLedger, customerImport, supplierImport, purchases, purchaseReturns, purchaseImport, payments, writeOffs, expenses, periods, yearEnd, backlog, statements, chart, manualJournals, gst, register, sales, estimates, returns, invoice, printQueue, inventory, openingImport, diagnostics, backups, closeReadConnections, gateway, handlers, syncStatus, syncEngine, sync, hydration, hydrationGate: gate, updates, notifications, customerPrivacy, telemetry, share };
 }
 export type App = ReturnType<typeof createApp>;

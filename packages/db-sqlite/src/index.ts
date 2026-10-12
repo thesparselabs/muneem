@@ -31,6 +31,7 @@ export * from './repositories/notification.js';
 export * from './repositories/shareLog.js';
 export * from './repositories/register.js';
 export * from './repositories/sale.js';
+export * from './repositories/estimate.js';
 export * from './repositories/printJob.js';
 export * from './repositories/heldBill.js';
 export * from './repositories/inventory.js';

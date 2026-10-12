@@ -5,6 +5,22 @@ All notable changes, newest first. Each entry records **what** changed and **why
 
 ## [Unreleased]
 
+### Added — Estimates / quotations, billed at the till (FR-086, ADR-0068)
+- **Estimates** (sidebar → Estimates) is a list with Open / Expired / Billed filters, and **New estimate** is a form
+  with a customer, products, units, discounts, a validity date (15 days by default) and a note. Prices come live
+  from the same engine as a bill. Each estimate gets a Q number per terminal (`DE01Q/2627/00001`) and posts nothing:
+  no journal, stock or party entry. Why: Phase 1 Tier A — shops quote before they bill, and Zoho/Tally both offer it.
+- **Bill it** opens the till with the estimate's lines, customer and discounts at today's prices, and warns if the
+  total moved. The sale marks the estimate converted in its own transaction, so a bill and its conversion never part,
+  and an estimate is billed once. Why: converting must not lose or duplicate a bill.
+- **Print and share as a quotation** on the shop's invoice template ("Quotation", "Quotation No", "Valid until", no
+  invoice declaration), and through the FR-085 share dialog.
+- **Synced like other documents** (migration 0024; entity `estimate`). The Go cloud recomputes an estimate's GST with
+  the sale verifier and accepts only a conversion as its update. The reference server checks its totals. Why: the
+  user chose cloud sync, so any till can bill an estimate another made.
+- **Refactor:** the sale's customer snapshot builder moved into the customer repository; invoice data takes any priced
+  document plus an optional `document` variant (title, number label, extra rows, declaration). Templates use it.
+
 ### Added — Share invoices, credit notes and statements by WhatsApp or email (FR-085, ADR-0067)
 - **A Share action** on each bill and credit note in Sales, on the POS (last bill and recent bills) and on a party's
   page (its statement, for the range on screen). The dialog starts from the party's phone or email and a standard

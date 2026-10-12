@@ -12,6 +12,8 @@ export interface CartLine {
 export interface Cart {
   lines: CartLine[]; customer: Customer | null; billDiscount: DiscountInput;
   placeOfSupplyOverride?: { stateCode: string; reason: string } | undefined;
+  // The estimate this bill converts (FR-086).
+  estimate?: { id: string; docNumber: string } | undefined;
 }
 
 const NO_DISCOUNT: DiscountInput = { kind: 'amount', value: 0 };

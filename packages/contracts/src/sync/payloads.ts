@@ -127,6 +127,14 @@ const FyClose = open({
   closings: z.array(open({ version: z.number().int().positive(), journal: JournalPayload.nullable(), balances: z.array(ClosingBalance) })),
 });
 
+// ADR-0068: an estimate posts nothing, so it carries no journal; a server can still recompute its GST from the lines.
+const Discount = open({ kind: z.enum(['amount', 'percent']), value: z.number().int() });
+const Estimate = open({
+  id: Id, businessId: Id, terminalId: Id, docNumber: z.string(), docDate: Day, validUntil: Day, customerId: Id.nullish(), status: z.literal('open'),
+  lines: z.array(SaleLine.extend({ lineDiscount: Discount })).min(1), totals: DocTotals, billDiscount: Discount, ...Filing,
+});
+const EstimateConverted = open({ status: z.literal('converted'), saleId: Id, saleDocNumber: z.string(), convertedAt: Ts });
+
 const master = open({ id: Id.optional() });
 // ADR-0050: consents travel inside the customer; a withdrawal is never undone, and erasure blanks the profile for good.
 const Consent = open({
@@ -153,6 +161,7 @@ const EXACT: Partial<Record<OutboxEntityType, Partial<Record<string, z.ZodTypeAn
   accounting_period: { create: Period, update: Period },
   fy_close: { create: FyClose, update: FyClose },
   customer: { create: CustomerMaster, update: CustomerMaster },
+  estimate: { create: Estimate, update: EstimateConverted },
 };
 
 // The schema a payload of this entity and operation must satisfy; masters and config are checked loosely.

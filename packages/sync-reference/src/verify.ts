@@ -32,6 +32,14 @@ function saleTotalsHold(p: Payload): boolean {
     && sum(tenders, (x) => x.amountPaise - x.changePaise) === total;
 }
 
+// ADR-0068: an estimate's heads and lines add up to it, like a sale's, with no tenders.
+function estimateTotalsHold(p: Payload): boolean {
+  const t = (p.totals ?? {}) as Partial<Heads> & { roundOffPaise?: number; totalPaise?: number };
+  const lines = (p.lines ?? []) as { totalPaise: number }[];
+  const total = num(t.totalPaise);
+  return lines.length > 0 && taxed(t) + num(t.roundOffPaise) === total && sum(lines, (l) => l.totalPaise) + num(t.roundOffPaise) === total;
+}
+
 function purchaseTotalsHold(p: Payload): boolean {
   const t = (p.totals ?? {}) as Partial<Heads> & { chargesPaise?: number; roundOffPaise?: number; totalPaise?: number };
   const lines = (p.lines ?? []) as { totalPaise: number }[];
@@ -68,7 +76,7 @@ const gstPaymentTotalsHold = (p: Payload): boolean =>
 
 const TOTALS: Record<string, (p: Payload) => boolean> = {
   sale: saleTotalsHold, purchase: purchaseTotalsHold, debit_note: debitNoteTotalsHold, credit_note: creditNoteTotalsHold, gst_setoff: setoffTotalsHold,
-  gst_payment: gstPaymentTotalsHold,
+  gst_payment: gstPaymentTotalsHold, estimate: estimateTotalsHold,
 };
 
 // The light verifier (ADR-0042): document totals add up and every journal in the payload balances.

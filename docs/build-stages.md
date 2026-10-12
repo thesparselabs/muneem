@@ -18,7 +18,7 @@
 | Item | Deliverable | Exit criterion | Status |
 |---|---|---|---|
 | FR-085 | Share invoices, credit notes and statements by WhatsApp (click-to-chat) and email (cloud SMTP relay), queued offline | A share is recorded against its document; an email queued offline goes out once when the cloud is back, and a retry never emails twice | **Done** 2026-10-12 — ADR-0067; desktop share suite (queue, backoff, crash recovery, permissions), Go relay and `/v1/share/email` integration tests on Postgres, the golden UI flow shares a bill by email and WhatsApp |
-| FR-086 | Estimates / quotations, converted into a sale | An estimate prices like a sale quote and posts nothing; converting it bills the same lines and total | Not started |
+| FR-086 | Estimates / quotations, converted into a sale | An estimate prices like a sale quote and posts nothing; converting it bills the same lines and total | **Done** 2026-10-12 — ADR-0068; desktop estimate suite (pricing, numbering, nothing posted, conversion inside the sale transaction, once only, expiry, quotation print, sharing), two-till sync through the reference cloud, Go ingest/verification tests, the golden UI flow quotes an estimate and bills it at the till |
 | FR-087 | Delivery challans with transport details and an optional invoice link | A challan prints and shares and posts no tax | Not started |
 | FR-088 | Payment reminders for overdue udhaar, by WhatsApp or email, respecting consent | The due list matches ageing; a reminder is logged and goes through the share channels | Not started |
 

@@ -274,6 +274,21 @@ docs/             this folder (reality, with reasons)
   answers without a second email; a refusal fails at once; header injection, non-PDF and oversized attachments are
   refused before anything is relayed.
 
+## Estimates (Phase 1, FR-086)
+
+- `apps/desktop/src/main/services/estimates/` (ADR-0068): `EstimateService` prices a draft through `SalePricing` and
+  stores `estimate` + `estimate_item` with a Q number, posting nothing. `SaleService.complete` converts the estimate
+  named by `estimateId` in the sale's own transaction.
+- **Printing:** an estimate prints as a quotation through `InvoiceService.compose` and the `InvoiceData.document`
+  variant.
+- **Sync:** entity `estimate` is on the documents stream. Go verifies its GST with the sale recompute, the reference
+  server checks its totals, and the pull path files it under the origin's number. The cloud's latest conversion wins.
+- Invariants (tests):
+  - an estimate's totals equal a sale quote of the same draft;
+  - no journal, movement or party entry refers to an estimate;
+  - converting bills the same lines and total once, and a refused conversion leaves no sale;
+  - two tills converge on the same estimate and conversion.
+
 ## Identity and trust
 
 - Cloud is authoritative for users, roles and permissions; the device caches a **permission snapshot** and enforces

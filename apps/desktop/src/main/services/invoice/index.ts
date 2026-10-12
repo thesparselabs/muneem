@@ -66,20 +66,28 @@ export class InvoiceService {
   setBranding(input: InvoiceBranding): InvoiceBranding { return this.d.branding.set(input); }
 
   document(input: RenderInvoiceInput): InvoiceDocument {
-    const branding = this.d.branding.get();
-    const templateId = input.templateId ?? branding.templateId;
     const data = this.d.buildData(input.saleId);
-    const kind = templateKind(templateId);
-    const pdf: PdfOptions = kind === 'thermal' ? { kind, widthMm: templateId === 'thermal-58' ? 58 : 80 } : { kind, pageSize: PDF_PAGE[branding.pageSize] };
-    return { html: renderInvoice(templateId, data, branding), fileName: `invoice-${data.invoiceNo}`, pdf, data };
+    return this.compose(data, `invoice-${data.invoiceNo}`, input.templateId);
+  }
+
+  // Any document laid out like an invoice, in the shop's template unless another is asked for.
+  compose(data: InvoiceData, fileName: string, templateId?: InvoiceTemplateId): InvoiceDocument {
+    const branding = this.d.branding.get();
+    const template = templateId ?? branding.templateId;
+    const kind = templateKind(template);
+    const pdf: PdfOptions = kind === 'thermal' ? { kind, widthMm: template === 'thermal-58' ? 58 : 80 } : { kind, pageSize: PDF_PAGE[branding.pageSize] };
+    return { html: renderInvoice(template, data, branding), fileName, pdf, data };
   }
 
   renderHtml(input: RenderInvoiceInput): RenderInvoiceResult {
     return { html: this.document(input).html };
   }
 
-  async savePdf(input: SaveInvoicePdfInput): Promise<SaveInvoicePdfResult> {
-    const doc = this.document(input);
+  savePdf(input: SaveInvoicePdfInput): Promise<SaveInvoicePdfResult> {
+    return this.saveDocument(this.document(input));
+  }
+
+  saveDocument(doc: InvoiceDocument): Promise<SaveInvoicePdfResult> {
     return this.d.save(doc.html, doc.fileName, doc.pdf);
   }
 }

@@ -1,4 +1,4 @@
-import type { CreditNote, Customer, Permission, ReceiptDoc, Sale, ShareDocType, ShareTarget, Supplier } from '@muneem/contracts';
+import type { CreditNote, Customer, Estimate, Permission, ReceiptDoc, Sale, ShareDocType, ShareTarget, Supplier } from '@muneem/contracts';
 import { formatRupees as rupees, type PartyType } from '@muneem/domain';
 import type { InvoiceDocument } from '../invoice/index.js';
 import { pdfFileName, type PdfRender } from '../invoice/pdf.js';
@@ -26,11 +26,13 @@ export interface ShareSources {
   customer(id: string): Customer;
   supplier(id: string): Supplier;
   statement(partyType: PartyType, party: { id: string; name: string }, range: StatementRange): Statement;
+  estimate(id: string): Estimate;
+  estimateDocument(e: Estimate): InvoiceDocument;
   renderPdf: PdfRender;
 }
 
 export const SHARE_PERMISSION: Readonly<Record<ShareDocType, Permission>> = {
-  invoice: 'sales.view', credit_note: 'sales.view', customer_statement: 'customers.view', supplier_statement: 'suppliers.view',
+  invoice: 'sales.view', credit_note: 'sales.view', customer_statement: 'customers.view', supplier_statement: 'suppliers.view', estimate: 'sales.view',
 };
 
 const RECEIPT_COLUMNS = 42;
@@ -45,6 +47,7 @@ export class ShareDocuments {
       case 'credit_note': return this.creditNote(t.id);
       case 'customer_statement': return this.statement('customer', t);
       case 'supplier_statement': return this.statement('supplier', t);
+      case 'estimate': return this.estimate(t.id);
     }
   }
 
@@ -79,6 +82,22 @@ export class ShareDocuments {
         + `${rupees(note.totalPaise)} against invoice ${note.saleDocNumber} from ${shop} is attached.`,
       contact: { phone: customer?.phone, email: customer?.email },
       pdf: () => this.s.renderPdf(page.html, { kind: 'thermal', widthMm: 80 }),
+    };
+  }
+
+  private estimate(id: string): SharedDocument {
+    const e = this.s.estimate(id);
+    const doc = this.s.estimateDocument(e);
+    const customer = e.customerId ? this.s.customer(e.customerId) : null;
+    const shop = this.s.shopName();
+    return {
+      label: `Quotation ${e.docNumber}`,
+      fileName: pdfFileName(doc.fileName),
+      subject: `Quotation ${e.docNumber} from ${shop}`,
+      message: `${greeting(e.customer.name)}, thank you for your enquiry. Our quotation ${e.docNumber} for ${rupees(e.totals.totalPaise)} is attached; `
+        + `it is valid until ${fmtDate(e.validUntil)}. — ${shop}`,
+      contact: { phone: customer?.phone, email: customer?.email },
+      pdf: () => this.s.renderPdf(doc.html, doc.pdf),
     };
   }
 

@@ -55,6 +55,10 @@ by `doc_type`.
 - **Tests:** create → price matches a sale quote; convert → produces a posting sale with the same lines/total;
   estimate itself touches no journals/stock.
 - **Effort:** M.
+- **As built (ADR-0068):** migration 0024, Q kind letter. There is no `estimates.convert`: "Bill it" loads the estimate
+  into the POS cart, and `sales.complete({ …, estimateId })` converts it inside the sale's transaction. `expired` is
+  derived from `valid_until`. The quotation prints through an `InvoiceData.document` variant. Estimates sync on the
+  documents stream, with Go GST verification.
 
 ---
 

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type RefObject } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { CompleteSaleResult, Customer, ProductHit, QuoteContext, RegisterReport, SaleQuote, TenderLine } from '@muneem/contracts';
 import { newUlid } from '@muneem/domain';
@@ -7,7 +7,7 @@ import { api, errorMessage, isClientError } from '../../api.js';
 import { formatPaise, formatRateBp, parseOptional, scaledToText } from '../../lib/money.js';
 import { addHit, applyQuote, emptyCart, localTotals, removeLine, setLineDiscount, setQty, toDraft, type Cart } from '../../lib/pos/cart.js';
 import { commandFor, type PendingCommand } from '../../lib/pos/payment.js';
-import { retrieveHeldBill } from '../../lib/pos/retrieve.js';
+import { loadEstimate, retrieveHeldBill, type RetrieveResult } from '../../lib/pos/retrieve.js';
 import { useScanner } from '../../lib/pos/useScanner.js';
 import { useDebounced } from '../../lib/useDebounced.js';
 import CustomerDialog from './CustomerDialog.js';
@@ -23,7 +23,7 @@ import StockStaleness from '../../components/StockStaleness.js';
 import NumberTicker from '../../components/NumberTicker.js';
 import SuccessCheck from '../../components/SuccessCheck.js';
 import { useToasts } from '../../lib/toast.js';
-import { AlertTriangle, ScanSearch, ShoppingCart, Trash2, User, CreditCard, Pause, Percent, Printer, RotateCcw, Wallet, FileBarChart, FileText, Lock, Share2 } from 'lucide-react';
+import { AlertTriangle, ScanSearch, ShoppingCart, Trash2, User, CreditCard, Pause, Percent, Printer, RotateCcw, Wallet, FileBarChart, FileText, Lock, Share2, ClipboardList } from 'lucide-react';
 
 type Modal = 'customer' | 'discount' | 'payment' | 'held' | 'cash' | 'x' | 'close' | { lineDiscount: string } | null;
 const NEAR_DUPLICATE_MS = 60_000;
@@ -48,6 +48,8 @@ export default function PosScreen() {
   const [query, setQuery] = useState('');
   const quoteSeq = useRef(0);
   const pendingCommand = useRef<PendingCommand | null>(null);
+  const [params, setParams] = useSearchParams();
+  const estimateId = params.get('estimate');
   useEffect(() => { if (lastSale) search.current?.focus(); }, [lastSale]); // ready for the next customer
 
   // 8i: an update never installs while a bill is on screen.
@@ -99,7 +101,9 @@ export default function PosScreen() {
     try {
       const draft = toDraft(cart);
       pendingCommand.current = commandFor(pendingCommand.current, JSON.stringify(draft), newUlid);
-      const result = await api.sales.complete({ ...draft, commandId: pendingCommand.current.id, tenders, expectedTotalPaise: payTotal });
+      const result = await api.sales.complete({
+        ...draft, commandId: pendingCommand.current.id, tenders, expectedTotalPaise: payTotal, ...(cart.estimate && { estimateId: cart.estimate.id }),
+      });
       pendingCommand.current = null;
       setLastSale({ result, customerId: cart.customer?.id ?? null, at: Date.now() });
       setCart(emptyCart());
@@ -139,11 +143,25 @@ export default function PosScreen() {
       quote: (draft) => api.sales.quote(draft),
       discardBill: (billId) => api.pos.discardBill({ id: billId }),
     }, id);
+    showRetrieved(r, 'Bill retrieved.');
+  }
+
+  function showRetrieved(r: RetrieveResult, done: string) {
     if (!r.ok) { setMessage({ kind: 'error', text: r.error }); return; }
     setContext(r.quote.context);
     setCart(r.cart);
-    setMessage(r.notes.length > 0 ? { kind: 'error', text: r.notes.join(' ') } : { kind: 'ok', text: 'Bill retrieved.' });
+    setMessage(r.notes.length > 0 ? { kind: 'error', text: r.notes.join(' ') } : { kind: 'ok', text: done });
   }
+
+  // FR-086: Estimates → "Bill it" opens the till with ?estimate=<id>; the estimate fills an empty cart once.
+  useEffect(() => {
+    if (!estimateId || !session.data) return;
+    setParams({}, { replace: true });
+    if (cart.lines.length > 0) { setMessage({ kind: 'error', text: 'Finish or hold the bill on screen, then bill the estimate again.' }); return; }
+    void loadEstimate({
+      getEstimate: (id) => api.estimates.get({ id }), getCustomer: (id) => api.customers.get({ id }), quote: (draft) => api.sales.quote(draft),
+    }, estimateId).then((r) => showRetrieved(r, r.ok ? `Estimate ${r.cart.estimate?.docNumber ?? ''} is on the bill.` : ''));
+  }, [estimateId, session.data]);
 
   async function reprint(saleId: string, docNumber: string) {
     try { await api.printer.reprint({ saleId }); setMessage({ kind: 'ok', text: `Reprinting ${docNumber}` }); } catch (e) { setMessage({ kind: 'error', text: errorMessage(e) }); }
@@ -181,6 +199,9 @@ export default function PosScreen() {
       </section>
       <aside className="flex min-h-0 flex-col gap-3 overflow-y-auto">
         <StockStaleness />
+        {cart.estimate && (
+          <p className="card flex items-center gap-1.5 text-sm" role="note"><ClipboardList size={14} className="text-primary" aria-hidden />Billing estimate {cart.estimate.docNumber}</p>
+        )}
         <div className="card text-sm">
           <p className="flex items-center gap-1.5 text-muted-foreground"><User size={14} aria-hidden /> Customer (F3)</p>
           <p className="font-medium">{cart.customer ? `${cart.customer.name}${cart.customer.gstin ? ` · ${cart.customer.gstin}` : ''}` : 'Walk-in'}</p>

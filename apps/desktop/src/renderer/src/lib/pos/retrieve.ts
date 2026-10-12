@@ -1,4 +1,5 @@
-import type { Customer, HeldBill, SaleDraft, SaleQuote } from '@muneem/contracts';
+import type { Customer, Estimate, HeldBill, SaleDraft, SaleQuote } from '@muneem/contracts';
+import { formatPaise } from '../money.js';
 import { cartFromQuote, type Cart } from './cart.js';
 
 export interface RetrieveDeps {
@@ -35,5 +36,36 @@ export async function retrieveHeldBill(deps: RetrieveDeps, id: string): Promise<
   if (quote.issues.length > 0) notes.push(`Left out: ${quote.issues.map((i) => i.message).join('; ')}`);
   const cart = cartFromQuote({ customer, billDiscount: bill.cart.billDiscount, placeOfSupplyOverride: bill.cart.placeOfSupplyOverride }, quote);
   await deps.discardBill(id).catch(() => notes.push('The held copy could not be removed; discard it from Held bills.'));
+  return { ok: true, cart, quote, notes };
+}
+
+export interface EstimateDeps {
+  getEstimate(id: string): Promise<Estimate>;
+  getCustomer(id: string): Promise<Customer>;
+  quote(draft: SaleDraft): Promise<SaleQuote>;
+}
+
+// FR-086: an estimate comes to the till at today's prices; the cashier is told if the total moved since it was quoted.
+export async function loadEstimate(deps: EstimateDeps, id: string): Promise<RetrieveResult> {
+  const notes: string[] = [];
+  let estimate: Estimate;
+  let quote: SaleQuote;
+  let customer: Customer | null = null;
+  try {
+    estimate = await deps.getEstimate(id);
+    if (estimate.status === 'converted') return { ok: false, error: `Estimate ${estimate.docNumber} was already billed as ${estimate.saleDocNumber ?? 'another bill'}.` };
+    if (estimate.draft.customerId) customer = await deps.getCustomer(estimate.draft.customerId);
+    quote = await deps.quote(estimate.draft);
+  } catch (e) {
+    return { ok: false, error: messageOf(e) };
+  }
+  if (quote.issues.length > 0) notes.push(`Left out: ${quote.issues.map((i) => i.message).join('; ')}`);
+  if (quote.totals.totalPaise !== estimate.totals.totalPaise) {
+    notes.push(`Prices have changed since estimate ${estimate.docNumber}: it was ${formatPaise(estimate.totals.totalPaise)}, now ${formatPaise(quote.totals.totalPaise)}.`);
+  }
+  const cart = cartFromQuote({
+    customer, billDiscount: estimate.draft.billDiscount, placeOfSupplyOverride: estimate.draft.placeOfSupplyOverride,
+    estimate: { id: estimate.id, docNumber: estimate.docNumber },
+  }, quote);
   return { ok: true, cart, quote, notes };
 }
