@@ -14,6 +14,9 @@ export interface InvoiceTotals {
   igstPaise: number; cessPaise: number; roundOffPaise: number; totalPaise: number;
 }
 export interface InvoiceTender { method: string; amountPaise: number }
+// Another document printed on the invoice layouts (a quotation, a delivery challan): its title, number label, extra rows,
+// and whether the invoice's price declaration applies.
+export interface DocumentVariant { title: string; numberLabel: string; rows: { label: string; value: string }[]; declaration: boolean; buyerLabel?: string }
 
 export interface InvoiceData {
   seller: InvoiceSeller;
@@ -28,7 +31,11 @@ export interface InvoiceData {
   totals: InvoiceTotals;
   tenders: InvoiceTender[];
   amountInWords: string;
+  document?: DocumentVariant;
 }
+
+// What every priced document shares with a sale.
+export type PricedDocument = Pick<Sale, 'customer' | 'docNumber' | 'docDate' | 'totals' | 'lines'> & { tenders?: Sale['tenders'] };
 
 export interface InvoiceDataDeps {
   getSale: (id: string) => Sale;
@@ -51,9 +58,12 @@ function sellerOf(business: Business | null, branch: Branch | null): InvoiceSell
 }
 
 export function buildInvoiceData(saleId: string, d: InvoiceDataDeps): InvoiceData {
-  const sale = d.getSale(saleId);
-  const t = sale.totals;
-  const c = sale.customer;
+  return documentData(d.getSale(saleId), d);
+}
+
+export function documentData(doc: PricedDocument, d: Omit<InvoiceDataDeps, 'getSale'>, variant?: DocumentVariant): InvoiceData {
+  const t = doc.totals;
+  const c = doc.customer;
   return {
     seller: sellerOf(d.getBusiness(), d.getBranch()),
     buyer: {
@@ -62,13 +72,13 @@ export function buildInvoiceData(saleId: string, d: InvoiceDataDeps): InvoiceDat
       ...(c.gstin && { gstin: c.gstin }),
       ...(c.address && { address: c.address }),
     },
-    invoiceNo: sale.docNumber,
-    dateIso: sale.docDate,
+    invoiceNo: doc.docNumber,
+    dateIso: doc.docDate,
     placeOfSupply: placeOfSupplyLabel(t.placeOfSupplyState),
     isTaxInvoice: t.docType === 'tax_invoice',
     supplyType: t.supplyType,
     stateTaxLabel: t.stateTaxKind === 'utgst' ? 'UTGST' : 'SGST',
-    lines: sale.lines.map((l) => ({
+    lines: doc.lines.map((l) => ({
       name: l.name,
       ...(l.hsnCode && { hsn: l.hsnCode }),
       qtyMilli: l.qtyMilli, uomCode: l.uomCode, unitPricePaise: l.unitPricePaise,
@@ -80,8 +90,9 @@ export function buildInvoiceData(saleId: string, d: InvoiceDataDeps): InvoiceDat
       cgstPaise: t.cgstPaise, sgstPaise: t.sgstPaise, igstPaise: t.igstPaise, cessPaise: t.cessPaise,
       roundOffPaise: t.roundOffPaise, totalPaise: t.totalPaise,
     },
-    tenders: sale.tenders.map((tn) => ({ method: tn.method, amountPaise: tn.amountPaise })),
+    tenders: (doc.tenders ?? []).map((tn) => ({ method: tn.method, amountPaise: tn.amountPaise })),
     amountInWords: amountInWords(t.totalPaise),
+    ...(variant && { document: variant }),
   };
 }
 

@@ -10,17 +10,20 @@ import ThemeToggle from '../components/ThemeToggle.js';
 import { LogoMark } from '../components/Logo.js';
 import type { Permission } from '@muneem/contracts';
 import { can } from '../lib/permissions.js';
-import { Activity, BarChart3, Boxes, FileText, Home as HomeIcon, Inbox, Landmark, Package, Palette, RefreshCw, Receipt, ShoppingCart, Truck, Users, Wallet, TrendingDown, type LucideIcon, LogOut } from 'lucide-react';
+import { Activity, BarChart3, BellRing, Boxes, ClipboardList, Container, FileText, Home as HomeIcon, Inbox, Landmark, Package, Palette, RefreshCw, Receipt, ShoppingCart, Truck, Users, Wallet, TrendingDown, type LucideIcon, LogOut } from 'lucide-react';
 
 // `need` hides an item from users who could not use it; main still checks every call (5f details).
 const NAV: { to: string; label: string; icon: LucideIcon; enabled: boolean; stage?: string; need?: Permission }[] = [
   { to: '/', label: 'Home', icon: HomeIcon, enabled: true },
   { to: '/pos', label: 'POS · Billing', icon: ShoppingCart, enabled: true },
   { to: '/sales', label: 'Sales · Returns', icon: Receipt, enabled: true, need: 'sales.view' },
+  { to: '/estimates', label: 'Estimates', icon: ClipboardList, enabled: true, need: 'sales.view' },
+  { to: '/challans', label: 'Delivery challans', icon: Container, enabled: true, need: 'sales.view' },
   { to: '/products', label: 'Products', icon: Package, enabled: true },
   { to: '/inventory', label: 'Inventory', icon: Boxes, enabled: true },
   { to: '/purchases', label: 'Purchases', icon: Truck, enabled: true, need: 'purchases.view' },
   { to: '/parties', label: 'Parties', icon: Users, enabled: true, need: 'customers.view' },
+  { to: '/reminders', label: 'Reminders', icon: BellRing, enabled: true, need: 'customers.view' },
   { to: '/payments', label: 'Payments', icon: Wallet, enabled: true, need: 'payments.view' },
   { to: '/expenses', label: 'Expenses', icon: TrendingDown, enabled: true, need: 'expenses.view' },
   { to: '/accounts', label: 'Accounts', icon: Landmark, enabled: true, need: 'accounting.view' },

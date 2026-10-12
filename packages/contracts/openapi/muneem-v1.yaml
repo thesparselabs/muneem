@@ -3,7 +3,7 @@ info:
   title: Muneem Cloud API
   version: 1.0.0
   description: |
-    Stage 1 surface: identity, device registration, business setup, health. Stage 7 adds sync push, pull and bootstrap; Stage 8f adds encrypted backups and key escrow.
+    Stage 1 surface: identity, device registration, business setup, health. Stage 7 adds sync push, pull and bootstrap; Stage 8f adds encrypted backups and key escrow; Phase 1 adds emailing a document (FR-085).
     Single source of truth for both the Go server (oapi-codegen) and the desktop client (openapi-typescript).
     Every response carries `X-Server-Time` (NFR-018). Every request from a registered device carries
     `X-Device-Id`, `X-Device-Timestamp`, `X-Device-Signature`, `X-App-Version`, `X-Schema-Version`,
@@ -569,6 +569,29 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/BackupKey'
+        default:
+          $ref: '#/components/responses/Error'
+  /share/email:
+    post:
+      operationId: sendShareEmail
+      tags: [share]
+      description: |
+        FR-085 (ADR-0067): a signed device hands the cloud one document PDF to email to a customer or supplier.
+        Idempotent per (businessId, shareId): a share already sent answers 200 again without a second email.
+        503 MAIL_UNAVAILABLE while the server has no SMTP relay configured; the device keeps it queued.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ShareEmailRequest'
+      responses:
+        '200':
+          description: Accepted by the SMTP relay
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ShareEmailResult'
         default:
           $ref: '#/components/responses/Error'
   /reports/daily:
@@ -1181,6 +1204,32 @@ components:
       properties:
         businessId: { type: string }
         keyId: { type: string }
+    ShareEmailRequest:
+      type: object
+      required: [shareId, businessId, to, subject, text, fromName, attachment]
+      properties:
+        shareId: { type: string, description: the device's share_log id; the idempotency key }
+        businessId: { type: string }
+        to: { type: string, description: one recipient address }
+        replyTo: { type: string, description: the shop's own address, if it has one }
+        fromName: { type: string, description: the shop's name, shown as the sender }
+        subject: { type: string }
+        text: { type: string }
+        attachment:
+          $ref: '#/components/schemas/ShareAttachment'
+    ShareAttachment:
+      type: object
+      required: [fileName, contentBase64]
+      properties:
+        fileName: { type: string, description: ends in .pdf }
+        contentBase64: { type: string, description: base64 (std) of the PDF bytes }
+    ShareEmailResult:
+      type: object
+      required: [shareId, status, sentAt]
+      properties:
+        shareId: { type: string }
+        status: { type: string, enum: [sent] }
+        sentAt: { type: string, format: date-time }
     DailyReport:
       type: object
       required: [businessId, from, to, sales, payments, products, parties]

@@ -17,6 +17,8 @@ export const SETTING_SCHEMAS = {
   'pos.receiptFooter': z.array(z.string().trim().max(48, 'at most 48 characters per line')).max(5, 'at most 5 lines'),
   // NFR-025 / ADR-0053: crash and error reports leave the device only when the owner turns this on (default off).
   'telemetry.crashReports': z.boolean(),
+  // FR-088 / ADR-0070: days between payment reminders to one customer, and after they pay (default 7).
+  'reminders.everyDays': z.number().int().min(1).max(90),
 } as const;
 export type SettingKey = keyof typeof SETTING_SCHEMAS;
 export type SettingValue<K extends SettingKey> = z.infer<(typeof SETTING_SCHEMAS)[K]>;

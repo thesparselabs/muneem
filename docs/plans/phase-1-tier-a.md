@@ -32,6 +32,10 @@ offline-first — online actions queue and complete when connectivity returns.
 - **Tests:** service sends/queues through a fake mailer/provider; offline → queued then sent; e2e-ui: share dialog
   opens and records a send.
 - **Effort:** M. **Note:** true WhatsApp file-send needs the provider (cloud); the desktop fallback ships without it.
+- **As built (ADR-0067):** doc types are `invoice`, `credit_note`, `customer_statement` and `supplier_statement`; the
+  contract is `share.preview` / `share.send` / `share.history`. WhatsApp is option (b) only. Email is the cloud relay
+  (`POST /v1/share/email`, Go SMTP), with no device SMTP fallback. The queue is the `share_log` table itself
+  (migration 0023), not a separate outbox.
 
 ---
 
@@ -51,6 +55,10 @@ by `doc_type`.
 - **Tests:** create → price matches a sale quote; convert → produces a posting sale with the same lines/total;
   estimate itself touches no journals/stock.
 - **Effort:** M.
+- **As built (ADR-0068):** migration 0024, Q kind letter. There is no `estimates.convert`: "Bill it" loads the estimate
+  into the POS cart, and `sales.complete({ …, estimateId })` converts it inside the sale's transaction. `expired` is
+  derived from `valid_until`. The quotation prints through an `InvoiceData.document` variant. Estimates sync on the
+  documents stream, with Go GST verification.
 
 ---
 
@@ -66,6 +74,9 @@ reuse (FR-090).
 - **Renderer:** Challan route; print (A4 + thermal) and share.
 - **Tests:** create + print; link to invoice; no journals.
 - **Effort:** S–M (reuses estimate scaffolding).
+- **As built (ADR-0069):** migration 0025 (not 0025_delivery_challan), H kind letter. There is no stock-out flag:
+  stock moves only when the invoice bills it. There is no `challans.linkInvoice`: a supply challan is invoiced with
+  "Bill it" at the till, linked inside the sale's transaction. A consignee can be a customer or typed by hand.
 
 ---
 
@@ -83,6 +94,14 @@ FR-085 channels for delivery.
 - **Renderer:** "Send reminder" on Parties → Outstanding (per party and bulk); a reminders screen with history.
 - **Tests:** due list matches ageing; sending records a reminder and goes through the share channel; consent gating.
 - **Effort:** M.
+- **As built (ADR-0070):**
+  - Channel: WhatsApp hand-off with the statement, through `share.send`. Email is not offered because consent has no
+    email channel, and SMS waits for the ADR-0050 provider sender.
+  - Contract: `reminders.preview` added. `reminders.due` takes no `overdueDays`; it lists everything past due with a
+    state.
+  - Cadence: a business-wide `reminders.everyDays` setting.
+  - Records: `reminder_log` is local.
+  - Bulk send is deferred.
 
 ---
 

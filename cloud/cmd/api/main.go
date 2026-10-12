@@ -21,9 +21,11 @@ import (
 	"github.com/sparselabs/muneem/cloud/internal/devicesync/snapshot"
 	"github.com/sparselabs/muneem/cloud/internal/health"
 	"github.com/sparselabs/muneem/cloud/internal/httpx"
+	"github.com/sparselabs/muneem/cloud/internal/mail"
 	"github.com/sparselabs/muneem/cloud/internal/metrics"
 	"github.com/sparselabs/muneem/cloud/internal/objectstore"
 	"github.com/sparselabs/muneem/cloud/internal/reports"
+	"github.com/sparselabs/muneem/cloud/internal/share"
 	"github.com/sparselabs/muneem/cloud/internal/store"
 )
 
@@ -34,6 +36,7 @@ type businessHandler = business.Handler
 type syncHandler = devicesync.Handler
 type backupHandler = backups.Handler
 type reportHandler = reports.Handler
+type shareHandler = share.Handler
 
 type handlers struct {
 	*authHandler
@@ -42,6 +45,7 @@ type handlers struct {
 	*syncHandler
 	*backupHandler
 	*reportHandler
+	*shareHandler
 	httpx.Health
 	httpx.Readiness
 }
@@ -143,6 +147,8 @@ func serve(log *slog.Logger, dbURL string) {
 	if backupService != nil {
 		backupService.Jobs = m
 	}
+	shareService, err := newShare(db, log)
+	must(log, err)
 	h := handlers{
 		authHandler:     &auth.Handler{DB: db, Signer: signer},
 		deviceHandler:   &device.Handler{DB: db, Verifier: verifier, Revocations: devicesync.Control{}},
@@ -150,6 +156,7 @@ func serve(log *slog.Logger, dbURL string) {
 		syncHandler:     &devicesync.Handler{Ingest: &devicesync.Ingest{DB: db, Log: log, Metrics: m}, Feed: &devicesync.Feed{DB: db}, Snapshots: snapshots, Protocols: protocols},
 		backupHandler:   &backups.Handler{Service: backupService},
 		reportHandler:   &reports.Handler{DB: db},
+		shareHandler:    &share.Handler{Service: shareService},
 		Readiness:       readiness,
 	}
 	e := httpx.New(httpx.Deps{Handlers: h, RequireAuth: signer.Require, DeviceVerifier: verifier.Middleware, Logger: log, Protocols: protocols, Requests: m})
@@ -227,6 +234,21 @@ func newBackups(db *store.DB, objects *objectstore.S3, log *slog.Logger) (*backu
 	}
 	log.Info("backup master keys", "active", wrapper.Active())
 	return backups.NewService(db, objects, wrapper, log, backups.DefaultOptions), nil
+}
+
+// newShare needs an SMTP relay (MUNEEM_SMTP_URL) and the address it sends from (MUNEEM_MAIL_FROM); without the relay
+// POST /share/email answers 503 and devices keep their emails queued (ADR-0067).
+func newShare(db *store.DB, log *slog.Logger) (*share.Service, error) {
+	relay, err := mail.SMTPFromEnv(os.Getenv("MUNEEM_SMTP_URL"), os.Getenv("MUNEEM_MAIL_FROM"))
+	if err != nil {
+		return nil, err
+	}
+	if relay == nil {
+		log.Warn("MUNEEM_SMTP_URL not set: emailing documents is unavailable")
+		return nil, nil
+	}
+	log.Info("share email relay", "host", relay.Host, "from", relay.From)
+	return share.NewService(db, relay, log, share.DefaultOptions), nil
 }
 
 // healthcheck probes this container's own /v1/ready, for the container runtime (the distroless image has no curl).

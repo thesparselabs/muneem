@@ -7,7 +7,9 @@ import { matchesSearch, REFUND_LABELS, returnLabel } from '../../lib/sales/retur
 import ReturnDialog from './ReturnDialog.js';
 import InvoicePreview from '../../components/InvoicePreview.js';
 import ExportMenu from '../../components/ExportMenu.js';
-import { FileText, Printer, Receipt, Undo2, ChevronDown, Eye } from 'lucide-react';
+import ShareDialog from '../../components/ShareDialog.js';
+import type { ShareTarget } from '@muneem/contracts';
+import { FileText, Printer, Receipt, Undo2, ChevronDown, Eye, Share2 } from 'lucide-react';
 
 // Bills with receipt search and Return / Cancel, and the credit notes issued against them (ADR-0043).
 export default function Sales() {
@@ -18,6 +20,7 @@ export default function Sales() {
   const [search, setSearch] = useState('');
   const [returning, setReturning] = useState<string | null>(null);
   const [previewing, setPreviewing] = useState<string | null>(null);
+  const [sharing, setSharing] = useState<ShareTarget | null>(null);
   const [message, setMessage] = useState<{ kind: 'ok' | 'error'; text: string } | null>(null);
   const sales = useInfiniteQuery({
     queryKey: ['sales'], queryFn: ({ pageParam }) => api.sales.list({ limit: 100, ...(pageParam && { cursor: pageParam }) }),
@@ -54,6 +57,7 @@ export default function Sales() {
                 <td className="p-2 text-right">
                   <span className="flex justify-end gap-2">
                     <button type="button" className="btn-secondary px-2 py-1" aria-label={`View invoice ${s.docNumber}`} title="View invoice" onClick={() => setPreviewing(s.id)}><Eye size={14} aria-hidden /></button>
+                    <button type="button" className="btn-secondary px-2 py-1" aria-label={`Share invoice ${s.docNumber}`} title="Share by WhatsApp or email" onClick={() => setSharing({ docType: 'invoice', id: s.id })}><Share2 size={14} aria-hidden /></button>
                     {canTakeBack && s.returned !== 'full' && <button type="button" className="btn-secondary gap-1.5 py-1" onClick={() => setReturning(s.id)}><Undo2 size={14} aria-hidden />Return / Cancel</button>}
                   </span>
                 </td>
@@ -75,7 +79,12 @@ export default function Sales() {
                 <td className="p-2 tabular-nums">{n.docNumber}{n.kind === 'cancel' && <span className="ml-2 text-xs text-muted-foreground">cancel</span>}</td><td className="p-2">{n.docDate}</td>
                 <td className="p-2 tabular-nums">{n.saleDocNumber}</td><td className="p-2">{n.customerName ?? 'Walk-in'}</td><td className="p-2">{REFUND_LABELS[n.refundMethod]}</td>
                 <td className="p-2 text-right tabular-nums">{formatPaise(n.totalPaise)}</td>
-                <td className="p-2 text-right"><button type="button" className="btn-secondary px-2 py-1" aria-label={`Reprint ${n.docNumber}`} title="Reprint" onClick={() => void reprint(n.id, n.docNumber)}><Printer size={14} aria-hidden /></button></td>
+                <td className="p-2 text-right">
+                  <span className="flex justify-end gap-2">
+                    <button type="button" className="btn-secondary px-2 py-1" aria-label={`Share ${n.docNumber}`} title="Share by WhatsApp or email" onClick={() => setSharing({ docType: 'credit_note', id: n.id })}><Share2 size={14} aria-hidden /></button>
+                    <button type="button" className="btn-secondary px-2 py-1" aria-label={`Reprint ${n.docNumber}`} title="Reprint" onClick={() => void reprint(n.id, n.docNumber)}><Printer size={14} aria-hidden /></button>
+                  </span>
+                </td>
               </tr>
             ))}
           </tbody>
@@ -83,6 +92,7 @@ export default function Sales() {
         </div>
       </section>
       {previewing && <InvoicePreview saleId={previewing} onClose={() => setPreviewing(null)} />}
+      {sharing && <ShareDialog target={sharing} onClose={() => setSharing(null)} />}
       {returning && (
         <ReturnDialog saleId={returning} onClose={() => setReturning(null)} onDone={(r) => {
           setReturning(null);

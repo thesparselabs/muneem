@@ -20,6 +20,8 @@ services:
       MUNEEM_S3_REGION: ${MUNEEM_S3_REGION:-}
       MUNEEM_BACKUP_MASTER_KEYS: ${MUNEEM_BACKUP_MASTER_KEYS:-}
       MUNEEM_BACKUP_MASTER_KEY: ${MUNEEM_BACKUP_MASTER_KEY:-}
+      MUNEEM_SMTP_URL: ${MUNEEM_SMTP_URL:-}
+      MUNEEM_MAIL_FROM: ${MUNEEM_MAIL_FROM:-}
       # ADR-0053: /metrics listens inside the container; the published port below decides who can reach it.
       MUNEEM_METRICS_ADDR: 0.0.0.0:9090
       MUNEEM_HEALTH_PROBE_INTERVAL: ${MUNEEM_HEALTH_PROBE_INTERVAL:-60s}

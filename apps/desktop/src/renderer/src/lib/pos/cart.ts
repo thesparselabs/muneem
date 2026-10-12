@@ -9,9 +9,12 @@ export interface CartLine {
   key: string; productId: string; name: string; uomId: string; uomCode: string; qtyMilli: number; lineDiscount: DiscountInput;
   pricing: LinePricing | null; issue?: string; stockWarning?: { message: string; blocking: boolean };
 }
+export interface BillSource { type: 'estimate' | 'delivery_challan'; id: string; docNumber: string }
 export interface Cart {
   lines: CartLine[]; customer: Customer | null; billDiscount: DiscountInput;
   placeOfSupplyOverride?: { stateCode: string; reason: string } | undefined;
+  // The estimate (FR-086) or delivery challan (FR-087) this bill comes from.
+  source?: BillSource | undefined;
 }
 
 const NO_DISCOUNT: DiscountInput = { kind: 'amount', value: 0 };
@@ -72,6 +75,18 @@ export function applyQuote(cart: Cart, quote: SaleQuote): Cart {
       };
     }),
   };
+}
+
+// Quote lines skip lines with an issue, so each form line finds its priced line by position, or its issue.
+export function alignQuote(count: number, quote: SaleQuote | undefined): { line?: SaleQuote['lines'][number]; issue?: string }[] {
+  const issues = new Map(quote?.issues.map((i) => [i.lineNo, i.message]) ?? []);
+  let next = 0;
+  return Array.from({ length: count }, (_, i) => {
+    const issue = issues.get(i + 1);
+    if (issue) return { issue };
+    const line = quote?.lines[next++];
+    return line ? { line } : {};
+  });
 }
 
 const pricingOf = (q: SaleQuote['lines'][number]): LinePricing => ({

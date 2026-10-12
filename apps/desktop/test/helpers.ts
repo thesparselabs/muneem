@@ -15,6 +15,7 @@ import type { CrashSend } from '../src/main/telemetry/crashReports.js';
 import type { Updater } from '../src/main/update/updater.js';
 import type { SpoolerTransport } from '../src/main/services/print/spooler.js';
 import type { LineRasteriser } from '../src/main/services/print/raster.js';
+import type { PdfRender } from '../src/main/services/invoice/pdf.js';
 import { WorkerReads, type BackgroundReads } from '../src/main/background/backgroundReads.js';
 
 export interface FakeServer { calls: { method: string; path: string; body: unknown; headers: Record<string, string> }[]; online: boolean; respond: (method: string, path: string, body: unknown) => { status: number; body: unknown } }
@@ -73,6 +74,7 @@ export interface TestAppOptions {
   printSpooler?: SpoolerTransport; lineRasteriser?: LineRasteriser;
   openDb?: (file: string) => Promise<Db>;
   backgroundReads?: BackgroundReads;
+  documentPdf?: PdfRender; saveDownload?: (fileName: string, bytes: Buffer) => Promise<{ saved: boolean; fileName: string }>; openExternal?: (url: string) => Promise<void>;
 }
 
 export async function testApp(opts: TestAppOptions = {}): Promise<{ app: App; db: Db; server: FakeServer; dir: string }> {
@@ -91,6 +93,8 @@ export async function testApp(opts: TestAppOptions = {}): Promise<{ app: App; db
     ...(opts.registerIdleMs !== undefined && { registerIdleMs: opts.registerIdleMs }), ...(opts.crashSend && { crashSend: opts.crashSend }),
     ...(opts.printSpooler && { printSpooler: opts.printSpooler }), ...(opts.lineRasteriser && { lineRasteriser: opts.lineRasteriser }),
     ...(opts.backgroundReads && { backgroundReads: opts.backgroundReads }),
+    ...(opts.documentPdf && { documentPdf: opts.documentPdf }), ...(opts.saveDownload && { saveDownload: opts.saveDownload }),
+    ...(opts.openExternal && { openExternal: opts.openExternal }),
     coldStart: opts.coldStart ?? 'pull', ...(opts.bundleFetcher && { bundleFetcher: opts.bundleFetcher }), sleep: async () => undefined,
   });
   app.device.ensureIdentity();

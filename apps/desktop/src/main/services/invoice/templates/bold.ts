@@ -34,7 +34,7 @@ export function render(data: InvoiceData, branding: InvoiceBranding): string {
     <div class="grand-box"><span>${esc(L.total)}</span><span>${money(data.totals.totalPaise)}</span></div>
     ${wordsLine(data, L)}
     ${termsBlock(branding, L)}
-    ${declaration(L)}
+    ${declaration(data, L)}
     ${signatory(data, branding, L)}
     ${footerNote(branding)}
   `;

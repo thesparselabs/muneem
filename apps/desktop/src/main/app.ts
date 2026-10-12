@@ -23,8 +23,14 @@ import { PrintQueue } from './services/print/printQueue.js';
 import { PrinterConfigStore } from './services/print/printerConfig.js';
 import { InvoiceService } from './services/invoice/index.js';
 import { InvoiceBrandingStore } from './services/invoice/brandingStore.js';
-import { buildInvoiceData } from './services/invoice/invoiceData.js';
-import { savePdf as saveInvoicePdf } from './services/invoice/pdf.js';
+import { buildInvoiceData, documentData } from './services/invoice/invoiceData.js';
+import { EstimateService } from './services/estimates/estimateService.js';
+import { quotationFileName, quotationVariant } from './services/estimates/quotation.js';
+import { ChallanService } from './services/challans/challanService.js';
+import { challanFileName, challanVariant } from './services/challans/challanPrint.js';
+import { renderPdf, savePdf as saveInvoicePdf, type PdfRender } from './services/invoice/pdf.js';
+import { buildStatement, CloudMailer, createShare } from './services/share/index.js';
+import { ReminderService } from './services/reminders/reminderService.js';
 import type { LineRasteriser } from './services/print/raster.js';
 import type { SpoolerTransport } from './services/print/spooler.js';
 import { PreviewStore } from './services/import/previewStore.js';
@@ -64,7 +70,7 @@ import { ProductSearch } from './services/productSearch.js';
 import { ProductService } from './services/products.js';
 import { DeviceService } from './services/device.js';
 import { seedDemo } from './services/dev/seedDemo.js';
-import { AppError } from '@muneem/contracts';
+import { AppError, REMINDER_DEFAULT_EVERY_DAYS } from '@muneem/contracts';
 import { DiagnosticsService } from './services/diagnostics.js';
 import { SessionService } from './services/session.js';
 import { SettingsService } from './services/settings.js';
@@ -95,7 +101,7 @@ import { createNotifications } from './notifications/index.js';
 import { CustomerPrivacyService } from './services/parties/customerPrivacy.js';
 import { createTelemetry } from './telemetry/index.js';
 import type { CrashSend } from './telemetry/crashReports.js';
-import type { SyncStatus, UpdateStatus } from '@muneem/contracts';
+import type { Challan, Estimate, InvoiceTemplateId, SyncStatus, UpdateStatus } from '@muneem/contracts';
 export interface AppConfig {
   db: () => Db;
   dbFile: string;
@@ -132,6 +138,10 @@ export interface AppConfig {
   isDev?: boolean;
   // ADR-0058: where reports and integrity checks run; by default on the read-only connection in this thread.
   backgroundReads?: BackgroundReads;
+  // ADR-0067: how a shared document becomes a PDF, reaches Downloads, and opens WhatsApp; Electron's in the app.
+  documentPdf?: PdfRender;
+  saveDownload?: (fileName: string, bytes: Buffer) => Promise<{ saved: boolean; fileName: string }>;
+  openExternal?: (url: string) => Promise<void>;
 }
 
 // The main connection checked the file at start-up; a second quick_check here would read the whole database again.
@@ -210,17 +220,26 @@ export function createApp(cfg: AppConfig) {
     db: cfg.db, config: printerConfig, receiptsDir: cfg.receiptsDir, log: cfg.loggers.hardware,
     ...(cfg.printSpooler && { spooler: cfg.printSpooler }), ...(cfg.lineRasteriser && { rasteriser: cfg.lineRasteriser }),
   });
-  const sales = new SaleService(posCtx, new SalePricing(posCtx), register, () => session.require().user.name, (r) => printQueue.enqueue(r.printJobId));
+  const salePricing = new SalePricing(posCtx);
+  const estimates = new EstimateService(posCtx, salePricing);
+  const challans = new ChallanService(posCtx, salePricing);
+  const sales = new SaleService(posCtx, salePricing, register, () => session.require().user.name, (r) => printQueue.enqueue(r.printJobId), (input, sale) => {
+    if (input.estimateId) estimates.convert(input.estimateId, sale);
+    if (input.challanId) challans.bill(input.challanId, sale);
+  });
   const returns = new ReturnService(posCtx, () => session.require().user.name, (r) => printQueue.enqueue(r.printJobId));
+  const seller = {
+    getBusiness: () => business.get(),
+    getBranch: () => { const id = session.get()?.branchId ?? null; return id ? (business.getBranches().find((b) => b.id === id) ?? null) : null; },
+  };
   const invoice = new InvoiceService({
     branding: new InvoiceBrandingStore({ db: cfg.db, businessId: () => posCtx.businessId(), actor: () => posCtx.actor() }),
-    buildData: (saleId) => buildInvoiceData(saleId, {
-      getSale: (id) => sales.get(id),
-      getBusiness: () => business.get(),
-      getBranch: () => { const id = session.get()?.branchId ?? null; return id ? (business.getBranches().find((b) => b.id === id) ?? null) : null; },
-    }),
+    buildData: (saleId) => buildInvoiceData(saleId, { ...seller, getSale: (id) => sales.get(id) }),
     save: saveInvoicePdf,
   });
+  const quotation = (e: Estimate, templateId?: InvoiceTemplateId) => invoice.compose(documentData(e, seller, quotationVariant(e)), quotationFileName(e), templateId);
+  const challanDocument = (c: Challan, templateId?: InvoiceTemplateId) =>
+    invoice.compose(documentData({ ...c, customer: c.consignee }, seller, challanVariant(c)), challanFileName(c), templateId);
   const productImport = new ImportService(catalogCtx, new PreviewStore(cfg.now ?? (() => Date.now())), invalidateSearch);
   const diagnostics = new DiagnosticsService({
     db: cfg.db, reads, dbFile: cfg.dbFile, bundlesDir: cfg.bundlesDir, loggers: cfg.loggers, session, device,
@@ -274,14 +293,36 @@ export function createApp(cfg: AppConfig) {
     listCloudBusinesses: async () => (await cloud.request<{ id: string; name: string; state_code?: string | null }[]>('GET', '/businesses')).data,
     emit: (status) => events.emit('sync.hydration', status), afterReady: () => sync.pullNow(), log: cfg.loggers.sync,
   });
+  const openBusiness = () => { const id = session.get()?.businessId ?? null; return id && !gate.holds(id) ? id : null; };
+  const shop = () => { const b = business.get(); return { name: b?.name ?? '', gstin: b?.gstin ?? null, email: b?.email }; };
+  const share = createShare({
+    db: cfg.db,
+    sources: {
+      shopName: () => shop().name, sale: (id) => sales.get(id), invoice: (saleId) => invoice.document({ saleId }),
+      creditNote: (id) => returns.get(id), creditNoteReceipt: (id) => returns.receipt(id), customer: (id) => customers.get(id), supplier: (id) => suppliers.get(id),
+      estimate: (id) => estimates.get(id), estimateDocument: (e) => quotation(e), challan: (id) => challans.get(id), challanDocument: (c) => challanDocument(c),
+      statement: (partyType, party, range) => buildStatement({ db: cfg.db(), businessId: posCtx.businessId(), today: posCtx.today() }, shop(), partyType, party, range,
+        new Date((cfg.now ?? Date.now)()).toISOString()),
+      renderPdf: cfg.documentPdf ?? renderPdf,
+    },
+    mailer: new CloudMailer(() => cloud, () => auth.refreshAccessToken()),
+    openBusiness, businessId: () => posCtx.businessId(), userId: () => posCtx.userId(), can: (p) => posCtx.can(p), shop, online: () => connectivity.online,
+    openExternal: cfg.openExternal ?? (() => Promise.reject(new AppError('INVALID_STATE', 'Opening WhatsApp needs the desktop app'))),
+    saveDownload: cfg.saveDownload ?? ((fileName) => Promise.resolve({ saved: false, fileName })),
+    now: cfg.now ?? (() => Date.now()), log: (err) => cfg.loggers.app.error({ err: String(err) }, 'share email attempt failed'),
+  });
+  const reminders = new ReminderService({
+    db: cfg.db, businessId: () => posCtx.businessId(), userId: () => posCtx.userId(), now: cfg.now ?? (() => Date.now()),
+    everyDays: () => posCtx.setting('reminders.everyDays', REMINDER_DEFAULT_EVERY_DAYS), shopName: () => shop().name, customer: (id) => customers.get(id),
+    share: share.service,
+  });
   events.attach({
     send: (channel, payload) => {
-      if (channel === 'connectivity.changed' && (payload as { online?: boolean }).online) sync.online();
-      if (channel === 'session.changed' && (payload as { businessId?: string | null } | null)?.businessId) sync.online();
+      if (channel === 'connectivity.changed' && (payload as { online?: boolean }).online) { sync.online(); share.outbox.drain(); }
+      if (channel === 'session.changed' && (payload as { businessId?: string | null } | null)?.businessId) { sync.online(); share.outbox.drain(); }
       if (channel === 'session.changed') updates.activity.clearCart();
     },
   });
-  const openBusiness = () => { const id = session.get()?.businessId ?? null; return id && !gate.holds(id) ? id : null; };
   const notifications = createNotifications({
     db: cfg.db, businessId: openBusiness, now: cfg.now ?? (() => Date.now()), emit: (n) => events.emit('notification.new', n),
     can: (p) => { const s = session.get(); return !!s && rbac.has(s, p) !== null; },
@@ -375,6 +416,10 @@ export function createApp(cfg: AppConfig) {
     'customers.withdrawConsent': (i) => customerPrivacy.withdrawConsent(i),
     'customers.exportProfile': (i) => customerPrivacy.exportProfile(i),
     'customers.erase': (i) => customerPrivacy.erase(i),
+    'reminders.due': () => reminders.due(),
+    'reminders.preview': (i) => reminders.preview(i.customerId),
+    'reminders.send': (i) => reminders.send(i),
+    'reminders.history': (i) => reminders.history(i),
     'suppliers.search': (i) => suppliers.search(i.query, i.limit),
     'suppliers.get': (i) => suppliers.get(i.id),
     'suppliers.create': (i) => suppliers.create(i),
@@ -444,6 +489,16 @@ export function createApp(cfg: AppConfig) {
     'sales.list': (i) => sales.list(i),
     'sales.getReceipt': (i) => sales.receipt(i.saleId),
     'sales.cancel': (i) => returns.cancel(i),
+    'estimates.create': (i) => estimates.create(i),
+    'estimates.get': (i) => estimates.get(i.id),
+    'estimates.list': (i) => estimates.list(i),
+    'estimates.renderHtml': (i) => ({ html: quotation(estimates.get(i.id), i.templateId).html }),
+    'estimates.savePdf': (i) => invoice.saveDocument(quotation(estimates.get(i.id), i.templateId)),
+    'challans.create': (i) => challans.create(i),
+    'challans.get': (i) => challans.get(i.id),
+    'challans.list': (i) => challans.list(i),
+    'challans.renderHtml': (i) => ({ html: challanDocument(challans.get(i.id), i.templateId).html }),
+    'challans.savePdf': (i) => invoice.saveDocument(challanDocument(challans.get(i.id), i.templateId)),
     'returns.quote': (i) => returns.quote(i),
     'returns.complete': (i) => returns.complete(i),
     'returns.get': (i) => returns.get(i.id),
@@ -504,6 +559,7 @@ export function createApp(cfg: AppConfig) {
     ...telemetry.handlers,
     ...updates.handlers,
     ...notifications.handlers,
+    ...share.handlers,
   };
 
   printQueue.resumeUnfinished(catalogCtx.today());
@@ -514,6 +570,6 @@ export function createApp(cfg: AppConfig) {
     onCommitted: (channel) => { sync.nudge(); notifications.runner.afterCommit(channel); }, holds: (id) => gate.holds(id), onDispatch: (channel) => updates.activity.dispatch(channel),
   });
 
-  return { events, session, reports, dashboard, rbac, cloud, connectivity, device, auth, business, settings, products, catalog, pricing, productImport, customers, suppliers, customerLedger, supplierLedger, customerImport, supplierImport, purchases, purchaseReturns, purchaseImport, payments, writeOffs, expenses, periods, yearEnd, backlog, statements, chart, manualJournals, gst, register, sales, returns, invoice, printQueue, inventory, openingImport, diagnostics, backups, closeReadConnections, gateway, handlers, syncStatus, syncEngine, sync, hydration, hydrationGate: gate, updates, notifications, customerPrivacy, telemetry };
+  return { events, session, reports, dashboard, rbac, cloud, connectivity, device, auth, business, settings, products, catalog, pricing, productImport, customers, suppliers, customerLedger, supplierLedger, customerImport, supplierImport, purchases, purchaseReturns, purchaseImport, payments, writeOffs, expenses, periods, yearEnd, backlog, statements, chart, manualJournals, gst, register, sales, estimates, challans, returns, invoice, printQueue, inventory, openingImport, diagnostics, backups, closeReadConnections, gateway, handlers, syncStatus, syncEngine, sync, hydration, hydrationGate: gate, updates, notifications, customerPrivacy, telemetry, share, reminders };
 }
 export type App = ReturnType<typeof createApp>;
