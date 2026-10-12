@@ -1,4 +1,4 @@
-import { Eye, History, Printer } from 'lucide-react';
+import { Eye, History, Printer, Share2 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '../../api.js';
 import { formatPaise } from '../../lib/money.js';
@@ -7,7 +7,7 @@ import { useCan } from '../../lib/permissions.js';
 const timeOf = (iso: string) => new Date(iso).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
 
 // The last few bills, shown while the cart is empty so a cashier can reopen or reprint one without leaving the till.
-export default function RecentBills({ onView, onReprint }: { onView: (saleId: string) => void; onReprint: (saleId: string, docNumber: string) => void }) {
+export default function RecentBills({ onView, onShare, onReprint }: { onView: (saleId: string) => void; onShare: (saleId: string) => void; onReprint: (saleId: string, docNumber: string) => void }) {
   const canView = useCan('sales.view');
   const bills = useQuery({ queryKey: ['recentBills'], queryFn: () => api.sales.list({ limit: 8 }), enabled: canView });
   const items = bills.data?.items ?? [];
@@ -27,6 +27,7 @@ export default function RecentBills({ onView, onReprint }: { onView: (saleId: st
               <td className="p-2">
                 <span className="flex justify-end gap-1">
                   <button type="button" className="btn-ghost p-1.5" aria-label={`View invoice ${s.docNumber}`} title="View invoice" onClick={() => onView(s.id)}><Eye size={16} aria-hidden /></button>
+                  <button type="button" className="btn-ghost p-1.5" aria-label={`Share invoice ${s.docNumber}`} title="Share by WhatsApp or email" onClick={() => onShare(s.id)}><Share2 size={16} aria-hidden /></button>
                   <button type="button" className="btn-ghost p-1.5" aria-label={`Reprint ${s.docNumber}`} title="Reprint receipt" onClick={() => onReprint(s.id, s.docNumber)}><Printer size={16} aria-hidden /></button>
                 </span>
               </td>

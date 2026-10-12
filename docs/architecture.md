@@ -40,6 +40,7 @@ docs/             this folder (reality, with reasons)
 | Tenant data | A business never sees another's rows | Postgres RLS keyed on `app.business_id` set per transaction |
 | Shop ↔ operator | No shop user reaches `/v1/admin` or `/admin`; no operator token opens a shop route; only `muneem_admin` reads across shops | operator grants written only by the owner role; operator tokens under derived keys with scope `op`; `muneem_admin` SELECT policies (ADR-0057) |
 | Hardware / network | Never inside the commit path | (Stage 3+) design rule, HLD §8 |
+| Main ↔ OS shell | Opens only `https://wa.me/` links it built itself | the `openExternal` guard in `index.ts` (ADR-0067) |
 | Sync transport ↔ SQLite | The utility process does HTTP only; main alone writes, and a pulled change never writes an outbox or audit row | process split (HLD §3.1); round-trip no-echo test |
 | TS ↔ Go sync servers | Same answers to the same requests | shared protocol fixtures in both suites (ADR-0042) |
 | Billing thread ↔ history-wide reads | Reports and integrity checks read in a worker thread on its own read-only connection; main only heals | read worker (ADR-0058); `pnpm scale` sells within budget while the checks run at 500k |
@@ -256,6 +257,22 @@ docs/             this folder (reality, with reasons)
   and every sale's customer snapshot, and the cloud refuses to un-erase a customer.
 - Invariants (tests): a detector run twice changes nothing; at most one open notification per (business, kind,
   entity); erasure leaves the tie-outs and party reconciliation clean and is refused with a balance.
+
+## Sharing documents (Phase 1, FR-085)
+
+- `apps/desktop/src/main/services/share/` (ADR-0067): `ShareDocuments` turns an invoice, credit note or party
+  statement into a label, a standard message, the party's contact and a PDF (the invoice template, the 80 mm credit
+  note receipt, the party ledger report). `ShareService` checks the document's permission and sends:
+  - **WhatsApp:** the PDF goes to Downloads and a `https://wa.me/` chat opens with the message (the only kind of link
+    the main process opens); recorded as `opened`.
+  - **Email:** the PDF is queued in `share_log` (local, never synced) and `EmailOutbox` posts it to
+    `POST /v1/share/email` at once when online, else on reconnect, on opening the business and every 60 s, with backoff.
+- **Cloud:** `cloud/internal/share` checks membership, the request and a daily cap, records `share_email` per
+  (business, share) so a retry never sends twice, and relays through `cloud/internal/mail` (SMTP). Without
+  `MUNEEM_SMTP_URL` the route answers 503 and devices keep waiting.
+- Invariants (tests): a queued email is sent once when the cloud is back; a crash mid-send resends and the cloud
+  answers without a second email; a refusal fails at once; header injection, non-PDF and oversized attachments are
+  refused before anything is relayed.
 
 ## Identity and trust
 

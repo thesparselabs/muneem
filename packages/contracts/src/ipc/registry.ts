@@ -34,6 +34,7 @@ import { CompleteSaleInput, CompleteSaleResult, HeldBill, HoldBillInput, Sale, S
 import { CancelSaleInput, CompleteReturnInput, CompleteReturnResult, CreditNote, CreditNoteListInput, CreditNotePage, ReturnDraft, ReturnQuote } from './returns.js';
 import { InstalledPrinter, PrintJobSummary, PrinterConfig, ReceiptDoc } from './print.js';
 import { InvoiceBranding, ListTemplatesResult, RenderInvoiceInput, RenderInvoiceResult, SaveInvoicePdfInput, SaveInvoicePdfResult } from './invoice.js';
+import { SendShareInput, ShareHistoryInput, SharePreview, SharePreviewInput, ShareRecord } from './share.js';
 import { SETTING_KEYS } from './settings.js';
 import { CrashReportingStatus, RendererErrorInput } from './telemetry.js';
 import { CloudBusiness, HydrationStartInput, HydrationStatus } from './hydration.js';
@@ -210,6 +211,11 @@ export const contract = {
   'invoice.setBranding': spec({ input: InvoiceBranding, output: InvoiceBranding, permission: 'settings.manage', rateLimit: { perSec: 2 }, audit: true }),
   'invoice.renderHtml': spec({ input: RenderInvoiceInput, output: RenderInvoiceResult, permission: 'pos.view', rateLimit: { perSec: 10 } }),
   'invoice.savePdf': spec({ input: SaveInvoicePdfInput, output: SaveInvoicePdfResult, permission: 'pos.view', rateLimit: { perSec: 2 } }),
+
+  // ADR-0067: every role holds business.view; the service checks the permission each document type needs.
+  'share.preview': spec({ input: SharePreviewInput, output: SharePreview, permission: 'business.view', rateLimit: { perSec: 10 } }),
+  'share.send': spec({ input: SendShareInput, output: ShareRecord, permission: 'business.view', rateLimit: { perSec: 2 }, audit: true }),
+  'share.history': spec({ input: ShareHistoryInput, output: z.array(ShareRecord), permission: 'business.view', rateLimit: { perSec: 10 } }),
 
   'inventory.getStock': spec({ input: StockListInput, output: StockPage, permission: 'inventory.view', rateLimit: { perSec: 10 } }),
   'inventory.getMovements': spec({ input: MovementsInput, output: MovementPage, permission: 'inventory.view', rateLimit: { perSec: 10 } }),
