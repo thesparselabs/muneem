@@ -14,6 +14,8 @@ export interface CustomerDocument { type: string; id: string; docNumber: string 
 export function customerDocuments(db: Db, businessId: string, customerId: string): CustomerDocument[] {
   return (stmt(db, `SELECT 'sale' AS type, id, doc_number, doc_date, total_paise AS amount, status FROM sale WHERE business_id = @b AND customer_id = @c
     UNION ALL SELECT 'credit_note', id, doc_number, doc_date, total_paise, status FROM credit_note WHERE business_id = @b AND customer_id = @c
+    UNION ALL SELECT 'estimate', id, doc_number, doc_date, total_paise, status FROM estimate WHERE business_id = @b AND customer_id = @c
+    UNION ALL SELECT 'delivery_challan', id, doc_number, doc_date, total_paise, status FROM delivery_challan WHERE business_id = @b AND customer_id = @c
     UNION ALL SELECT 'payment', id, doc_number, payment_date, amount_paise, status FROM payment WHERE business_id = @b AND party_type = 'customer' AND party_id = @c
     UNION ALL SELECT 'write_off', id, NULL, doc_date, amount_paise, status FROM write_off WHERE business_id = @b AND customer_id = @c
     UNION ALL SELECT 'opening', id, NULL, as_of_date, amount_paise, status FROM party_opening WHERE business_id = @b AND party_type = 'customer' AND party_id = @c

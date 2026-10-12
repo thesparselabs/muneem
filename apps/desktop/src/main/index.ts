@@ -14,6 +14,7 @@ import { recoverCorruptDatabase, type CorruptDbChoice } from './backups/recovery
 import { createLoggers } from './infra/logger.js';
 import { createElectronSecretStore } from './infra/secrets.js';
 import { electronHtmlToPdf, electronSaveFile } from './infra/files.js';
+import { renderPdf, saveToDownloads } from './services/invoice/pdf.js';
 import { registerIpc } from './ipc/gateway.js';
 import { currentSchemaVersion, getMeta, restoreDatabaseFile, setMeta, type Db } from '@muneem/db-sqlite';
 import { rmSync } from 'node:fs';
@@ -144,6 +145,9 @@ async function boot(): Promise<void> {
     hydrationDir: join(userData, 'hydration'),
     backgroundReads: new WorkerReads(READ_WORKER, { dbFile: paths.file, nativeBinding: nativeBindingPath() }),
     saveFile: electronSaveFile(() => mainWindow), pdfRenderer: electronHtmlToPdf,
+    // ADR-0067: sharing opens only a WhatsApp click-to-chat link it built itself.
+    documentPdf: renderPdf, saveDownload: saveToDownloads,
+    openExternal: (url) => (url.startsWith('https://wa.me/') ? shell.openExternal(url) : Promise.reject(new Error('refused to open a non-WhatsApp link'))),
     ...printing(loggers),
     apiBaseUrl, appVersion: app.getVersion(), platform: process.platform, isDev,
     crashDsn: process.env.MUNEEM_CRASH_DSN ?? (app.isPackaged ? DEFAULT_CRASH_DSN : null),
@@ -185,6 +189,7 @@ async function boot(): Promise<void> {
   muneem.events.attach({ send: (ch, p) => mainWindow?.webContents.send(ch, p) });
   muneem.connectivity.start();
   muneem.sync.start();
+  muneem.share.outbox.start();
   void muneem.hydration.resume().catch((e) => loggers.sync.error({ err: String(e) }, 'hydration resume failed'));
   // ADR-0034: each business seeds its chart and posts its backlog once per run, when a session first has it.
   muneem.events.attach({
@@ -257,6 +262,7 @@ app.on('before-quit', () => {
   muneem?.updates.service.stop();
   muneem?.connectivity.stop();
   muneem?.sync.stop();
+  muneem?.share.outbox.stop();
   stopSyncWorker?.();
   muneem?.closeReadConnections();
   try {

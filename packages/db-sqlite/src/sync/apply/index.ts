@@ -9,6 +9,8 @@ import { actorFor, appliedVersion, markApplied, Touched, type ApplyContext } fro
 import { applyConflictLog, applyDeviceMessage, applyPeriod, applyReviewItem } from './control.js';
 import { applyFyClose } from './yearEnd.js';
 import { applyDocument, type DocumentApplier } from './documents.js';
+import { DELIVERY_CHALLAN } from './challans.js';
+import { ESTIMATE } from './estimates.js';
 import { EXPENSE } from './expenses.js';
 import { applyJournalEntry } from './journals.js';
 import { applyMaster, type MasterSpec } from './master.js';
@@ -36,7 +38,8 @@ const APPLIERS: Readonly<Record<PulledEntityType | 'conflict_log' | 'review_item
   pos_session: document(POS_SESSION), cash_movement: applyCashMovement, sale: document(SALE), credit_note: document(CREDIT_NOTE), gst_setoff: document(GST_SETOFF), gst_payment: document(GST_PAYMENT),
   stock_adjustment: applyStockDocument,
   party_opening: document(PARTY_OPENING), purchase: document(PURCHASE), debit_note: document(DEBIT_NOTE), payment: document(PAYMENT), write_off: document(WRITE_OFF),
-  expense: document(EXPENSE), allocation: applyAllocationEntity, journal_entry: applyJournalEntry,
+  expense: document(EXPENSE), allocation: applyAllocationEntity, journal_entry: applyJournalEntry, estimate: document(ESTIMATE),
+  delivery_challan: document(DELIVERY_CHALLAN),
   accounting_period: applyPeriod, fy_close: applyFyClose, conflict_log: applyConflictLog, review_item: applyReviewItem, device: applyDeviceMessage,
 };
 

@@ -40,6 +40,7 @@ docs/             this folder (reality, with reasons)
 | Tenant data | A business never sees another's rows | Postgres RLS keyed on `app.business_id` set per transaction |
 | Shop ↔ operator | No shop user reaches `/v1/admin` or `/admin`; no operator token opens a shop route; only `muneem_admin` reads across shops | operator grants written only by the owner role; operator tokens under derived keys with scope `op`; `muneem_admin` SELECT policies (ADR-0057) |
 | Hardware / network | Never inside the commit path | (Stage 3+) design rule, HLD §8 |
+| Main ↔ OS shell | Opens only `https://wa.me/` links it built itself | the `openExternal` guard in `index.ts` (ADR-0067) |
 | Sync transport ↔ SQLite | The utility process does HTTP only; main alone writes, and a pulled change never writes an outbox or audit row | process split (HLD §3.1); round-trip no-echo test |
 | TS ↔ Go sync servers | Same answers to the same requests | shared protocol fixtures in both suites (ADR-0042) |
 | Billing thread ↔ history-wide reads | Reports and integrity checks read in a worker thread on its own read-only connection; main only heals | read worker (ADR-0058); `pnpm scale` sells within budget while the checks run at 500k |
@@ -256,6 +257,52 @@ docs/             this folder (reality, with reasons)
   and every sale's customer snapshot, and the cloud refuses to un-erase a customer.
 - Invariants (tests): a detector run twice changes nothing; at most one open notification per (business, kind,
   entity); erasure leaves the tie-outs and party reconciliation clean and is refused with a balance.
+
+## Sharing documents (Phase 1, FR-085)
+
+- `apps/desktop/src/main/services/share/` (ADR-0067): `ShareDocuments` turns an invoice, credit note or party
+  statement into a label, a standard message, the party's contact and a PDF (the invoice template, the 80 mm credit
+  note receipt, the party ledger report). `ShareService` checks the document's permission and sends:
+  - **WhatsApp:** the PDF goes to Downloads and a `https://wa.me/` chat opens with the message (the only kind of link
+    the main process opens); recorded as `opened`.
+  - **Email:** the PDF is queued in `share_log` (local, never synced) and `EmailOutbox` posts it to
+    `POST /v1/share/email` at once when online, else on reconnect, on opening the business and every 60 s, with backoff.
+- **Cloud:** `cloud/internal/share` checks membership, the request and a daily cap, records `share_email` per
+  (business, share) so a retry never sends twice, and relays through `cloud/internal/mail` (SMTP). Without
+  `MUNEEM_SMTP_URL` the route answers 503 and devices keep waiting.
+- Invariants (tests): a queued email is sent once when the cloud is back; a crash mid-send resends and the cloud
+  answers without a second email; a refusal fails at once; header injection, non-PDF and oversized attachments are
+  refused before anything is relayed.
+
+## Estimates (Phase 1, FR-086)
+
+- `apps/desktop/src/main/services/estimates/` (ADR-0068): `EstimateService` prices a draft through `SalePricing` and
+  stores `estimate` + `estimate_item` with a Q number, posting nothing. `SaleService.complete` converts the estimate
+  named by `estimateId` in the sale's own transaction.
+- **Printing:** an estimate prints as a quotation through `InvoiceService.compose` and the `InvoiceData.document`
+  variant.
+- **Sync:** entity `estimate` is on the documents stream. Go verifies its GST with the sale recompute, the reference
+  server checks its totals, and the pull path files it under the origin's number. The cloud's latest conversion wins.
+- Invariants (tests):
+  - an estimate's totals equal a sale quote of the same draft;
+  - no journal, movement or party entry refers to an estimate;
+  - converting bills the same lines and total once, and a refused conversion leaves no sale;
+  - two tills converge on the same estimate and conversion.
+
+## Delivery challans (Phase 1, FR-087)
+
+- `apps/desktop/src/main/services/challans/` (ADR-0069): `ChallanService` values a challan through `SalePricing` (no
+  discounts; a typed consignee's GSTIN sets the place of supply) and stores `delivery_challan` + its items with an H
+  number. It posts nothing and moves no stock.
+- **Invoicing:** `SaleService`'s `MarkBilledFrom` hook links a supply challan to the sale billing it, in the sale's
+  transaction. Estimates use the same hook.
+- **Shared code:** estimate and challan lines share `repositories/pricedLines.ts`. On the Go cloud both are
+  `verify.PricedDocument`.
+- Invariants (tests):
+  - a challan's value equals a sale quote of its lines;
+  - nothing posts or moves for a challan;
+  - only a supply challan is invoiced, once;
+  - two tills converge on the same challan and link.
 
 ## Identity and trust
 

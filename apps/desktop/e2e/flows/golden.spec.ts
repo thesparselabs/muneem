@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { readFileSync } from 'node:fs';
+import { mkdirSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fitsAndSnap, launchMuneem, printed, savedDocNumber, stubSaveDialog, type Muneem } from '../support/muneem.js';
 import { amountIn, createProduct, firstRunSetup, go, openingStock, pick, scan, signIn } from '../support/steps.js';
@@ -170,6 +170,102 @@ test.describe.serial('golden flow', () => {
     const note = /Credit note (\S+)/u.exec((await issued.textContent()) ?? '')![1]!;
     await printed(m, note);
     await expect(page.getByRole('region', { name: 'Credit notes' }).getByRole('cell', { name: firstBill })).toBeVisible();
+  });
+
+  test('share a bill by email and WhatsApp (FR-085)', async () => {
+    const downloads = join(m.profile, 'downloads');
+    mkdirSync(downloads, { recursive: true });
+    await m.app.evaluate(({ app, shell }, dir) => {
+      app.setPath('downloads', dir);
+      const opened: string[] = [];
+      (globalThis as { opened?: string[] }).opened = opened;
+      shell.openExternal = (async (url: string) => { opened.push(url); }) as typeof shell.openExternal;
+    }, downloads);
+    await go(page, '/sales');
+    await page.getByRole('row').filter({ hasText: firstBill }).getByRole('button', { name: `Share invoice ${firstBill}` }).click();
+    const dialog = page.getByRole('dialog', { name: `Share Tax invoice ${firstBill}` });
+    await dialog.getByRole('button', { name: 'Email', exact: true }).click();
+    await dialog.getByLabel('Email address').fill('meena@example.com');
+    await dialog.getByRole('button', { name: 'Send email' }).click();
+    await expect(dialog.getByRole('status')).toHaveText('Emailed to meena@example.com.');
+    expect(m.cloud.mails.map((mail) => [mail.to, mail.attachment.fileName])).toEqual([['meena@example.com', `invoice-${firstBill.replaceAll('/', '_')}.pdf`]]);
+    expect(Buffer.from(m.cloud.mails[0]!.attachment.contentBase64, 'base64').subarray(0, 5).toString()).toBe('%PDF-');
+    await expect(dialog.getByRole('region', { name: 'Shared before' })).toContainText('Email · meena@example.com');
+    await fitsAndSnap(page, '13a-share');
+
+    await dialog.getByRole('button', { name: 'WhatsApp', exact: true }).click();
+    await dialog.getByLabel('WhatsApp number').fill('98765 43210');
+    await dialog.getByRole('button', { name: 'Open WhatsApp' }).click();
+    await expect(dialog.getByRole('status')).toContainText('WhatsApp opened for +919876543210');
+    const opened = await m.app.evaluate(() => (globalThis as { opened?: string[] }).opened ?? []);
+    expect(opened).toHaveLength(1);
+    expect(opened[0]).toMatch(/^https:\/\/wa\.me\/919876543210\?text=Dear%20Customer/u);
+    expect(readdirSync(downloads)).toEqual([`invoice-${firstBill.replaceAll('/', '_')}.pdf`]);
+    await page.keyboard.press('Escape');
+    await expect(dialog).toBeHidden();
+  });
+
+  test('quote an estimate, then bill it at the till (FR-086)', async () => {
+    await go(page, '/estimates');
+    await page.getByRole('link', { name: 'New estimate' }).click();
+    await page.getByLabel('Customer').fill('Meena');
+    await page.getByRole('button', { name: /Meena Traders/ }).click();
+    await page.getByLabel('Add a product').fill('Basmati');
+    await page.getByRole('button', { name: /Basmati Rice 1kg/ }).click();
+    await page.getByLabel('Quantity for Basmati Rice 1kg').fill('3');
+    await expect(page.getByLabel('Estimate total')).toContainText('Total');
+    await page.getByRole('button', { name: 'Save estimate' }).click();
+    await expect(page).toHaveURL(/#\/estimates$/u);
+    const row = page.getByRole('row').filter({ hasText: 'Meena Traders' }).first();
+    await expect(row).toContainText('Open');
+    const estimate = (await row.getByRole('cell').first().textContent())!.trim();
+    expect(estimate).toMatch(/Q\/\d{4}\/00001$/u);
+    await fitsAndSnap(page, '13b-estimates');
+
+    await row.getByRole('button', { name: 'Bill it' }).click();
+    await expect(page.getByRole('note')).toHaveText(`Billing estimate ${estimate}`);
+    await expect(page.getByRole('cell', { name: 'Basmati Rice 1kg', exact: true })).toBeVisible();
+    await expect(page.getByRole('complementary').getByText('Meena Traders')).toBeVisible();
+    await page.keyboard.press('F5');
+    await expect(page.getByRole('dialog', { name: /Payment \(F5\)/ })).toBeVisible();
+    await page.keyboard.press('Enter');
+    const saved = page.getByRole('status').filter({ hasText: /^Saved / });
+    await expect(saved).toBeVisible();
+    const bill = savedDocNumber(await saved.textContent());
+    await go(page, '/estimates');
+    await expect(page.getByRole('row').filter({ hasText: estimate })).toContainText(`Billed as ${bill}`);
+  });
+
+  test('send goods on a delivery challan, then invoice it at the till (FR-087)', async () => {
+    await go(page, '/challans');
+    await page.getByRole('link', { name: 'New challan' }).click();
+    await expect(page.getByLabel('Purpose')).toHaveValue('supply');
+    await page.getByLabel('Customer').fill('Meena');
+    await page.getByRole('button', { name: /Meena Traders/ }).click();
+    await page.getByLabel('Add a product').fill('Amul');
+    await page.getByRole('button', { name: /Amul Butter 100g/ }).click();
+    await page.getByLabel('Quantity for Amul Butter 100g').fill('2');
+    await page.getByLabel('Vehicle number').fill('DL01AB1234');
+    await expect(page.getByLabel('Challan value')).toContainText('Value of goods');
+    await page.getByRole('button', { name: 'Save challan' }).click();
+    await expect(page).toHaveURL(/#\/challans$/u);
+    const row = page.getByRole('row').filter({ hasText: 'DL01AB1234' }).first();
+    await expect(row).toContainText('Open');
+    const challan = (await row.getByRole('cell').first().textContent())!.trim();
+    expect(challan).toMatch(/H\/\d{4}\/00001$/u);
+    await fitsAndSnap(page, '13c-challans');
+
+    await row.getByRole('button', { name: 'Bill it' }).click();
+    await expect(page.getByRole('note')).toHaveText(`Billing challan ${challan}`);
+    await expect(page.getByRole('cell', { name: 'Amul Butter 100g', exact: true })).toBeVisible();
+    await page.keyboard.press('F5');
+    await expect(page.getByRole('dialog', { name: /Payment \(F5\)/ })).toBeVisible();
+    await page.keyboard.press('Enter');
+    const saved = page.getByRole('status').filter({ hasText: /^Saved / });
+    await expect(saved).toBeVisible();
+    const bill = savedDocNumber(await saved.textContent());
+    await go(page, '/challans');
+    await expect(page.getByRole('row').filter({ hasText: challan })).toContainText(`Invoiced as ${bill}`);
   });
 
   test('receive a payment against the credit sale', async () => {

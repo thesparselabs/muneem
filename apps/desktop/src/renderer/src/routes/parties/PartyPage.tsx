@@ -10,9 +10,10 @@ import { useCan } from '../../lib/permissions.js';
 import { CreditLimitDialog, CustomerEditDialog, OpeningDialog, SupplierDialog, WriteOffDialog } from './PartyDialogs.js';
 import CustomerPrivacy from './CustomerPrivacy.js';
 import ExportMenu from '../../components/ExportMenu.js';
-import { User, ChevronDown, BookOpen, CreditCard, Eraser, Pencil, Wallet } from 'lucide-react';
+import ShareDialog from '../../components/ShareDialog.js';
+import { User, ChevronDown, BookOpen, CreditCard, Eraser, Pencil, Share2, Wallet } from 'lucide-react';
 
-type Modal = 'edit' | 'opening' | 'limit' | 'writeOff' | null;
+type Modal = 'edit' | 'opening' | 'limit' | 'writeOff' | 'share' | null;
 const REF_LABEL: Record<string, string> = { sale: 'Sale', purchase: 'Purchase', debit_note: 'Debit note', credit_note: 'Credit note', payment: 'Payment', write_off: 'Write-off', opening: 'Opening balance', expense: 'Expense' };
 
 export default function PartyPage() {
@@ -56,6 +57,7 @@ export default function PartyPage() {
         </div>
         <div className="flex flex-wrap gap-2">
           <ExportMenu reportId={partyType === 'customer' ? 'parties.customerLedger' : 'parties.supplierLedger'} params={{ partyId: p.id, ...range }} />
+          <button type="button" className="btn-secondary" onClick={() => setModal('share')}><Share2 size={16} aria-hidden />Share statement</button>
           {canPay && <Link to={`/payments/new?partyType=${partyType}&partyId=${p.id}`} className="btn-primary"><Wallet size={16} aria-hidden />{partyType === 'customer' ? 'Receive payment' : 'Pay supplier'}</Link>}
           {!erased && <button type="button" className="btn-secondary px-2.5" aria-label="Edit" title="Edit" onClick={() => setModal('edit')}><Pencil size={16} aria-hidden /></button>}
           <button type="button" className="btn-secondary" onClick={() => setModal('opening')}><BookOpen size={16} aria-hidden />Opening balance</button>
@@ -104,6 +106,13 @@ export default function PartyPage() {
       {statement.hasNextPage && <button type="button" className="btn-secondary" onClick={() => void statement.fetchNextPage()}><ChevronDown size={16} aria-hidden />Show more</button>}
       {modal === 'edit' && partyType === 'customer' && <CustomerEditDialog customer={p as Customer} onClose={() => setModal(null)} onDone={done} />}
       {modal === 'edit' && partyType === 'supplier' && <SupplierDialog supplier={p as Supplier} defaultState={(p as Supplier).stateCode} onClose={() => setModal(null)} onDone={done} />}
+      {modal === 'share' && (
+        <ShareDialog target={{
+          docType: partyType === 'customer' ? 'customer_statement' : 'supplier_statement', id: p.id,
+          ...((range.from || range.to) && { period: { ...(range.from && { from: range.from }), ...(range.to && { to: range.to }) } }),
+        }}
+          onClose={() => setModal(null)} />
+      )}
       {modal === 'opening' && <OpeningDialog partyType={partyType} partyId={p.id} onClose={() => setModal(null)} onDone={done} />}
       {modal === 'limit' && <CreditLimitDialog customer={p as Customer} onClose={() => setModal(null)} onDone={done} />}
       {modal === 'writeOff' && open.data && <WriteOffDialog customer={p as Customer} items={open.data.charges} onClose={() => setModal(null)} onDone={done} />}

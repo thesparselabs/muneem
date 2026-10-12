@@ -93,19 +93,22 @@ export function buyerBlock(data: InvoiceData, labels: Labels): string {
   const b = data.buyer;
   const name = b.walkIn || !b.name ? 'Walk-in customer' : b.name;
   return `<div class="buyer">
-    <div class="b-title">${esc(labels.billTo)}</div>
+    <div class="b-title">${esc(data.document?.buyerLabel ?? labels.billTo)}</div>
     <div class="b-name">${esc(name)}</div>
     ${b.address ? `<div class="b-line">${esc(b.address)}</div>` : ''}
     ${b.gstin ? `<div class="b-line">${esc(labels.gstinLabel)}: <b>${esc(b.gstin)}</b></div>` : ''}
   </div>`;
 }
 
+export const numberLabel = (data: InvoiceData, labels: Labels): string => data.document?.numberLabel ?? labels.invoiceNo;
+
 export function metaBlock(data: InvoiceData, labels: Labels): string {
   const row = (k: string, v: string) => `<div class="m-row"><span>${esc(k)}</span><b>${esc(v)}</b></div>`;
   return `<div class="meta">
-    ${row(labels.invoiceNo, data.invoiceNo)}
+    ${row(numberLabel(data, labels), data.invoiceNo)}
     ${row(labels.date, fmtDate(data.dateIso))}
     ${row(labels.placeOfSupply, data.placeOfSupply)}
+    ${(data.document?.rows ?? []).map((r) => row(r.label, r.value)).join('')}
   </div>`;
 }
 
@@ -150,8 +153,8 @@ export function wordsLine(data: InvoiceData, labels: Labels): string {
   return `<div class="words"><span>${esc(labels.amountInWords)}:</span> ${esc(data.amountInWords)}</div>`;
 }
 
-export function declaration(labels: Labels): string {
-  return `<div class="decl">${esc(labels.declarationText)}</div>`;
+export function declaration(data: InvoiceData, labels: Labels): string {
+  return data.document && !data.document.declaration ? '' : `<div class="decl">${esc(labels.declarationText)}</div>`;
 }
 
 export function signatory(data: InvoiceData, branding: InvoiceBranding, labels: Labels): string {
@@ -175,7 +178,7 @@ export function footerNote(branding: InvoiceBranding): string {
   return `<div class="foot">${esc(branding.footerNote)}</div>`;
 }
 
-export const title = (data: InvoiceData, labels: Labels): string => (data.isTaxInvoice ? labels.taxInvoice : labels.billOfSupply);
+export const title = (data: InvoiceData, labels: Labels): string => data.document?.title ?? (data.isTaxInvoice ? labels.taxInvoice : labels.billOfSupply);
 
 const A4_RESET = `
 *{box-sizing:border-box}
@@ -260,10 +263,11 @@ export function thermalBody(data: InvoiceData, branding: InvoiceBranding, labels
     ${data.seller.address ? `<div class="c sm">${esc(data.seller.address)}</div>` : ''}
     ${data.seller.gstin ? `<div class="c sm">${esc(labels.gstinLabel)}: ${esc(data.seller.gstin)}</div>` : ''}
     <div class="c title">${esc(title(data, labels))}</div>
-    ${row(labels.invoiceNo, data.invoiceNo, 'sm')}
+    ${row(numberLabel(data, labels), data.invoiceNo, 'sm')}
     ${row(labels.date, fmtDate(data.dateIso), 'sm')}
     ${row(labels.placeOfSupply, data.placeOfSupply, 'sm')}
-    ${!data.buyer.walkIn && data.buyer.name ? row(labels.billTo, data.buyer.name, 'sm') : ''}
+    ${(data.document?.rows ?? []).map((r) => row(r.label, r.value, 'sm')).join('')}
+    ${!data.buyer.walkIn && data.buyer.name ? row(data.document?.buyerLabel ?? labels.billTo, data.buyer.name, 'sm') : ''}
     ${data.buyer.gstin ? row(labels.gstinLabel, data.buyer.gstin, 'sm') : ''}
     <hr>
     <table class="titems"><thead><tr><th class="l">${esc(labels.item)}</th><th class="n">${esc(labels.qty)}</th><th class="n">${esc(labels.rate)}</th><th class="n">${esc(labels.amount)}</th></tr></thead><tbody>${lineRows}</tbody></table>

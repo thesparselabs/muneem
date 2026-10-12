@@ -33,7 +33,10 @@ import {
 import { CompleteSaleInput, CompleteSaleResult, HeldBill, HoldBillInput, Sale, SaleDraft, SaleListInput, SalePage, SaleQuote } from './sales.js';
 import { CancelSaleInput, CompleteReturnInput, CompleteReturnResult, CreditNote, CreditNoteListInput, CreditNotePage, ReturnDraft, ReturnQuote } from './returns.js';
 import { InstalledPrinter, PrintJobSummary, PrinterConfig, ReceiptDoc } from './print.js';
-import { InvoiceBranding, ListTemplatesResult, RenderInvoiceInput, RenderInvoiceResult, SaveInvoicePdfInput, SaveInvoicePdfResult } from './invoice.js';
+import { InvoiceBranding, InvoiceTemplateId, ListTemplatesResult, RenderInvoiceInput, RenderInvoiceResult, SaveInvoicePdfInput, SaveInvoicePdfResult } from './invoice.js';
+import { SendShareInput, ShareHistoryInput, SharePreview, SharePreviewInput, ShareRecord } from './share.js';
+import { CreateEstimateInput, Estimate, EstimateListInput, EstimatePage } from './estimates.js';
+import { Challan, ChallanListInput, ChallanPage, CreateChallanInput } from './challans.js';
 import { SETTING_KEYS } from './settings.js';
 import { CrashReportingStatus, RendererErrorInput } from './telemetry.js';
 import { CloudBusiness, HydrationStartInput, HydrationStatus } from './hydration.js';
@@ -195,6 +198,19 @@ export const contract = {
   'returns.getReceipt': spec({ input: z.object({ creditNoteId: Ulid }), output: ReceiptDoc, permission: 'sales.view', rateLimit: { perSec: 10 } }),
   'returns.reprint': spec({ input: z.object({ creditNoteId: Ulid }), output: z.object({ jobId: Ulid }), permission: 'pos.create', rateLimit: { perSec: 2 }, audit: true }),
 
+  // ADR-0068: estimates are made by whoever bills and read by whoever sees sales; converting one is billing it.
+  'estimates.create': spec({ input: CreateEstimateInput, output: Estimate, permission: 'sales.create', rateLimit: { perSec: 2 }, audit: true, idempotent: 'commandId' }),
+  'estimates.get': spec({ input: z.object({ id: Ulid }), output: Estimate, permission: 'sales.view', rateLimit: { perSec: 20 } }),
+  'estimates.list': spec({ input: EstimateListInput, output: EstimatePage, permission: 'sales.view', rateLimit: { perSec: 10 } }),
+  'estimates.renderHtml': spec({ input: z.object({ id: Ulid, templateId: InvoiceTemplateId.optional() }), output: RenderInvoiceResult, permission: 'sales.view', rateLimit: { perSec: 10 } }),
+  'estimates.savePdf': spec({ input: z.object({ id: Ulid, templateId: InvoiceTemplateId.optional() }), output: SaveInvoicePdfResult, permission: 'sales.view', rateLimit: { perSec: 2 } }),
+  // ADR-0069: challans follow estimates — made by whoever bills, read by whoever sees sales, invoiced by billing them.
+  'challans.create': spec({ input: CreateChallanInput, output: Challan, permission: 'sales.create', rateLimit: { perSec: 2 }, audit: true, idempotent: 'commandId' }),
+  'challans.get': spec({ input: z.object({ id: Ulid }), output: Challan, permission: 'sales.view', rateLimit: { perSec: 20 } }),
+  'challans.list': spec({ input: ChallanListInput, output: ChallanPage, permission: 'sales.view', rateLimit: { perSec: 10 } }),
+  'challans.renderHtml': spec({ input: z.object({ id: Ulid, templateId: InvoiceTemplateId.optional() }), output: RenderInvoiceResult, permission: 'sales.view', rateLimit: { perSec: 10 } }),
+  'challans.savePdf': spec({ input: z.object({ id: Ulid, templateId: InvoiceTemplateId.optional() }), output: SaveInvoicePdfResult, permission: 'sales.view', rateLimit: { perSec: 2 } }),
+
   'printer.getConfig': spec({ input: Empty, output: PrinterConfig, permission: 'pos.view', rateLimit: { perSec: 5 } }),
   'printer.setConfig': spec({ input: PrinterConfig, output: PrinterConfig, permission: 'settings.manage', rateLimit: { perSec: 2 }, audit: true }),
   'printer.listInstalled': spec({ input: Empty, output: z.array(InstalledPrinter), permission: 'pos.view', rateLimit: { perSec: 2 } }),
@@ -210,6 +226,11 @@ export const contract = {
   'invoice.setBranding': spec({ input: InvoiceBranding, output: InvoiceBranding, permission: 'settings.manage', rateLimit: { perSec: 2 }, audit: true }),
   'invoice.renderHtml': spec({ input: RenderInvoiceInput, output: RenderInvoiceResult, permission: 'pos.view', rateLimit: { perSec: 10 } }),
   'invoice.savePdf': spec({ input: SaveInvoicePdfInput, output: SaveInvoicePdfResult, permission: 'pos.view', rateLimit: { perSec: 2 } }),
+
+  // ADR-0067: every role holds business.view; the service checks the permission each document type needs.
+  'share.preview': spec({ input: SharePreviewInput, output: SharePreview, permission: 'business.view', rateLimit: { perSec: 10 } }),
+  'share.send': spec({ input: SendShareInput, output: ShareRecord, permission: 'business.view', rateLimit: { perSec: 2 }, audit: true }),
+  'share.history': spec({ input: ShareHistoryInput, output: z.array(ShareRecord), permission: 'business.view', rateLimit: { perSec: 10 } }),
 
   'inventory.getStock': spec({ input: StockListInput, output: StockPage, permission: 'inventory.view', rateLimit: { perSec: 10 } }),
   'inventory.getMovements': spec({ input: MovementsInput, output: MovementPage, permission: 'inventory.view', rateLimit: { perSec: 10 } }),

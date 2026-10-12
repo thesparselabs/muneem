@@ -3,19 +3,20 @@ import { join } from 'node:path';
 import type { BrowserWindow } from 'electron';
 
 export interface PdfOptions { kind: 'a4' | 'thermal'; widthMm?: number; pageSize?: 'A4' | 'A5' | 'Letter' }
+export type PdfRender = (html: string, opts: PdfOptions) => Promise<Buffer>;
 export type PdfSave = (html: string, suggestedName: string, opts: PdfOptions) => Promise<{ saved: boolean; fileName: string }>;
 
 const MICRONS_PER_MM = 1000;
 
-function sanitize(name: string): string {
+export function pdfFileName(name: string): string {
   const base = name.replace(/[^\w.\- ]+/gu, '_').replace(/\s+/gu, ' ').trim() || 'invoice';
   return base.toLowerCase().endsWith('.pdf') ? base : `${base}.pdf`;
 }
 
-// A hidden, sandboxed window prints the invoice HTML to PDF and drops it in Downloads; the page's only assets are
-// embedded data URLs, so nothing is fetched. Electron-only, imported lazily so the module stays testable.
-export const savePdf: PdfSave = async (html, suggestedName, opts) => {
-  const { app, BrowserWindow } = await import('electron');
+// A hidden, sandboxed window prints the HTML to PDF; the page's only assets are embedded data URLs, so nothing is
+// fetched. Electron-only, imported lazily so the module stays testable.
+export const renderPdf: PdfRender = async (html, opts) => {
+  const { BrowserWindow } = await import('electron');
   const thermal = opts.kind === 'thermal';
   const win = new BrowserWindow({
     show: false,
@@ -26,14 +27,21 @@ export const savePdf: PdfSave = async (html, suggestedName, opts) => {
   try {
     await win.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`);
     const pageOptions = thermal ? await thermalPage(win, opts.widthMm ?? 80) : { pageSize: opts.pageSize ?? 'A4' };
-    const pdf = await win.webContents.printToPDF({ printBackground: true, margins: { marginType: 'none' }, ...pageOptions });
-    const fileName = sanitize(suggestedName);
-    await writeFile(join(app.getPath('downloads'), fileName), pdf);
-    return { saved: true, fileName };
+    return await win.webContents.printToPDF({ printBackground: true, margins: { marginType: 'none' }, ...pageOptions });
   } finally {
     win.destroy();
   }
 };
+
+// Drops the file in Downloads, where the user attaches it to a WhatsApp chat or finds it later.
+export async function saveToDownloads(fileName: string, bytes: Buffer): Promise<{ saved: boolean; fileName: string }> {
+  const { app } = await import('electron');
+  const name = pdfFileName(fileName);
+  await writeFile(join(app.getPath('downloads'), name), bytes);
+  return { saved: true, fileName: name };
+}
+
+export const savePdf: PdfSave = async (html, suggestedName, opts) => saveToDownloads(suggestedName, await renderPdf(html, opts));
 
 // A roll has no fixed length, so measure the laid-out content and cut the page to it.
 async function thermalPage(win: BrowserWindow, widthMm: number): Promise<{ pageSize: { width: number; height: number } }> {
