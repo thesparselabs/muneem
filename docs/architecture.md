@@ -304,6 +304,16 @@ docs/             this folder (reality, with reasons)
   - only a supply challan is invoiced, once;
   - two tills converge on the same challan and link.
 
+## Payment reminders (Phase 1, FR-088)
+
+- `apps/desktop/src/main/services/reminders/` (ADR-0070): `ReminderService` lists customers past due from
+  `partyDues`, with consent, last reminder, last receipt and a state from the `reminders.everyDays` cadence.
+- **Sending:** a reminder goes through `ShareService.send` as a WhatsApp hand-off of the customer statement, and is
+  kept in the local `reminder_log`.
+- Invariants (tests):
+  - the due list equals the ageing;
+  - no reminder without consent, within a cadence of the last one, or within a cadence of a payment.
+
 ## Identity and trust
 
 - Cloud is authoritative for users, roles and permissions; the device caches a **permission snapshot** and enforces
@@ -368,7 +378,7 @@ docs/             this folder (reality, with reasons)
 
 ## What is not built yet
 
-Attachments upload (FR-075), SMS/WhatsApp reminders, e-invoice and e-way bill, GST portal JSON and composition
+Attachments upload (FR-075), SMS reminders and unattended WhatsApp reminders (FR-088 sends them from the till by hand-off), e-invoice and e-way bill, GST portal JSON and composition
 returns (GSTR-4/CMP-08), a cloud owner web UI and FR-103 retention. In inventory: transfers, multiple warehouses per
 branch, batch/serial tracking. In billing: manager PIN override (USB/Windows printers and non-ASCII receipt text
 landed in 9d). In purchases and payments: purchase orders and GRN, reverse charge, debit-note cancellation, refunding a

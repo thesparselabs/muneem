@@ -74,3 +74,4 @@ Template: Context → Decision → Consequences → Status.
 | [0067](0067-sharing-documents-by-whatsapp-and-email.md) | Sharing documents: WhatsApp click-to-chat hand-off, email through a cloud SMTP relay, a local `share_log` queue with backoff, no second email for an acknowledged share |
 | [0068](0068-estimates-and-conversion-at-the-till.md) | Estimates: priced by the sale engine, stored like a sale and posting nothing, Q numbers, billed at the till inside the sale transaction, synced as a document, printed as a quotation |
 | [0069](0069-delivery-challans.md) | Delivery challans: valued like estimates and posting nothing, purpose and consignee, transport for e-way bills, H numbers, invoiced at the till (supply only), no stock movement, synced |
+| [0070](0070-payment-reminders-from-the-till.md) | Payment reminders: due list from the party ageing, WhatsApp hand-off with the statement, consent first, a cadence and paid-since suppression, a local reminder log |

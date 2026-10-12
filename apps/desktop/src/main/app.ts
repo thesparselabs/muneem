@@ -30,6 +30,7 @@ import { ChallanService } from './services/challans/challanService.js';
 import { challanFileName, challanVariant } from './services/challans/challanPrint.js';
 import { renderPdf, savePdf as saveInvoicePdf, type PdfRender } from './services/invoice/pdf.js';
 import { buildStatement, CloudMailer, createShare } from './services/share/index.js';
+import { ReminderService } from './services/reminders/reminderService.js';
 import type { LineRasteriser } from './services/print/raster.js';
 import type { SpoolerTransport } from './services/print/spooler.js';
 import { PreviewStore } from './services/import/previewStore.js';
@@ -69,7 +70,7 @@ import { ProductSearch } from './services/productSearch.js';
 import { ProductService } from './services/products.js';
 import { DeviceService } from './services/device.js';
 import { seedDemo } from './services/dev/seedDemo.js';
-import { AppError } from '@muneem/contracts';
+import { AppError, REMINDER_DEFAULT_EVERY_DAYS } from '@muneem/contracts';
 import { DiagnosticsService } from './services/diagnostics.js';
 import { SessionService } from './services/session.js';
 import { SettingsService } from './services/settings.js';
@@ -310,6 +311,11 @@ export function createApp(cfg: AppConfig) {
     saveDownload: cfg.saveDownload ?? ((fileName) => Promise.resolve({ saved: false, fileName })),
     now: cfg.now ?? (() => Date.now()), log: (err) => cfg.loggers.app.error({ err: String(err) }, 'share email attempt failed'),
   });
+  const reminders = new ReminderService({
+    db: cfg.db, businessId: () => posCtx.businessId(), userId: () => posCtx.userId(), now: cfg.now ?? (() => Date.now()),
+    everyDays: () => posCtx.setting('reminders.everyDays', REMINDER_DEFAULT_EVERY_DAYS), shopName: () => shop().name, customer: (id) => customers.get(id),
+    share: share.service,
+  });
   events.attach({
     send: (channel, payload) => {
       if (channel === 'connectivity.changed' && (payload as { online?: boolean }).online) { sync.online(); share.outbox.drain(); }
@@ -410,6 +416,10 @@ export function createApp(cfg: AppConfig) {
     'customers.withdrawConsent': (i) => customerPrivacy.withdrawConsent(i),
     'customers.exportProfile': (i) => customerPrivacy.exportProfile(i),
     'customers.erase': (i) => customerPrivacy.erase(i),
+    'reminders.due': () => reminders.due(),
+    'reminders.preview': (i) => reminders.preview(i.customerId),
+    'reminders.send': (i) => reminders.send(i),
+    'reminders.history': (i) => reminders.history(i),
     'suppliers.search': (i) => suppliers.search(i.query, i.limit),
     'suppliers.get': (i) => suppliers.get(i.id),
     'suppliers.create': (i) => suppliers.create(i),
@@ -560,6 +570,6 @@ export function createApp(cfg: AppConfig) {
     onCommitted: (channel) => { sync.nudge(); notifications.runner.afterCommit(channel); }, holds: (id) => gate.holds(id), onDispatch: (channel) => updates.activity.dispatch(channel),
   });
 
-  return { events, session, reports, dashboard, rbac, cloud, connectivity, device, auth, business, settings, products, catalog, pricing, productImport, customers, suppliers, customerLedger, supplierLedger, customerImport, supplierImport, purchases, purchaseReturns, purchaseImport, payments, writeOffs, expenses, periods, yearEnd, backlog, statements, chart, manualJournals, gst, register, sales, estimates, challans, returns, invoice, printQueue, inventory, openingImport, diagnostics, backups, closeReadConnections, gateway, handlers, syncStatus, syncEngine, sync, hydration, hydrationGate: gate, updates, notifications, customerPrivacy, telemetry, share };
+  return { events, session, reports, dashboard, rbac, cloud, connectivity, device, auth, business, settings, products, catalog, pricing, productImport, customers, suppliers, customerLedger, supplierLedger, customerImport, supplierImport, purchases, purchaseReturns, purchaseImport, payments, writeOffs, expenses, periods, yearEnd, backlog, statements, chart, manualJournals, gst, register, sales, estimates, challans, returns, invoice, printQueue, inventory, openingImport, diagnostics, backups, closeReadConnections, gateway, handlers, syncStatus, syncEngine, sync, hydration, hydrationGate: gate, updates, notifications, customerPrivacy, telemetry, share, reminders };
 }
 export type App = ReturnType<typeof createApp>;

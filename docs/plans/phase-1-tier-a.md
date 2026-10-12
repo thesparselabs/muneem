@@ -94,6 +94,14 @@ FR-085 channels for delivery.
 - **Renderer:** "Send reminder" on Parties → Outstanding (per party and bulk); a reminders screen with history.
 - **Tests:** due list matches ageing; sending records a reminder and goes through the share channel; consent gating.
 - **Effort:** M.
+- **As built (ADR-0070):**
+  - Channel: WhatsApp hand-off with the statement, through `share.send`. Email is not offered because consent has no
+    email channel, and SMS waits for the ADR-0050 provider sender.
+  - Contract: `reminders.preview` added. `reminders.due` takes no `overdueDays`; it lists everything past due with a
+    state.
+  - Cadence: a business-wide `reminders.everyDays` setting.
+  - Records: `reminder_log` is local.
+  - Bulk send is deferred.
 
 ---
 

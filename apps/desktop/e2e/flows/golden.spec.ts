@@ -268,6 +268,43 @@ test.describe.serial('golden flow', () => {
     await expect(page.getByRole('row').filter({ hasText: challan })).toContainText(`Invoiced as ${bill}`);
   });
 
+  test('remind a customer past due over WhatsApp, with their consent (FR-088)', async () => {
+    await go(page, '/parties');
+    await page.getByRole('button', { name: 'New customer' }).click();
+    await page.getByLabel('Name').fill('Kavita Stores');
+    await page.getByLabel('Phone').fill('9812345678');
+    await page.getByRole('button', { name: 'Save customer' }).click();
+    await expect(page.getByRole('heading', { level: 1, name: 'Kavita Stores' })).toBeVisible();
+    await page.getByRole('button', { name: 'Opening balance' }).click();
+    const opening = page.getByRole('dialog', { name: 'Opening balance' });
+    await opening.getByLabel('Amount (₹)').fill('750');
+    await opening.getByLabel('As of').click();
+    const calendar = page.getByRole('dialog', { name: 'Choose a date' });
+    await calendar.getByRole('button', { name: 'Previous month' }).click();
+    await calendar.getByRole('button', { name: '1', exact: true }).click();
+    await opening.getByRole('button', { name: 'Save opening balance' }).click();
+    await expect(opening).toBeHidden();
+    await page.getByLabel('Channel').selectOption('whatsapp');
+    await page.getByRole('button', { name: 'Record consent' }).click();
+    await expect(page.getByText('Payment reminders by WhatsApp · In person')).toBeVisible();
+
+    await go(page, '/reminders');
+    const row = page.getByRole('region', { name: 'Customers past due' }).getByRole('row').filter({ hasText: 'Kavita Stores' });
+    await expect(row).toContainText('Due for a reminder');
+    await row.getByRole('button', { name: 'Remind Kavita Stores' }).click();
+    const dialog = page.getByRole('dialog', { name: 'Remind Kavita Stores' });
+    await expect(dialog.getByLabel('WhatsApp number')).toHaveValue('9812345678');
+    await expect(dialog.getByLabel('Message')).toHaveValue(/^Dear Kavita Stores, a gentle reminder from .*₹750\.00/u);
+    await dialog.getByRole('button', { name: 'Open WhatsApp' }).click();
+    await expect(dialog.getByRole('status')).toContainText('WhatsApp opened for +919812345678');
+    const opened = await m.app.evaluate(() => (globalThis as { opened?: string[] }).opened ?? []);
+    expect(opened.at(-1)).toMatch(/^https:\/\/wa\.me\/919812345678\?text=Dear%20Kavita%20Stores/u);
+    await page.keyboard.press('Escape');
+    await expect(row).toContainText('Reminded');
+    await expect(page.getByRole('region', { name: 'Reminders sent' })).toContainText('Kavita Stores · +919812345678');
+    await fitsAndSnap(page, '13d-reminders');
+  });
+
   test('receive a payment against the credit sale', async () => {
     await go(page, '/parties');
     await page.getByRole('link', { name: 'Meena Traders' }).click();
@@ -426,7 +463,7 @@ test.describe.serial('golden flow', () => {
 const SCREENS = [
   '/', '/pos', '/sales', '/products', '/products/new', '/products/import', '/settings/catalog',
   '/inventory', '/inventory/adjust', '/inventory/stock-take', '/inventory/opening', '/inventory/reconciliation',
-  '/parties', '/parties/outstanding', '/purchases', '/purchases/new', '/expenses', '/payments', '/payments/new',
+  '/parties', '/parties/outstanding', '/reminders', '/estimates', '/estimates/new', '/challans', '/challans/new', '/purchases', '/purchases/new', '/expenses', '/payments', '/payments/new',
   '/accounts', '/accounts/statements', '/accounts/books', '/accounts/journal/new', '/accounts/periods', '/accounts/year-end',
   '/gst', '/gst/setoff', '/gst/payments', '/reports', '/settings/printer', '/settings/review', '/settings/updates',
   '/diagnostics', '/notifications',

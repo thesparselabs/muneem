@@ -39,6 +39,7 @@ import Estimates from './routes/estimates/Estimates.js';
 import NewEstimate from './routes/estimates/NewEstimate.js';
 import Challans from './routes/challans/Challans.js';
 import NewChallan from './routes/challans/NewChallan.js';
+import Reminders from './routes/reminders/Reminders.js';
 import StockList from './routes/inventory/StockList.js';
 import ProductLedger from './routes/inventory/ProductLedger.js';
 import AdjustStock from './routes/inventory/AdjustStock.js';
@@ -107,6 +108,7 @@ export default function App() {
         <Route path="/inventory/reconciliation" element={<StockReconciliation />} />
         <Route path="/parties" element={<Parties />} />
         <Route path="/parties/outstanding" element={<Outstanding />} />
+        <Route path="/reminders" element={<Reminders />} />
         <Route path="/parties/import/:kind" element={<ImportParties />} />
         <Route path="/parties/:kind/:id" element={<PartyPage />} />
         <Route path="/purchases" element={<Purchases />} />

@@ -37,6 +37,7 @@ import { InvoiceBranding, InvoiceTemplateId, ListTemplatesResult, RenderInvoiceI
 import { SendShareInput, ShareHistoryInput, SharePreview, SharePreviewInput, ShareRecord } from './share.js';
 import { CreateEstimateInput, Estimate, EstimateListInput, EstimatePage } from './estimates.js';
 import { Challan, ChallanListInput, ChallanPage, CreateChallanInput } from './challans.js';
+import { DueReminders, ReminderHistoryInput, ReminderPreview, ReminderRecord, SendReminderInput } from './reminders.js';
 import { SETTING_KEYS } from './settings.js';
 import { CrashReportingStatus, RendererErrorInput } from './telemetry.js';
 import { CloudBusiness, HydrationStartInput, HydrationStatus } from './hydration.js';
@@ -162,6 +163,12 @@ export const contract = {
   'customers.withdrawConsent': spec({ input: WithdrawConsentInput, output: Customer, permission: 'customers.create', rateLimit: { perSec: 2 }, audit: true }),
   'customers.exportProfile': spec({ input: ExportProfileInput, output: ExportProfileResult, permission: 'customers.approve', rateLimit: { perSec: 1 }, audit: true }),
   'customers.erase': spec({ input: EraseCustomerInput, output: Customer, permission: 'customers.approve', rateLimit: { perSec: 1 }, audit: true }),
+
+  // ADR-0070: anyone who sees customers sees who is due; contacting them about money is for whoever may edit customers.
+  'reminders.due': spec({ input: Empty, output: DueReminders, permission: 'customers.view', rateLimit: { perSec: 5 } }),
+  'reminders.preview': spec({ input: z.object({ customerId: Ulid }), output: ReminderPreview, permission: 'customers.view', rateLimit: { perSec: 10 } }),
+  'reminders.send': spec({ input: SendReminderInput, output: ReminderRecord, permission: 'customers.edit', rateLimit: { perSec: 2 }, audit: true }),
+  'reminders.history': spec({ input: ReminderHistoryInput, output: z.array(ReminderRecord), permission: 'customers.view', rateLimit: { perSec: 10 } }),
 
   'suppliers.search': spec({ input: SupplierSearchInput, output: z.array(Supplier), permission: 'suppliers.view', rateLimit: { perSec: 20 } }),
   'suppliers.get': spec({ input: z.object({ id: Ulid }), output: Supplier, permission: 'suppliers.view', rateLimit: { perSec: 20 } }),

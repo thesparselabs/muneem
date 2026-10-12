@@ -8,7 +8,7 @@ import { formatPaise } from '../../lib/money.js';
 import { AGEING_COLUMNS } from '../../lib/parties/forms.js';
 import { useCan } from '../../lib/permissions.js';
 import ExportMenu from '../../components/ExportMenu.js';
-import { Scale, ArrowLeft } from 'lucide-react';
+import { Scale, ArrowLeft, BellRing } from 'lucide-react';
 
 export default function Outstanding() {
   const canSuppliers = useCan('suppliers.view');
@@ -20,7 +20,7 @@ export default function Outstanding() {
   });
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between"><h1 className="flex items-center gap-2 text-2xl font-semibold"><Scale size={22} className="text-primary" aria-hidden />Outstanding</h1><div className="flex gap-2"><ExportMenu reportId={tab === 'customer' ? 'parties.receivables' : 'parties.payables'} params={{ asOf }} /><Link to="/parties" className="btn-secondary px-2.5" aria-label="Parties" title="Parties"><ArrowLeft size={16} aria-hidden /></Link></div></div>
+      <div className="flex items-center justify-between"><h1 className="flex items-center gap-2 text-2xl font-semibold"><Scale size={22} className="text-primary" aria-hidden />Outstanding</h1><div className="flex gap-2">{tab === 'customer' && <Link to="/reminders" className="btn-secondary"><BellRing size={16} aria-hidden />Payment reminders</Link>}<ExportMenu reportId={tab === 'customer' ? 'parties.receivables' : 'parties.payables'} params={{ asOf }} /><Link to="/parties" className="btn-secondary px-2.5" aria-label="Parties" title="Parties"><ArrowLeft size={16} aria-hidden /></Link></div></div>
       <div className="flex items-end gap-3">
         <div className="flex gap-1" role="tablist">
           {(['customer', 'supplier'] as const).filter((t) => t === 'customer' || canSuppliers).map((t) => (

@@ -11,6 +11,7 @@ export * from './ipc/invoice.js';
 export * from './ipc/share.js';
 export * from './ipc/estimates.js';
 export * from './ipc/challans.js';
+export * from './ipc/reminders.js';
 export * from './ipc/settings.js';
 export * from './ipc/telemetry.js';
 export * from './ipc/inventory.js';

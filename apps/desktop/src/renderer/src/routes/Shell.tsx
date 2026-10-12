@@ -10,7 +10,7 @@ import ThemeToggle from '../components/ThemeToggle.js';
 import { LogoMark } from '../components/Logo.js';
 import type { Permission } from '@muneem/contracts';
 import { can } from '../lib/permissions.js';
-import { Activity, BarChart3, Boxes, ClipboardList, Container, FileText, Home as HomeIcon, Inbox, Landmark, Package, Palette, RefreshCw, Receipt, ShoppingCart, Truck, Users, Wallet, TrendingDown, type LucideIcon, LogOut } from 'lucide-react';
+import { Activity, BarChart3, BellRing, Boxes, ClipboardList, Container, FileText, Home as HomeIcon, Inbox, Landmark, Package, Palette, RefreshCw, Receipt, ShoppingCart, Truck, Users, Wallet, TrendingDown, type LucideIcon, LogOut } from 'lucide-react';
 
 // `need` hides an item from users who could not use it; main still checks every call (5f details).
 const NAV: { to: string; label: string; icon: LucideIcon; enabled: boolean; stage?: string; need?: Permission }[] = [
@@ -23,6 +23,7 @@ const NAV: { to: string; label: string; icon: LucideIcon; enabled: boolean; stag
   { to: '/inventory', label: 'Inventory', icon: Boxes, enabled: true },
   { to: '/purchases', label: 'Purchases', icon: Truck, enabled: true, need: 'purchases.view' },
   { to: '/parties', label: 'Parties', icon: Users, enabled: true, need: 'customers.view' },
+  { to: '/reminders', label: 'Reminders', icon: BellRing, enabled: true, need: 'customers.view' },
   { to: '/payments', label: 'Payments', icon: Wallet, enabled: true, need: 'payments.view' },
   { to: '/expenses', label: 'Expenses', icon: TrendingDown, enabled: true, need: 'expenses.view' },
   { to: '/accounts', label: 'Accounts', icon: Landmark, enabled: true, need: 'accounting.view' },

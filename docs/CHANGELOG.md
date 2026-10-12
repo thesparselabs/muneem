@@ -5,6 +5,18 @@ All notable changes, newest first. Each entry records **what** changed and **why
 
 ## [Unreleased]
 
+### Added — Payment reminders for udhaar (FR-088, ADR-0070)
+- **Reminders** (sidebar; also from Parties → Outstanding) lists every customer past due by the same ageing as the
+  overdue notifications: overdue amount, oldest due date and days, balance, and where they stand for a reminder.
+  **Remind** opens WhatsApp with an editable reminder and leaves the customer's statement in Downloads to attach,
+  through the FR-085 share path. Why: Phase 1 Tier A — chasing udhaar is the shop's most common collection task.
+- **Consent and cadence:** a reminder needs the customer's WhatsApp consent for payment reminders (ADR-0050). It goes
+  at most once every `reminders.everyDays` days (default 7, set on the screen), and not for that long after the
+  customer last paid. The service refuses a send that is not due. Why: DPDP and not pestering customers.
+- **History:** reminders sent from this till are kept in a local `reminder_log` (migration 0026) and listed on the
+  screen.
+- **Tests:** the UI flow now also walks the new estimate, challan and reminder screens at 1366×768.
+
 ### Added — Delivery challans (FR-087, ADR-0069)
 - **Delivery challans** (sidebar): a list with Open / Invoiced filters, and **New challan** with:
   - purpose (supply with invoice to follow, job work, approval, branch transfer, other);
