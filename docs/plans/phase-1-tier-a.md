@@ -32,6 +32,10 @@ offline-first — online actions queue and complete when connectivity returns.
 - **Tests:** service sends/queues through a fake mailer/provider; offline → queued then sent; e2e-ui: share dialog
   opens and records a send.
 - **Effort:** M. **Note:** true WhatsApp file-send needs the provider (cloud); the desktop fallback ships without it.
+- **As built (ADR-0067):** doc types are `invoice`, `credit_note`, `customer_statement` and `supplier_statement`; the
+  contract is `share.preview` / `share.send` / `share.history`. WhatsApp is option (b) only. Email is the cloud relay
+  (`POST /v1/share/email`, Go SMTP), with no device SMTP fallback. The queue is the `share_log` table itself
+  (migration 0023), not a separate outbox.
 
 ---
 
@@ -51,6 +55,10 @@ by `doc_type`.
 - **Tests:** create → price matches a sale quote; convert → produces a posting sale with the same lines/total;
   estimate itself touches no journals/stock.
 - **Effort:** M.
+- **As built (ADR-0068):** migration 0024, Q kind letter. There is no `estimates.convert`: "Bill it" loads the estimate
+  into the POS cart, and `sales.complete({ …, estimateId })` converts it inside the sale's transaction. `expired` is
+  derived from `valid_until`. The quotation prints through an `InvoiceData.document` variant. Estimates sync on the
+  documents stream, with Go GST verification.
 
 ---
 

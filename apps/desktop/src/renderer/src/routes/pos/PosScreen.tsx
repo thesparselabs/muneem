@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type RefObject } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { CompleteSaleResult, Customer, ProductHit, QuoteContext, RegisterReport, SaleQuote, TenderLine } from '@muneem/contracts';
 import { newUlid } from '@muneem/domain';
@@ -7,7 +7,7 @@ import { api, errorMessage, isClientError } from '../../api.js';
 import { formatPaise, formatRateBp, parseOptional, scaledToText } from '../../lib/money.js';
 import { addHit, applyQuote, emptyCart, localTotals, removeLine, setLineDiscount, setQty, toDraft, type Cart } from '../../lib/pos/cart.js';
 import { commandFor, type PendingCommand } from '../../lib/pos/payment.js';
-import { retrieveHeldBill } from '../../lib/pos/retrieve.js';
+import { loadEstimate, retrieveHeldBill, type RetrieveResult } from '../../lib/pos/retrieve.js';
 import { useScanner } from '../../lib/pos/useScanner.js';
 import { useDebounced } from '../../lib/useDebounced.js';
 import CustomerDialog from './CustomerDialog.js';
@@ -17,12 +17,13 @@ import PaymentDialog from './PaymentDialog.js';
 import { CashMovementDialog, CloseRegisterDialog, OpenRegister, ReportView, XReportDialog } from './RegisterPanel.js';
 import Dialog from '../../components/Dialog.js';
 import InvoicePreview from '../../components/InvoicePreview.js';
+import ShareDialog from '../../components/ShareDialog.js';
 import RecentBills from './RecentBills.js';
 import StockStaleness from '../../components/StockStaleness.js';
 import NumberTicker from '../../components/NumberTicker.js';
 import SuccessCheck from '../../components/SuccessCheck.js';
 import { useToasts } from '../../lib/toast.js';
-import { AlertTriangle, ScanSearch, ShoppingCart, Trash2, User, CreditCard, Pause, Percent, Printer, RotateCcw, Wallet, FileBarChart, FileText, Lock } from 'lucide-react';
+import { AlertTriangle, ScanSearch, ShoppingCart, Trash2, User, CreditCard, Pause, Percent, Printer, RotateCcw, Wallet, FileBarChart, FileText, Lock, Share2, ClipboardList } from 'lucide-react';
 
 type Modal = 'customer' | 'discount' | 'payment' | 'held' | 'cash' | 'x' | 'close' | { lineDiscount: string } | null;
 const NEAR_DUPLICATE_MS = 60_000;
@@ -40,12 +41,15 @@ export default function PosScreen() {
   const [lastSale, setLastSale] = useState<{ result: CompleteSaleResult; customerId: string | null; at: number } | null>(null);
   const [zReport, setZReport] = useState<RegisterReport | null>(null);
   const [previewSaleId, setPreviewSaleId] = useState<string | null>(null);
+  const [shareSaleId, setShareSaleId] = useState<string | null>(null);
   const [paid, setPaid] = useState(false);
   const toast = useToasts((s) => s.push);
   const search = useRef<HTMLInputElement>(null);
   const [query, setQuery] = useState('');
   const quoteSeq = useRef(0);
   const pendingCommand = useRef<PendingCommand | null>(null);
+  const [params, setParams] = useSearchParams();
+  const estimateId = params.get('estimate');
   useEffect(() => { if (lastSale) search.current?.focus(); }, [lastSale]); // ready for the next customer
 
   // 8i: an update never installs while a bill is on screen.
@@ -97,7 +101,9 @@ export default function PosScreen() {
     try {
       const draft = toDraft(cart);
       pendingCommand.current = commandFor(pendingCommand.current, JSON.stringify(draft), newUlid);
-      const result = await api.sales.complete({ ...draft, commandId: pendingCommand.current.id, tenders, expectedTotalPaise: payTotal });
+      const result = await api.sales.complete({
+        ...draft, commandId: pendingCommand.current.id, tenders, expectedTotalPaise: payTotal, ...(cart.estimate && { estimateId: cart.estimate.id }),
+      });
       pendingCommand.current = null;
       setLastSale({ result, customerId: cart.customer?.id ?? null, at: Date.now() });
       setCart(emptyCart());
@@ -137,11 +143,25 @@ export default function PosScreen() {
       quote: (draft) => api.sales.quote(draft),
       discardBill: (billId) => api.pos.discardBill({ id: billId }),
     }, id);
+    showRetrieved(r, 'Bill retrieved.');
+  }
+
+  function showRetrieved(r: RetrieveResult, done: string) {
     if (!r.ok) { setMessage({ kind: 'error', text: r.error }); return; }
     setContext(r.quote.context);
     setCart(r.cart);
-    setMessage(r.notes.length > 0 ? { kind: 'error', text: r.notes.join(' ') } : { kind: 'ok', text: 'Bill retrieved.' });
+    setMessage(r.notes.length > 0 ? { kind: 'error', text: r.notes.join(' ') } : { kind: 'ok', text: done });
   }
+
+  // FR-086: Estimates → "Bill it" opens the till with ?estimate=<id>; the estimate fills an empty cart once.
+  useEffect(() => {
+    if (!estimateId || !session.data) return;
+    setParams({}, { replace: true });
+    if (cart.lines.length > 0) { setMessage({ kind: 'error', text: 'Finish or hold the bill on screen, then bill the estimate again.' }); return; }
+    void loadEstimate({
+      getEstimate: (id) => api.estimates.get({ id }), getCustomer: (id) => api.customers.get({ id }), quote: (draft) => api.sales.quote(draft),
+    }, estimateId).then((r) => showRetrieved(r, r.ok ? `Estimate ${r.cart.estimate?.docNumber ?? ''} is on the bill.` : ''));
+  }, [estimateId, session.data]);
 
   async function reprint(saleId: string, docNumber: string) {
     try { await api.printer.reprint({ saleId }); setMessage({ kind: 'ok', text: `Reprinting ${docNumber}` }); } catch (e) { setMessage({ kind: 'error', text: errorMessage(e) }); }
@@ -175,10 +195,13 @@ export default function PosScreen() {
         {message && <p className={`text-sm ${message.kind === 'ok' ? 'text-green-800 dark:text-green-400' : 'text-destructive'}`} role={message.kind === 'ok' ? 'status' : 'alert'}>{message.text}</p>}
         <PrinterBanner />
         <CartTable cart={cart} onQty={(key, q) => update(setQty(cart, key, q))} onRemove={(key) => update(removeLine(cart, key))} onDiscount={(key) => setModal({ lineDiscount: key })} />
-        {cart.lines.length === 0 && <RecentBills onView={setPreviewSaleId} onReprint={(id, doc) => void reprint(id, doc)} />}
+        {cart.lines.length === 0 && <RecentBills onView={setPreviewSaleId} onShare={setShareSaleId} onReprint={(id, doc) => void reprint(id, doc)} />}
       </section>
       <aside className="flex min-h-0 flex-col gap-3 overflow-y-auto">
         <StockStaleness />
+        {cart.estimate && (
+          <p className="card flex items-center gap-1.5 text-sm" role="note"><ClipboardList size={14} className="text-primary" aria-hidden />Billing estimate {cart.estimate.docNumber}</p>
+        )}
         <div className="card text-sm">
           <p className="flex items-center gap-1.5 text-muted-foreground"><User size={14} aria-hidden /> Customer (F3)</p>
           <p className="font-medium">{cart.customer ? `${cart.customer.name}${cart.customer.gstin ? ` · ${cart.customer.gstin}` : ''}` : 'Walk-in'}</p>
@@ -201,6 +224,7 @@ export default function PosScreen() {
           <button className="btn-secondary gap-1.5" onClick={() => setModal('held')}><RotateCcw size={14} aria-hidden /> Held bills (F7)</button>
           <button className="btn-secondary gap-1.5" onClick={() => void reprintLast()} disabled={!lastSale}><Printer size={14} aria-hidden /> Reprint last (F9)</button>
           <button className="btn-secondary gap-1.5" onClick={() => lastSale && setPreviewSaleId(lastSale.result.saleId)} disabled={!lastSale}><FileText size={14} aria-hidden /> Invoice</button>
+          <button className="btn-secondary gap-1.5" onClick={() => lastSale && setShareSaleId(lastSale.result.saleId)} disabled={!lastSale}><Share2 size={14} aria-hidden /> Share last</button>
           <button className="btn-secondary gap-1.5" onClick={() => setModal('cash')}><CreditCard size={14} aria-hidden /> Cash in/out</button>
           <button className="btn-secondary gap-1.5" onClick={() => setModal('x')}><FileBarChart size={14} aria-hidden /> X report</button>
           <button className="btn-secondary gap-1.5" onClick={() => setModal('close')}><Lock size={14} aria-hidden /> Close register</button>
@@ -220,6 +244,7 @@ export default function PosScreen() {
       {modal === 'x' && <XReportDialog onClose={() => setModal(null)} />}
       {modal === 'close' && <CloseRegisterDialog onClose={() => setModal(null)} onClosed={(z) => { setModal(null); setZReport(z); void qc.invalidateQueries({ queryKey: ['posSession'] }); }} />}
       {previewSaleId && <InvoicePreview saleId={previewSaleId} onClose={() => setPreviewSaleId(null)} />}
+      {shareSaleId && <ShareDialog target={{ docType: 'invoice', id: shareSaleId }} onClose={() => setShareSaleId(null)} />}
       {paid && <div className="pointer-events-none fixed inset-0 z-40 flex items-center justify-center" aria-hidden><SuccessCheck size={88} /></div>}
     </div>
   );

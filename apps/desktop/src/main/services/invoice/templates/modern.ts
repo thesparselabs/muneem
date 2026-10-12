@@ -33,7 +33,7 @@ export function render(data: InvoiceData, branding: InvoiceBranding): string {
     <div class="sum">${totalsTable(data, L)}</div>
     ${wordsLine(data, L)}
     ${termsBlock(branding, L)}
-    ${declaration(L)}
+    ${declaration(data, L)}
     ${signatory(data, branding, L)}
     ${footerNote(branding)}
   `;

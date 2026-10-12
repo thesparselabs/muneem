@@ -13,6 +13,15 @@
 | 8 | Reports + exports, dashboard, notifications, audit chain verification, backup/restore, auto-update | Restore-to-new-device gives an identical trial balance | **Done** 2026-10-05 (PR #9) — a device hydrated from the cloud bundle and one restored from the encrypted cloud backup produce the byte-identical Trial Balance (canonical JSON) at all 15 month ends of a 420-day soak with returns, GST set-offs and two year-end closes; against the Go cloud + Postgres + MinIO the restored device's TB is byte-identical and equals the cloud's. Dashboard 52 ms at 200k sales; reports 2–669 ms; exports 150–300 ms. Plan: [plans/stage-8-reports.md](plans/stage-8-reports.md) |
 | 9 | Hardening: soak, chaos, CA compliance review, pilot with 5 shops | 30 days, zero lost transactions, zero unexplained imbalances | **Engineering done, pilot not started** — every LLD §18 budget at 500k/20k/50k; chaos suite (disk full, power loss, clock jumps, printer/network faults, corruption journey); 12 golden tax scenarios + CA pack; 33 Playwright UI tests; deploy kit, monitoring and alerts, release pipeline, operator tooling, security scans. The 30-day 5-shop pilot (exit criterion) waits for accounts, signing, a CA, a Windows host and shops. Plan: [plans/stage-9-hardening.md](plans/stage-9-hardening.md) |
 
+## Phase 1 — Tier A (PRD §6B, [plans/phase-1-tier-a.md](plans/phase-1-tier-a.md))
+
+| Item | Deliverable | Exit criterion | Status |
+|---|---|---|---|
+| FR-085 | Share invoices, credit notes and statements by WhatsApp (click-to-chat) and email (cloud SMTP relay), queued offline | A share is recorded against its document; an email queued offline goes out once when the cloud is back, and a retry never emails twice | **Done** 2026-10-12 — ADR-0067; desktop share suite (queue, backoff, crash recovery, permissions), Go relay and `/v1/share/email` integration tests on Postgres, the golden UI flow shares a bill by email and WhatsApp |
+| FR-086 | Estimates / quotations, converted into a sale | An estimate prices like a sale quote and posts nothing; converting it bills the same lines and total | **Done** 2026-10-12 — ADR-0068; desktop estimate suite (pricing, numbering, nothing posted, conversion inside the sale transaction, once only, expiry, quotation print, sharing), two-till sync through the reference cloud, Go ingest/verification tests, the golden UI flow quotes an estimate and bills it at the till |
+| FR-087 | Delivery challans with transport details and an optional invoice link | A challan prints and shares and posts no tax | Not started |
+| FR-088 | Payment reminders for overdue udhaar, by WhatsApp or email, respecting consent | The due list matches ageing; a reminder is logged and goes through the share channels | Not started |
+
 ## Notes carried forward
 
 - Stage 6 must also post Stage 5's documents: purchases (inventory, eligible input tax, AP, round-off), debit notes

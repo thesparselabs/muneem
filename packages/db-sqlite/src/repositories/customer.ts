@@ -1,4 +1,4 @@
-import { AppError, type Customer, type CustomerConsent, type CustomerInput } from '@muneem/contracts';
+import { AppError, type Customer, type CustomerConsent, type CustomerInput, type CustomerSnapshot } from '@muneem/contracts';
 import { newUlid, normalizeName, stateOfGstin } from '@muneem/domain';
 import type { Db } from '../open.js';
 import { stmt } from '../statements.js';
@@ -39,6 +39,17 @@ function columns(input: CustomerInput) {
 }
 
 // ADR-0050: an erased profile stays blank; its invoices keep the snapshot they were made with.
+// The customer as a document shows them; no customer is a walk-in.
+export function customerSnapshot(c: Customer | null): CustomerSnapshot {
+  if (!c) return { walkIn: true };
+  const address = [c.addressLine1, c.city, c.pinCode].filter(Boolean).join(', ');
+  return {
+    walkIn: false, name: c.name,
+    ...(c.phone && { phone: c.phone }), ...(c.gstin && { gstin: c.gstin }), ...(c.stateCode && { stateCode: c.stateCode }),
+    ...(address && { address }),
+  };
+}
+
 export function refuseErased(c: Customer): void {
   if (c.erasedAt) throw new AppError('INVALID_STATE', 'This customer\'s profile was erased');
 }

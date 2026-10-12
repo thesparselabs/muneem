@@ -59,7 +59,7 @@ export function allocateDocNumber(db: Db, seriesId: string): { seq: number; numb
   return { seq: s.next_seq, number };
 }
 
-const NUMBERED_DOCUMENTS = ['sale', 'credit_note', 'purchase', 'debit_note', 'payment', 'expense', 'gst_setoff', 'gst_payment'] as const;
+const NUMBERED_DOCUMENTS = ['sale', 'credit_note', 'purchase', 'debit_note', 'payment', 'expense', 'gst_setoff', 'gst_payment', 'estimate'] as const;
 
 // A restore's catch-up pulls back documents this device numbered after its backup; each series then carries on past them.
 export function realignDocSeries(db: Db, businessId: string): number {

@@ -1,7 +1,7 @@
-import type { CompleteSaleInput, CustomerSnapshot, RegisterSession } from '@muneem/contracts';
+import type { CompleteSaleInput, RegisterSession } from '@muneem/contracts';
 import { financialYearOf, newUlid, type SettledTender } from '@muneem/domain';
 import {
-  allocateDocNumber, appendAudit, ensureDefaultWarehouse, findOrCreateSeries, getSale, getTerminal, insertPrintJob, insertSale, movementsForRef,
+  allocateDocNumber, appendAudit, customerSnapshot, ensureDefaultWarehouse, findOrCreateSeries, getSale, getTerminal, insertPrintJob, insertSale, movementsForRef,
   documentKeys, partyBalance, planIssues, postDocumentJournal, postMovement, postPartyEntry, recordChange, saleItemId, type Actor, type Db, type PartyEntry, type PostedJournal,
   type Till,
 } from '@muneem/db-sqlite';
@@ -32,17 +32,6 @@ export interface CommitState extends SaleCommitInput {
 }
 
 interface Step { name: string; run(s: CommitState): void }
-
-function customerSnapshot(p: PricedSale): CustomerSnapshot {
-  const c = p.customer;
-  if (!c) return { walkIn: true };
-  const address = [c.addressLine1, c.city, c.pinCode].filter(Boolean).join(', ');
-  return {
-    walkIn: false, name: c.name,
-    ...(c.phone && { phone: c.phone }), ...(c.gstin && { gstin: c.gstin }), ...(c.stateCode && { stateCode: c.stateCode }),
-    ...(address && { address }),
-  };
-}
 
 const allocateNumber: Step = {
   name: 'number',
@@ -93,7 +82,7 @@ const insertDocument: Step = {
       id: s.saleId, businessId: s.till.businessId, branchId: s.till.branchId, terminalId: s.till.terminalId, sessionId: s.session.id,
       commandId: s.input.commandId, seriesId: s.number!.seriesId, docNumber: s.number!.number, docSeq: s.number!.seq, docDate: s.docDate,
       fy: financialYearOf(s.docDate), taxScheme: s.priced.business.taxScheme, customerId: s.priced.customer?.id ?? null,
-      customer: customerSnapshot(s.priced), placeOfSupplyReason: s.priced.placeOfSupplyReason, priceListId: s.priced.priceListId,
+      customer: customerSnapshot(s.priced.customer), placeOfSupplyReason: s.priced.placeOfSupplyReason, priceListId: s.priced.priceListId,
       totals: s.priced.quote.totals, paidPaise: s.paidPaise, changePaise: s.changePaise, creditPaise: s.credit?.amountPaise ?? 0,
       dueDate: s.credit?.dueDate ?? null, lines: s.priced.quote.lines,
       tenders: s.tenders.map((t, i) => ({ ...t, reference: s.input.tenders[i]?.reference })),

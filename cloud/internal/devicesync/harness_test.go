@@ -31,6 +31,7 @@ import (
 	"github.com/sparselabs/muneem/cloud/internal/httpx"
 	"github.com/sparselabs/muneem/cloud/internal/objectstore"
 	"github.com/sparselabs/muneem/cloud/internal/reports"
+	"github.com/sparselabs/muneem/cloud/internal/share"
 	"github.com/sparselabs/muneem/cloud/internal/store"
 	"github.com/sparselabs/muneem/cloud/internal/testdb"
 )
@@ -41,6 +42,7 @@ type businessHandler = business.Handler
 type syncHandler = devicesync.Handler
 type backupHandler = backups.Handler
 type reportHandler = reports.Handler
+type shareHandler = share.Handler
 
 type handlers struct {
 	*authHandler
@@ -49,6 +51,7 @@ type handlers struct {
 	*syncHandler
 	*backupHandler
 	*reportHandler
+	*shareHandler
 	httpx.Health
 	httpx.Readiness
 }
@@ -61,6 +64,7 @@ type cloud struct {
 	signer  *auth.Signer
 	snaps   *snapshot.Service
 	objects testObjects
+	mails   *mailbox
 	user    string
 	org     string
 	// protocol is the X-Sync-Protocol every request carries, unless noProtocolHeader.
@@ -86,6 +90,7 @@ func newCloudWith(t *testing.T, protocols httpx.Protocols) *cloud {
 		t.Fatal(err)
 	}
 	t.Cleanup(snaps.Wait)
+	mails := &mailbox{}
 	h := handlers{
 		authHandler:     &auth.Handler{DB: db, Signer: signer},
 		deviceHandler:   &device.Handler{DB: db, Verifier: verifier, Revocations: devicesync.Control{}},
@@ -93,9 +98,10 @@ func newCloudWith(t *testing.T, protocols httpx.Protocols) *cloud {
 		syncHandler:     &devicesync.Handler{Ingest: &devicesync.Ingest{DB: db, Log: log}, Feed: &devicesync.Feed{DB: db}, Snapshots: snaps, Protocols: protocols},
 		backupHandler:   &backups.Handler{Service: backups.NewService(db, objects, wrapper, log, backups.DefaultOptions)},
 		reportHandler:   &reports.Handler{DB: db},
+		shareHandler:    &share.Handler{Service: share.NewService(db, mails, log, share.DefaultOptions)},
 	}
 	e := httpx.New(httpx.Deps{Handlers: h, RequireAuth: signer.Require, DeviceVerifier: verifier.Middleware, Logger: log, Protocols: protocols})
-	return &cloud{t: t, db: db, e: e, signer: signer, snaps: snaps, objects: objects, protocol: httpx.SyncProtocol}
+	return &cloud{t: t, db: db, e: e, signer: signer, snaps: snaps, objects: objects, mails: mails, protocol: httpx.SyncProtocol}
 }
 
 // TestMasterKey wraps escrowed backup keys in tests (base64 of 32 bytes).
