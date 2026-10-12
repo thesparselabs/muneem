@@ -10,7 +10,8 @@ export const CASHIER: StubUser = { id: '01J00000000000000000000A02', identifier:
 const USERS = [OWNER, CASHIER];
 const ORG_ID = '01J00000000000000000000B01';
 
-export interface StubCloud { url: string; calls: string[]; setOnline: (online: boolean) => void; close: () => Promise<void> }
+export interface ShareMail { shareId: string; to: string; subject: string; attachment: { fileName: string; contentBase64: string } }
+export interface StubCloud { url: string; calls: string[]; mails: ShareMail[]; setOnline: (online: boolean) => void; close: () => Promise<void> }
 
 type Reply = { status: number; body: unknown };
 
@@ -47,8 +48,9 @@ async function readBody(req: IncomingMessage): Promise<unknown> {
   return text ? JSON.parse(text) : undefined;
 }
 
-// The cloud a UI test talks to: auth and device registration answered inline, sync by the reference server (ADR-0042).
-export function routeCloud(sync: ReferenceServer) {
+// The cloud a UI test talks to: auth and device registration answered inline, sync by the reference server (ADR-0042),
+// and every emailed document kept for the test to read (FR-085).
+export function routeCloud(sync: ReferenceServer, mails: ShareMail[] = []) {
   let deviceNo = 0;
   const businesses = new Map<string, string>();
   const remember = (body: unknown) => {
@@ -75,6 +77,11 @@ export function routeCloud(sync: ReferenceServer) {
       remember(body);
       return { status: 200, body: pushed };
     }
+    if (path === '/share/email' && method === 'POST') {
+      const mail = body as ShareMail;
+      mails.push(mail);
+      return { status: 200, body: { shareId: mail.shareId, status: 'sent', sentAt: new Date().toISOString() } };
+    }
     if (path === '/sync/pull') {
       const q = url.searchParams;
       return { status: 200, body: await sync.pull(deviceId, { businessId: q.get('businessId')!, stream: q.get('stream') as SyncStream, since: Number(q.get('since')), limit: Number(q.get('limit')) }) };
@@ -86,7 +93,8 @@ export function routeCloud(sync: ReferenceServer) {
 export async function startStubCloud(): Promise<StubCloud> {
   const sync = new ReferenceServer();
   for (const u of USERS) sync.addMember(u.id, ORG_ID);
-  const route = routeCloud(sync);
+  const mails: ShareMail[] = [];
+  const route = routeCloud(sync, mails);
   const calls: string[] = [];
   let online = true;
   const server: Server = createServer((req: IncomingMessage, res: ServerResponse) => {
@@ -107,7 +115,7 @@ export async function startStubCloud(): Promise<StubCloud> {
   await new Promise<void>((ok) => server.listen(0, '127.0.0.1', ok));
   const { port } = server.address() as AddressInfo;
   return {
-    url: `http://127.0.0.1:${port}/v1`, calls,
+    url: `http://127.0.0.1:${port}/v1`, calls, mails,
     setOnline: (next) => { online = next; if (!next) server.closeAllConnections(); },
     close: () => new Promise((ok) => { server.closeAllConnections(); server.close(() => ok()); }),
   };

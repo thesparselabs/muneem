@@ -5,6 +5,21 @@ All notable changes, newest first. Each entry records **what** changed and **why
 
 ## [Unreleased]
 
+### Added — Share invoices, credit notes and statements by WhatsApp or email (FR-085, ADR-0067)
+- **A Share action** on each bill and credit note in Sales, on the POS (last bill and recent bills) and on a party's
+  page (its statement, for the range on screen). The dialog starts from the party's phone or email and a standard
+  message, both editable, and lists what was shared before. Why: Phase 1 Tier A — customers ask for their bill on
+  WhatsApp, and TallyPrime charges for it.
+- **WhatsApp** saves the PDF to Downloads and opens a `wa.me` chat with the message for the user to attach and send;
+  no provider account is needed. **Email** goes out through the cloud, which relays it over SMTP from the platform's
+  address with the shop's name and `Reply-To`. Why: no SMTP set-up or credentials on a till.
+- **Offline-first:** emails wait in a local `share_log` (migration 0023) and retry with backoff (30 s doubling to an
+  hour, 24 tries) when the cloud is reachable; a refusal fails at once. The cloud keys each share (`share_email`,
+  Postgres 0010) so a retried share is never emailed twice, caps a PDF at 1 MiB and a business at 500 emails a day,
+  and answers 503 until `MUNEEM_SMTP_URL` / `MUNEEM_MAIL_FROM` are set (deploy kit and runbook updated).
+- **Refactor:** the invoice service exposes the rendered document (`document()`), and PDF rendering is split from
+  saving to Downloads, so preview, save and share print the same HTML.
+
 ### Added — Feature-gap audit vs Zoho Invoice/Books and TallyPrime
 - **`docs/audits/feature-gap-2026-10/`**: option-level gap lists (414 vs Zoho, 523 vs TallyPrime) built from
   Playwright crawls of both products' help docs (413 + 785 pages), diffed against a code-verified Muneem baseline,

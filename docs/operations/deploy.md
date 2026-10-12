@@ -36,6 +36,15 @@ managed S3-compatible storage. The deploy kit is in `deploy/`, and keys follow A
 - **The 60-day backup expiry is a safety net.** A shop that sends no backup for 60 days loses its cloud copies. The
   backup-freshness alert (9c) must fire long before that.
 
+**Email relay (FR-085, ADR-0067)**
+- Shops email invoices and statements through the API, which hands each one to an SMTP relay (a transactional
+  email provider). Set `MUNEEM_SMTP_URL` (`smtps://user:pass@host:465`, or `smtp://…:587` with STARTTLS) and
+  `MUNEEM_MAIL_FROM`.
+- Verify the sending domain with the provider (SPF and DKIM), or mail lands in spam. Each shop's name is the
+  display name and its own address the `Reply-To`.
+- Leaving `MUNEEM_SMTP_URL` empty turns email off: `POST /v1/share/email` answers 503 and devices keep their emails
+  queued until it is set. A business may send 500 emails in any 24 hours.
+
 **The VM**
 - Use a small Linux VM (2 vCPU and 4 GB is plenty for the pilot) with Docker Engine and the compose plugin.
 - Open only ports 22, 80 and 443 (443 for both TCP and UDP).

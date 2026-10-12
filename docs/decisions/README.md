@@ -71,3 +71,4 @@ Template: Context → Decision → Consequences → Status.
 | [0064](0064-whispr-theme-fullscreen-onboarding.md) | Whispr (tweakcn) light/dark theme, full-screen token-based layouts, icons, and a custom onboarding tour |
 | [0065](0065-help-manual-and-dashboard-periods.md) | In-app EN/HI manual + help drawer, and a Today/Week/Month dashboard with more KPIs and SVG charts |
 | [0066](0066-party-import-and-screen-exports.md) | Customer/supplier file import, exports on every list via the report catalogue, import format help, icon-only universal actions |
+| [0067](0067-sharing-documents-by-whatsapp-and-email.md) | Sharing documents: WhatsApp click-to-chat hand-off, email through a cloud SMTP relay, a local `share_log` queue with backoff, no second email for an acknowledged share |

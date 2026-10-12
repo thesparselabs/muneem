@@ -32,6 +32,10 @@ offline-first — online actions queue and complete when connectivity returns.
 - **Tests:** service sends/queues through a fake mailer/provider; offline → queued then sent; e2e-ui: share dialog
   opens and records a send.
 - **Effort:** M. **Note:** true WhatsApp file-send needs the provider (cloud); the desktop fallback ships without it.
+- **As built (ADR-0067):** doc types are `invoice`, `credit_note`, `customer_statement` and `supplier_statement`; the
+  contract is `share.preview` / `share.send` / `share.history`. WhatsApp is option (b) only. Email is the cloud relay
+  (`POST /v1/share/email`, Go SMTP), with no device SMTP fallback. The queue is the `share_log` table itself
+  (migration 0023), not a separate outbox.
 
 ---
 

@@ -4,7 +4,7 @@ import type {
 } from '@muneem/contracts';
 import type { InvoiceData } from './invoiceData.js';
 import type { InvoiceBrandingStore } from './brandingStore.js';
-import type { PdfSave } from './pdf.js';
+import type { PdfOptions, PdfSave } from './pdf.js';
 import { render as minimal } from './templates/minimal.js';
 import { render as classic } from './templates/classic.js';
 import { render as modern } from './templates/modern.js';
@@ -53,6 +53,11 @@ export interface InvoiceServiceDeps {
   save: PdfSave;
 }
 
+// One sale's invoice as its template renders it, with the page the PDF needs.
+export interface InvoiceDocument { html: string; fileName: string; pdf: PdfOptions; data: InvoiceData }
+
+const PDF_PAGE = { a4: 'A4', a5: 'A5', letter: 'Letter' } as const;
+
 export class InvoiceService {
   constructor(private readonly d: InvoiceServiceDeps) {}
 
@@ -60,20 +65,21 @@ export class InvoiceService {
   getBranding(): InvoiceBranding { return this.d.branding.get(); }
   setBranding(input: InvoiceBranding): InvoiceBranding { return this.d.branding.set(input); }
 
-  renderHtml(input: RenderInvoiceInput): RenderInvoiceResult {
-    const branding = this.d.branding.get();
-    const templateId = input.templateId ?? branding.templateId;
-    return { html: renderInvoice(templateId, this.d.buildData(input.saleId), branding) };
-  }
-
-  async savePdf(input: SaveInvoicePdfInput): Promise<SaveInvoicePdfResult> {
+  document(input: RenderInvoiceInput): InvoiceDocument {
     const branding = this.d.branding.get();
     const templateId = input.templateId ?? branding.templateId;
     const data = this.d.buildData(input.saleId);
-    const html = renderInvoice(templateId, data, branding);
     const kind = templateKind(templateId);
-    const PDF_PAGE = { a4: 'A4', a5: 'A5', letter: 'Letter' } as const;
-    const opts = kind === 'thermal' ? { kind, widthMm: templateId === 'thermal-58' ? 58 : 80 } : { kind, pageSize: PDF_PAGE[branding.pageSize] };
-    return this.d.save(html, `invoice-${data.invoiceNo}`, opts);
+    const pdf: PdfOptions = kind === 'thermal' ? { kind, widthMm: templateId === 'thermal-58' ? 58 : 80 } : { kind, pageSize: PDF_PAGE[branding.pageSize] };
+    return { html: renderInvoice(templateId, data, branding), fileName: `invoice-${data.invoiceNo}`, pdf, data };
+  }
+
+  renderHtml(input: RenderInvoiceInput): RenderInvoiceResult {
+    return { html: this.document(input).html };
+  }
+
+  async savePdf(input: SaveInvoicePdfInput): Promise<SaveInvoicePdfResult> {
+    const doc = this.document(input);
+    return this.d.save(doc.html, doc.fileName, doc.pdf);
   }
 }
