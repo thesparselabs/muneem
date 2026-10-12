@@ -5,6 +5,8 @@ import type { Db } from '@muneem/db-sqlite';
 import type { App } from '../../src/main/app.js';
 import { caller, grantRole, ownerAtTill, testApp } from '../helpers.js';
 
+const at = (day: string) => Date.parse(`${day}T06:30:00Z`);
+let clock: number;
 let app: App;
 let db: Db;
 let api: ReturnType<typeof caller>;
@@ -14,8 +16,10 @@ let html: string[];
 beforeEach(async () => {
   saved = [];
   html = [];
+  clock = at('2026-10-05');
   ({ app, db } = await testApp({
     file: true,
+    now: () => clock,
     saveFile: (name, bytes) => { saved.push({ name, bytes }); return Promise.resolve({ saved: true, fileName: name }); },
     pdfRenderer: (h) => { html.push(h); return Promise.resolve(Buffer.from('%PDF-fake')); },
   }));
@@ -47,7 +51,7 @@ describe('report engine and exports (8a, ADR-0046)', () => {
 
   it('exports CSV with a BOM and rupees, XLSX with numeric cells, and PDF through the renderer', async () => {
     for (const format of ['csv', 'xlsx', 'pdf'] as const) {
-      await new Promise((r) => setTimeout(r, 1100));
+      clock += 1_000;
       expect(await api.data('reports.export', { id: 'accounting.trialBalance', params: { asOf: '2026-10-05' }, format })).toMatchObject({ saved: true });
     }
     const csv = saved[0]!.bytes.toString('utf8');

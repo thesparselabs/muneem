@@ -5,6 +5,14 @@ All notable changes, newest first. Each entry records **what** changed and **why
 
 ## [Unreleased]
 
+### Fixed — CI red on main since 2026-10-06
+- **Report export test pins its clock**: `test/reports/engine.test.ts` posted opening stock on the real "today" but
+  exported the Trial Balance as of 2026-10-05, so from 2026-10-06 the export was all zeros. It now runs on a fixed
+  2026-10-05 clock and advances it past the 1/sec export rate limit instead of sleeping 3.3 s.
+- **Go 1.26.9 and `golang.org/x/net` v0.60.0** (`cloud/go.mod`, and the `cloud/Dockerfile` build image): govulncheck
+  reported 12 reachable stdlib vulnerabilities in 1.26.8 (`net/http`, HTTP/2, `crypto/tls`, `mime/multipart`,
+  `html/template`) and the matching HTTP/2 ones in x/net v0.58.0.
+
 ### Added — Feature-gap audit vs Zoho Invoice/Books and TallyPrime
 - **`docs/audits/feature-gap-2026-10/`**: option-level gap lists (414 vs Zoho, 523 vs TallyPrime) built from
   Playwright crawls of both products' help docs (413 + 785 pages), diffed against a code-verified Muneem baseline,
