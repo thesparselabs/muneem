@@ -1,4 +1,4 @@
-import type { CreditNote, Customer, Estimate, Permission, ReceiptDoc, Sale, ShareDocType, ShareTarget, Supplier } from '@muneem/contracts';
+import type { Challan, CreditNote, Customer, Estimate, Permission, ReceiptDoc, Sale, ShareDocType, ShareTarget, Supplier } from '@muneem/contracts';
 import { formatRupees as rupees, type PartyType } from '@muneem/domain';
 import type { InvoiceDocument } from '../invoice/index.js';
 import { pdfFileName, type PdfRender } from '../invoice/pdf.js';
@@ -28,11 +28,14 @@ export interface ShareSources {
   statement(partyType: PartyType, party: { id: string; name: string }, range: StatementRange): Statement;
   estimate(id: string): Estimate;
   estimateDocument(e: Estimate): InvoiceDocument;
+  challan(id: string): Challan;
+  challanDocument(c: Challan): InvoiceDocument;
   renderPdf: PdfRender;
 }
 
 export const SHARE_PERMISSION: Readonly<Record<ShareDocType, Permission>> = {
   invoice: 'sales.view', credit_note: 'sales.view', customer_statement: 'customers.view', supplier_statement: 'suppliers.view', estimate: 'sales.view',
+  delivery_challan: 'sales.view',
 };
 
 const RECEIPT_COLUMNS = 42;
@@ -48,6 +51,7 @@ export class ShareDocuments {
       case 'customer_statement': return this.statement('customer', t);
       case 'supplier_statement': return this.statement('supplier', t);
       case 'estimate': return this.estimate(t.id);
+      case 'delivery_challan': return this.challan(t.id);
     }
   }
 
@@ -96,6 +100,22 @@ export class ShareDocuments {
       subject: `Quotation ${e.docNumber} from ${shop}`,
       message: `${greeting(e.customer.name)}, thank you for your enquiry. Our quotation ${e.docNumber} for ${rupees(e.totals.totalPaise)} is attached; `
         + `it is valid until ${fmtDate(e.validUntil)}. — ${shop}`,
+      contact: { phone: customer?.phone, email: customer?.email },
+      pdf: () => this.s.renderPdf(doc.html, doc.pdf),
+    };
+  }
+
+  private challan(id: string): SharedDocument {
+    const c = this.s.challan(id);
+    const doc = this.s.challanDocument(c);
+    const customer = c.customerId ? this.s.customer(c.customerId) : null;
+    const shop = this.s.shopName();
+    return {
+      label: `Delivery challan ${c.docNumber}`,
+      fileName: pdfFileName(doc.fileName),
+      subject: `Delivery challan ${c.docNumber} from ${shop}`,
+      message: `${greeting(c.consignee.name)}, the delivery challan ${c.docNumber} dated ${fmtDate(c.docDate)} for goods worth `
+        + `${rupees(c.totals.totalPaise)} is attached. — ${shop}`,
       contact: { phone: customer?.phone, email: customer?.email },
       pdf: () => this.s.renderPdf(doc.html, doc.pdf),
     };

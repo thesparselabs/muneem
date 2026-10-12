@@ -289,6 +289,21 @@ docs/             this folder (reality, with reasons)
   - converting bills the same lines and total once, and a refused conversion leaves no sale;
   - two tills converge on the same estimate and conversion.
 
+## Delivery challans (Phase 1, FR-087)
+
+- `apps/desktop/src/main/services/challans/` (ADR-0069): `ChallanService` values a challan through `SalePricing` (no
+  discounts; a typed consignee's GSTIN sets the place of supply) and stores `delivery_challan` + its items with an H
+  number. It posts nothing and moves no stock.
+- **Invoicing:** `SaleService`'s `MarkBilledFrom` hook links a supply challan to the sale billing it, in the sale's
+  transaction. Estimates use the same hook.
+- **Shared code:** estimate and challan lines share `repositories/pricedLines.ts`. On the Go cloud both are
+  `verify.PricedDocument`.
+- Invariants (tests):
+  - a challan's value equals a sale quote of its lines;
+  - nothing posts or moves for a challan;
+  - only a supply challan is invoiced, once;
+  - two tills converge on the same challan and link.
+
 ## Identity and trust
 
 - Cloud is authoritative for users, roles and permissions; the device caches a **permission snapshot** and enforces

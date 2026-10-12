@@ -74,6 +74,9 @@ reuse (FR-090).
 - **Renderer:** Challan route; print (A4 + thermal) and share.
 - **Tests:** create + print; link to invoice; no journals.
 - **Effort:** S–M (reuses estimate scaffolding).
+- **As built (ADR-0069):** migration 0025 (not 0025_delivery_challan), H kind letter. There is no stock-out flag:
+  stock moves only when the invoice bills it. There is no `challans.linkInvoice`: a supply challan is invoiced with
+  "Bill it" at the till, linked inside the sale's transaction. A consignee can be a customer or typed by hand.
 
 ---
 

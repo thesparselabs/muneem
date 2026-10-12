@@ -36,6 +36,7 @@ import { InstalledPrinter, PrintJobSummary, PrinterConfig, ReceiptDoc } from './
 import { InvoiceBranding, InvoiceTemplateId, ListTemplatesResult, RenderInvoiceInput, RenderInvoiceResult, SaveInvoicePdfInput, SaveInvoicePdfResult } from './invoice.js';
 import { SendShareInput, ShareHistoryInput, SharePreview, SharePreviewInput, ShareRecord } from './share.js';
 import { CreateEstimateInput, Estimate, EstimateListInput, EstimatePage } from './estimates.js';
+import { Challan, ChallanListInput, ChallanPage, CreateChallanInput } from './challans.js';
 import { SETTING_KEYS } from './settings.js';
 import { CrashReportingStatus, RendererErrorInput } from './telemetry.js';
 import { CloudBusiness, HydrationStartInput, HydrationStatus } from './hydration.js';
@@ -203,6 +204,12 @@ export const contract = {
   'estimates.list': spec({ input: EstimateListInput, output: EstimatePage, permission: 'sales.view', rateLimit: { perSec: 10 } }),
   'estimates.renderHtml': spec({ input: z.object({ id: Ulid, templateId: InvoiceTemplateId.optional() }), output: RenderInvoiceResult, permission: 'sales.view', rateLimit: { perSec: 10 } }),
   'estimates.savePdf': spec({ input: z.object({ id: Ulid, templateId: InvoiceTemplateId.optional() }), output: SaveInvoicePdfResult, permission: 'sales.view', rateLimit: { perSec: 2 } }),
+  // ADR-0069: challans follow estimates — made by whoever bills, read by whoever sees sales, invoiced by billing them.
+  'challans.create': spec({ input: CreateChallanInput, output: Challan, permission: 'sales.create', rateLimit: { perSec: 2 }, audit: true, idempotent: 'commandId' }),
+  'challans.get': spec({ input: z.object({ id: Ulid }), output: Challan, permission: 'sales.view', rateLimit: { perSec: 20 } }),
+  'challans.list': spec({ input: ChallanListInput, output: ChallanPage, permission: 'sales.view', rateLimit: { perSec: 10 } }),
+  'challans.renderHtml': spec({ input: z.object({ id: Ulid, templateId: InvoiceTemplateId.optional() }), output: RenderInvoiceResult, permission: 'sales.view', rateLimit: { perSec: 10 } }),
+  'challans.savePdf': spec({ input: z.object({ id: Ulid, templateId: InvoiceTemplateId.optional() }), output: SaveInvoicePdfResult, permission: 'sales.view', rateLimit: { perSec: 2 } }),
 
   'printer.getConfig': spec({ input: Empty, output: PrinterConfig, permission: 'pos.view', rateLimit: { perSec: 5 } }),
   'printer.setConfig': spec({ input: PrinterConfig, output: PrinterConfig, permission: 'settings.manage', rateLimit: { perSec: 2 }, audit: true }),

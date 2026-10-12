@@ -5,6 +5,29 @@ All notable changes, newest first. Each entry records **what** changed and **why
 
 ## [Unreleased]
 
+### Added — Delivery challans (FR-087, ADR-0069)
+- **Delivery challans** (sidebar): a list with Open / Invoiced filters, and **New challan** with:
+  - purpose (supply with invoice to follow, job work, approval, branch transfer, other);
+  - a customer, or a consignee typed by hand with address and GSTIN;
+  - products and quantities, valued like a bill;
+  - transport details: mode, vehicle, transporter and GSTIN/ID, distance, LR number.
+
+  Each challan gets an H number per terminal (`DE01H/2627/00001`). It posts nothing and moves no stock. Why: Phase 1
+  Tier A — goods leave before the invoice in wholesale and job work (CGST Rule 55), and the transport fields feed a
+  later e-way bill.
+- **Bill it** on a supply challan invoices it at the till, marking it inside the sale's transaction, once. A job-work
+  or approval challan is never invoiced. A consignee GSTIN in another state makes it inter-state (IGST).
+- **Print on A4 or the 80 mm roll and share:** "Delivery Challan" with "Challan No", "Consignee", purpose and
+  transport rows. The share dialog sends challans too.
+- **Synced like other documents** (migration 0025; entity `delivery_challan`). The Go cloud verifies estimates and
+  challans through one `PricedDocument` check, and a challan's update must be its invoice link.
+- **Refactor:**
+  - The line and total columns shared by estimates and challans moved to `repositories/pricedLines.ts`.
+  - The sale's estimate hook became `MarkBilledFrom` for both documents, and the POS's "billing from" link became
+    `cart.source`.
+  - `alignQuote` moved beside `applyQuote`.
+  - `delivery_challan` left the invoice-number format for the kind-letter one.
+
 ### Added — Estimates / quotations, billed at the till (FR-086, ADR-0068)
 - **Estimates** (sidebar → Estimates) is a list with Open / Expired / Billed filters, and **New estimate** is a form
   with a customer, products, units, discounts, a validity date (15 days by default) and a note. Prices come live

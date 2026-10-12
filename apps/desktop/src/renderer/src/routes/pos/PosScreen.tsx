@@ -1,13 +1,13 @@
 import { useCallback, useEffect, useRef, useState, type RefObject } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import type { CompleteSaleResult, Customer, ProductHit, QuoteContext, RegisterReport, SaleQuote, TenderLine } from '@muneem/contracts';
+import type { CompleteSaleResult, Customer, ProductHit, QuoteContext, RegisterReport, SaleDraft, SaleQuote, TenderLine } from '@muneem/contracts';
 import { newUlid } from '@muneem/domain';
 import { api, errorMessage, isClientError } from '../../api.js';
 import { formatPaise, formatRateBp, parseOptional, scaledToText } from '../../lib/money.js';
 import { addHit, applyQuote, emptyCart, localTotals, removeLine, setLineDiscount, setQty, toDraft, type Cart } from '../../lib/pos/cart.js';
 import { commandFor, type PendingCommand } from '../../lib/pos/payment.js';
-import { loadEstimate, retrieveHeldBill, type RetrieveResult } from '../../lib/pos/retrieve.js';
+import { billableChallan, billableEstimate, loadBillable, retrieveHeldBill, SOURCE_NAMES, type RetrieveResult } from '../../lib/pos/retrieve.js';
 import { useScanner } from '../../lib/pos/useScanner.js';
 import { useDebounced } from '../../lib/useDebounced.js';
 import CustomerDialog from './CustomerDialog.js';
@@ -50,6 +50,7 @@ export default function PosScreen() {
   const pendingCommand = useRef<PendingCommand | null>(null);
   const [params, setParams] = useSearchParams();
   const estimateId = params.get('estimate');
+  const challanId = params.get('challan');
   useEffect(() => { if (lastSale) search.current?.focus(); }, [lastSale]); // ready for the next customer
 
   // 8i: an update never installs while a bill is on screen.
@@ -102,7 +103,8 @@ export default function PosScreen() {
       const draft = toDraft(cart);
       pendingCommand.current = commandFor(pendingCommand.current, JSON.stringify(draft), newUlid);
       const result = await api.sales.complete({
-        ...draft, commandId: pendingCommand.current.id, tenders, expectedTotalPaise: payTotal, ...(cart.estimate && { estimateId: cart.estimate.id }),
+        ...draft, commandId: pendingCommand.current.id, tenders, expectedTotalPaise: payTotal,
+        ...(cart.source?.type === 'estimate' && { estimateId: cart.source.id }), ...(cart.source?.type === 'delivery_challan' && { challanId: cart.source.id }),
       });
       pendingCommand.current = null;
       setLastSale({ result, customerId: cart.customer?.id ?? null, at: Date.now() });
@@ -153,15 +155,18 @@ export default function PosScreen() {
     setMessage(r.notes.length > 0 ? { kind: 'error', text: r.notes.join(' ') } : { kind: 'ok', text: done });
   }
 
-  // FR-086: Estimates → "Bill it" opens the till with ?estimate=<id>; the estimate fills an empty cart once.
+  // FR-086/087: "Bill it" opens the till with ?estimate=<id> or ?challan=<id>; the document fills an empty cart once.
   useEffect(() => {
-    if (!estimateId || !session.data) return;
+    const id = estimateId ?? challanId;
+    if (!id || !session.data) return;
     setParams({}, { replace: true });
-    if (cart.lines.length > 0) { setMessage({ kind: 'error', text: 'Finish or hold the bill on screen, then bill the estimate again.' }); return; }
-    void loadEstimate({
-      getEstimate: (id) => api.estimates.get({ id }), getCustomer: (id) => api.customers.get({ id }), quote: (draft) => api.sales.quote(draft),
-    }, estimateId).then((r) => showRetrieved(r, r.ok ? `Estimate ${r.cart.estimate?.docNumber ?? ''} is on the bill.` : ''));
-  }, [estimateId, session.data]);
+    if (cart.lines.length > 0) { setMessage({ kind: 'error', text: 'Finish or hold the bill on screen, then bill it again.' }); return; }
+    const deps = { getCustomer: (customerId: string) => api.customers.get({ id: customerId }), quote: (draft: SaleDraft) => api.sales.quote(draft) };
+    void (estimateId
+      ? loadBillable('estimate', { ...deps, get: async (e) => billableEstimate(await api.estimates.get({ id: e })) }, id)
+      : loadBillable('delivery_challan', { ...deps, get: async (c) => billableChallan(await api.challans.get({ id: c })) }, id)
+    ).then((r) => showRetrieved(r, r.ok && r.cart.source ? `${r.cart.source.docNumber} is on the bill.` : ''));
+  }, [estimateId, challanId, session.data]);
 
   async function reprint(saleId: string, docNumber: string) {
     try { await api.printer.reprint({ saleId }); setMessage({ kind: 'ok', text: `Reprinting ${docNumber}` }); } catch (e) { setMessage({ kind: 'error', text: errorMessage(e) }); }
@@ -199,8 +204,8 @@ export default function PosScreen() {
       </section>
       <aside className="flex min-h-0 flex-col gap-3 overflow-y-auto">
         <StockStaleness />
-        {cart.estimate && (
-          <p className="card flex items-center gap-1.5 text-sm" role="note"><ClipboardList size={14} className="text-primary" aria-hidden />Billing estimate {cart.estimate.docNumber}</p>
+        {cart.source && (
+          <p className="card flex items-center gap-1.5 text-sm" role="note"><ClipboardList size={14} className="text-primary" aria-hidden />Billing {SOURCE_NAMES[cart.source.type]} {cart.source.docNumber}</p>
         )}
         <div className="card text-sm">
           <p className="flex items-center gap-1.5 text-muted-foreground"><User size={14} aria-hidden /> Customer (F3)</p>

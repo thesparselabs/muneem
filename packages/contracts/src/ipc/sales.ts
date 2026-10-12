@@ -105,8 +105,9 @@ export const CompleteSaleInput = SaleDraft.extend({
   commandId: Ulid,
   tenders: z.array(TenderLine).max(10),
   expectedTotalPaise: Int,
-  // The estimate this bill converts (FR-086); it is marked converted in the same transaction.
+  // The estimate this bill converts (FR-086) or the delivery challan it invoices (FR-087); either is marked in the same transaction.
   estimateId: Ulid.optional(),
+  challanId: Ulid.optional(),
 });
 export type CompleteSaleInput = z.infer<typeof CompleteSaleInput>;
 

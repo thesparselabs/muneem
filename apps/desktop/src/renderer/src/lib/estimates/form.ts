@@ -1,4 +1,4 @@
-import type { EstimateDraft, EstimateStatus, EstimateSummary, Product, QuoteLine, SaleQuote, Uom } from '@muneem/contracts';
+import type { EstimateDraft, EstimateStatus, EstimateSummary, Product, Uom } from '@muneem/contracts';
 import { parseOptional } from '../money.js';
 import { unitsOf, type LineUnit } from '../purchases/form.js';
 
@@ -38,18 +38,6 @@ export function formToDraft(f: EstimateForm): Parsed {
       ...(f.notes.trim() && { notes: f.notes.trim() }),
     },
   };
-}
-
-// Quote lines skip lines with an issue, so each form line finds its priced line by position, or its issue.
-export function alignQuote(count: number, quote: SaleQuote | undefined): { line?: QuoteLine; issue?: string }[] {
-  const issues = new Map(quote?.issues.map((i) => [i.lineNo, i.message]) ?? []);
-  let next = 0;
-  return Array.from({ length: count }, (_, i) => {
-    const issue = issues.get(i + 1);
-    if (issue) return { issue };
-    const line = quote?.lines[next++];
-    return line ? { line } : {};
-  });
 }
 
 export const STATUS_FILTERS: { value: EstimateStatus | ''; label: string }[] = [

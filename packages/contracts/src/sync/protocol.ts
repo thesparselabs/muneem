@@ -19,7 +19,7 @@ export const STREAM_OF: Readonly<Record<OutboxEntityType, PushStream>> = {
   price_list_item: 'masters', customer: 'masters', customer_credit_limit: 'masters', supplier: 'masters', warehouse: 'masters',
   pos_session: 'documents', cash_movement: 'documents', sale: 'documents', stock_adjustment: 'documents', party_opening: 'documents',
   purchase: 'documents', debit_note: 'documents', credit_note: 'documents', gst_setoff: 'documents', gst_payment: 'documents', payment: 'documents', write_off: 'documents', expense: 'documents', allocation: 'documents',
-  journal_entry: 'documents', estimate: 'documents',
+  journal_entry: 'documents', estimate: 'documents', delivery_challan: 'documents',
   audit_entry: 'audit',
 };
 export const SYNC_ENTITY_TYPES = Object.keys(STREAM_OF) as OutboxEntityType[];

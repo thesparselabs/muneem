@@ -21,7 +21,7 @@ var streamOf = map[string]string{
 	"pos_session": StreamDocuments, "cash_movement": StreamDocuments, "sale": StreamDocuments, "stock_adjustment": StreamDocuments,
 	"party_opening": StreamDocuments, "purchase": StreamDocuments, "debit_note": StreamDocuments, "credit_note": StreamDocuments, "payment": StreamDocuments,
 	"write_off": StreamDocuments, "expense": StreamDocuments, "allocation": StreamDocuments, "journal_entry": StreamDocuments,
-	"gst_setoff": StreamDocuments, "gst_payment": StreamDocuments, "estimate": StreamDocuments,
+	"gst_setoff": StreamDocuments, "gst_payment": StreamDocuments, "estimate": StreamDocuments, "delivery_challan": StreamDocuments,
 	auditchain.EntityType: StreamAudit,
 }
 

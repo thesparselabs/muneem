@@ -134,6 +134,13 @@ const Estimate = open({
   lines: z.array(SaleLine.extend({ lineDiscount: Discount })).min(1), totals: DocTotals, billDiscount: Discount, ...Filing,
 });
 const EstimateConverted = open({ status: z.literal('converted'), saleId: Id, saleDocNumber: z.string(), convertedAt: Ts });
+// ADR-0069: a delivery challan is valued like an estimate and carries its consignee and transport; its one update is the invoice.
+const DeliveryChallan = open({
+  id: Id, businessId: Id, terminalId: Id, docNumber: z.string(), docDate: Day, purpose: z.string(), customerId: Id.nullish(), status: z.literal('open'),
+  consignee: open({ name: z.string(), address: z.string().nullish(), gstin: z.string().nullish() }).nullish(),
+  transport: open({ mode: z.string() }), lines: z.array(SaleLine).min(1), totals: DocTotals, ...Filing,
+});
+const ChallanBilled = open({ status: z.literal('billed'), saleId: Id, saleDocNumber: z.string(), billedAt: Ts });
 
 const master = open({ id: Id.optional() });
 // ADR-0050: consents travel inside the customer; a withdrawal is never undone, and erasure blanks the profile for good.
@@ -162,6 +169,7 @@ const EXACT: Partial<Record<OutboxEntityType, Partial<Record<string, z.ZodTypeAn
   fy_close: { create: FyClose, update: FyClose },
   customer: { create: CustomerMaster, update: CustomerMaster },
   estimate: { create: Estimate, update: EstimateConverted },
+  delivery_challan: { create: DeliveryChallan, update: ChallanBilled },
 };
 
 // The schema a payload of this entity and operation must satisfy; masters and config are checked loosely.

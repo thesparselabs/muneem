@@ -16,7 +16,7 @@ export interface InvoiceTotals {
 export interface InvoiceTender { method: string; amountPaise: number }
 // Another document printed on the invoice layouts (a quotation, a delivery challan): its title, number label, extra rows,
 // and whether the invoice's price declaration applies.
-export interface DocumentVariant { title: string; numberLabel: string; rows: { label: string; value: string }[]; declaration: boolean }
+export interface DocumentVariant { title: string; numberLabel: string; rows: { label: string; value: string }[]; declaration: boolean; buyerLabel?: string }
 
 export interface InvoiceData {
   seller: InvoiceSeller;

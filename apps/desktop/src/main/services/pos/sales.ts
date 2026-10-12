@@ -11,8 +11,8 @@ import type { SalePricing } from './salePricing.js';
 const DEFAULT_FOOTER = ['Thank you! Visit again.'];
 
 export type AfterCommit = (result: CompleteSaleResult & { openDrawer: boolean }) => void;
-// FR-086: marks the estimate a bill converts, inside the bill's transaction.
-export type ConvertEstimate = (estimateId: string, sale: { id: string; docNumber: string }) => void;
+// Marks what a bill came from (an estimate, FR-086; a delivery challan, FR-087), inside the bill's transaction.
+export type MarkBilledFrom = (input: CompleteSaleInput, sale: { id: string; docNumber: string }) => void;
 
 export class SaleService {
   constructor(
@@ -21,7 +21,7 @@ export class SaleService {
     private readonly register: RegisterService,
     private readonly cashierName: () => string,
     private readonly afterCommit: AfterCommit = () => undefined,
-    private readonly convertEstimate: ConvertEstimate = () => { throw new AppError('INVALID_STATE', 'Estimates cannot be billed here'); },
+    private readonly markBilledFrom: MarkBilledFrom = () => undefined,
   ) {}
 
   quote(draft: SaleDraft): SaleQuote { return this.pricing.price(draft).quote; }
@@ -70,7 +70,7 @@ export class SaleService {
         changePaise: settled.changePaise, docDate: this.ctx.today(), cashier: this.cashierName(),
         receiptFooter: this.ctx.setting('pos.receiptFooter', DEFAULT_FOOTER),
       });
-      if (input.estimateId) this.convertEstimate(input.estimateId, { id: s.saleId, docNumber: s.number!.number });
+      this.markBilledFrom(input, { id: s.saleId, docNumber: s.number!.number });
       openDrawer = settled.tenders.some((t) => t.method === 'cash');
       return { saleId: s.saleId, docNumber: s.number!.number, totals, changePaise: settled.changePaise, printJobId: s.printJobId, replayed: false };
     });

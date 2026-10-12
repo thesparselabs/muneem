@@ -34,7 +34,8 @@ var creates = map[string]check{
 	"stock_adjustment": decoded(verifyStockDocument),
 	"party_opening":    decoded(verifyPartyOpening),
 	"journal_entry":    decoded(func(j *Journal) error { return balanced(j) }),
-	"estimate":         decoded(verifyEstimate),
+	"estimate":         decoded(verifyPricedDocument),
+	"delivery_challan": decoded(verifyPricedDocument),
 }
 
 // Operation verifies one pushed operation; a nil result means the cloud found nothing wrong with it.
@@ -46,8 +47,8 @@ func Operation(entityType, operationType string, payload []byte, lk Lookup) erro
 		return verifyCancel(payload, lk)
 	case entityType == "pos_session" && operationType == "update":
 		return decoded(verifySessionClose)(payload, lk)
-	case entityType == "estimate" && operationType == "update":
-		return decoded(verifyEstimateConversion)(payload, lk)
+	case operationType == "update" && linkStatus[entityType] != "":
+		return decoded(verifyLink(linkStatus[entityType]))(payload, lk)
 	case operationType == "create":
 		if c, ok := creates[entityType]; ok {
 			return c(payload, lk)

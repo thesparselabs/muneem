@@ -26,6 +26,8 @@ import { InvoiceBrandingStore } from './services/invoice/brandingStore.js';
 import { buildInvoiceData, documentData } from './services/invoice/invoiceData.js';
 import { EstimateService } from './services/estimates/estimateService.js';
 import { quotationFileName, quotationVariant } from './services/estimates/quotation.js';
+import { ChallanService } from './services/challans/challanService.js';
+import { challanFileName, challanVariant } from './services/challans/challanPrint.js';
 import { renderPdf, savePdf as saveInvoicePdf, type PdfRender } from './services/invoice/pdf.js';
 import { buildStatement, CloudMailer, createShare } from './services/share/index.js';
 import type { LineRasteriser } from './services/print/raster.js';
@@ -98,7 +100,7 @@ import { createNotifications } from './notifications/index.js';
 import { CustomerPrivacyService } from './services/parties/customerPrivacy.js';
 import { createTelemetry } from './telemetry/index.js';
 import type { CrashSend } from './telemetry/crashReports.js';
-import type { Estimate, InvoiceTemplateId, SyncStatus, UpdateStatus } from '@muneem/contracts';
+import type { Challan, Estimate, InvoiceTemplateId, SyncStatus, UpdateStatus } from '@muneem/contracts';
 export interface AppConfig {
   db: () => Db;
   dbFile: string;
@@ -219,8 +221,11 @@ export function createApp(cfg: AppConfig) {
   });
   const salePricing = new SalePricing(posCtx);
   const estimates = new EstimateService(posCtx, salePricing);
-  const sales = new SaleService(posCtx, salePricing, register, () => session.require().user.name, (r) => printQueue.enqueue(r.printJobId),
-    (estimateId, sale) => estimates.convert(estimateId, sale));
+  const challans = new ChallanService(posCtx, salePricing);
+  const sales = new SaleService(posCtx, salePricing, register, () => session.require().user.name, (r) => printQueue.enqueue(r.printJobId), (input, sale) => {
+    if (input.estimateId) estimates.convert(input.estimateId, sale);
+    if (input.challanId) challans.bill(input.challanId, sale);
+  });
   const returns = new ReturnService(posCtx, () => session.require().user.name, (r) => printQueue.enqueue(r.printJobId));
   const seller = {
     getBusiness: () => business.get(),
@@ -232,6 +237,8 @@ export function createApp(cfg: AppConfig) {
     save: saveInvoicePdf,
   });
   const quotation = (e: Estimate, templateId?: InvoiceTemplateId) => invoice.compose(documentData(e, seller, quotationVariant(e)), quotationFileName(e), templateId);
+  const challanDocument = (c: Challan, templateId?: InvoiceTemplateId) =>
+    invoice.compose(documentData({ ...c, customer: c.consignee }, seller, challanVariant(c)), challanFileName(c), templateId);
   const productImport = new ImportService(catalogCtx, new PreviewStore(cfg.now ?? (() => Date.now())), invalidateSearch);
   const diagnostics = new DiagnosticsService({
     db: cfg.db, reads, dbFile: cfg.dbFile, bundlesDir: cfg.bundlesDir, loggers: cfg.loggers, session, device,
@@ -292,7 +299,7 @@ export function createApp(cfg: AppConfig) {
     sources: {
       shopName: () => shop().name, sale: (id) => sales.get(id), invoice: (saleId) => invoice.document({ saleId }),
       creditNote: (id) => returns.get(id), creditNoteReceipt: (id) => returns.receipt(id), customer: (id) => customers.get(id), supplier: (id) => suppliers.get(id),
-      estimate: (id) => estimates.get(id), estimateDocument: (e) => quotation(e),
+      estimate: (id) => estimates.get(id), estimateDocument: (e) => quotation(e), challan: (id) => challans.get(id), challanDocument: (c) => challanDocument(c),
       statement: (partyType, party, range) => buildStatement({ db: cfg.db(), businessId: posCtx.businessId(), today: posCtx.today() }, shop(), partyType, party, range,
         new Date((cfg.now ?? Date.now)()).toISOString()),
       renderPdf: cfg.documentPdf ?? renderPdf,
@@ -477,6 +484,11 @@ export function createApp(cfg: AppConfig) {
     'estimates.list': (i) => estimates.list(i),
     'estimates.renderHtml': (i) => ({ html: quotation(estimates.get(i.id), i.templateId).html }),
     'estimates.savePdf': (i) => invoice.saveDocument(quotation(estimates.get(i.id), i.templateId)),
+    'challans.create': (i) => challans.create(i),
+    'challans.get': (i) => challans.get(i.id),
+    'challans.list': (i) => challans.list(i),
+    'challans.renderHtml': (i) => ({ html: challanDocument(challans.get(i.id), i.templateId).html }),
+    'challans.savePdf': (i) => invoice.saveDocument(challanDocument(challans.get(i.id), i.templateId)),
     'returns.quote': (i) => returns.quote(i),
     'returns.complete': (i) => returns.complete(i),
     'returns.get': (i) => returns.get(i.id),
@@ -548,6 +560,6 @@ export function createApp(cfg: AppConfig) {
     onCommitted: (channel) => { sync.nudge(); notifications.runner.afterCommit(channel); }, holds: (id) => gate.holds(id), onDispatch: (channel) => updates.activity.dispatch(channel),
   });
 
-  return { events, session, reports, dashboard, rbac, cloud, connectivity, device, auth, business, settings, products, catalog, pricing, productImport, customers, suppliers, customerLedger, supplierLedger, customerImport, supplierImport, purchases, purchaseReturns, purchaseImport, payments, writeOffs, expenses, periods, yearEnd, backlog, statements, chart, manualJournals, gst, register, sales, estimates, returns, invoice, printQueue, inventory, openingImport, diagnostics, backups, closeReadConnections, gateway, handlers, syncStatus, syncEngine, sync, hydration, hydrationGate: gate, updates, notifications, customerPrivacy, telemetry, share };
+  return { events, session, reports, dashboard, rbac, cloud, connectivity, device, auth, business, settings, products, catalog, pricing, productImport, customers, suppliers, customerLedger, supplierLedger, customerImport, supplierImport, purchases, purchaseReturns, purchaseImport, payments, writeOffs, expenses, periods, yearEnd, backlog, statements, chart, manualJournals, gst, register, sales, estimates, challans, returns, invoice, printQueue, inventory, openingImport, diagnostics, backups, closeReadConnections, gateway, handlers, syncStatus, syncEngine, sync, hydration, hydrationGate: gate, updates, notifications, customerPrivacy, telemetry, share };
 }
 export type App = ReturnType<typeof createApp>;

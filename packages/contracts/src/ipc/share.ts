@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { BusinessDate, IsoDateTime, Ulid } from './schemas.js';
 
 // FR-085 (ADR-0067): a document leaves the shop as a PDF, by WhatsApp click-to-chat or by the cloud's email relay.
-export const SHARE_DOC_TYPES = ['invoice', 'credit_note', 'customer_statement', 'supplier_statement', 'estimate'] as const;
+export const SHARE_DOC_TYPES = ['invoice', 'credit_note', 'customer_statement', 'supplier_statement', 'estimate', 'delivery_challan'] as const;
 export const ShareDocType = z.enum(SHARE_DOC_TYPES);
 export type ShareDocType = z.infer<typeof ShareDocType>;
 

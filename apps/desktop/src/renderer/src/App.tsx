@@ -37,6 +37,8 @@ import PosScreen from './routes/pos/PosScreen.js';
 import Sales from './routes/sales/Sales.js';
 import Estimates from './routes/estimates/Estimates.js';
 import NewEstimate from './routes/estimates/NewEstimate.js';
+import Challans from './routes/challans/Challans.js';
+import NewChallan from './routes/challans/NewChallan.js';
 import StockList from './routes/inventory/StockList.js';
 import ProductLedger from './routes/inventory/ProductLedger.js';
 import AdjustStock from './routes/inventory/AdjustStock.js';
@@ -95,6 +97,8 @@ export default function App() {
         <Route path="/sales" element={<Sales />} />
         <Route path="/estimates" element={<Estimates />} />
         <Route path="/estimates/new" element={<NewEstimate />} />
+        <Route path="/challans" element={<Challans />} />
+        <Route path="/challans/new" element={<NewChallan />} />
         <Route path="/inventory" element={<StockList />} />
         <Route path="/inventory/product/:id" element={<ProductLedger />} />
         <Route path="/inventory/adjust" element={<AdjustStock />} />
