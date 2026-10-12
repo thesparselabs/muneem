@@ -5,6 +5,13 @@ All notable changes, newest first. Each entry records **what** changed and **why
 
 ## [Unreleased]
 
+### Added — Feature-gap audit vs Zoho Invoice/Books and TallyPrime
+- **`docs/audits/feature-gap-2026-10/`**: option-level gap lists (414 vs Zoho, 523 vs TallyPrime) built from
+  Playwright crawls of both products' help docs (413 + 785 pages), diffed against a code-verified Muneem baseline,
+  with value/effort per row and a P0–P3 recommendation. Why: the 2026-10-06 audit used marketing pages only and
+  could not say which fields, options and reports we lack. It also corrects that audit: thermal ₹/Indic works only in
+  raster via the Windows spooler, and there is no GSTR JSON export.
+
 ### Added — Customer and supplier import, exports on every list (ADR-0066)
 - **Import customers or suppliers from a CSV/Excel file** (Parties → Import from file): header matching, a preview
   with per-row errors, optional opening balance and date, and a skip for anyone already on file by GSTIN or phone.

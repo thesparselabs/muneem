@@ -4,6 +4,9 @@
 Research was done by two exploration agents from public sources (official docs, pricing, demos, G2/Capterra reviews);
 it is not from driving the live trials. Our own feature state was verified against the codebase.
 
+> **Superseded for gap detail** by [audits/feature-gap-2026-10/](audits/feature-gap-2026-10/README.md)
+> (2026-10-11, option-level, from crawls of both products' help docs), which also corrects two rows below.
+
 ## Executive summary
 - **Zoho** is a polished, cloud-only SaaS with complete GST compliance (e-invoice, GSTR filing, e-way bill, TDS/TCS),
   broad payment gateways and reminders — but it is **cloud-only** (dies without internet), weak on **real thermal

@@ -9,6 +9,7 @@ Living documentation of **what the project is, what has been added, and why**. T
 | [architecture.md](architecture.md) | The whole system in plain terms: parts, boundaries, invariants | a boundary, package or invariant changes |
 | [build-stages.md](build-stages.md) | Status of each LLD §20 stage and what "done" meant | a stage starts, finishes, or changes scope |
 | [plans/](plans/) | Task-by-task plan for the stage being built | a stage is planned or its plan changes |
+| [audits/](audits/) | Competitive and feature-gap audits against rival products | a new audit is run |
 | [decisions/](decisions/) | Architecture Decision Records: the non-obvious choices and their trade-offs | any decision a future engineer could reasonably question |
 
 ## Rules
